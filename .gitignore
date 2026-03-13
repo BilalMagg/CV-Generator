@@ -1,0 +1,46 @@
+# Build folders
+bin/
+obj/
+
+# Rider / VSCode / Visual Studio
+.vs/
+.vscode/
+.idea/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test results
+TestResults/
+
+# NuGet packages (restored automatically)
+packages/
+
+# Entity Framework
+Migrations/*.Designer.cs
+
+# Secrets
+# appsettings.Development.json
+secrets.json
+
+# Node (if frontend exists)
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Coverage
+coverage/
+
+CV_Generator.sln
