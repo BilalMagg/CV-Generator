@@ -5,9 +5,10 @@ DEFAULT_PATH="./src/features"
 read -p "Enter feature name: " FEATURE
 
 FEATURE=$(echo "$FEATURE" | tr '[:upper:]' '[:lower:]')
-FEATURE_CAP="${FEATURE^}"  # capitalized for class names
+FEATURE_CAP="${FEATURE^}"
 
 FEATURE_PATH="$DEFAULT_PATH/$FEATURE"
+BASE_NAMESPACE="backend.src.features.$FEATURE"
 
 # Create folders
 mkdir -p "$FEATURE_PATH/controller"
@@ -25,6 +26,10 @@ echo "Creating feature in $FEATURE_PATH"
 
 cat <<EOF > "$FEATURE_PATH/controller/$FEATURE.controller.cs"
 using Microsoft.AspNetCore.Mvc;
+using $BASE_NAMESPACE.interfaces;
+using $BASE_NAMESPACE.entity;
+
+namespace $BASE_NAMESPACE.controller;
 
 [ApiController]
 [Route("api/$FEATURE")]
@@ -51,6 +56,11 @@ EOF
 ############################
 
 cat <<EOF > "$FEATURE_PATH/service/$FEATURE.service.cs"
+using $BASE_NAMESPACE.interfaces;
+using $BASE_NAMESPACE.entity;
+
+namespace $BASE_NAMESPACE.service;
+
 public class ${FEATURE_CAP}Service : I${FEATURE_CAP}Service
 {
     private readonly I${FEATURE_CAP}Repository _repository;
@@ -73,6 +83,10 @@ EOF
 
 cat <<EOF > "$FEATURE_PATH/repository/$FEATURE.repository.cs"
 using Microsoft.EntityFrameworkCore;
+using $BASE_NAMESPACE.interfaces;
+using $BASE_NAMESPACE.entity;
+
+namespace $BASE_NAMESPACE.repository;
 
 public class ${FEATURE_CAP}Repository : I${FEATURE_CAP}Repository
 {
@@ -95,6 +109,8 @@ EOF
 ############################
 
 cat <<EOF > "$FEATURE_PATH/dto/$FEATURE.dto.cs"
+namespace $BASE_NAMESPACE.dto;
+
 public class ${FEATURE_CAP}Dto
 {
 }
@@ -106,6 +122,8 @@ EOF
 
 cat <<EOF > "$FEATURE_PATH/entity/$FEATURE.entity.cs"
 using System.ComponentModel.DataAnnotations;
+
+namespace $BASE_NAMESPACE.entity;
 
 public class ${FEATURE_CAP}Entity
 {
@@ -119,6 +137,10 @@ EOF
 ############################
 
 cat <<EOF > "$FEATURE_PATH/interfaces/i$FEATURE.service.cs"
+using $BASE_NAMESPACE.entity;
+
+namespace $BASE_NAMESPACE.interfaces;
+
 public interface I${FEATURE_CAP}Service
 {
     Task<List<${FEATURE_CAP}Entity>> GetAll();
@@ -126,6 +148,10 @@ public interface I${FEATURE_CAP}Service
 EOF
 
 cat <<EOF > "$FEATURE_PATH/interfaces/i$FEATURE.repository.cs"
+using $BASE_NAMESPACE.entity;
+
+namespace $BASE_NAMESPACE.interfaces;
+
 public interface I${FEATURE_CAP}Repository
 {
     Task<List<${FEATURE_CAP}Entity>> GetAll();
@@ -138,6 +164,11 @@ EOF
 
 cat <<EOF > "$FEATURE_PATH/$FEATURE.module.cs"
 using Microsoft.Extensions.DependencyInjection;
+using $BASE_NAMESPACE.interfaces;
+using $BASE_NAMESPACE.service;
+using $BASE_NAMESPACE.repository;
+
+namespace $BASE_NAMESPACE;
 
 public static class ${FEATURE_CAP}Module
 {
