@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEFAULT_PATH="./src/features"
+DEFAULT_PATH="../src/features"
 
 read -p "Enter feature name: " FEATURE
 

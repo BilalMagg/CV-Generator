@@ -1,0 +1,43 @@
+services:
+
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/backend.Dockerfile
+
+  #   container_name: job-backend
+
+  #   ports:
+  #     - "8080:8080"
+
+  #   depends_on:
+  #     - postgres
+
+  #   environment:
+  #     ASPNETCORE_ENVIRONMENT: Development
+  #     ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=cv_db;Username=postgres;Password=postgres
+
+  #   volumes:
+  #     - .:/app
+
+  postgres:
+    image: pgvector/pgvector:pg16
+
+    container_name: cv-postgres
+
+    restart: always
+
+    ports:
+      - "5432:5432"
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cv_db
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pgdata:
