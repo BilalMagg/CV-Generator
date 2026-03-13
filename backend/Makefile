@@ -54,6 +54,9 @@ restore:
 build:
 	dotnet build
 
+watch:
+	dotnet watch run
+
 #################################
 # Tests
 #################################
