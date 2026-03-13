@@ -1,4 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using backend.src.features.auth.interfaces;
+using backend.src.features.auth.repository;
+using backend.src.features.auth.services;
 
 public static class AuthModule
 {

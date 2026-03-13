@@ -1,10 +1,12 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using backend.src.features.auth.entity;
+using Microsoft.EntityFrameworkCore;
 
-namespace backend.src.features.user
+namespace backend.src.features.user.entity
 {
+    [Table("users")]
+    [Index(nameof(Email), IsUnique = true)]
     public class User
     {
         [Key]
@@ -12,19 +14,19 @@ namespace backend.src.features.user
 
         [Required]
         [MaxLength(50)]
-        public string FirstName { get; set; }
+        public required string FirstName { get; set; }
 
         [Required]
         [MaxLength(50)]
-        public string LastName { get; set; }
+        public required string LastName { get; set; }
 
         [Required]
         [EmailAddress]
         [MaxLength(100)]
-        public string Email { get; set; }
+        public required string Email { get; set; }
 
         [Required]
-        public string PasswordHash { get; set; } // Toujours stocker le hash
+        public required string PasswordHash { get; set; } // Toujours stocker le hash
 
         [MaxLength(20)]
         public string? PhoneNumber { get; set; }
@@ -64,5 +66,7 @@ namespace backend.src.features.user
 
         // Tokens de sécurité (optionnel)
         public virtual ICollection<UserToken>? Tokens { get; set; }
+        public virtual ICollection<PasswordResetToken>? PasswordResetTokens { get; set; }
+        public virtual ICollection<LoginAttempt>? LoginAttempts { get; set; }
     }
 }

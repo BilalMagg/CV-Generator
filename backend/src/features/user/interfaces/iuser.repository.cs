@@ -1,4 +1,7 @@
+namespace backend.src.features.user.interfaces;
+
+using backend.src.features.user.entity;
 public interface IUserRepository
 {
-    Task<List<UserEntity>> GetAll();
+    Task<List<User>> GetAll();
 }

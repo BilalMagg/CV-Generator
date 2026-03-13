@@ -1,3 +1,7 @@
+namespace backend.src.features.user.repository;
+
+using backend.src.features.user.entity;
+using backend.src.features.user.interfaces;
 using Microsoft.EntityFrameworkCore;
 
 public class UserRepository : IUserRepository
@@ -9,8 +13,8 @@ public class UserRepository : IUserRepository
         _context = context;
     }
 
-    public async Task<List<UserEntity>> GetAll()
+    public async Task<List<User>> GetAll()
     {
-        return await _context.Set<UserEntity>().ToListAsync();
+        return await _context.Set<User>().ToListAsync();
     }
 }

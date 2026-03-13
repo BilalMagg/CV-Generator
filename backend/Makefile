@@ -25,7 +25,7 @@ logs:
 #################################
 
 db:
-	docker exec -it $(DB_CONTAINER) psql -U postgres -d cv_db
+	docker exec -it $(DB_CONTAINER) psql -U postgres -d cv_db 
 
 db-reset:
 	docker compose down -v

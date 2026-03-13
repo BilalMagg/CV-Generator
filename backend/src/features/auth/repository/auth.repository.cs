@@ -1,4 +1,7 @@
+namespace backend.src.features.auth.repository;
+
 using Microsoft.EntityFrameworkCore;
+using backend.src.features.auth.interfaces;
 
 public class AuthRepository : IAuthRepository
 {
@@ -9,8 +12,4 @@ public class AuthRepository : IAuthRepository
         _context = context;
     }
 
-    public async Task<List<AuthEntity>> GetAll()
-    {
-        return await _context.Set<AuthEntity>().ToListAsync();
-    }
 }

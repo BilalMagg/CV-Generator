@@ -1,4 +1,6 @@
+namespace backend.src.features.auth.interfaces;
+
 public interface IAuthService
 {
-    Task<List<AuthEntity>> GetAll();
+    
 }

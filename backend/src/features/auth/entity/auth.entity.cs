@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using backend.src.features.user;
+using backend.src.features.user.entity;
 
 namespace backend.src.features.auth.entity
 {
@@ -17,11 +17,11 @@ namespace backend.src.features.auth.entity
         public Guid UserId { get; set; }
 
         [ForeignKey("UserId")]
-        public User User { get; set; }
+        public User? User { get; set; }
 
         [Required]
         [MaxLength(500)]
-        public string Token { get; set; }
+        public required string Token { get; set; }
 
         [Required]
         public DateTime ExpiryDate { get; set; }
@@ -44,11 +44,11 @@ namespace backend.src.features.auth.entity
         public Guid UserId { get; set; }
 
         [ForeignKey("UserId")]
-        public User User { get; set; }
+        public User? User { get; set; }
 
         [Required]
         [MaxLength(500)]
-        public string Token { get; set; }
+        public required string Token { get; set; }
 
         [Required]
         public DateTime ExpiryDate { get; set; }
@@ -71,7 +71,7 @@ namespace backend.src.features.auth.entity
         public Guid UserId { get; set; }
 
         [ForeignKey("UserId")]
-        public User User { get; set; }
+        public User? User { get; set; }
 
         [Required]
         public DateTime AttemptedAt { get; set; } = DateTime.UtcNow;
@@ -80,9 +80,9 @@ namespace backend.src.features.auth.entity
         public bool Success { get; set; }
 
         [MaxLength(50)]
-        public string IpAddress { get; set; }
+        public string? IpAddress { get; set; }
 
         [MaxLength(200)]
-        public string UserAgent { get; set; }
+        public string? UserAgent { get; set; }
     }
 }

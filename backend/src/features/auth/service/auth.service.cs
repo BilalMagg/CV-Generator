@@ -1,3 +1,7 @@
+namespace backend.src.features.auth.services;
+
+using backend.src.features.auth.interfaces;
+
 public class AuthService : IAuthService
 {
     private readonly IAuthRepository _repository;
@@ -7,8 +11,4 @@ public class AuthService : IAuthService
         _repository = repository;
     }
 
-    public async Task<List<AuthEntity>> GetAll()
-    {
-        return await _repository.GetAll();
-    }
 }

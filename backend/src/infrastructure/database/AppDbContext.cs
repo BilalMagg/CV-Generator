@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using backend.src.features.user;
+using backend.src.features.user.entity;
 using backend.src.features.auth.entity;
 
 
@@ -16,6 +16,10 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
+
         // Optional: additional constraints / relationships
         modelBuilder.Entity<UserToken>()
             .HasOne(t => t.User)
@@ -24,12 +28,12 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PasswordResetToken>()
             .HasOne(t => t.User)
-            .WithMany()
+            .WithMany(u => u.PasswordResetTokens)
             .HasForeignKey(t => t.UserId);
 
         modelBuilder.Entity<LoginAttempt>()
             .HasOne(t => t.User)
-            .WithMany()
+            .WithMany(u => u.LoginAttempts)
             .HasForeignKey(t => t.UserId);
     }
 }

@@ -1,3 +1,9 @@
+namespace backend.src.features.user.services;
+
+using backend.src.features.user.interfaces;
+using backend.src.features.user.entity;
+
+
 public class UserService : IUserService
 {
     private readonly IUserRepository _repository;
@@ -7,7 +13,7 @@ public class UserService : IUserService
         _repository = repository;
     }
 
-    public async Task<List<UserEntity>> GetAll()
+    public async Task<List<User>> GetAll()
     {
         return await _repository.GetAll();
     }

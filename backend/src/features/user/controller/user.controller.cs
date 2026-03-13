@@ -1,4 +1,7 @@
+namespace backend.src.features.user.controller;
+
 using Microsoft.AspNetCore.Mvc;
+using backend.src.features.user.interfaces;
 
 [ApiController]
 [Route("api/user")]

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using backend.src.features.auth.interfaces;
 
 [ApiController]
 [Route("api/auth")]
@@ -11,10 +12,4 @@ public class AuthController : ControllerBase
         _service = service;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var result = await _service.GetAll();
-        return Ok(result);
-    }
 }
