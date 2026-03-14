@@ -7,6 +7,10 @@ read -p "Enter feature name: " FEATURE
 FEATURE=$(echo "$FEATURE" | tr '[:upper:]' '[:lower:]')
 FEATURE_CAP="${FEATURE^}"
 
+read -p "Is this a CRUD feature? (y/N): " IS_CRUD
+IS_CRUD=${IS_CRUD:-N}
+IS_CRUD=$(echo "$IS_CRUD" | tr '[:lower:]' '[:upper:]')
+
 FEATURE_PATH="$DEFAULT_PATH/$FEATURE"
 BASE_NAMESPACE="backend.src.features.$FEATURE"
 
@@ -19,6 +23,22 @@ mkdir -p "$FEATURE_PATH/entity"
 mkdir -p "$FEATURE_PATH/interfaces"
 
 echo "Creating feature in $FEATURE_PATH"
+
+if [ "$IS_CRUD" = "Y" ]; then
+    echo "Generating full CRUD boilerplate..."
+    SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    
+    source "$SCRIPTS_DIR/crud/controller.sh"
+    source "$SCRIPTS_DIR/crud/service.sh"
+    source "$SCRIPTS_DIR/crud/repository.sh"
+    source "$SCRIPTS_DIR/crud/dto.sh"
+    source "$SCRIPTS_DIR/crud/entity.sh"
+    source "$SCRIPTS_DIR/crud/interfaces.sh"
+    source "$SCRIPTS_DIR/crud/mapper.sh"
+    source "$SCRIPTS_DIR/crud/module.sh"
+    
+else
+    echo "Generating basic feature skeleton..."
 
 ############################
 # Controller
@@ -181,5 +201,7 @@ public static class ${FEATURE_CAP}Module
     }
 }
 EOF
+
+fi
 
 echo "Feature '$FEATURE' created successfully."
