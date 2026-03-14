@@ -1,4 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using backend.src.features.project.interfaces;
+using backend.src.features.project.service;
+using backend.src.features.project.repository;
+
+namespace backend.src.features.project;
 
 public static class ProjectModule
 {

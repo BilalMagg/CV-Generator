@@ -1,4 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using backend.src.features.experience.interfaces;
+using backend.src.features.experience.service;
+using backend.src.features.experience.repository;
+
+namespace backend.src.features.experience;
 
 public static class ExperienceModule
 {

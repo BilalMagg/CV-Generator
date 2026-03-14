@@ -1,4 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using backend.src.features.skill.interfaces;
+using backend.src.features.skill.service;
+using backend.src.features.skill.repository;
+
+namespace backend.src.features.skill;
 
 public static class SkillModule
 {
