@@ -1,6 +1,7 @@
-using backend.src.features.user.entity;
-using backend.src.features.auth.entity;
 using Microsoft.EntityFrameworkCore;
+using backend.src.shared.filters;
+using backend.src.middleware;
+using backend.src.features.user;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,9 +10,13 @@ var builder = WebApplication.CreateBuilder(args);
 // ------------------------
 
 builder.Services.AddUserModule();
+builder.Services.AddAutoMapper(typeof(UserMappingProfile));
 
 // Add controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ValidationFilter>();
+});
 
 // Add Swagger for API testing
 builder.Services.AddEndpointsApiExplorer();
@@ -48,6 +53,7 @@ app.UseHttpsRedirection();
 // Enable authentication & authorization if used
 // app.UseAuthentication();
 // app.UseAuthorization();
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Map controllers
 app.MapControllers();

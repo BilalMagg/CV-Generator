@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using backend.src.features.user.interfaces;
 using backend.src.features.user.dto;
+using backend.src.shared.responses;
 
 namespace backend.src.features.user.controller;
 
@@ -19,7 +20,8 @@ public class UserController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var users = await _service.GetAll();
-        return Ok(users);
+
+        return Ok(ApiResponse<object>.SuccessResponse(users));
     }
 
     [HttpGet("{id}")]
@@ -28,28 +30,28 @@ public class UserController : ControllerBase
         var user = await _service.GetById(id);
 
         if (user == null)
-            return NotFound();
+            return NotFound(ApiResponse<object>.ErrorResponse("User not found"));
 
-        return Ok(user);
+        return Ok(ApiResponse<object>.SuccessResponse(user));
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(CreateUserDto dto)
+    public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
     {
         var user = await _service.Create(dto);
 
-        return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+        return Ok(ApiResponse<object>.SuccessResponse(user, "User created"));
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, UpdateUserDto dto)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
     {
         var user = await _service.Update(id, dto);
 
         if (user == null)
-            return NotFound();
+            return NotFound(ApiResponse<object>.ErrorResponse("User not found"));
 
-        return Ok(user);
+        return Ok(ApiResponse<object>.SuccessResponse(user));
     }
 
     [HttpDelete("{id}")]
@@ -58,8 +60,8 @@ public class UserController : ControllerBase
         var deleted = await _service.Delete(id);
 
         if (!deleted)
-            return NotFound();
+            return NotFound(ApiResponse<object>.ErrorResponse("User not found"));
 
-        return NoContent();
+        return Ok(ApiResponse<object>.SuccessResponse(null, "User deleted"));
     }
 }
