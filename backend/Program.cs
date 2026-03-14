@@ -8,6 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. Configure services
 // ------------------------
 
+builder.Services.AddUserModule();
+
 // Add controllers
 builder.Services.AddControllers();
 

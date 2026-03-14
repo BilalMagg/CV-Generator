@@ -1,8 +1,16 @@
-namespace backend.src.features.user.interfaces;
+using backend.src.features.user.dto;
 
-using backend.src.features.user.entity;
+namespace backend.src.features.user.interfaces;
 
 public interface IUserService
 {
-    Task<List<User>> GetAll();
+    Task<List<UserResponseDto>> GetAll();
+
+    Task<UserResponseDto?> GetById(Guid id);
+
+    Task<UserResponseDto> Create(CreateUserDto dto);
+
+    Task<UserResponseDto?> Update(Guid id, UpdateUserDto dto);
+
+    Task<bool> Delete(Guid id);
 }

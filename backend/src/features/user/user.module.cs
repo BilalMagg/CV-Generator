@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using backend.src.features.user.interfaces;
-using backend.src.features.user.services;
+using backend.src.features.user.service;
 using backend.src.features.user.repository;
 
 public static class UserModule
