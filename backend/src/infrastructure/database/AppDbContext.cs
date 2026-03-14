@@ -2,7 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using backend.src.features.user.entity;
 using backend.src.features.auth.entity;
 using backend.src.features.project.entity;
-
+using backend.src.features.skill.entity;
+using backend.src.features.experience.entity;
 
 public class AppDbContext : DbContext
 {
@@ -42,5 +43,15 @@ public class AppDbContext : DbContext
             .HasOne(p => p.User)
             .WithMany(u => u.Projects)
             .HasForeignKey(p => p.UserId);
+
+        modelBuilder.Entity<Skill>()
+            .HasOne(s => s.User)
+            .WithMany(u => u.Skills)
+            .HasForeignKey(s => s.UserId);
+
+        modelBuilder.Entity<Experience>()
+            .HasOne(e => e.User)
+            .WithMany(u => u.Experiences)
+            .HasForeignKey(e => e.UserId);
     }
 }

@@ -38,6 +38,9 @@ db-reset:
 migration:
 	dotnet ef migrations add $(name)
 
+migrations remove:
+	dotnet ef migrations remove
+
 migrate:
 	dotnet ef database update
 

@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using backend.src.features.auth.entity;
-// using backend.src.features.skill.entity;
+using backend.src.features.skill.entity;
 using backend.src.features.project.entity;
-// using backend.src.features.experience.entity;
+using backend.src.features.experience.entity;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.src.features.user.entity
@@ -71,8 +71,8 @@ namespace backend.src.features.user.entity
         public virtual ICollection<UserToken>? Tokens { get; set; }
         public virtual ICollection<PasswordResetToken>? PasswordResetTokens { get; set; }
         public virtual ICollection<LoginAttempt>? LoginAttempts { get; set; }
-        public virtual ICollection<Project> Projects { get; set; }
-        // public virtual ICollection<Skill> Skills { get; set; }
-        // public virtual ICollection<Experience> Experiences { get; set; }
+        public virtual ICollection<Project>? Projects { get; set; }
+        public virtual ICollection<Skill>? Skills { get; set; }
+        public virtual ICollection<Experience>? Experiences { get; set; }
     }
 }

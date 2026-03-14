@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace backend.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class initialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -33,6 +33,32 @@ namespace backend.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_users", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "experiences",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Company = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: true),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ReferenceUrl = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    AiSummaryJson = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_experiences", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_experiences_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -80,6 +106,57 @@ namespace backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "projects",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    Role = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    Achievements = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    RepositoryUrl = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    DemoUrl = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SkillsJson = table.Column<string>(type: "text", nullable: true),
+                    AiSummaryJson = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_projects", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_projects_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "skills",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Level = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    YearsOfExperience = table.Column<int>(type: "integer", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Category = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_skills", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_skills_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "UserTokens",
                 columns: table => new
                 {
@@ -102,6 +179,11 @@ namespace backend.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_experiences_UserId",
+                table: "experiences",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_LoginAttempts_UserId",
                 table: "LoginAttempts",
                 column: "UserId");
@@ -109,6 +191,16 @@ namespace backend.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_PasswordResetTokens_UserId",
                 table: "PasswordResetTokens",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_projects_UserId",
+                table: "projects",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_skills_UserId",
+                table: "skills",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
@@ -127,10 +219,19 @@ namespace backend.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "experiences");
+
+            migrationBuilder.DropTable(
                 name: "LoginAttempts");
 
             migrationBuilder.DropTable(
                 name: "PasswordResetTokens");
+
+            migrationBuilder.DropTable(
+                name: "projects");
+
+            migrationBuilder.DropTable(
+                name: "skills");
 
             migrationBuilder.DropTable(
                 name: "UserTokens");
