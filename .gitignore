@@ -48,6 +48,6 @@ CV_Generator.sln
 *__pycache__/
 *build/
 *.egg-info/
+*chain.py
 
 *.env
-*chain.py
