@@ -3,6 +3,8 @@ using backend.src.features.auth.interfaces;
 using backend.src.features.auth.repository;
 using backend.src.features.auth.services;
 
+namespace backend.src.features.auth;
+
 public static class AuthModule
 {
     public static IServiceCollection AddAuthModule(this IServiceCollection services)

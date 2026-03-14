@@ -44,3 +44,10 @@ node_modules/
 coverage/
 
 CV_Generator.sln
+
+*__pycache__/
+*build/
+*.egg-info/
+
+*.env
+*chain.py
