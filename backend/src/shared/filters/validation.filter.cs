@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using backend.src.shared.responses;
+using backend.src.shared.exceptions;
 
 namespace backend.src.shared.filters;
 
@@ -17,12 +17,7 @@ public class ValidationFilter : IActionFilter
                     kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage)
                 );
 
-            var response = ApiResponse<object>.ErrorResponse(
-                "Validation failed",
-                errors
-            );
-
-            context.Result = new BadRequestObjectResult(response);
+            throw new ValidationException("Validation failed", errors);
         }
     }
 
