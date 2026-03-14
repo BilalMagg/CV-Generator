@@ -51,3 +51,4 @@ CV_Generator.sln
 *chain.py
 
 *.env
+*temp_runs/
