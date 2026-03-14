@@ -2,17 +2,21 @@ using backend.src.features.experience.interfaces;
 using backend.src.features.experience.entity;
 using backend.src.features.experience.dto;
 using AutoMapper;
+using backend.src.features.user.interfaces;
+using backend.src.shared.exceptions;
 
 namespace backend.src.features.experience.service;
 
 public class ExperienceService : IExperienceService
 {
     private readonly IExperienceRepository _repository;
+    private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
 
-    public ExperienceService(IExperienceRepository repository, IMapper mapper)
+    public ExperienceService(IExperienceRepository repository, IUserRepository userRepository, IMapper mapper)
     {
         _repository = repository;
+        _userRepository = userRepository;
         _mapper = mapper;
     }
 
@@ -30,6 +34,10 @@ public class ExperienceService : IExperienceService
 
     public async Task<ExperienceResponseDto> Create(CreateExperienceDto dto)
     {
+        var user = await _userRepository.GetById(dto.UserId);
+        if (user == null)
+            throw new NotFoundException($"User with ID {dto.UserId} not found");
+
         var entity = _mapper.Map<Experience>(dto);
         var created = await _repository.Create(entity);
         return _mapper.Map<ExperienceResponseDto>(created);

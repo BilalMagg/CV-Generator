@@ -2,6 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using backend.src.shared.filters;
 using backend.src.middleware;
 using backend.src.features.user;
+using backend.src.features.auth;
+using backend.src.features.project;
+using backend.src.features.skill;
+using backend.src.features.experience;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,7 +14,12 @@ var builder = WebApplication.CreateBuilder(args);
 // ------------------------
 
 builder.Services.AddUserModule();
-builder.Services.AddAutoMapper(typeof(UserMappingProfile));
+builder.Services.AddAuthModule();
+builder.Services.AddProjectModule();
+builder.Services.AddSkillModule();
+builder.Services.AddExperienceModule();
+
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 // Add controllers
 builder.Services.AddControllers(options =>

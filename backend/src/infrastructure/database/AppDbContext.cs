@@ -12,6 +12,8 @@ public class AppDbContext : DbContext
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
     public DbSet<LoginAttempt> LoginAttempts { get; set; }
     public DbSet<Project> Projects { get; set;}
+    public DbSet<Experience> Experiences { get; set;}
+    public DbSet<Skill> Skills { get; set;}
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

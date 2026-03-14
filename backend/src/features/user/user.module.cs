@@ -3,6 +3,7 @@ using backend.src.features.user.interfaces;
 using backend.src.features.user.service;
 using backend.src.features.user.repository;
 
+namespace backend.src.features.user;
 public static class UserModule
 {
     public static IServiceCollection AddUserModule(this IServiceCollection services)
