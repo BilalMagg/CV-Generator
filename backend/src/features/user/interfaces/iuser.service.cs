@@ -6,11 +6,11 @@ public interface IUserService
 {
     Task<List<UserResponseDto>> GetAll();
 
-    Task<UserResponseDto?> GetById(Guid id);
+    Task<UserResponseDto> GetById(Guid id);
 
     Task<UserResponseDto> Create(CreateUserDto dto);
 
-    Task<UserResponseDto?> Update(Guid id, UpdateUserDto dto);
+    Task<UserResponseDto> Update(Guid id, UpdateUserDto dto);
 
-    Task<bool> Delete(Guid id);
+    Task Delete(Guid id);
 }

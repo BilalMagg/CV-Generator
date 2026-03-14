@@ -29,9 +29,6 @@ public class UserController : ControllerBase
     {
         var user = await _service.GetById(id);
 
-        if (user == null)
-            return NotFound(ApiResponse<object>.ErrorResponse("User not found"));
-
         return Ok(ApiResponse<object>.SuccessResponse(user));
     }
 
@@ -48,19 +45,13 @@ public class UserController : ControllerBase
     {
         var user = await _service.Update(id, dto);
 
-        if (user == null)
-            return NotFound(ApiResponse<object>.ErrorResponse("User not found"));
-
         return Ok(ApiResponse<object>.SuccessResponse(user));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var deleted = await _service.Delete(id);
-
-        if (!deleted)
-            return NotFound(ApiResponse<object>.ErrorResponse("User not found"));
+        await _service.Delete(id);
 
         return Ok(ApiResponse<object>.SuccessResponse(null, "User deleted"));
     }
