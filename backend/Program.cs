@@ -57,13 +57,13 @@ if (app.Environment.IsDevelopment())
 }
 
 // Enable HTTPS
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 // Enable authentication & authorization if used
 // app.UseAuthentication();
 // app.UseAuthorization();
 app.UseMiddleware<ExceptionMiddleware>();
-
+app.MapGet("/", () => "Hello from backend!");
 // Map controllers
 app.MapControllers();
 
