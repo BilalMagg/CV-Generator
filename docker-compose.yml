@@ -2,7 +2,7 @@ name: cv
 
 services:
 
-    # ---------- Keycloak ----------
+  # ---------- Keycloak ----------
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: cv-keycloak
@@ -25,6 +25,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+    networks:
+      - cv-network
 
   # ---------- PostgreSQL ----------
   postgres:
@@ -49,10 +52,13 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+    networks:
+      - cv-network
+
   # ---------- Backend (.NET) ----------
   backend:
     build:
-      context: ./backend 
+      context: ./backend
     container_name: cv-backend
 
     ports:
@@ -63,8 +69,13 @@ services:
       ASPNETCORE_URLS: "http://0.0.0.0:80"
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=cv_db;Username=postgres;Password=postgres"
 
+    restart: unless-stopped
+
     depends_on:
       - postgres
+
+    networks:
+      - cv-network
 
   # ---------- AI Agents (FastAPI) ----------
   ai_agents:
@@ -83,6 +94,9 @@ services:
     depends_on:
       - backend
 
+    networks:
+      - cv-network
+
   # ---------- Frontend (Angular + Nginx) ----------
   frontend:
     build:
@@ -98,6 +112,14 @@ services:
 
     restart: unless-stopped
 
+    networks:
+      - cv-network
+
 # ---------- Volumes ----------
 volumes:
   pgdata:
+
+# ---------- Networks ----------
+networks:
+  cv-network:
+    driver: bridge
