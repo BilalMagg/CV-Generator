@@ -2,6 +2,30 @@ name: cv
 
 services:
 
+    # ---------- Keycloak ----------
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: cv-keycloak
+
+    command: start-dev
+
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/cv_db
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+
+    ports:
+      - "8080:8080"
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # ---------- PostgreSQL ----------
   postgres:
     image: pgvector/pgvector:pg16
@@ -15,6 +39,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: cv_db
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
     volumes:
       - pgdata:/var/lib/postgresql/data
