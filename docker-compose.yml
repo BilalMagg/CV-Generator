@@ -1,0 +1,73 @@
+name: cv
+
+services:
+
+  # ---------- PostgreSQL ----------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: cv-postgres
+    restart: unless-stopped
+
+    ports:
+      - "5433:5432"
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cv_db
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # ---------- Backend (.NET) ----------
+  backend:
+    build:
+      context: ./backend 
+    container_name: cv-backend
+
+    ports:
+      - "5000:80"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://0.0.0.0:80"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=cv_db;Username=postgres;Password=postgres"
+
+    depends_on:
+      - postgres
+
+  # ---------- AI Agents (FastAPI) ----------
+  ai_agents:
+    build:
+      context: ./ai_agents  
+    container_name: cv-ai-agents
+
+    ports:
+      - "8000:8000"
+
+    restart: unless-stopped
+
+    env_file:
+      - ./ai_agents/.env
+
+    depends_on:
+      - backend
+
+  # ---------- Frontend (Angular + Nginx) ----------
+  frontend:
+    build:
+      context: ./frontend
+    container_name: cv-frontend
+
+    ports:
+      - "4200:80"
+
+    depends_on:
+      - backend
+      - ai_agents
+
+    restart: unless-stopped
+
+# ---------- Volumes ----------
+volumes:
+  pgdata:
