@@ -6,6 +6,7 @@ using backend.src.features.auth;
 using backend.src.features.project;
 using backend.src.features.skill;
 using backend.src.features.experience;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,8 +34,13 @@ builder.Services.AddSwaggerGen();
 
 // Configure EF Core with PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+    dataSourceBuilder.UseVector();
+    var dataSource = dataSourceBuilder.Build();
+    options.UseNpgsql(dataSource);
+});
 
 // If you want JWT auth later, you can configure it here
 // builder.Services.AddAuthentication(...);

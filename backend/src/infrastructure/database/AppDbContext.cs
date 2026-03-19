@@ -4,6 +4,7 @@ using backend.src.features.auth.entity;
 using backend.src.features.project.entity;
 using backend.src.features.skill.entity;
 using backend.src.features.experience.entity;
+using Pgvector;
 
 public class AppDbContext : DbContext
 {
@@ -21,9 +22,25 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configure pgvector type
+        modelBuilder.HasPostgresExtension("vector");
+
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
+
+        // Configure vector columns for RAG search
+        modelBuilder.Entity<Experience>()
+            .Property(e => e.DescriptionEmbedding)
+            .HasColumnType("vector(384)");
+
+        modelBuilder.Entity<Project>()
+            .Property(p => p.DescriptionEmbedding)
+            .HasColumnType("vector(384)");
+
+        modelBuilder.Entity<Skill>()
+            .Property(s => s.NameEmbedding)
+            .HasColumnType("vector(384)");
 
         // Optional: additional constraints / relationships
         modelBuilder.Entity<UserToken>()

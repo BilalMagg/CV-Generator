@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using backend.src.features.user.entity;
+using Pgvector;
 
 namespace backend.src.features.project.entity
 {
@@ -54,5 +55,8 @@ namespace backend.src.features.project.entity
 
         // Optional: AI-generated summary or notes
         public string? AiSummaryJson { get; set; }
+
+        // Vector embedding for RAG search (pgvector)
+        public Vector? DescriptionEmbedding { get; set; }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using backend.src.features.user.entity;
+using Pgvector;
 
 namespace backend.src.features.skill.entity
 {
@@ -31,5 +32,8 @@ namespace backend.src.features.skill.entity
         // Optional: category (technical, soft, language...)
         [MaxLength(50)]
         public string? Category { get; set; }
+
+        // Vector embedding for RAG search (pgvector)
+        public Vector? NameEmbedding { get; set; }
     }
 }
