@@ -2,6 +2,10 @@
 
 This document describes the **agentic workflow** for generating and optimizing CVs automatically. The workflow is implemented in Python using FastAPI and is designed to be modular, scalable, and integrable with a .NET backend.
 
+> [!TIP]
+> **Developers**: Read the [CONTRIBUTING.md](./CONTRIBUTING.md) guide for instructions on how to implement new agents using the current architecture.
+
+
 ---
 
 ## Overview
