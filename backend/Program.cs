@@ -10,6 +10,7 @@ using backend.src.features.auth;
 using backend.src.features.project;
 using backend.src.features.skill;
 using backend.src.features.experience;
+using backend.src.features.workflow;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +24,7 @@ builder.Services.AddAuthModule();
 builder.Services.AddProjectModule();
 builder.Services.AddSkillModule();
 builder.Services.AddExperienceModule();
+builder.Services.AddWorkflowModule();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 

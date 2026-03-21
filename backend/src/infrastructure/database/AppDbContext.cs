@@ -3,6 +3,7 @@ using backend.src.features.user.entity;
 using backend.src.features.project.entity;
 using backend.src.features.skill.entity;
 using backend.src.features.experience.entity;
+using backend.src.features.workflow.entity;
 using Pgvector;
 
 public class AppDbContext : DbContext
@@ -11,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<Project> Projects { get; set;}
     public DbSet<Experience> Experiences { get; set;}
     public DbSet<Skill> Skills { get; set;}
+    public DbSet<Workflow> Workflows { get; set;}
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

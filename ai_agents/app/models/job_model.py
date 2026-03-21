@@ -26,6 +26,7 @@ class JobRequest(BaseModel):
     user_id: UUID           = Field(..., description="Backend user ID")
     job_description: str    = Field(..., description="Raw job posting text")
     template_id: str        = Field(default="default", description="CV template to use")
+    workflow_id: Optional[UUID] = Field(default=None, description="If provided, executes a dynamic workflow from the backend")
 
 
 class JobRequirements(BaseModel):

@@ -13,6 +13,7 @@ from uuid import UUID
 
 from app.core.config import settings
 from app.models.user_model import UserResponse, ExperienceResponse, ProjectResponse, SkillResponse
+from app.models.workflow_model import WorkflowResponse
 
 logger = logging.getLogger(__name__)
 
@@ -84,3 +85,9 @@ async def get_user_skills(user_id: UUID) -> List[SkillResponse]:
     data = await _get("/api/skills")
     all_items = [SkillResponse.model_validate(item) for item in data]
     return [s for s in all_items if s.user_id == user_id]
+
+
+async def get_workflow(workflow_id: UUID) -> WorkflowResponse:
+    """Fetches a dynamic workflow definition from the backend."""
+    data = await _get(f"/api/workflows/{workflow_id}")
+    return WorkflowResponse.model_validate(data)

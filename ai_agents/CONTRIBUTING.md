@@ -49,17 +49,20 @@ Create `app/agents/cover_letter_agent/agent.py`:
 
 ## 🏗️ Core Patterns to Respect
 
-### 1. Separation of Concerns
-- **Agent Package**: Pure logic. Should not know about FastAPI or HTTP status codes.
-- **API Layer**: Handles HTTP validation, parsing, and error responses (`HTTPException`).
+### 1. Dynamic Workflow Orchestration
+The system now supports **dynamic workflows** controlled by the backend. 
+- Use the `WorkflowContext` blackboard in `app/workflows/context.py` to share state between agents.
+- The `DynamicOrchestrator` (`app/workflows/dynamic_orchestrator.py`) handles the execution of node sequences fetched from the backend.
 
-### 2. Async First
+### 2. Separation of Concerns
+- **Agent Package**: Pure logic. Uses internal schemas for standard calls, but should be integrated into the `DynamicOrchestrator` by mapping from the `WorkflowContext`.
+- **API Layer**: Handles HTTP validation and proxies to either the static or dynamic orchestrator.
+
+### 3. Async First
 - All network calls (to backend or LLMs) and workflow steps must be `async`.
 - Use the shared `httpx` client in `app.core.backend_client`.
 
-### 3. Domain Models vs. Agent Schemas
-- Use `app.models` for objects that cross multiple agent boundaries (like `UserResponse` or `JobRequirements`).
-- Use `app.agents.<name>.schemas` for data strictly private to one agent's implementation.
-
-### 4. External Tools
-If you need a new tool (e.g., a web searcher or a specific PDF parser), add it to `app/core/`. Ensure it is configurable via `app/core/config.py`.
+### 4. Shared Context Blackboard
+When adding a new agent to a dynamic workflow:
+1. Ensure the `WorkflowContext` has fields for your agent's requirements/outputs.
+2. Update `DynamicOrchestrator.run_dynamic_workflow` to recognize your new node `type` and perform the necessary mapping.
