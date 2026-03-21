@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Pgvector;
 
 namespace backend.src.features.project.dto;
 
@@ -95,4 +96,7 @@ public class ProjectResponseDto
     public string? SkillsJson { get; set; }
 
     public string? AiSummaryJson { get; set; }
+
+    /// <summary>384-dim pgvector embedding of the description. Used by the Python RAG agent.</summary>
+    public Vector? DescriptionEmbedding { get; set; }
 }

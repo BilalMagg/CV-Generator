@@ -1,4 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
+using backend.src.config;
 using backend.src.shared.filters;
 using backend.src.middleware;
 using backend.src.features.user;
@@ -42,6 +46,31 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(dataSource);
 });
 
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+})
+.AddCookie()
+.AddOpenIdConnect(options =>
+{
+    options.Authority = KeycloakConfig.Authority;
+    options.MetadataAddress = KeycloakConfig.Authority.Replace("keycloak", "host.docker.internal");
+    options.ClientId = KeycloakConfig.ClientId;
+    options.ClientSecret = KeycloakConfig.ClientSecret;
+    options.ResponseType = KeycloakConfig.ResponseType;
+    options.CallbackPath = KeycloakConfig.CallbackPath;
+    options.RequireHttpsMetadata = false;
+    options.SaveTokens = true;
+
+    options.Scope.Add("openid");
+    options.Scope.Add("profile");
+    options.Scope.Add("email");
+
+    options.TokenValidationParameters.NameClaimType = "preferred_username";
+    options.TokenValidationParameters.RoleClaimType = "realm_access.roles";
+});
+
 // If you want JWT auth later, you can configure it here
 // builder.Services.AddAuthentication(...);
 
@@ -69,7 +98,10 @@ if (app.Environment.IsDevelopment())
 // app.UseAuthentication();
 // app.UseAuthorization();
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapGet("/", () => "Hello from backend!");
+    app.MapGet("/secure", [Authorize] () => "Hello from secure backend!");
 // Map controllers
 app.MapControllers();
 

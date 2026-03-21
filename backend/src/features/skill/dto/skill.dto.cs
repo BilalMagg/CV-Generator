@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Pgvector;
 
 namespace backend.src.features.skill.dto;
 
@@ -47,4 +48,7 @@ public class SkillResponseDto
     public Guid UserId { get; set; }
 
     public string? Category { get; set; }
+
+    /// <summary>384-dim pgvector embedding of the skill name. Used by the Python RAG agent.</summary>
+    public Vector? NameEmbedding { get; set; }
 }
