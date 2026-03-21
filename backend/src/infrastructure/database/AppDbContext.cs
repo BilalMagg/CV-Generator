@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using backend.src.features.user.entity;
-using backend.src.features.auth.entity;
 using backend.src.features.project.entity;
 using backend.src.features.skill.entity;
 using backend.src.features.experience.entity;
@@ -9,9 +8,6 @@ using Pgvector;
 public class AppDbContext : DbContext
 {
     public DbSet<User> Users { get; set; }
-    public DbSet<UserToken> UserTokens { get; set; }
-    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
-    public DbSet<LoginAttempt> LoginAttempts { get; set; }
     public DbSet<Project> Projects { get; set;}
     public DbSet<Experience> Experiences { get; set;}
     public DbSet<Skill> Skills { get; set;}
@@ -28,6 +24,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
+        modelBuilder.Entity<User>()
+            .Property(u => u.Role)
+            .HasConversion<string>();
 
         // Configure vector columns for RAG search
         modelBuilder.Entity<Experience>()
@@ -41,22 +40,6 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Skill>()
             .Property(s => s.NameEmbedding)
             .HasColumnType("vector(384)");
-
-        // Optional: additional constraints / relationships
-        modelBuilder.Entity<UserToken>()
-            .HasOne(t => t.User)
-            .WithMany(u => u.Tokens)
-            .HasForeignKey(t => t.UserId);
-
-        modelBuilder.Entity<PasswordResetToken>()
-            .HasOne(t => t.User)
-            .WithMany(u => u.PasswordResetTokens)
-            .HasForeignKey(t => t.UserId);
-
-        modelBuilder.Entity<LoginAttempt>()
-            .HasOne(t => t.User)
-            .WithMany(u => u.LoginAttempts)
-            .HasForeignKey(t => t.UserId);
 
         modelBuilder.Entity<Project>()
             .HasOne(p => p.User)

@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using backend.src.features.auth.entity;
 using backend.src.features.skill.entity;
 using backend.src.features.project.entity;
 using backend.src.features.experience.entity;
@@ -14,6 +13,10 @@ namespace backend.src.features.user.entity
     {
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid(); // Id unique global
+        
+        [Required]
+        [MaxLength(50)]
+        public string KeycloakId { get; set; } = default!; // Link to Keycloak user
 
         [Required]
         [MaxLength(50)]
@@ -28,9 +31,6 @@ namespace backend.src.features.user.entity
         [MaxLength(100)]
         public required string Email { get; set; }
 
-        [Required]
-        public required string PasswordHash { get; set; } // Toujours stocker le hash
-
         [MaxLength(20)]
         public string? PhoneNumber { get; set; }
 
@@ -39,7 +39,7 @@ namespace backend.src.features.user.entity
         // Rôle pour gérer permissions (Admin / User / Recruiter ...)
         [Required]
         [MaxLength(20)]
-        public string Role { get; set; } = "User";
+        public Role Role { get; set; } = Role.USER;
 
         // Avatar / profile picture
         [MaxLength(255)]
@@ -68,11 +68,13 @@ namespace backend.src.features.user.entity
         // public virtual ICollection<Application> Applications { get; set; }
 
         // Tokens de sécurité (optionnel)
-        public virtual ICollection<UserToken>? Tokens { get; set; }
-        public virtual ICollection<PasswordResetToken>? PasswordResetTokens { get; set; }
-        public virtual ICollection<LoginAttempt>? LoginAttempts { get; set; }
         public virtual ICollection<Project>? Projects { get; set; }
         public virtual ICollection<Skill>? Skills { get; set; }
         public virtual ICollection<Experience>? Experiences { get; set; }
+    }
+    public enum Role
+    {
+        USER,
+        ADMIN,
     }
 }
