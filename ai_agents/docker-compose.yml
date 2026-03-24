@@ -1,0 +1,11 @@
+name: cv
+
+services:
+  ai_agents:
+    build: .
+    container_name: cv-ai-agents
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    env_file:
+      - ./.env

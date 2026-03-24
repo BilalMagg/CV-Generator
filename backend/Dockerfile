@@ -8,7 +8,7 @@ COPY *.csproj ./
 # Restore dependencies
 RUN dotnet restore
 
-# Copy the rest of the source code
+# Copy the rest of the source code (including .env)
 COPY . .
 
 # Publish the application (release mode)

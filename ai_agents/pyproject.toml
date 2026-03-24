@@ -12,5 +12,6 @@ dependencies = [
     "langchain-groq>=1.1.2",
     "langchain-openai>=1.1.11",
     "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
     "uvicorn>=0.41.0",
 ]

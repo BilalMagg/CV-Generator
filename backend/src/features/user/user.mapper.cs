@@ -10,10 +10,6 @@ public class UserMappingProfile : Profile
     {
         CreateMap<User, UserResponseDto>();
 
-        CreateMap<CreateUserDto, User>()
-            .ForMember(dest => dest.PasswordHash,
-                opt => opt.MapFrom(src => BCrypt.Net.BCrypt.HashPassword(src.Password)));
-
         CreateMap<UpdateUserDto, User>()
             .ForAllMembers(opt => opt.Condition(
                 (src, dest, srcMember) => srcMember != null
