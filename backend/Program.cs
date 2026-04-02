@@ -26,7 +26,7 @@ builder.Services.AddSkillModule();
 builder.Services.AddExperienceModule();
 builder.Services.AddWorkflowModule();
 
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
 
 // Add controllers
 builder.Services.AddControllers(options =>
@@ -45,7 +45,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
     dataSourceBuilder.UseVector();
     var dataSource = dataSourceBuilder.Build();
-    options.UseNpgsql(dataSource);
+     options.UseNpgsql(dataSource, o => o.UseVector()); 
 });
 
 builder.Services.AddAuthentication(options =>
@@ -81,6 +81,41 @@ builder.Services.AddAuthentication(options =>
 // builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
+
+// ------------------------
+// Run database migrations (only if needed)
+// ------------------------
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        // Check if there are pending migrations
+        var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+        
+        if (pendingMigrations.Any())
+        {
+            logger.LogInformation("Found {Count} pending migrations. Applying...", pendingMigrations.Count());
+            
+            // Apply pending migrations
+            await dbContext.Database.MigrateAsync();
+            
+            logger.LogInformation("Migrations applied successfully.");
+        }
+        else
+        {
+            logger.LogInformation("No pending migrations found. Database is up to date.");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while applying migrations.");
+        // Decide: either throw (app won't start) or continue with warning
+        // throw; // Uncomment to prevent app start on migration failure
+    }
+}
 
 // ------------------------
 // 2. Configure middleware
