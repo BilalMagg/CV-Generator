@@ -10,6 +10,7 @@ public static class AuthModule
     public static IServiceCollection AddAuthModule(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        services.AddHttpClient<KeycloakAdminService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAuthRepository, AuthRepository>();
 

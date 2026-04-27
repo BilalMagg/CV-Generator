@@ -157,6 +157,21 @@ public class AuthController : ControllerBase
         return StatusCode(403, ApiResponse<object>.ErrorResponse("Access denied"));
     }
 
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object>.ErrorResponse("Invalid request"));
+
+        var result = await _authService.RegisterUserAsync(dto);
+
+        if (!result.Success)
+            return BadRequest(ApiResponse<object>.ErrorResponse(result.Error ?? "Registration failed"));
+
+        return Ok(ApiResponse<object>.SuccessResponse(
+            new { message = "User registered successfully. Please login." }));
+    }
+
     private class TokenRefreshResponse
     {
         public string AccessToken { get; set; } = "";

@@ -12,11 +12,16 @@ public class AuthService : IAuthService
 {
     private readonly IAuthRepository _authRepository;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly KeycloakAdminService _keycloakAdmin;
 
-    public AuthService(IAuthRepository authRepository, IHttpContextAccessor httpContextAccessor)
+    public AuthService(
+        IAuthRepository authRepository,
+        IHttpContextAccessor httpContextAccessor,
+        KeycloakAdminService keycloakAdmin)
     {
         _authRepository = authRepository;
         _httpContextAccessor = httpContextAccessor;
+        _keycloakAdmin = keycloakAdmin;
     }
 
     public async Task<User> ProvisionUserAsync(ClaimsPrincipal principal)
@@ -115,5 +120,69 @@ public class AuthService : IAuthService
                 HasRefreshToken = !string.IsNullOrEmpty(refreshToken)
             }
         };
+    }
+
+    public async Task<KeycloakUserCreationResult> RegisterUserAsync(RegisterRequestDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) ||
+            string.IsNullOrWhiteSpace(dto.Password) ||
+            string.IsNullOrWhiteSpace(dto.FirstName) ||
+            string.IsNullOrWhiteSpace(dto.LastName))
+        {
+            return new KeycloakUserCreationResult
+            {
+                Success = false,
+                Error = "All fields are required"
+            };
+        }
+
+        // Check if user already exists locally
+        var existingLocalUser = await _authRepository.GetByEmailAsync(dto.Email);
+        if (existingLocalUser != null)
+        {
+            return new KeycloakUserCreationResult
+            {
+                Success = false,
+                Error = "User with this email already exists"
+            };
+        }
+
+        // Create user in Keycloak via Admin API
+        var result = await _keycloakAdmin.CreateUserAsync(
+            dto.Email,
+            dto.FirstName,
+            dto.LastName,
+            dto.Password);
+
+        if (!result.Success)
+        {
+            return result;
+        }
+
+        // Pre-provision user in local DB (so they're ready when they first login)
+        // They won't have a KeycloakId until they actually login via OIDC
+        var user = new User
+        {
+            KeycloakId = result.UserId ?? "", // Will be updated on first login
+            Email = dto.Email,
+            FirstName = dto.FirstName,
+            LastName = dto.LastName,
+            Role = Role.USER,
+            CreatedAt = DateTime.UtcNow,
+            LastLogin = null,
+            IsActive = true
+        };
+
+        try
+        {
+            await _authRepository.CreateAsync(user);
+        }
+        catch
+        {
+            // If local creation fails, Keycloak user still exists
+            // User can still login and we'll sync on callback
+        }
+
+        return result;
     }
 }

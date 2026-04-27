@@ -9,7 +9,7 @@ AI_CONTAINER=cv-ai-agents
 
 # Build and start all containers
 dev:
-	docker compose up --build
+	docker compose up --build -d
 
 # Start containers in background
 up:
