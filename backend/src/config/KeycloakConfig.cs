@@ -7,6 +7,17 @@ namespace backend.src.config
         public static string ClientSecret { get; } = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_SECRET") ?? "";
         public static string ResponseType { get; } = Environment.GetEnvironmentVariable("KEYCLOAK_RESPONSE") ?? "code";
         public static string CallbackPath { get; } = Environment.GetEnvironmentVariable("KEYCLOAK_CALLBACK_PATH") ?? "/signin-oidc";
-        public static bool RequireHttpsMetadata { get; } = Environment.GetEnvironmentVariable("KEYCLOAK_REQUIRE_HTTPS") != "false";
+        public static bool RequireHttpsMetadata { get; } =
+            Environment.GetEnvironmentVariable("KEYCLOAK_REQUIRE_HTTPS")?.ToLower() == "true";
+
+        public static string Realm => Authority.Contains("/realms/")
+            ? Authority.Split("/realms/")[1].TrimEnd('/')
+            : "";
+
+        public static string MetadataAddress =>
+            $"{Authority.TrimEnd('/')}/.well-known/openid-configuration";
+
+        public static string MetadataAddressWithDocker =>
+            Authority.Replace("keycloak", "host.docker.internal");
     }
 }
