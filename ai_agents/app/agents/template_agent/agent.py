@@ -51,14 +51,17 @@ async def render_template(input_data: TemplateInput, prompt : LLMPrompt) -> Rend
 
 
 
-    model_input = {"message": [
+    model_input = {"messages": [
         {"role": "user",
-         "content": "enerate a CV based on the provided data"}
+         "content": "Generate a CV based on the provided data"}
     ]}
     result = client_agent.invoke(model_input)
+    messages = result.get("messages", [])
+    last_message = messages[-1] if messages else None
+    cv_code = last_message.content if last_message else ""
 
     return RenderedCV(
-        cv_code = result,
+        cv_code = cv_code,
         template_type=input_data.template_id,
         sections=sections,
     )

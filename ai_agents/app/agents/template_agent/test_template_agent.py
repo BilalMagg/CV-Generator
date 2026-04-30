@@ -24,9 +24,17 @@ async def test():
     template_type="latex",
     target_role="Senior Python Developer"
   )
-
   result = await render_template(input_data, LLMPrompt)
-  print(result)
+
+  with open("./tests/results/test_result.txt", "w") as f:
+      f.write(f"Template: {result.template_type}\n\n")
+      f.write("=== Generated CV Code ===\n")
+      f.write(result.cv_code)
+      f.write("\n\n=== Sections ===\n")
+      f.write(str(result.sections))
+
+  print("Result saved to test_result.txt")
+  print("the latex code after test: \n", result)
 
   
 asyncio.run(test())
