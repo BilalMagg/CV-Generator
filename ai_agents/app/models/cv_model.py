@@ -33,7 +33,7 @@ class CVDraft(BaseModel):
     matched_experiences: List[ExperienceResponse] = Field(default_factory=list)
     matched_projects: List[ProjectResponse]       = Field(default_factory=list)
     gap_skills: List[str]                         = Field(default_factory=list,
-                                                          description="Skills the user lacks but the job requires")
+                                                          description="Skills the user lacks but the job requires, it's gonna be shown in a seperate pop up")
 
 
 class OptimizedCV(BaseModel):
