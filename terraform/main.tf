@@ -1,48 +1,42 @@
 terraform {
   required_providers {
-    virtualbox = {
-      source  = "terra-farm/virtualbox"
-      version = "0.2.2-alpha.1"
+    vmworkstation = {
+      source  = "elsudano/vmworkstation"
+      version = "1.0.4"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
+  required_version = ">= 1.0.0"
 }
 
-resource "virtualbox_vm" "terra_server" {
-  name   = "terra-server"
-  # Use a working Ubuntu 22.04 box
-  image  = "https://vagrantcloud.com/generic/boxes/ubuntu2204/versions/4.3.12/providers/virtualbox.box"
-  cpus   = 2
-  memory = "2048 mib"
-  user_data = file("${path.module}/scripts/user_data.sh")
-
-  # Adapter 1: NAT (for internet access)
-  network_adapter {
-    type = "nat"
-  }
-
-  # Adapter 2: Host-Only (for direct access)
-  network_adapter {
-    type           = "hostonly"
-    host_interface = "VirtualBox Host-Only Ethernet Adapter"
-  }
+provider "vmworkstation" {
+  url      = "http://localhost:8697/api"
+  user     = "hamid"
+  password = "Hamid@123"
+  https    = false
+  debug    = false
 }
 
-output "vm_ip_hostonly" {
-  value = virtualbox_vm.terra_server.network_adapter[1].ipv4_address
-  description = "VM IP on host-only network"
+resource "random_id" "vm_suffix" {
+  byte_length = 4
 }
 
-output "ssh_command" {
-  value = "ssh vagrant@${virtualbox_vm.terra_server.network_adapter[1].ipv4_address}"
+resource "vmworkstation_vm" "my_vm" {
+  sourceid     = "KOEGDG921ESMRFMLAIQ858LBPGR3K8GK"
+  denomination = "my-terraform-vm-${random_id.vm_suffix.hex}"
+  description  = "VM created by Terraform"
+  path         = "C:\\Users\\mohsi\\Documents\\Virtual Machines\\my-terraform-vm-${random_id.vm_suffix.hex}\\my-terraform-vm-${random_id.vm_suffix.hex}.vmx"
+  processors   = 2
+  memory       = 2048
 }
 
-output "service_urls" {
-  value = {
-    ssh       = "ssh vagrant@${virtualbox_vm.terra_server.network_adapter[1].ipv4_address}"
-    frontend  = "http://${virtualbox_vm.terra_server.network_adapter[1].ipv4_address}:4200"
-    backend   = "http://${virtualbox_vm.terra_server.network_adapter[1].ipv4_address}:5000"
-    ai_agents = "http://${virtualbox_vm.terra_server.network_adapter[1].ipv4_address}:8000"
-    keycloak  = "http://${virtualbox_vm.terra_server.network_adapter[1].ipv4_address}:8080"
-    postgres  = "${virtualbox_vm.terra_server.network_adapter[1].ipv4_address}:5432"
-  }
+output "vm_name" {
+  value = vmworkstation_vm.my_vm.denomination
+}
+
+output "vm_id" {
+  value = vmworkstation_vm.my_vm.id
 }
