@@ -1,5 +1,7 @@
 APP_NAME=cv-backend
 DB_CONTAINER=cv-postgres
+MONOLITH_DIR=src/monolith-service
+MONOLITH_PROJECT=$(MONOLITH_DIR)/MonolithService.csproj
 
 #################################
 # Docker
@@ -36,29 +38,29 @@ db-reset:
 #################################
 
 migration:
-	dotnet ef migrations add $(name)
+	dotnet ef migrations add $(name) --project $(MONOLITH_PROJECT)
 
-migrations remove:
-	dotnet ef migrations remove
+migrations-remove:
+	dotnet ef migrations remove --project $(MONOLITH_PROJECT)
 
 migrate:
-	dotnet ef database update
+	dotnet ef database update --project $(MONOLITH_PROJECT)
 
 #################################
 # Development
 #################################
 
 run:
-	dotnet run
+	dotnet run --project $(MONOLITH_PROJECT)
 
 restore:
-	dotnet restore
+	dotnet restore $(MONOLITH_PROJECT)
 
 build:
-	dotnet build
+	dotnet build $(MONOLITH_PROJECT)
 
 watch:
-	dotnet watch run
+	dotnet watch run --project $(MONOLITH_PROJECT)
 
 #################################
 # Tests
@@ -72,7 +74,7 @@ test:
 #################################
 
 feature:
-	./scripts/generate-feature.sh
+	./$(MONOLITH_DIR)/scripts/generate-feature.sh
 
 #################################
 # Cleanup
