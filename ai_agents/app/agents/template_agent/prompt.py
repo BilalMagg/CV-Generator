@@ -16,8 +16,7 @@ RULES:
 - Tailor the content specifically for the target role: {target_role}
 - Replace placeholder company names with actual company names from the provided data
 
-CV DATA:
-{ cv_data }
+CV DATA: {cv_data}
 """
 
 SYSTEM_PROMPT_HTML = """You are an expert CV generator specialized in HTML rendering.
@@ -31,8 +30,7 @@ RULES:
 - Tailor the content specifically for the target role: {target_role}
 - Use a clean, professional design
 
-CV DATA:
-{ cv_data }
+CV DATA: {cv_data}
 """
 
 SYSTEM_PROMPT_PDF = """You are an expert CV generator specialized in PDF-ready CV generation.
@@ -44,8 +42,7 @@ RULES:
 - Include sections: summary, experience, skills, education, projects (as relevant)
 - Tailor the content specifically for the target role: {target_role}
 
-CV DATA:
-{ cv_data }
+CV DATA: {cv_data}
 """
 
 FORMAT_PROMPTS = {
