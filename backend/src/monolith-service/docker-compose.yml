@@ -1,0 +1,35 @@
+services:
+  monolith-service:
+    build: .
+    container_name: cv-monolith-service-standalone
+    ports:
+      - "8081:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=monolith-db;Port=5432;Database=cv_db;Username=postgres;Password=postgres
+    depends_on:
+      monolith-db: { condition: service_healthy }
+    networks:
+      - cv-network
+
+  monolith-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-monolith-db-standalone
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=cv_db
+    ports:
+      - "5431:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cv_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cv-network
+
+networks:
+  cv-network:
+    name: cv-network
+    driver: bridge

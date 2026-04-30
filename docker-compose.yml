@@ -18,7 +18,7 @@ services:
       KC_DB_PASSWORD: postgres
 
     ports:
-      - "8080:8080"
+      - "8443:8443" # Changed from 8080 to 8443 to avoid conflict with the Gateway
 
     restart: unless-stopped
 
@@ -58,7 +58,7 @@ services:
   # ---------- Backend (.NET) ----------
   backend:
     build:
-      context: ./backend
+      context: ./backend/src/monolith-service
     container_name: cv-backend
 
     ports:
@@ -115,6 +115,22 @@ services:
 
     restart: unless-stopped
 
+    networks:
+      - cv-network
+
+  # ---------- API Gateway (Relocated) ----------
+  api_gateway:
+    build:
+      context: ./api_gateway
+    container_name: cv-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - KEYCLOAK_AUTHORITY=http://keycloak:8080/realms/cv-realm
+    depends_on:
+      - backend
+      - keycloak
     networks:
       - cv-network
 

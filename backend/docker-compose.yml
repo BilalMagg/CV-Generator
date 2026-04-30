@@ -1,197 +1,191 @@
-name: cv-microservices
+name: cv-backend-microservices
 
 services:
-  # ── API Gateway ──────────────────────────────────────────────────────────────
-  api-gateway:
-    build: ./src/api-gateway
-    container_name: cv-api-gateway
-    ports:
-      - "8080:8080"
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      KEYCLOAK_AUTHORITY: ${KEYCLOAK_AUTHORITY}
-    depends_on:
-      user-service:         { condition: service_healthy }
-      user-content-service: { condition: service_healthy }
-      workflow-service:     { condition: service_healthy }
-      application-service:  { condition: service_healthy }
-      monolith-service:     { condition: service_started }
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # ── User Service ─────────────────────────────────────────────────────────────
   user-service:
-    build: ./src/user-service
+    build:
+      context: .
+      dockerfile: ./src/user-service/Dockerfile
     container_name: cv-user-service
     ports:
       - "8082:8082"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: "http://0.0.0.0:8082"
-      ConnectionStrings__DefaultConnection: "Host=user-db;Port=5432;Database=user_db;Username=postgres;Password=postgres"
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8082
+      - ConnectionStrings__DefaultConnection=Host=user-db;Port=5432;Database=user_db;Username=postgres;Password=postgres
     depends_on:
       user-db: { condition: service_healthy }
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # ── User Content Service ─────────────────────────────────────────────────────
   user-content-service:
-    build: ./src/user-content-service
+    build:
+      context: .
+      dockerfile: ./src/user-content-service/Dockerfile
     container_name: cv-user-content-service
     ports:
       - "8083:8083"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: "http://0.0.0.0:8083"
-      ConnectionStrings__DefaultConnection: "Host=content-db;Port=5432;Database=content_db;Username=postgres;Password=postgres"
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8083
+      - ConnectionStrings__DefaultConnection=Host=content-db;Port=5432;Database=content_db;Username=postgres;Password=postgres
     depends_on:
       content-db: { condition: service_healthy }
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # ── Workflow Service ─────────────────────────────────────────────────────────
   workflow-service:
-    build: ./src/workflow-service
+    build:
+      context: .
+      dockerfile: ./src/workflow-service/Dockerfile
     container_name: cv-workflow-service
     ports:
       - "8084:8084"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: "http://0.0.0.0:8084"
-      ConnectionStrings__DefaultConnection: "Host=workflow-db;Port=5432;Database=workflow_db;Username=postgres;Password=postgres"
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8084
+      - ConnectionStrings__DefaultConnection=Host=workflow-db;Port=5432;Database=workflow_db;Username=postgres;Password=postgres
     depends_on:
       workflow-db: { condition: service_healthy }
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8084/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # ── Application Service ──────────────────────────────────────────────────────
   application-service:
     build:
       context: ./src/application-service
-      dockerfile: Dockerfile
     container_name: cv-application-service
     ports:
       - "8085:8085"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: "http://0.0.0.0:8085"
-      ConnectionStrings__DefaultConnection: "Host=application-db;Port=5432;Database=application_db;Username=postgres;Password=postgres"
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8085
+      - ConnectionStrings__DefaultConnection=Host=application-db;Port=5432;Database=application_db;Username=postgres;Password=postgres
     depends_on:
-      application-db: { condition: service_started }
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      application-db: { condition: service_healthy }
 
-  # ── Monolith Service (Legacy) ────────────────────────────────────────────────
-  monolith-service:
+  # ── Job Offer Service ────────────────────────────────────────────────────────
+  job-offer-service:
     build:
-      context: .
-      dockerfile: ./src/monolith-service/Dockerfile
-    container_name: cv-monolith-service
+      context: ./src/job-offer-service
+    container_name: cv-job-offer-service
     ports:
-      - "8081:80"
+      - "8086:8086"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=monolith-db;Port=5432;Database=cv_db;Username=postgres;Password=postgres"
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8086
+      - ConnectionStrings__DefaultConnection=Host=job-offer-db;Port=5432;Database=job_offer_db;Username=postgres;Password=postgres
     depends_on:
-      monolith-db: { condition: service_started }
+      job-offer-db: { condition: service_healthy }
+
+  # ── Notification Service ─────────────────────────────────────────────────────
+  notification-service:
+    build:
+      context: ./src/notification-service
+    container_name: cv-notification-service
+    ports:
+      - "8087:8087"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8087
+      - ConnectionStrings__DefaultConnection=Host=notification-db;Port=5432;Database=notification_db;Username=postgres;Password=postgres
+    depends_on:
+      notification-db: { condition: service_healthy }
 
   # ── Databases ───────────────────────────────────────────────────────────────
   user-db:
     image: pgvector/pgvector:pg16
     container_name: cv-user-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: user_db
-    volumes:
-      - user_db_data:/var/lib/postgresql/data
+      - POSTGRES_USER: postgres
+      - POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB: user_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d user_db"]
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
 
   content-db:
     image: pgvector/pgvector:pg16
     container_name: cv-content-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: content_db
-    volumes:
-      - content_db_data:/var/lib/postgresql/data
+      - POSTGRES_USER: postgres
+      - POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB: content_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d content_db"]
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - content_db_data:/var/lib/postgresql/data
 
   workflow-db:
     image: pgvector/pgvector:pg16
     container_name: cv-workflow-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: workflow_db
-    volumes:
-      - workflow_db_data:/var/lib/postgresql/data
+      - POSTGRES_USER: postgres
+      - POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB: workflow_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d workflow_db"]
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - workflow_db_data:/var/lib/postgresql/data
 
   application-db:
     image: pgvector/pgvector:pg16
     container_name: cv-application-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: application_db
-    volumes:
-      - application_db_data:/var/lib/postgresql/data
+      - POSTGRES_USER: postgres
+      - POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB: application_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d application_db"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  monolith-db:
-    image: pgvector/pgvector:pg16
-    container_name: cv-monolith-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: cv_db
     volumes:
-      - monolith_db_data:/var/lib/postgresql/data
+      - application_db_data:/var/lib/postgresql/data
+
+  job-offer-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-job-offer-db
+    environment:
+      - POSTGRES_USER: postgres
+      - POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB: job_offer_db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cv_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d job_offer_db"]
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - job_offer_db_data:/var/lib/postgresql/data
+
+  notification-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-notification-db
+    environment:
+      - POSTGRES_USER: postgres
+      - POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB: notification_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - notification_db_data:/var/lib/postgresql/data
 
 volumes:
   user_db_data:
   content_db_data:
   workflow_db_data:
   application_db_data:
-  monolith_db_data:
+  job_offer_db_data:
+  notification_db_data:
 
 networks:
   default:
