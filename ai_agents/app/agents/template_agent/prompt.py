@@ -15,6 +15,9 @@ RULES:
 - Include sections: summary, experience, skills, education, projects (as relevant)
 - Tailor the content specifically for the target role: {target_role}
 - Replace placeholder company names with actual company names from the provided data
+- Use pdflatex-compatible packages only (avoid fontspec, use pdftex-compatible alternatives)
+- If using font-related packages, specify \\RequirePackage[LATIN-ASCII]{{inputenc}} and appropriate fonts
+- Default font: Times or Computer Modern (built-in LaTeX fonts)
 
 CV DATA: {cv_data}
 """
@@ -37,8 +40,9 @@ SYSTEM_PROMPT_PDF = """You are an expert CV generator specialized in PDF-ready C
 Your task is to generate a professional, single-page CV that will be converted to PDF.
 
 RULES:
-- Output LaTeX code that compiles to a single page PDF
-- Use a professional layout optimized for PDF viewing
+- Output LaTeX code that compiles to a single page PDF using pdflatex (NOT xelatex/lualatex)
+- Use pdflatex-compatible packages only (avoid fontspec - use built-in LaTeX fonts like times, helvet, courier)
+- Use \\RequirePackage[LATIN-ASCII]{{inputenc}} if special characters are needed
 - Include sections: summary, experience, skills, education, projects (as relevant)
 - Tailor the content specifically for the target role: {target_role}
 
