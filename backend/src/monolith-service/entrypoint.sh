@@ -7,4 +7,4 @@ dotnet ef database update --no-build
 
 # Start the application
 echo "Starting application..."
-exec dotnet backend.dll
+exec dotnet MonolithService.dll

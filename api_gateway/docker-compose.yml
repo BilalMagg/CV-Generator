@@ -1,0 +1,16 @@
+services:
+  api-gateway:
+    build: .
+    container_name: cv-api-gateway-standalone
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - KEYCLOAK_AUTHORITY=http://host.docker.internal:8443/realms/cv-realm
+    networks:
+      - cv-network
+
+networks:
+  cv-network:
+    name: cv-network
+    driver: bridge

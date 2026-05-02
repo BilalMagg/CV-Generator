@@ -29,4 +29,4 @@ EXPOSE 80
 EXPOSE 443
 
 # Set the entrypoint
-ENTRYPOINT ["dotnet", "backend.dll"]
+ENTRYPOINT ["dotnet", "MonolithService.dll"]
