@@ -36,11 +36,11 @@ class CVDraft(BaseModel):
                                                           description="Skills the user lacks but the job requires, it's gonna be shown in a seperate pop up")
 
 
-class OptimizedCV(BaseModel):
-    """Final CV — produced by the optimizer agent."""
-    job_id: str
-    final_sections: List[CVSection]         = Field(default_factory=list)
-    ats_score_estimate: int                 = Field(ge=0, le=100, description="Estimated ATS pass rate 0-100")
-    optimization_notes: List[str]           = Field(default_factory=list)
-    pdf_url: Optional[str]                  = None
-    generated_at: datetime                  = Field(default_factory=datetime.utcnow)
+# class OptimizedCV(BaseModel):
+#     """Final CV — produced by the optimizer agent."""
+#     job_id: str
+#     final_sections: List[CVSection]         = Field(default_factory=list)
+#     ats_score_estimate: int                 = Field(ge=0, le=100, description="Estimated ATS pass rate 0-100")
+#     optimization_notes: List[str]           = Field(default_factory=list)
+#     pdf_url: Optional[str]                  = None
+#     generated_at: datetime                  = Field(default_factory=datetime.utcnow)
