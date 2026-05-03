@@ -74,7 +74,7 @@ export class ApplicationCreateComponent {
       if (res.success && res.data) {
         this.router.navigate(['/applications', res.data.id]);
       } else {
-        this.error.set(res.message || 'Failed to create application');
+        this.error.set('Failed to create application');
       }
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : 'An unexpected error occurred');

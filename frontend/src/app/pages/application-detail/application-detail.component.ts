@@ -95,7 +95,7 @@ export class ApplicationDetailComponent implements OnInit {
         this.application.set(res.data);
         this.resetEditForm(res.data);
       } else {
-        this.error.set(res.message || 'Failed to load application');
+        this.error.set('Failed to load application');
       }
     } catch {
       this.error.set('Failed to load application');

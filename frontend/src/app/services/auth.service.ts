@@ -86,7 +86,7 @@ export class AuthService {
       return;
     }
     // Redirect to backend OIDC login endpoint
-    window.location.href = `${environment.apiUrl}/api/auth/login`;
+    window.location.href = `${environment.gatewayUrl}/api/auth/login`;
   }
 
   logout(): void {
@@ -98,7 +98,7 @@ export class AuthService {
     this.currentUser.set(null);
     localStorage.removeItem(this.TOKEN_KEY);
     // Redirect to backend logout endpoint
-    window.location.href = `${environment.apiUrl}/api/auth/logout`;
+    window.location.href = `${environment.gatewayUrl}/api/auth/logout`;
   }
 
   async register(data: {
