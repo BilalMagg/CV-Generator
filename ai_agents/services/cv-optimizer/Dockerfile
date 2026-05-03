@@ -14,8 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # On copie le code source du service
 COPY app/ ./app/
 
-# Créer le dossier output
-RUN mkdir -p /app/output && chmod 777 /app/output
+
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8004"]
 
