@@ -61,7 +61,11 @@ builder.Services.AddAuthentication("Bearer")
         };
     });
 
-builder.Services.AddAuthorization();
+// 2. Define the "default" authorization policy that we reference in appsettings.json
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("default", policy => policy.RequireAuthenticatedUser());
+});
 
 // ── Reverse Proxy ────────────────────────────────────────────────────────────
 builder.Services.AddReverseProxy()
