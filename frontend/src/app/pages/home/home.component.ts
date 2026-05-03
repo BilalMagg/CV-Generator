@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-home',
@@ -13,8 +14,12 @@ import { CommonModule } from '@angular/common';
         <p class="tagline">AI-powered CV creation and optimization</p>
 
         <div class="cta-group">
-          <a routerLink="/login" class="btn btn-primary">Login</a>
-          <a routerLink="/register" class="btn btn-secondary">Register</a>
+          @if (auth.isAuthenticated()) {
+            <a routerLink="/applications" class="btn btn-primary">Go to Dashboard</a>
+          } @else {
+            <a routerLink="/login" class="btn btn-primary">Login</a>
+            <a routerLink="/register" class="btn btn-secondary">Register</a>
+          }
         </div>
       </header>
 
@@ -106,4 +111,6 @@ import { CommonModule } from '@angular/common';
     }
   `]
 })
-export class HomeComponent {}
+export class HomeComponent {
+  auth = inject(AuthService);
+}

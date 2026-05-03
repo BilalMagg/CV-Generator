@@ -1,3 +1,4 @@
+using Grpc.Core;
 using Grpc.Net.Client;
 using CommonProtos.Workflow;
 using Microsoft.EntityFrameworkCore;
@@ -17,16 +18,16 @@ public class WorkflowServiceImpl : CommonProtos.Workflow.WorkflowServiceGrpc.Wor
         _logger = logger;
     }
 
-    public override async Task<WorkflowProto> GetWorkflowById(GetWorkflowByIdRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<WorkflowProto> GetWorkflowById(GetWorkflowByIdRequest request, ServerCallContext context)
     {
         var workflow = await _db.Workflows.FindAsync(Guid.Parse(request.Id));
         if (workflow == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Workflow not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Workflow not found"));
 
         return ToProto(workflow);
     }
 
-    public override async Task GetAllWorkflows(GetAllWorkflowsRequest request, Grpc.Core.IServerStreamWriter<WorkflowProto> responseStream, Grpc.Core.ServerCallContext context)
+    public override async Task GetAllWorkflows(GetAllWorkflowsRequest request, IServerStreamWriter<WorkflowProto> responseStream, ServerCallContext context)
     {
         var workflows = await _db.Workflows.ToListAsync();
         foreach (var workflow in workflows)
@@ -35,7 +36,7 @@ public class WorkflowServiceImpl : CommonProtos.Workflow.WorkflowServiceGrpc.Wor
         }
     }
 
-    public override async Task<WorkflowProto> CreateWorkflow(CreateWorkflowRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<WorkflowProto> CreateWorkflow(CreateWorkflowRequest request, ServerCallContext context)
     {
         var workflow = new Workflow
         {
@@ -53,11 +54,11 @@ public class WorkflowServiceImpl : CommonProtos.Workflow.WorkflowServiceGrpc.Wor
         return ToProto(workflow);
     }
 
-    public override async Task<WorkflowProto> UpdateWorkflow(UpdateWorkflowRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<WorkflowProto> UpdateWorkflow(UpdateWorkflowRequest request, ServerCallContext context)
     {
         var workflow = await _db.Workflows.FindAsync(Guid.Parse(request.Id));
         if (workflow == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Workflow not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Workflow not found"));
 
         workflow.Name = request.Name;
         workflow.Description = request.Description;
@@ -68,11 +69,11 @@ public class WorkflowServiceImpl : CommonProtos.Workflow.WorkflowServiceGrpc.Wor
         return ToProto(workflow);
     }
 
-    public override async Task<DeleteWorkflowResponse> DeleteWorkflow(DeleteWorkflowRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<DeleteWorkflowResponse> DeleteWorkflow(DeleteWorkflowRequest request, ServerCallContext context)
     {
         var workflow = await _db.Workflows.FindAsync(Guid.Parse(request.Id));
         if (workflow == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Workflow not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Workflow not found"));
 
         _db.Workflows.Remove(workflow);
         await _db.SaveChangesAsync();

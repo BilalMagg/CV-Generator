@@ -1,3 +1,4 @@
+using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UserContentService;
@@ -24,15 +25,15 @@ public class ExperiencesController : ControllerBase
         var experiences = userId.HasValue
             ? await _db.Experiences.Where(e => e.UserId == userId.Value).ToListAsync()
             : await _db.Experiences.ToListAsync();
-        return Ok(experiences);
+        return Ok(ApiResponse<List<Experience>>.Ok(experiences));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
         var exp = await _db.Experiences.FindAsync(id);
-        if (exp == null) return NotFound();
-        return Ok(exp);
+        if (exp == null) return NotFound(ApiResponse<Experience>.Error("Experience not found"));
+        return Ok(ApiResponse<Experience>.Ok(exp));
     }
 
     [HttpPost]
@@ -54,14 +55,14 @@ public class ExperiencesController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Created experience {Id}", exp.Id);
-        return Created($"/api/experiences/{exp.Id}", exp);
+        return Created($"/api/experiences/{exp.Id}", ApiResponse<Experience>.Created(exp));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateExperienceDto dto)
     {
         var exp = await _db.Experiences.FindAsync(id);
-        if (exp == null) return NotFound();
+        if (exp == null) return NotFound(ApiResponse<Experience>.Error("Experience not found"));
 
         exp.Title = dto.Title;
         exp.Company = dto.Company;
@@ -72,14 +73,14 @@ public class ExperiencesController : ControllerBase
         exp.Status = dto.Status;
 
         await _db.SaveChangesAsync();
-        return Ok(exp);
+        return Ok(ApiResponse<Experience>.Ok(exp));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var exp = await _db.Experiences.FindAsync(id);
-        if (exp == null) return NotFound();
+        if (exp == null) return NotFound(ApiResponse<object>.Error("Experience not found"));
 
         _db.Experiences.Remove(exp);
         await _db.SaveChangesAsync();

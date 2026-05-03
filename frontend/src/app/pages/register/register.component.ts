@@ -207,6 +207,7 @@ export class RegisterComponent {
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           firstName: this.firstName,
           lastName: this.lastName,

@@ -87,6 +87,9 @@ build-ai:
 run-ai:
 	docker run -d -p 8000:8000 --name $(AI_CONTAINER) ai-agents-image
 
+test-template:
+	cd ai_agents && PYTHONPATH=. .venv/Scripts/python.exe app/agents/template_agent/test_template_agent.py
+
 # ----------------------------------
 # Cleanup
 # ----------------------------------

@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, computed, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { environment } from '../../../environments/environment';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -11,7 +13,11 @@ import { RouterLink } from '@angular/router';
         <h1>Login</h1>
         <p>Sign in to access your CV Generator account.</p>
 
-        <a [href]="loginUrl" class="btn btn-primary">Continue with Keycloak</a>
+        @if (!isTempAuth()) {
+          <a [href]="loginUrl()" class="btn btn-primary">Continue with Keycloak</a>
+        } @else {
+          <button class="btn btn-primary" (click)="loginWithTemp()">Use Demo Account</button>
+        }
 
         <div class="links">
           <a routerLink="/register">Don't have an account? Register</a>
@@ -42,11 +48,15 @@ import { RouterLink } from '@angular/router';
     p { color: #666; margin-bottom: 2rem; }
     .btn {
       display: block;
+      width: 100%;
       padding: 0.875rem 1.5rem;
       border-radius: 4px;
       text-decoration: none;
       font-weight: 500;
       transition: background 0.2s;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
     }
     .btn-primary {
       background: #667eea;
@@ -72,5 +82,13 @@ import { RouterLink } from '@angular/router';
   `]
 })
 export class LoginComponent {
-  loginUrl = '/api/auth/login';
+  isTempAuth = computed(() => environment.useTempAuth);
+  loginUrl = computed(() => `${environment.gatewayUrl}/api/auth/login?returnUrl=${encodeURIComponent(window.location.origin + '/applications')}`);
+
+  constructor(private router: Router, private authService: AuthService) {}
+
+  loginWithTemp(): void {
+    this.authService.login();
+    this.router.navigate(['/applications']);
+  }
 }

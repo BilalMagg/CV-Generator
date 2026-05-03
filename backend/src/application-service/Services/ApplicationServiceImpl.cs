@@ -11,6 +11,7 @@ public interface IApplicationService
     Task<ApplicationResponseDto?> GetByIdAsync(Guid id);
     Task<ApplicationResponseDto> CreateAsync(CreateApplicationDto dto, string? userId);
     Task<ApplicationResponseDto?> UpdateStatusAsync(Guid id, UpdateStatusDto dto, string? userId);
+    Task<ApplicationResponseDto?> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto, string? userId);
     Task<bool> DeleteAsync(Guid id);
     Task<ApplicationStatisticsDto> GetStatisticsAsync(Guid? candidateId);
 }
@@ -19,15 +20,18 @@ public class ApplicationServiceImpl : IApplicationService
 {
     private readonly IApplicationRepository _appRepo;
     private readonly IApplicationStatusHistoryRepository _historyRepo;
+    private readonly IKafkaPublisher _kafkaPublisher;
     private readonly ILogger<ApplicationServiceImpl> _logger;
 
     public ApplicationServiceImpl(
         IApplicationRepository appRepo,
         IApplicationStatusHistoryRepository historyRepo,
+        IKafkaPublisher kafkaPublisher,
         ILogger<ApplicationServiceImpl> logger)
     {
         _appRepo = appRepo;
         _historyRepo = historyRepo;
+        _kafkaPublisher = kafkaPublisher;
         _logger = logger;
     }
 
@@ -138,6 +142,32 @@ public class ApplicationServiceImpl : IApplicationService
         return result == null ? null : MapToDtoWithHistory(result);
     }
 
+    public async Task<ApplicationResponseDto?> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto, string? userId)
+    {
+        try
+        {
+            var updated = await _appRepo.UpdateDetailsAsync(id, dto);
+
+            var evt = new ApplicationUpdatedEvent
+            {
+                ApplicationId = updated.Id,
+                CandidateId = updated.CandidateId,
+                CompanyName = updated.CompanyName,
+                PositionTitle = updated.PositionTitle,
+                UpdatedBy = userId
+            };
+
+            await PublishEvent(evt);
+
+            var result = await _appRepo.GetByIdWithHistoryAsync(id);
+            return result == null ? null : MapToDtoWithHistory(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return null;
+        }
+    }
+
     public async Task<bool> DeleteAsync(Guid id)
     {
         var app = await _appRepo.GetByIdAsync(id);
@@ -191,17 +221,17 @@ public class ApplicationServiceImpl : IApplicationService
         )).ToList()
     );
 
-    private Task PublishEvent(ApplicationEvent evt)
+    private async Task PublishEvent(ApplicationEvent evt)
     {
-        // Event-ready: future Kafka/RabbitMQ integration point
-        _logger.LogInformation("Event published: {EventType} for Application {AppId}",
-            evt.GetType().Name, evt switch
-            {
-                ApplicationCreatedEvent e => e.ApplicationId,
-                ApplicationStatusUpdatedEvent e => e.ApplicationId,
-                ApplicationDeletedEvent e => e.ApplicationId,
-                _ => Guid.Empty
-            });
-        return Task.CompletedTask;
+        var topic = evt switch
+        {
+            ApplicationCreatedEvent => "application.created",
+            ApplicationStatusUpdatedEvent => "application.status.updated",
+            ApplicationUpdatedEvent => "application.updated",
+            ApplicationDeletedEvent => "application.deleted",
+            _ => throw new ArgumentException("Unknown event type")
+        };
+
+        await _kafkaPublisher.PublishAsync(evt, topic);
     }
 }

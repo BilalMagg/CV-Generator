@@ -1,4 +1,5 @@
 using CommonProtos.User;
+using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using UserService;
 using UserService.Entity;
@@ -16,40 +17,40 @@ public class UserServiceImpl : CommonProtos.User.UserServiceGrpc.UserServiceGrpc
         _logger = logger;
     }
 
-    public override async Task<UserProto> GetUserById(GetUserByIdRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<UserProto> GetUserById(GetUserByIdRequest request, ServerCallContext context)
     {
         var user = await _db.Users.FindAsync(Guid.Parse(request.Id));
         if (user == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "User not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
 
         return ToProto(user);
     }
 
-    public override async Task<UserProto> GetUserByEmail(GetUserByEmailRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<UserProto> GetUserByEmail(GetUserByEmailRequest request, ServerCallContext context)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
         if (user == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "User not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
 
         return ToProto(user);
     }
 
-    public override async Task<UserProto> GetUserByKeycloakId(GetUserByKeycloakIdRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<UserProto> GetUserByKeycloakId(GetUserByKeycloakIdRequest request, ServerCallContext context)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.KeycloakId == request.KeycloakId);
         if (user == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "User not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
 
         return ToProto(user);
     }
 
-    public override async Task<UserExistsResponse> UserExists(UserExistsRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<UserExistsResponse> UserExists(UserExistsRequest request, ServerCallContext context)
     {
         var exists = await _db.Users.AnyAsync(u => u.Id == Guid.Parse(request.Id));
         return new UserExistsResponse { Exists = exists };
     }
 
-    public override async Task<UserProto> CreateUser(CreateUserRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<UserProto> CreateUser(CreateUserRequest request, ServerCallContext context)
     {
         var user = new User
         {
@@ -69,11 +70,11 @@ public class UserServiceImpl : CommonProtos.User.UserServiceGrpc.UserServiceGrpc
         return ToProto(user);
     }
 
-    public override async Task<UserProto> UpdateUser(UpdateUserRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<UserProto> UpdateUser(UpdateUserRequest request, ServerCallContext context)
     {
         var user = await _db.Users.FindAsync(Guid.Parse(request.Id));
         if (user == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "User not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
 
         user.FirstName = request.FirstName;
         user.LastName = request.LastName;
@@ -85,11 +86,11 @@ public class UserServiceImpl : CommonProtos.User.UserServiceGrpc.UserServiceGrpc
         return ToProto(user);
     }
 
-    public override async Task<DeleteUserResponse> DeleteUser(DeleteUserRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<DeleteUserResponse> DeleteUser(DeleteUserRequest request, ServerCallContext context)
     {
         var user = await _db.Users.FindAsync(Guid.Parse(request.Id));
         if (user == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "User not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
 
         _db.Users.Remove(user);
         await _db.SaveChangesAsync();

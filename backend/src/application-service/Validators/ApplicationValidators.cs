@@ -23,6 +23,24 @@ public class CreateApplicationValidator : AbstractValidator<CreateApplicationDto
     }
 }
 
+public class UpdateApplicationValidator : AbstractValidator<UpdateApplicationDto>
+{
+    public UpdateApplicationValidator()
+    {
+        RuleFor(x => x.CompanyName)
+            .MaximumLength(200).WithMessage("Company name cannot exceed 200 characters")
+            .When(x => x.CompanyName != null);
+
+        RuleFor(x => x.PositionTitle)
+            .MaximumLength(150).WithMessage("Position title cannot exceed 150 characters")
+            .When(x => x.PositionTitle != null);
+
+        RuleFor(x => x.OfferSource)
+            .MaximumLength(100).WithMessage("Offer source cannot exceed 100 characters")
+            .When(x => x.OfferSource != null);
+    }
+}
+
 public class UpdateStatusValidator : AbstractValidator<UpdateStatusDto>
 {
     public UpdateStatusValidator()

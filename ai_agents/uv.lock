@@ -11,10 +11,14 @@ dependencies = [
     { name = "fastapi" },
     { name = "groq" },
     { name = "langchain" },
+    { name = "langchain-core" },
     { name = "langchain-groq" },
     { name = "langchain-openai" },
+    { name = "langgraph" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "python-dotenv" },
+    { name = "requests" },
     { name = "uvicorn" },
 ]
 
@@ -24,10 +28,14 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.135.1" },
     { name = "groq", specifier = ">=0.37.1" },
     { name = "langchain", specifier = ">=1.2.12" },
+    { name = "langchain-core", specifier = ">=1.2.19" },
     { name = "langchain-groq", specifier = ">=1.1.2" },
     { name = "langchain-openai", specifier = ">=1.1.11" },
+    { name = "langgraph", specifier = ">=1.1.2" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.13.1" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "requests", specifier = ">=2.32.5" },
     { name = "uvicorn", specifier = ">=0.41.0" },
 ]
 

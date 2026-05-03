@@ -1,6 +1,69 @@
 name: cv-backend-microservices
 
 services:
+  # ── Kafka (KRaft) ────────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: cv-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - default
+
+  # ── Schema Registry ──────────────────────────────────────────────────────────
+  schema-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: cv-schema-registry
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      kafka: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/subjects"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+  # ── Kafka UI ─────────────────────────────────────────────────────────────────
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: cv-kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: cv-backend
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+    depends_on:
+      - kafka
+      - schema-registry
+    networks:
+      - default
+
   # ── User Service ─────────────────────────────────────────────────────────────
   user-service:
     build:
@@ -49,7 +112,8 @@ services:
   # ── Application Service ──────────────────────────────────────────────────────
   application-service:
     build:
-      context: ./src/application-service
+      context: .
+      dockerfile: ./src/application-service/Dockerfile
     container_name: cv-application-service
     ports:
       - "8085:8085"
@@ -57,8 +121,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://0.0.0.0:8085
       - ConnectionStrings__DefaultConnection=Host=application-db;Port=5432;Database=application_db;Username=postgres;Password=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       application-db: { condition: service_healthy }
+      kafka: { condition: service_healthy }
 
   # ── Job Offer Service ────────────────────────────────────────────────────────
   job-offer-service:
@@ -93,9 +159,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: cv-user-db
     environment:
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: postgres
-      - POSTGRES_DB: user_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: user_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d user_db"]
       interval: 10s
@@ -108,9 +174,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: cv-content-db
     environment:
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: postgres
-      - POSTGRES_DB: content_db
+     POSTGRES_USER: postgres
+     POSTGRES_PASSWORD: postgres
+     POSTGRES_DB: content_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d content_db"]
       interval: 10s
@@ -123,9 +189,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: cv-workflow-db
     environment:
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: postgres
-      - POSTGRES_DB: workflow_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: workflow_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d workflow_db"]
       interval: 10s
@@ -138,9 +204,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: cv-application-db
     environment:
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: postgres
-      - POSTGRES_DB: application_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: application_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d application_db"]
       interval: 10s
@@ -153,9 +219,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: cv-job-offer-db
     environment:
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: postgres
-      - POSTGRES_DB: job_offer_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: job_offer_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d job_offer_db"]
       interval: 10s
@@ -168,9 +234,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: cv-notification-db
     environment:
-      - POSTGRES_USER: postgres
-      - POSTGRES_PASSWORD: postgres
-      - POSTGRES_DB: notification_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notification_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
       interval: 10s
@@ -180,6 +246,7 @@ services:
       - notification_db_data:/var/lib/postgresql/data
 
 volumes:
+  kafka_data:
   user_db_data:
   content_db_data:
   workflow_db_data:
