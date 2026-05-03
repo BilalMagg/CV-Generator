@@ -59,6 +59,7 @@ services:
   backend:
     build:
       context: ./backend
+    image: salmanelghrich/cv-backend:latest
     container_name: cv-backend
 
     ports:
@@ -81,7 +82,8 @@ services:
   # ---------- AI Agents (FastAPI) ----------
   ai_agents:
     build:
-      context: ./ai_agents  
+      context: ./ai_agents
+    image: salmanelghrich/cv-ai-agents:latest
     container_name: cv-ai-agents
 
     ports:
@@ -102,6 +104,7 @@ services:
   frontend:
     build:
       context: ./frontend
+    image: salmanelghrich/cv-frontend:latest
     container_name: cv-frontend
 
     ports:
