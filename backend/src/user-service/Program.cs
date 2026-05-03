@@ -42,6 +42,6 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseRouting();
 app.MapControllers();
-app.MapGrpcService<GrpcServices.UserServiceImpl>();
+app.MapGrpcService<UserService.Grpc.UserServiceImpl>();
 
 app.Run();

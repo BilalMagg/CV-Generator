@@ -29,3 +29,12 @@ public record ApplicationDeletedEvent : ApplicationEvent
     public Guid ApplicationId { get; init; }
     public Guid CandidateId { get; init; }
 }
+
+public record ApplicationUpdatedEvent : ApplicationEvent
+{
+    public Guid ApplicationId { get; init; }
+    public Guid CandidateId { get; init; }
+    public string CompanyName { get; init; } = "";
+    public string PositionTitle { get; init; } = "";
+    public string? UpdatedBy { get; init; }
+}

@@ -6,21 +6,15 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.28.2" />
-    <PackageReference Include="Grpc" Version="2.67.0" />
+    <PackageReference Include="Grpc.Core.Api" Version="2.67.0" />
     <PackageReference Include="Grpc.Tools" Version="2.67.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <None Update="user.proto">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="content.proto">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="workflow.proto">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <Protobuf Include="user.proto" GrpcServices="Both" />
+    <Protobuf Include="content.proto" GrpcServices="Both" />
+    <Protobuf Include="workflow.proto" GrpcServices="Both" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ApplicationService.DTOs;
 using ApplicationService.Entities;
 
 namespace ApplicationService.Repositories;
@@ -11,6 +12,7 @@ public interface IApplicationRepository
     Task<int> GetTotalCountAsync(Guid? candidateId);
     Task<Application> CreateAsync(Application application);
     Task<Application> UpdateAsync(Application application);
+    Task<Application> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto);
     Task<bool> DeleteAsync(Guid id);
     Task<bool> ExistsAsync(Guid id);
     Task<Dictionary<ApplicationStatus, int>> GetStatisticsAsync(Guid? candidateId);
@@ -71,6 +73,22 @@ public class ApplicationRepository : IApplicationRepository
         _db.Applications.Update(application);
         await _db.SaveChangesAsync();
         _logger.LogInformation("Updated application {Id}", application.Id);
+        return application;
+    }
+
+    public async Task<Application> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto)
+    {
+        var application = await _db.Applications.FindAsync(id);
+        if (application == null) throw new KeyNotFoundException($"Application {id} not found");
+
+        if (dto.CompanyName != null) application.CompanyName = dto.CompanyName;
+        if (dto.PositionTitle != null) application.PositionTitle = dto.PositionTitle;
+        if (dto.OfferSource != null) application.OfferSource = dto.OfferSource;
+        if (dto.Notes != null) application.Notes = dto.Notes;
+
+        application.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Updated application details {Id}", id);
         return application;
     }
 

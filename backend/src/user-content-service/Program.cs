@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using UserContentService;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,6 +46,6 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseRouting();
 app.MapControllers();
-app.MapGrpcService<GrpcServices.ContentServiceImpl>();
+app.MapGrpcService<UserContentService.Grpc.ContentServiceImpl>();
 
 app.Run();

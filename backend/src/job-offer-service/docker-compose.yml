@@ -8,6 +8,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://0.0.0.0:8086
       - ConnectionStrings__DefaultConnection=Host=job-offer-db;Port=5432;Database=job_offer_db;Username=postgres;Password=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       job-offer-db: { condition: service_healthy }
     networks:

@@ -42,6 +42,6 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseRouting();
 app.MapControllers();
-app.MapGrpcService<GrpcServices.WorkflowServiceImpl>();
+app.MapGrpcService<WorkflowService.Grpc.WorkflowServiceImpl>();
 
 app.Run();

@@ -15,17 +15,20 @@ public class ApplicationsController : ControllerBase
     private readonly IApplicationService _service;
     private readonly IValidator<CreateApplicationDto> _createValidator;
     private readonly IValidator<UpdateStatusDto> _statusValidator;
+    private readonly IValidator<UpdateApplicationDto> _updateValidator;
     private readonly ILogger<ApplicationsController> _logger;
 
     public ApplicationsController(
         IApplicationService service,
         IValidator<CreateApplicationDto> createValidator,
         IValidator<UpdateStatusDto> statusValidator,
+        IValidator<UpdateApplicationDto> updateValidator,
         ILogger<ApplicationsController> logger)
     {
         _service = service;
         _createValidator = createValidator;
         _statusValidator = statusValidator;
+        _updateValidator = updateValidator;
         _logger = logger;
     }
 
@@ -79,6 +82,19 @@ public class ApplicationsController : ControllerBase
             return BadRequest(new { message = validation.Errors.First().ErrorMessage, statusCode = 400 });
 
         var updated = await _service.UpdateStatusAsync(id, dto, GetUserId());
+        if (updated == null) return NotFound(new { message = "Application not found", statusCode = 404 });
+        return Ok(updated);
+    }
+
+    /// PUT /applications/{id}
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateApplicationDto dto)
+    {
+        var validation = await _updateValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(new { message = validation.Errors.First().ErrorMessage, statusCode = 400 });
+
+        var updated = await _service.UpdateDetailsAsync(id, dto, GetUserId());
         if (updated == null) return NotFound(new { message = "Application not found", statusCode = 404 });
         return Ok(updated);
     }
