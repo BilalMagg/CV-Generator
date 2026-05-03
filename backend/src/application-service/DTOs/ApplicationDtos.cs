@@ -39,6 +39,13 @@ public record UpdateStatusDto(
     string? Comment
 );
 
+public record UpdateApplicationDto(
+    string? CompanyName,
+    string? PositionTitle,
+    string? OfferSource,
+    string? Notes
+);
+
 public record ApplicationStatisticsDto(
     int Total,
     int Pending,

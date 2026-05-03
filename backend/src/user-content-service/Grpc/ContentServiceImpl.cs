@@ -1,4 +1,5 @@
 using CommonProtos.Content;
+using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using UserContentService;
 using UserContentService.Entity;
@@ -17,23 +18,23 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
     }
 
     // Projects
-    public override async Task<ProjectProto> GetProjectById(GetProjectByIdRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<ProjectProto> GetProjectById(GetProjectByIdRequest request, ServerCallContext context)
     {
         var project = await _db.Projects.FindAsync(Guid.Parse(request.Id));
         if (project == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Project not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Project not found"));
 
         return ToProjectProto(project);
     }
 
-    public override async Task GetProjectsByUserId(GetProjectsByUserIdRequest request, Grpc.Core.IServerStreamWriter<ProjectProto> responseStream, Grpc.Core.ServerCallContext context)
+    public override async Task GetProjectsByUserId(GetProjectsByUserIdRequest request, IServerStreamWriter<ProjectProto> responseStream, ServerCallContext context)
     {
         var projects = await _db.Projects.Where(p => p.UserId == Guid.Parse(request.UserId)).ToListAsync();
         foreach (var project in projects)
             await responseStream.WriteAsync(ToProjectProto(project));
     }
 
-    public override async Task<ProjectProto> CreateProject(CreateProjectRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<ProjectProto> CreateProject(CreateProjectRequest request, ServerCallContext context)
     {
         var project = new Project
         {
@@ -57,11 +58,11 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         return ToProjectProto(project);
     }
 
-    public override async Task<ProjectProto> UpdateProject(UpdateProjectRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<ProjectProto> UpdateProject(UpdateProjectRequest request, ServerCallContext context)
     {
         var project = await _db.Projects.FindAsync(Guid.Parse(request.Id));
         if (project == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Project not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Project not found"));
 
         project.Title = request.Title;
         project.Description = request.Description;
@@ -78,11 +79,11 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         return ToProjectProto(project);
     }
 
-    public override async Task<DeleteProjectResponse> DeleteProject(DeleteProjectRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<DeleteProjectResponse> DeleteProject(DeleteProjectRequest request, ServerCallContext context)
     {
         var project = await _db.Projects.FindAsync(Guid.Parse(request.Id));
         if (project == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Project not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Project not found"));
 
         _db.Projects.Remove(project);
         await _db.SaveChangesAsync();
@@ -90,23 +91,23 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
     }
 
     // Skills
-    public override async Task<SkillProto> GetSkillById(GetSkillByIdRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<SkillProto> GetSkillById(GetSkillByIdRequest request, ServerCallContext context)
     {
         var skill = await _db.Skills.FindAsync(Guid.Parse(request.Id));
         if (skill == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Skill not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Skill not found"));
 
         return ToSkillProto(skill);
     }
 
-    public override async Task GetSkillsByUserId(GetSkillsByUserIdRequest request, Grpc.Core.IServerStreamWriter<SkillProto> responseStream, Grpc.Core.ServerCallContext context)
+    public override async Task GetSkillsByUserId(GetSkillsByUserIdRequest request, IServerStreamWriter<SkillProto> responseStream, ServerCallContext context)
     {
         var skills = await _db.Skills.Where(s => s.UserId == Guid.Parse(request.UserId)).ToListAsync();
         foreach (var skill in skills)
             await responseStream.WriteAsync(ToSkillProto(skill));
     }
 
-    public override async Task<SkillProto> CreateSkill(CreateSkillRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<SkillProto> CreateSkill(CreateSkillRequest request, ServerCallContext context)
     {
         var skill = new Skill
         {
@@ -123,11 +124,11 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         return ToSkillProto(skill);
     }
 
-    public override async Task<SkillProto> UpdateSkill(UpdateSkillRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<SkillProto> UpdateSkill(UpdateSkillRequest request, ServerCallContext context)
     {
         var skill = await _db.Skills.FindAsync(Guid.Parse(request.Id));
         if (skill == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Skill not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Skill not found"));
 
         skill.Name = request.Name;
         skill.Level = request.Level;
@@ -138,11 +139,11 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         return ToSkillProto(skill);
     }
 
-    public override async Task<DeleteSkillResponse> DeleteSkill(DeleteSkillRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<DeleteSkillResponse> DeleteSkill(DeleteSkillRequest request, ServerCallContext context)
     {
         var skill = await _db.Skills.FindAsync(Guid.Parse(request.Id));
         if (skill == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Skill not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Skill not found"));
 
         _db.Skills.Remove(skill);
         await _db.SaveChangesAsync();
@@ -150,23 +151,23 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
     }
 
     // Experiences
-    public override async Task<ExperienceProto> GetExperienceById(GetExperienceByIdRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<ExperienceProto> GetExperienceById(GetExperienceByIdRequest request, ServerCallContext context)
     {
         var exp = await _db.Experiences.FindAsync(Guid.Parse(request.Id));
         if (exp == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Experience not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Experience not found"));
 
         return ToExperienceProto(exp);
     }
 
-    public override async Task GetExperiencesByUserId(GetExperiencesByUserIdRequest request, Grpc.Core.IServerStreamWriter<ExperienceProto> responseStream, Grpc.Core.ServerCallContext context)
+    public override async Task GetExperiencesByUserId(GetExperiencesByUserIdRequest request, IServerStreamWriter<ExperienceProto> responseStream, ServerCallContext context)
     {
         var exps = await _db.Experiences.Where(e => e.UserId == Guid.Parse(request.UserId)).ToListAsync();
         foreach (var exp in exps)
             await responseStream.WriteAsync(ToExperienceProto(exp));
     }
 
-    public override async Task<ExperienceProto> CreateExperience(CreateExperienceRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<ExperienceProto> CreateExperience(CreateExperienceRequest request, ServerCallContext context)
     {
         var exp = new Experience
         {
@@ -186,11 +187,11 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         return ToExperienceProto(exp);
     }
 
-    public override async Task<ExperienceProto> UpdateExperience(UpdateExperienceRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<ExperienceProto> UpdateExperience(UpdateExperienceRequest request, ServerCallContext context)
     {
         var exp = await _db.Experiences.FindAsync(Guid.Parse(request.Id));
         if (exp == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Experience not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Experience not found"));
 
         exp.Title = request.Title;
         exp.Company = request.Company;
@@ -204,11 +205,11 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         return ToExperienceProto(exp);
     }
 
-    public override async Task<DeleteExperienceResponse> DeleteExperience(DeleteExperienceRequest request, Grpc.Core.ServerCallContext context)
+    public override async Task<DeleteExperienceResponse> DeleteExperience(DeleteExperienceRequest request, ServerCallContext context)
     {
         var exp = await _db.Experiences.FindAsync(Guid.Parse(request.Id));
         if (exp == null)
-            throw new RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.NotFound, "Experience not found"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Experience not found"));
 
         _db.Experiences.Remove(exp);
         await _db.SaveChangesAsync();

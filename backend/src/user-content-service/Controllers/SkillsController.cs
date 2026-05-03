@@ -1,3 +1,4 @@
+using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UserContentService;
@@ -24,15 +25,15 @@ public class SkillsController : ControllerBase
         var skills = userId.HasValue
             ? await _db.Skills.Where(s => s.UserId == userId.Value).ToListAsync()
             : await _db.Skills.ToListAsync();
-        return Ok(skills);
+        return Ok(ApiResponse<List<Skill>>.Ok(skills));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
         var skill = await _db.Skills.FindAsync(id);
-        if (skill == null) return NotFound();
-        return Ok(skill);
+        if (skill == null) return NotFound(ApiResponse<Skill>.Error("Skill not found"));
+        return Ok(ApiResponse<Skill>.Ok(skill));
     }
 
     [HttpPost]
@@ -51,14 +52,14 @@ public class SkillsController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Created skill {Id}", skill.Id);
-        return Created($"/api/skills/{skill.Id}", skill);
+        return Created($"/api/skills/{skill.Id}", ApiResponse<Skill>.Created(skill));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSkillDto dto)
     {
         var skill = await _db.Skills.FindAsync(id);
-        if (skill == null) return NotFound();
+        if (skill == null) return NotFound(ApiResponse<Skill>.Error("Skill not found"));
 
         skill.Name = dto.Name;
         skill.Level = dto.Level;
@@ -66,14 +67,14 @@ public class SkillsController : ControllerBase
         skill.Category = dto.Category;
 
         await _db.SaveChangesAsync();
-        return Ok(skill);
+        return Ok(ApiResponse<Skill>.Ok(skill));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var skill = await _db.Skills.FindAsync(id);
-        if (skill == null) return NotFound();
+        if (skill == null) return NotFound(ApiResponse<object>.Error("Skill not found"));
 
         _db.Skills.Remove(skill);
         await _db.SaveChangesAsync();

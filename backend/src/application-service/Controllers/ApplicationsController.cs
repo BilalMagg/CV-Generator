@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CVGenerator.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ApplicationService.DTOs;
@@ -15,17 +16,20 @@ public class ApplicationsController : ControllerBase
     private readonly IApplicationService _service;
     private readonly IValidator<CreateApplicationDto> _createValidator;
     private readonly IValidator<UpdateStatusDto> _statusValidator;
+    private readonly IValidator<UpdateApplicationDto> _updateValidator;
     private readonly ILogger<ApplicationsController> _logger;
 
     public ApplicationsController(
         IApplicationService service,
         IValidator<CreateApplicationDto> createValidator,
         IValidator<UpdateStatusDto> statusValidator,
+        IValidator<UpdateApplicationDto> updateValidator,
         ILogger<ApplicationsController> logger)
     {
         _service = service;
         _createValidator = createValidator;
         _statusValidator = statusValidator;
+        _updateValidator = updateValidator;
         _logger = logger;
     }
 
@@ -46,7 +50,7 @@ public class ApplicationsController : ControllerBase
         if (pageSize < 1 || pageSize > 100) pageSize = 20;
 
         var result = await _service.GetAllAsync(candidateId, page, pageSize);
-        return Ok(result);
+        return Ok(ApiResponse<ApplicationListDto>.Ok(result));
     }
 
     /// GET /applications/{id}
@@ -54,8 +58,8 @@ public class ApplicationsController : ControllerBase
     public async Task<IActionResult> GetById(Guid id)
     {
         var app = await _service.GetByIdAsync(id);
-        if (app == null) return NotFound(new { message = "Application not found", statusCode = 404 });
-        return Ok(app);
+        if (app == null) return NotFound(ApiResponse<ApplicationResponseDto>.Error("Application not found"));
+        return Ok(ApiResponse<ApplicationResponseDto>.Ok(app));
     }
 
     /// POST /applications
@@ -64,10 +68,10 @@ public class ApplicationsController : ControllerBase
     {
         var validation = await _createValidator.ValidateAsync(dto);
         if (!validation.IsValid)
-            return BadRequest(new { message = validation.Errors.First().ErrorMessage, statusCode = 400 });
+            return BadRequest(ApiResponse<ApplicationResponseDto>.Error(validation.Errors.First().ErrorMessage));
 
         var created = await _service.CreateAsync(dto, GetUserId());
-        return Created($"/api/applications/{created.Id}", created);
+        return Created($"/api/applications/{created.Id}", ApiResponse<ApplicationResponseDto>.Created(created));
     }
 
     /// PATCH /applications/{id}/status
@@ -76,11 +80,24 @@ public class ApplicationsController : ControllerBase
     {
         var validation = await _statusValidator.ValidateAsync(dto);
         if (!validation.IsValid)
-            return BadRequest(new { message = validation.Errors.First().ErrorMessage, statusCode = 400 });
+            return BadRequest(ApiResponse<ApplicationResponseDto>.Error(validation.Errors.First().ErrorMessage));
 
         var updated = await _service.UpdateStatusAsync(id, dto, GetUserId());
-        if (updated == null) return NotFound(new { message = "Application not found", statusCode = 404 });
-        return Ok(updated);
+        if (updated == null) return NotFound(ApiResponse<ApplicationResponseDto>.Error("Application not found"));
+        return Ok(ApiResponse<ApplicationResponseDto>.Ok(updated));
+    }
+
+    /// PUT /applications/{id}
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateApplicationDto dto)
+    {
+        var validation = await _updateValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(ApiResponse<ApplicationResponseDto>.Error(validation.Errors.First().ErrorMessage));
+
+        var updated = await _service.UpdateDetailsAsync(id, dto, GetUserId());
+        if (updated == null) return NotFound(ApiResponse<ApplicationResponseDto>.Error("Application not found"));
+        return Ok(ApiResponse<ApplicationResponseDto>.Ok(updated));
     }
 
     /// DELETE /applications/{id}
@@ -88,7 +105,7 @@ public class ApplicationsController : ControllerBase
     public async Task<IActionResult> Delete(Guid id)
     {
         var deleted = await _service.DeleteAsync(id);
-        if (!deleted) return NotFound(new { message = "Application not found", statusCode = 404 });
+        if (!deleted) return NotFound(ApiResponse<object>.Error("Application not found"));
         return NoContent();
     }
 
@@ -97,6 +114,6 @@ public class ApplicationsController : ControllerBase
     public async Task<IActionResult> GetStatistics([FromQuery] Guid? candidateId)
     {
         var stats = await _service.GetStatisticsAsync(candidateId);
-        return Ok(stats);
+        return Ok(ApiResponse<ApplicationStatisticsDto>.Ok(stats));
     }
 }

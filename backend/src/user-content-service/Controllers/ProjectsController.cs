@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UserContentService;
@@ -25,15 +26,15 @@ public class ProjectsController : ControllerBase
         var projects = userId.HasValue
             ? await _db.Projects.Where(p => p.UserId == userId.Value).ToListAsync()
             : await _db.Projects.ToListAsync();
-        return Ok(projects);
+        return Ok(ApiResponse<List<Project>>.Ok(projects));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
         var project = await _db.Projects.FindAsync(id);
-        if (project == null) return NotFound();
-        return Ok(project);
+        if (project == null) return NotFound(ApiResponse<Project>.Error("Project not found"));
+        return Ok(ApiResponse<Project>.Ok(project));
     }
 
     [HttpPost]
@@ -58,14 +59,14 @@ public class ProjectsController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Created project {Id}", project.Id);
-        return Created($"/api/projects/{project.Id}", project);
+        return Created($"/api/projects/{project.Id}", ApiResponse<Project>.Created(project));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectDto dto)
     {
         var project = await _db.Projects.FindAsync(id);
-        if (project == null) return NotFound();
+        if (project == null) return NotFound(ApiResponse<Project>.Error("Project not found"));
 
         project.Title = dto.Title;
         project.Description = dto.Description;
@@ -79,14 +80,14 @@ public class ProjectsController : ControllerBase
         project.SkillsJson = dto.SkillsJson;
 
         await _db.SaveChangesAsync();
-        return Ok(project);
+        return Ok(ApiResponse<Project>.Ok(project));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var project = await _db.Projects.FindAsync(id);
-        if (project == null) return NotFound();
+        if (project == null) return NotFound(ApiResponse<object>.Error("Project not found"));
 
         _db.Projects.Remove(project);
         await _db.SaveChangesAsync();

@@ -1,16 +1,75 @@
 services:
+  keycloak-db:
+    image: postgres:17-alpine
+    container_name: cv-keycloak-db
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=keycloak_secret
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    container_name: cv-keycloak
+    ports:
+      - "9090:8080"
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL_HOST=keycloak-db
+      - KC_DB_URL_DATABASE=keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=keycloak_secret
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+      - KC_HOSTNAME_STRICT=false
+      - KC_PROXY=edge
+      - KC_FEATURES=token-exchange
+    command: ["start-dev", "--import-realm"]
+    volumes:
+      - ./keycloak-realm:/opt/keycloak/data/import
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    networks:
+      - cv-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   api-gateway:
     build: .
     container_name: cv-api-gateway-standalone
     ports:
       - "8080:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - KEYCLOAK_AUTHORITY=http://host.docker.internal:8443/realms/cv-realm
+      - KEYCLOAK_INTERNAL_URL=http://cv-keycloak:8080
+      - KEYCLOAK_EXTERNAL_URL=http://localhost:9090
+      - KEYCLOAK_REALM=cv-realm
+      - KEYCLOAK_CLIENT_ID=cv-gateway
+      - KEYCLOAK_CLIENT_SECRET=change-me-in-production
+      - GATEWAY_URL=http://localhost:8080
+    depends_on:
+      keycloak:
+        condition: service_healthy
     networks:
       - cv-network
 
+volumes:
+  keycloak_db_data:
+
 networks:
   cv-network:
-    name: cv-network
-    driver: bridge
+    external: true
