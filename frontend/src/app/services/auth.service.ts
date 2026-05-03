@@ -26,6 +26,16 @@ export interface ApiResponse<T> {
   errors?: unknown;
 }
 
+const TEMP_USER: User = {
+  userId: environment.tempUserId,
+  keycloakId: 'temp-keycloak-id',
+  firstName: 'Temp',
+  lastName: 'User',
+  email: 'temp@example.com',
+  role: 'user',
+  isActive: true,
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -35,9 +45,16 @@ export class AuthService {
   currentUser = signal<User | null>(null);
   isAuthenticated = computed(() => this.currentUser() !== null);
 
-  constructor(private http: HttpService) {}
+  constructor(private http: HttpService) {
+    if (environment.useTempAuth) {
+      this.currentUser.set(TEMP_USER);
+    }
+  }
 
   async checkAuth(): Promise<boolean> {
+    if (environment.useTempAuth) {
+      return true;
+    }
     try {
       const response = await this.http.get<ApiResponse<User>>('/api/auth/me');
       if (response.success && response.data) {
@@ -52,6 +69,7 @@ export class AuthService {
   }
 
   async refreshUser(): Promise<void> {
+    if (environment.useTempAuth) return;
     try {
       const response = await this.http.get<ApiResponse<User>>('/api/auth/me');
       if (response.success && response.data) {
@@ -63,11 +81,19 @@ export class AuthService {
   }
 
   login(): void {
+    if (environment.useTempAuth) {
+      this.currentUser.set(TEMP_USER);
+      return;
+    }
     // Redirect to backend OIDC login endpoint
     window.location.href = `${environment.apiUrl}/api/auth/login`;
   }
 
   logout(): void {
+    if (environment.useTempAuth) {
+      this.currentUser.set(null);
+      return;
+    }
     // Clear local state
     this.currentUser.set(null);
     localStorage.removeItem(this.TOKEN_KEY);
@@ -81,6 +107,9 @@ export class AuthService {
     email: string;
     password: string;
   }): Promise<{ success: boolean; message: string }> {
+    if (environment.useTempAuth) {
+      return { success: true, message: 'Registration disabled in temp auth mode' };
+    }
     try {
       const response = await this.http.post<ApiResponse<object>>('/api/auth/register', data);
       if (response.success) {
@@ -93,6 +122,7 @@ export class AuthService {
   }
 
   getAccessToken(): string | null {
+    if (environment.useTempAuth) return null;
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
