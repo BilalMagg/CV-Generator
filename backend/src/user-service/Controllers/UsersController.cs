@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CVGenerator.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,15 +25,15 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var users = await _db.Users.ToListAsync();
-        return Ok(users.Select(ToDto));
+        return Ok(ApiResponse<List<UserResponseDto>>.Ok(users.Select(ToDto).ToList()));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
         var user = await _db.Users.FindAsync(id);
-        if (user == null) return NotFound();
-        return Ok(ToDto(user));
+        if (user == null) return NotFound(ApiResponse<UserResponseDto>.Error("User not found"));
+        return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
     }
 
     [HttpPost]
@@ -40,7 +41,7 @@ public class UsersController : ControllerBase
     {
         var existing = await _db.Users.AnyAsync(u => u.Email == dto.Email);
         if (existing)
-            return Conflict(new { message = "Email already exists" });
+            return Conflict(ApiResponse<UserResponseDto>.Error("Email already exists"));
 
         var user = new User
         {
@@ -57,14 +58,14 @@ public class UsersController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Created user {Id}", user.Id);
-        return Created($"/api/users/{user.Id}", ToDto(user));
+        return Created($"/api/users/{user.Id}", ApiResponse<UserResponseDto>.Created(ToDto(user)));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
     {
         var user = await _db.Users.FindAsync(id);
-        if (user == null) return NotFound();
+        if (user == null) return NotFound(ApiResponse<UserResponseDto>.Error("User not found"));
 
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
@@ -73,14 +74,14 @@ public class UsersController : ControllerBase
         user.PreferencesJson = dto.PreferencesJson;
 
         await _db.SaveChangesAsync();
-        return Ok(ToDto(user));
+        return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var user = await _db.Users.FindAsync(id);
-        if (user == null) return NotFound();
+        if (user == null) return NotFound(ApiResponse<object>.Error("User not found"));
 
         _db.Users.Remove(user);
         await _db.SaveChangesAsync();

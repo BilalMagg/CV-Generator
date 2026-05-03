@@ -112,7 +112,8 @@ services:
   # ── Application Service ──────────────────────────────────────────────────────
   application-service:
     build:
-      context: ./src/application-service
+      context: .
+      dockerfile: ./src/application-service/Dockerfile
     container_name: cv-application-service
     ports:
       - "8085:8085"

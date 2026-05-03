@@ -1,3 +1,4 @@
+using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WorkflowService;
@@ -22,15 +23,15 @@ public class WorkflowsController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var workflows = await _db.Workflows.ToListAsync();
-        return Ok(workflows);
+        return Ok(ApiResponse<List<Workflow>>.Ok(workflows));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
         var workflow = await _db.Workflows.FindAsync(id);
-        if (workflow == null) return NotFound();
-        return Ok(workflow);
+        if (workflow == null) return NotFound(ApiResponse<Workflow>.Error("Workflow not found"));
+        return Ok(ApiResponse<Workflow>.Ok(workflow));
     }
 
     [HttpPost]
@@ -49,14 +50,14 @@ public class WorkflowsController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Created workflow {Id}", workflow.Id);
-        return Created($"/api/workflows/{workflow.Id}", workflow);
+        return Created($"/api/workflows/{workflow.Id}", ApiResponse<Workflow>.Created(workflow));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWorkflowDto dto)
     {
         var workflow = await _db.Workflows.FindAsync(id);
-        if (workflow == null) return NotFound();
+        if (workflow == null) return NotFound(ApiResponse<Workflow>.Error("Workflow not found"));
 
         workflow.Name = dto.Name;
         workflow.Description = dto.Description;
@@ -64,14 +65,14 @@ public class WorkflowsController : ControllerBase
         workflow.IsActive = dto.IsActive;
 
         await _db.SaveChangesAsync();
-        return Ok(workflow);
+        return Ok(ApiResponse<Workflow>.Ok(workflow));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var workflow = await _db.Workflows.FindAsync(id);
-        if (workflow == null) return NotFound();
+        if (workflow == null) return NotFound(ApiResponse<object>.Error("Workflow not found"));
 
         _db.Workflows.Remove(workflow);
         await _db.SaveChangesAsync();

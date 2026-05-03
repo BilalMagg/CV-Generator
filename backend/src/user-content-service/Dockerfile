@@ -5,12 +5,17 @@ WORKDIR /src
 COPY src/common-protos/common-protos.csproj src/common-protos/
 RUN dotnet restore src/common-protos/common-protos.csproj
 
+# Restore shared library
+COPY src/shared/CVGenerator.Shared.csproj src/shared/
+RUN dotnet restore src/shared/CVGenerator.Shared.csproj
+
 # Restore this service
 COPY src/user-content-service/UserContentService.csproj src/user-content-service/
 RUN dotnet restore src/user-content-service/UserContentService.csproj
 
 # Copy source
 COPY src/common-protos src/common-protos
+COPY src/shared src/shared
 COPY src/user-content-service src/user-content-service
 
 WORKDIR /src/src/user-content-service

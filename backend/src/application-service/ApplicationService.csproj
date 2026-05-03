@@ -19,4 +19,8 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\shared\CVGenerator.Shared.csproj" />
+  </ItemGroup>
+
 </Project>

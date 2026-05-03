@@ -7,16 +7,8 @@ import {
   CreateApplicationDto,
   UpdateStatusDto,
   UpdateApplicationDto,
+  ApiResponse,
 } from '../models/application.model';
-
-function isApiEnvelope<T>(resp: unknown): resp is { success: boolean; data?: T } {
-  return typeof resp === 'object' && resp !== null && 'success' in resp;
-}
-
-function unwrap<T>(resp: unknown): { success: boolean; data?: T } {
-  if (isApiEnvelope<T>(resp)) return { success: resp.success, data: resp.data };
-  return { success: true, data: resp as T };
-}
 
 @Injectable({
   providedIn: 'root',
@@ -30,7 +22,7 @@ export class ApplicationService {
     pageSize?: number;
     status?: string;
     search?: string;
-  }): Promise<{ success: boolean; data?: ApplicationListDto }> {
+  }): Promise<ApiResponse<ApplicationListDto>> {
     const qs = new URLSearchParams();
     if (params?.candidateId) qs.set('candidateId', params.candidateId);
     if (params?.page) qs.set('page', String(params.page));
@@ -38,30 +30,25 @@ export class ApplicationService {
     if (params?.status) qs.set('status', params.status);
     if (params?.search) qs.set('search', params.search);
     const query = qs.toString();
-    const resp = await this.http.get<ApplicationListDto>(
+    return this.http.get<ApiResponse<ApplicationListDto>>(
       `/api/applications${query ? `?${query}` : ''}`,
     );
-    return unwrap<ApplicationListDto>(resp);
   }
 
-  async getById(id: string): Promise<{ success: boolean; data?: ApplicationResponseDto }> {
-    const resp = await this.http.get<ApplicationResponseDto>(`/api/applications/${id}`);
-    return unwrap<ApplicationResponseDto>(resp);
+  async getById(id: string): Promise<ApiResponse<ApplicationResponseDto>> {
+    return this.http.get<ApiResponse<ApplicationResponseDto>>(`/api/applications/${id}`);
   }
 
-  async create(dto: CreateApplicationDto): Promise<{ success: boolean; data?: ApplicationResponseDto }> {
-    const resp = await this.http.post<ApplicationResponseDto>('/api/applications', dto);
-    return unwrap<ApplicationResponseDto>(resp);
+  async create(dto: CreateApplicationDto): Promise<ApiResponse<ApplicationResponseDto>> {
+    return this.http.post<ApiResponse<ApplicationResponseDto>>('/api/applications', dto);
   }
 
-  async updateStatus(id: string, dto: UpdateStatusDto): Promise<{ success: boolean; data?: ApplicationResponseDto }> {
-    const resp = await this.http.patch<ApplicationResponseDto>(`/api/applications/${id}/status`, dto);
-    return unwrap<ApplicationResponseDto>(resp);
+  async updateStatus(id: string, dto: UpdateStatusDto): Promise<ApiResponse<ApplicationResponseDto>> {
+    return this.http.patch<ApiResponse<ApplicationResponseDto>>(`/api/applications/${id}/status`, dto);
   }
 
-  async update(id: string, dto: UpdateApplicationDto): Promise<{ success: boolean; data?: ApplicationResponseDto }> {
-    const resp = await this.http.put<ApplicationResponseDto>(`/api/applications/${id}`, dto);
-    return unwrap<ApplicationResponseDto>(resp);
+  async update(id: string, dto: UpdateApplicationDto): Promise<ApiResponse<ApplicationResponseDto>> {
+    return this.http.put<ApiResponse<ApplicationResponseDto>>(`/api/applications/${id}`, dto);
   }
 
   async delete(id: string): Promise<void> {
@@ -70,9 +57,8 @@ export class ApplicationService {
 
   async getStatistics(params?: {
     candidateId?: string;
-  }): Promise<{ success: boolean; data?: ApplicationStatisticsDto }> {
+  }): Promise<ApiResponse<ApplicationStatisticsDto>> {
     const query = params?.candidateId ? `?candidateId=${params.candidateId}` : '';
-    const resp = await this.http.get<ApplicationStatisticsDto>(`/api/applications/statistics${query}`);
-    return unwrap<ApplicationStatisticsDto>(resp);
+    return this.http.get<ApiResponse<ApplicationStatisticsDto>>(`/api/applications/statistics${query}`);
   }
 }
