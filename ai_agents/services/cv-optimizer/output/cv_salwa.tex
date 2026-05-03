@@ -1,0 +1,103 @@
+```latex
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+\geometry{top=1.5cm, bottom=1.5cm, left=2cm, right=2cm}
+
+\definecolor{accentblue}{RGB}{0, 102, 204}
+
+\titleformat{\section}{\large\bfseries\color{accentblue}}{}{0em}{}[\titlerule]
+\titlespacing{\section}{0pt}{8pt}{4pt}
+
+\setlength{\parindent}{0pt}
+\pagestyle{empty}
+
+\begin{document}
+
+% ─── EN-TÊTE ───────────────────────────────────────────────
+\begin{center}
+    {\Huge \textbf{JDIA SOMIA}} \\[6pt]
+    \href{mailto:jdiasomia16@gmail.com}{jdiasomia16@gmail.com} \quad|\quad
+    +212625156765 \quad|\quad
+    Tanger, Maroc
+\end{center}
+
+\vspace{6pt}
+
+% ─── PROFIL ────────────────────────────────────────────────
+\section*{Profil}
+Étudiant en génie informatique à l'ENSA de Tanger, passionné par l'intelligence artificielle et les technologies émergentes. Je recherche un stage PFA au sein de DataMind AI pour contribuer à des projets innovants en développant des agents IA avec LangChain et Python, implémenter des APIs REST avec FastAPI, et collaborer au sein d'une équipe dynamique. Rigoureux, autonome et déterminé à relever des défis techniques.
+
+% ─── ÉDUCATION ─────────────────────────────────────────────
+\section*{Éducation}
+\begin{itemize}[leftmargin=*, noitemsep]
+    \item \textbf{Baccalauréat en sciences physiques} – Lycée Moulay Rchid \hfill \textit{2021–2022}
+    \item \textbf{Deuxième année de génie informatique} – École Nationale des Sciences Appliquées de Tanger (ENSA Tanger) \hfill \textit{2025–2026}
+\end{itemize}
+
+% ─── EXPÉRIENCE ────────────────────────────────────────────
+\section*{Expérience}
+
+\textbf{Stage en Data Science – Smart Automation Technologies}, Tanger, Maroc \hfill \textit{Juillet – Août 2025}
+\begin{itemize}[leftmargin=*, noitemsep]
+    \item Réalisation d'une étude prédictive sur les retraités (espérance de vie, dépendance, évolution du nombre).
+    \item Collecte, nettoyage et analyse de données (Kaggle, HCP).
+    \item Test de plusieurs modèles de régression (linéaire, SVR, Random Forest, Gradient Boosting) basés sur le RMSE.
+    \item Visualisation et interprétation des résultats avec Pandas, Matplotlib et Seaborn.
+\end{itemize}
+
+% ─── PROJETS ───────────────────────────────────────────────
+\section*{Projets}
+
+\textbf{Projet Clara (Assistant Démographique IA)}
+\begin{itemize}[leftmargin=*, noitemsep]
+    \item Application web (FastAPI/React) intégrant un assistant IA autonome basé sur l'API Groq (LLM).
+    \item Utilisation de modèles de Machine Learning pour prédire l'évolution des indicateurs de retraite.
+    \item Visualisation interactive des données et interface conversationnelle fluide pour l'utilisateur.
+\end{itemize}
+
+\textbf{Agent IA d'optimisation de CV – LangChain}
+\begin{itemize}[leftmargin=*, noitemsep]
+    \item Analyse automatique des offres pour extraire les compétences clés et mots-clés pertinents.
+    \item Optimisation du CV via reformulation des expériences et priorisation des compétences selon l'offre ciblée.
+\end{itemize}
+
+\textbf{Roadmap Builder}
+\begin{itemize}[leftmargin=*, noitemsep]
+    \item Plateforme web full-stack (React, Node.js, PostgreSQL) de création de parcours d'apprentissage interactifs.
+    \item Développement d'un éditeur visuel "drag-and-drop" (React Flow) supportant l'import/export JSON.
+    \item Mise en place d'espaces de travail sécurisés et d'une architecture backend par domaine avec CI/CD (Docker).
+\end{itemize}
+
+\textbf{Plateforme de soft skills}
+\begin{itemize}[leftmargin=*, noitemsep]
+    \item Projet web dédié au développement personnel et aux compétences non techniques.
+    \item Interface front-end moderne avec Vue.js (suivi de progression, quiz, modules de formation).
+    \item Backend développé avec Express.js : API, gestion des utilisateurs, enregistrement des résultats.
+\end{itemize}
+
+% ─── COMPÉTENCES TECHNIQUES ────────────────────────────────
+\section*{Compétences Techniques}
+\begin{itemize}[leftmargin=*, noitemsep]
+    \item \textbf{Langages :} Python, SQL, JavaScript, HTML, CSS
+    \item \textbf{Frameworks :} FastAPI, LangChain
+    \item \textbf{Outils :} Git / GitHub, Docker
+    \item \textbf{Data :} Pandas, Matplotlib, Seaborn, Random Forest, SVR
+    \item \textbf{Bases de données :} PostgreSQL
+\end{itemize}
+
+% ─── LANGUES ───────────────────────────────────────────────
+\section*{Langues}
+\begin{itemize}[leftmargin=*, noitemsep]
+    \item Français (C1), Arabe (Natif), Anglais (B2)
+\end{itemize}
+
+\end{document}
+```
