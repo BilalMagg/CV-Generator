@@ -2,7 +2,7 @@
 Template agent — renders CV sections from matched data.
 """
 from app.schemas import TemplateInput, RenderedCV
-from app.models.cv_model import CVSection
+from  import CVDraft, CVSection
 
 
 async def render_template(input_data: TemplateInput) -> RenderedCV:

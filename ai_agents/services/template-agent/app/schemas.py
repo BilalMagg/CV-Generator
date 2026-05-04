@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from app import CVDraft, CVSection
+from app.models.cv_model import CVDraft, CVSection
 
 # Input/Output schema
 class TemplateInput(BaseModel):
