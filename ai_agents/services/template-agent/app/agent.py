@@ -2,15 +2,13 @@
 Template agent — renders CV sections from matched data.
 """
 from langchain.agents import create_agent
-from app.core.llm import get_llm
+from cvtools.core.llm import get_llm
 from app.schemas import TemplateInput, RenderedCV
-from app.models.cv_model import CVDraft, CVSection
-from app.core.llm import get_llm
-from app.prompt import get_prompt
-from __editable___cvtools_0_1_0_finder
+from cvtools.models.cv_model import CVDraft, CVSection
+from app.prompt import LLMPrompt
 
 
-async def render_template(input_data: TemplateInput) -> RenderedCV:
+async def render_template(input_data: TemplateInput, prompt: LLMPrompt) -> RenderedCV:
 
     sections = [
         CVSection(section_type="summary", content=f"Experienced {input_data.target_role}", order=0),
