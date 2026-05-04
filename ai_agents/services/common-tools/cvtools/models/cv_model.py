@@ -8,7 +8,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from app.models.user_model import ExperienceResponse, ProjectResponse, SkillResponse
+from cvtools.models.user_model import ExperienceResponse, ProjectResponse, SkillResponse
 
 
 class CVSection(BaseModel):

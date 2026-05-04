@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.models.cv_model import CVDraft, CVSection
 
+
 # Input/Output schema
 class TemplateInput(BaseModel):
     cv_draft: CVDraft

@@ -1,12 +1,12 @@
-from app.models.user_model import (
+from cvtools.models.user_model import (
     UserResponse,
     ExperienceResponse,
     ProjectResponse,
     SkillResponse,
 )
-from app.models.cv_model import CVSection, CVDraft, OptimizedCV
-from app.models.job_model import JobRequest, JobRequirements, JobStatus
-from app.models.workflow_model import WorkflowResponse, WorkflowNode
+from cvtools.models.cv_model import CVSection, CVDraft, OptimizedCV
+from cvtools.models.job_model import JobRequest, JobRequirements, JobStatus
+from cvtools.models.workflow_model import WorkflowResponse, WorkflowNode
 
 __all__ = [
     "UserResponse",

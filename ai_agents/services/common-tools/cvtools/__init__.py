@@ -1,4 +1,4 @@
-from app.models import (
+from cvtools.models import (
     UserResponse,
     ExperienceResponse,
     ProjectResponse,
@@ -12,7 +12,7 @@ from app.models import (
     WorkflowResponse,
     WorkflowNode,
 )
-from app.core import (
+from cvtools.core import (
     settings,
     get_client,
     create_client,
