@@ -11,9 +11,9 @@ import logging
 from typing import TypeVar, List
 from uuid import UUID
 
-from app.core.config import settings
-from app.models.user_model import UserResponse, ExperienceResponse, ProjectResponse, SkillResponse
-from app.models.workflow_model import WorkflowResponse
+from cvtools.core.config import settings
+from cvtools.models.user_model import UserResponse, ExperienceResponse, ProjectResponse, SkillResponse
+from cvtools.models.workflow_model import WorkflowResponse
 
 logger = logging.getLogger(__name__)
 

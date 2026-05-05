@@ -2,7 +2,7 @@
 LLM factory — returns configured chat models from different providers.
 """
 from langchain_groq import ChatGroq
-from app.core.config import settings
+from cvtools.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)

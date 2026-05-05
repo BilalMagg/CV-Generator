@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from app.models.cv_model import CVDraft, CVSection
 
 
+# Inputs schemas
 class TemplateInput(BaseModel):
     cv_draft: CVDraft
     template_id: str  = Field(default="default")
@@ -27,3 +28,5 @@ class RenderedCV(BaseModel):
 # class TemplateOutput(BaseModel):
 #     sections: List[CVSection] = Field(default_factory=list)
 #     template_used: str
+
+# CV models :
