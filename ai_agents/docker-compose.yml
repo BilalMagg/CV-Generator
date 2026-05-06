@@ -13,7 +13,7 @@ services:
     env_file:
       - ./services/job-extractor/.env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/api/v1/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -30,7 +30,7 @@ services:
     env_file:
       - ./services/search-agent/.env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/api/v1/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -47,7 +47,7 @@ services:
     env_file:
       - ./services/template-agent/.env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/api/v1/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/api/v1/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -64,7 +64,7 @@ services:
     env_file:
       - ./services/cv-optimizer/.env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/api/v1/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/api/v1/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -81,7 +81,7 @@ services:
     env_file:
       - ./services/contact-agent/.env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/api/v1/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/api/v1/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -104,7 +104,7 @@ services:
       cv-optimizer:    { condition: service_healthy }
       contact-agent:   { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
