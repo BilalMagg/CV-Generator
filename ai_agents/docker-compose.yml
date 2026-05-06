@@ -1,4 +1,6 @@
-name: cv-microservices
+# AI Agents compose
+# Can be used standalone: cd ai_agents && docker compose up
+# Or included from root: include in root docker-compose.yml
 
 services:
   job-extractor:
@@ -15,6 +17,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - cv-network
 
   search-agent:
     build:
@@ -30,6 +34,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - cv-network
 
   template-agent:
     build:
@@ -45,6 +51,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - cv-network
 
   cv-optimizer:
     build:
@@ -60,6 +68,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - cv-network
 
   contact-agent:
     build:
@@ -75,6 +85,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - cv-network
 
   orchestrator:
     build:
@@ -96,7 +108,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - cv-network
 
 networks:
-  default:
+  cv-network:
     name: cv-network
