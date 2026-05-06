@@ -1,5 +1,8 @@
 ./tests/results/*
 
-*venv
+venv/
 *.txt
+*.tex
+output/
+*.html
 *.tex
