@@ -2,123 +2,259 @@ name: cv
 
 services:
 
-  # ---------- Keycloak ----------
+  # ── Keycloak ────────────────────────────────────────────────────────────────
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: cv-keycloak
-
     command: start-dev
-
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/cv_db
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak_db
       KC_DB_USERNAME: postgres
       KC_DB_PASSWORD: postgres
-
     ports:
-      - "8443:8443" # Changed from 8080 to 8443 to avoid conflict with the Gateway
-
+      - "8443:8443"
     restart: unless-stopped
-
     depends_on:
-      postgres:
-        condition: service_healthy
-
+      keycloak-db: { condition: service_healthy }
     networks:
       - cv-network
 
-  # ---------- PostgreSQL ----------
-  postgres:
+  # ── Keycloak DB ─────────────────────────────────────────────────────────────
+  keycloak-db:
     image: pgvector/pgvector:pg16
-    container_name: cv-postgres
-    restart: unless-stopped
-
-    ports:
-      - "5433:5432"
-
+    container_name: cv-keycloak-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: cv_db
-
+      POSTGRES_DB: keycloak_db
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d keycloak_db"]
+      interval: 10s
       timeout: 5s
       retries: 5
-
     volumes:
-      - pgdata:/var/lib/postgresql/data
-
+      - keycloak_db_data:/var/lib/postgresql/data
     networks:
       - cv-network
 
-  # ---------- Backend (.NET) ----------
-  backend:
-    build:
-      context: ./backend/src/monolith-service
-    container_name: cv-backend
-
+  # ── Kafka (KRaft) ────────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: cv-kafka
     ports:
-      - "5000:80"
-
-    env_file:
-      - .env
+      - "9092:9092"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=cv_db;Username=postgres;Password=postgres
-
-    restart: unless-stopped
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     networks:
       - cv-network
 
-  # ---------- AI Agents (FastAPI) ----------
-  ai_agents:
-    build:
-      context: ./ai_agents
-    container_name: cv-ai-agents
-
+  # ── Schema Registry ──────────────────────────────────────────────────────────
+  schema-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: cv-schema-registry
     ports:
-      - "8000:8000"
-
-    restart: unless-stopped
-
-    env_file:
-      - ./ai_agents/.env
-
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
-      - backend
-
+      kafka: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/subjects"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - cv-network
 
-  # ---------- Frontend (Angular + Nginx) ----------
-  frontend:
-    build:
-      context: ./frontend
-    container_name: cv-frontend
-
+  # ── Kafka UI ─────────────────────────────────────────────────────────────────
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: cv-kafka-ui
     ports:
-      - "4200:80"
-
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: cv-backend
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
     depends_on:
-      - backend
-      - ai_agents
-
-    restart: unless-stopped
-
+      - kafka
+      - schema-registry
     networks:
       - cv-network
 
-  # ---------- API Gateway (Relocated) ----------
+  # ── MinIO (Object Storage for CVs) ──────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: cv-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cv-network
+
+  # ── User Service ─────────────────────────────────────────────────────────────
+  user-service:
+    build:
+      context: ./backend
+      dockerfile: src/user-service/Dockerfile
+    container_name: cv-user-service
+    ports:
+      - "8082:8082"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8082
+      ConnectionStrings__DefaultConnection: Host=user-db;Port=5432;Database=user_db;Username=postgres;Password=postgres
+    depends_on:
+      user-db: { condition: service_healthy }
+    restart: unless-stopped
+    networks:
+      - cv-network
+
+  # ── User Content Service ─────────────────────────────────────────────────────
+  user-content-service:
+    build:
+      context: ./backend
+      dockerfile: src/user-content-service/Dockerfile
+    container_name: cv-user-content-service
+    ports:
+      - "8083:8083"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8083
+      ConnectionStrings__DefaultConnection: Host=content-db;Port=5432;Database=content_db;Username=postgres;Password=postgres
+    depends_on:
+      content-db: { condition: service_healthy }
+    restart: unless-stopped
+    networks:
+      - cv-network
+
+  # ── Workflow Service ─────────────────────────────────────────────────────────
+  workflow-service:
+    build:
+      context: ./backend
+      dockerfile: src/workflow-service/Dockerfile
+    container_name: cv-workflow-service
+    ports:
+      - "8084:8084"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8084
+      ConnectionStrings__DefaultConnection: Host=workflow-db;Port=5432;Database=workflow_db;Username=postgres;Password=postgres
+    depends_on:
+      workflow-db: { condition: service_healthy }
+    restart: unless-stopped
+    networks:
+      - cv-network
+
+  # ── Application Service ──────────────────────────────────────────────────────
+  application-service:
+    build:
+      context: ./backend
+      dockerfile: src/application-service/Dockerfile
+    container_name: cv-application-service
+    ports:
+      - "8085:8085"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8085
+      ConnectionStrings__DefaultConnection: Host=application-db;Port=5432;Database=application_db;Username=postgres;Password=postgres
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      application-db: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    restart: unless-stopped
+    networks:
+      - cv-network
+
+  # ── Job Offer Service ────────────────────────────────────────────────────────
+  job-offer-service:
+    build:
+      context: ./backend
+      dockerfile: src/job-offer-service/Dockerfile
+    container_name: cv-job-offer-service
+    ports:
+      - "8086:8086"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8086
+      ConnectionStrings__DefaultConnection: Host=job-offer-db;Port=5432;Database=job_offer_db;Username=postgres;Password=postgres
+    depends_on:
+      job-offer-db: { condition: service_healthy }
+    restart: unless-stopped
+    networks:
+      - cv-network
+
+  # ── Notification Service ─────────────────────────────────────────────────────
+  notification-service:
+    build:
+      context: ./backend
+      dockerfile: src/notification-service/Dockerfile
+    container_name: cv-notification-service
+    ports:
+      - "8087:8087"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8087
+      ConnectionStrings__DefaultConnection: Host=notification-db;Port=5432;Database=notification_db;Username=postgres;Password=postgres
+    depends_on:
+      notification-db: { condition: service_healthy }
+    restart: unless-stopped
+    networks:
+      - cv-network
+
+  # ── CV Service ───────────────────────────────────────────────────────────────
+  cv-service:
+    build:
+      context: ./backend
+      dockerfile: src/cv-service/Dockerfile
+    container_name: cv-cv-service
+    ports:
+      - "8088:8088"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8088
+      ConnectionStrings__DefaultConnection: Host=cv-db;Port=5432;Database=cv_db;Username=postgres;Password=postgres
+      JWT_AUTHORITY: http://cv-keycloak:8080/realms/cv-realm
+    depends_on:
+      cv-db: { condition: service_healthy }
+    restart: unless-stopped
+    networks:
+      - cv-network
+
+  # ── API Gateway ──────────────────────────────────────────────────────────────
   api_gateway:
     build:
       context: ./api_gateway
@@ -126,19 +262,178 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - KEYCLOAK_AUTHORITY=http://keycloak:8080/realms/cv-realm
+      ASPNETCORE_ENVIRONMENT: Development
+      KEYCLOAK_AUTHORITY: http://cv-keycloak:8080/realms/cv-realm
     depends_on:
-      - backend
       - keycloak
+    restart: unless-stopped
     networks:
       - cv-network
 
-# ---------- Volumes ----------
-volumes:
-  pgdata:
+  # ── AI Agents ────────────────────────────────────────────────────────────────
+  ai_agents:
+    build:
+      context: ./ai_agents
+    container_name: cv-ai-agents
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    depends_on:
+      - api_gateway
+    networks:
+      - cv-network
 
-    # ---------- Networks ----------
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+    container_name: cv-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - api_gateway
+    restart: unless-stopped
+    networks:
+      - cv-network
+
+  # ── User DB ──────────────────────────────────────────────────────────────────
+  user-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-user-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: user_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d user_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
+
+  # ── Content DB ───────────────────────────────────────────────────────────────
+  content-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-content-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: content_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d content_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - content_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
+
+  # ── Workflow DB ──────────────────────────────────────────────────────────────
+  workflow-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-workflow-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: workflow_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d workflow_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - workflow_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
+
+  # ── Application DB ───────────────────────────────────────────────────────────
+  application-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-application-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: application_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d application_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - application_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
+
+  # ── Job Offer DB ─────────────────────────────────────────────────────────────
+  job-offer-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-job-offer-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: job_offer_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d job_offer_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - job_offer_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
+
+  # ── Notification DB ──────────────────────────────────────────────────────────
+  notification-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-notification-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notification_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - notification_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
+
+  # ── CV DB ────────────────────────────────────────────────────────────────────
+  cv-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-cv-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cv_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cv_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - cv_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
+
+volumes:
+  keycloak_db_data:
+  kafka_data:
+  minio_data:
+  user_db_data:
+  content_db_data:
+  workflow_db_data:
+  application_db_data:
+  job_offer_db_data:
+  notification_db_data:
+  cv_db_data:
+
 networks:
   cv-network:
     driver: bridge
