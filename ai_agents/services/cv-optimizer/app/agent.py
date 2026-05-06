@@ -5,8 +5,7 @@ import psycopg
 
 from langchain_postgres import PostgresChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain.agents import create_tool_calling_agent
-from langchain.agents import AgentExecutor
+from langgraph.prebuilt import create_react_agent
 from .tool import tools
 from .prompt import prompt
 from .llm import llm
@@ -15,12 +14,11 @@ from .db import get_session_history
 
 
 
-agent = create_tool_calling_agent(llm, tools, prompt)
-agent_Executor=AgentExecutor(agent=agent,tools=tools,verbose=True)
+agent = create_react_agent(llm, tools, prompt=prompt)
 
 
 agent_with_memory=RunnableWithMessageHistory(
-    agent_Executor,
+    agent,
     get_session_history,
     input_messages_key="input",
     history_messages_key="chat_history"
@@ -49,7 +47,7 @@ def optimize_CV(file_path: str, job_data: str, candidate_name: str, session_id: 
 
     config = {"configurable": {"session_id": session_id}}
     result = agent_with_memory.invoke({"input": user_prompt}, config=config)
-    output = result["output"]
+    output = result["messages"][-1].content
 
     # Parsing des scores ATS (depuis le format défini dans prompt.py)
     before_match = re.search(r"ATS SCORE BEFORE\s*:\s*(\d+)", output)
