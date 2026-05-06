@@ -154,6 +154,22 @@ services:
     depends_on:
       notification-db: { condition: service_healthy }
 
+  # ── CV Service ───────────────────────────────────────────────────────────────
+  cv-service:
+    build:
+      context: .
+      dockerfile: ./src/cv-service/Dockerfile
+    container_name: cv-cv-service
+    ports:
+      - "8088:8088"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8088
+      - ConnectionStrings__DefaultConnection=Host=cv-db;Port=5432;Database=cv_db;Username=postgres;Password=postgres
+      - JWT_AUTHORITY=http://cv-keycloak:8080/realms/cv-realm
+    depends_on:
+      cv-db: { condition: service_healthy }
+
   # ── MinIO (Object Storage for CVs) ──────────────────────────────────────────
   minio:
     image: minio/minio:latest
@@ -265,6 +281,21 @@ services:
     volumes:
       - notification_db_data:/var/lib/postgresql/data
 
+  cv-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-cv-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cv_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cv_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - cv_db_data:/var/lib/postgresql/data
+
 volumes:
   kafka_data:
   user_db_data:
@@ -273,6 +304,7 @@ volumes:
   application_db_data:
   job_offer_db_data:
   notification_db_data:
+  cv_db_data:
   minio_data:
 
 networks:
