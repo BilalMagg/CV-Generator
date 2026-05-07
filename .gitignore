@@ -52,3 +52,8 @@ CV_Generator.sln
 
 *.env
 *temp_runs/
+
+#terraform
+*.terraform*
+terraform.tfstate*
+venv/

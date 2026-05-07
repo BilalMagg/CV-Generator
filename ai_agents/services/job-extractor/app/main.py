@@ -1,11 +1,10 @@
-"""
-Job Extractor Service — extracts structured requirements from job descriptions.
-"""
 from contextlib import asynccontextmanager
 import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core import backend_client
 from app.core.config import settings
 from app.routers import router
 
@@ -16,7 +15,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Job Extractor service starting up")
+    backend_client.create_client()
     yield
+    await backend_client.close_client()
     logger.info("Job Extractor service shutting down")
 
 

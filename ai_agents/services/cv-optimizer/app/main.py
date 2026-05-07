@@ -1,40 +1,62 @@
-"""
-CV Optimizer Service — optimizes CV for ATS scoring.
-"""
-from contextlib import asynccontextmanager
-import logging
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-from app.core.config import settings
-from app.routers import router
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+import shutil
+import os
+from fastapi import FastAPI, UploadFile, Form
+from fastapi.responses import FileResponse
+from app import optimize_CV, OptimizerInput, OptimizerOutput
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("CV Optimizer service starting up")
-    yield
-    logger.info("CV Optimizer service shutting down")
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(
-        title=settings.SERVICE_NAME,
-        version=settings.VERSION,
-        lifespan=lifespan,
+
+app = FastAPI()
+
+@app.get("/api/v1/health")
+async def health_check():
+    return {"status": "healthy", "service": "cv-optimizer"}
+
+@app.post("/optimize")
+async def optimize_endpoint(
+    file: UploadFile,
+    job_data: str = Form(...),
+    candidate_name: str = Form(),
+    session_id: str = Form(),
+    user_focus: str = Form(None)
+):
+    # Sauvegarder le fichier uploadé temporairement
+    temp_path = f"temp_{file.filename}"
+    with open(temp_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    # Utilisation correcte du schéma OptimizerInput
+    input_data = OptimizerInput(
+        job_data=job_data,
+        candidate_name=candidate_name,
+        session_id=session_id,
+        user_focus=user_focus
     )
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+
+    # Appel de l'agent
+    result_dict = optimize_CV(
+        temp_path,
+        input_data.job_data,
+        input_data.candidate_name,
+        input_data.session_id,
+        input_data.user_focus
     )
-    app.include_router(router, prefix="/api/v1")
-    return app
 
+    # Création de l'objet de sortie
+    output = OptimizerOutput(**result_dict)
+    filename = os.path.basename(output.file_path)
 
-app = create_app()
+    # On peut retourner soit le fichier, soit le JSON. 
+    # Pour l'instant, on retourne le JSON qui contient les scores et le chemin du fichier.
+    return FileResponse(
+        path=output.file_path,
+        filename=filename,
+        media_type="application/octet-stream",
+        # Optionnel : On peut cacher les scores dans les headers si besoin
+        headers={
+            "X-ATS-Score-Before": str(output.ats_score_before),
+            "X-ATS-Score-After": str(output.ats_score_after),
+            "X-Improvement": str(output.improvement)
+        })
