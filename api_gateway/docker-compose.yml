@@ -43,7 +43,7 @@ services:
     networks:
       - cv-network
     healthcheck:
-      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/8080"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -61,9 +61,6 @@ services:
       - KEYCLOAK_CLIENT_ID=cv-gateway
       - KEYCLOAK_CLIENT_SECRET=change-me-in-production
       - GATEWAY_URL=http://localhost:8080
-    depends_on:
-      keycloak:
-        condition: service_healthy
     networks:
       - cv-network
 
