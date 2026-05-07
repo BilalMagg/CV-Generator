@@ -1,9 +1,12 @@
 # Tools package
-from app.core.tools.pdf_converter import html_to_pdf, latex_to_pdf
-from app.core.tools.minio_storage import (
+from cvtools.core.tools.pdf_converter import html_to_pdf, latex_to_pdf
+from cvtools.core.tools.minio_storage import (
     get_minio_client,
     upload_pdf,
     download_pdf,
+    get_template_object,
+    ensure_templates_bucket,
+    TEMPLATES_BUCKET,
 )
 
 __all__ = [
@@ -12,4 +15,7 @@ __all__ = [
     "get_minio_client",
     "upload_pdf",
     "download_pdf",
+    "get_template_object",
+    "ensure_templates_bucket",
+    "TEMPLATES_BUCKET",
 ]
