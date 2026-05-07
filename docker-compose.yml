@@ -1,144 +1,26 @@
 name: cv
 
+include:
+  - path: ./backend/docker-compose.yml
+  - path: ./ai_agents/docker-compose.yml
+  - path: ./api_gateway/docker-compose.yml
+
 services:
 
-  # ---------- Keycloak ----------
-  keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    container_name: cv-keycloak
-
-    command: start-dev
-
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/cv_db
-      KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: postgres
-
-    ports:
-      - "8443:8443" # Changed from 8080 to 8443 to avoid conflict with the Gateway
-
-    restart: unless-stopped
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-    networks:
-      - cv-network
-
-  # ---------- PostgreSQL ----------
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: cv-postgres
-    restart: unless-stopped
-
-    ports:
-      - "5433:5432"
-
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: cv_db
-
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-    networks:
-      - cv-network
-
-  # ---------- Backend (.NET) ----------
-  backend:
-    build:
-      context: ./backend/src/monolith-service
-    container_name: cv-backend
-
-    ports:
-      - "5000:80" 
-
-    env_file:
-      - .env
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=cv_db;Username=postgres;Password=postgres
-
-    restart: unless-stopped
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-    networks:
-      - cv-network
-
-  # ---------- AI Agents (FastAPI) ----------
-  ai_agents:
-    build:
-      context: ./ai_agents  
-    container_name: cv-ai-agents
-
-    ports:
-      - "8000:8000"
-
-    restart: unless-stopped
-
-    env_file:
-      - ./ai_agents/.env
-
-    depends_on:
-      - backend
-
-    networks:
-      - cv-network
-
-  # ---------- Frontend (Angular + Nginx) ----------
+  # ── Frontend ─────────────────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
     container_name: cv-frontend
-
     ports:
       - "4200:80"
-
     depends_on:
-      - backend
-      - ai_agents
-
+      - api-gateway
     restart: unless-stopped
-
     networks:
       - cv-network
 
-  # ---------- API Gateway (Relocated) ----------
-  api_gateway:
-    build:
-      context: ./api_gateway
-    container_name: cv-api-gateway
-    ports:
-      - "8080:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - KEYCLOAK_AUTHORITY=http://keycloak:8080/realms/cv-realm
-    depends_on:
-      - backend
-      - keycloak
-    networks:
-      - cv-network
-
-# ---------- Volumes ----------
-volumes:
-  pgdata:
-
-# ---------- Networks ----------
 networks:
   cv-network:
+    name: cv-network
     driver: bridge

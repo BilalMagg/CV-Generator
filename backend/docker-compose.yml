@@ -1,4 +1,6 @@
-name: cv-backend-microservices
+# Backend microservices compose
+# Can be used standalone: cd backend && docker compose up
+# Or included from root: include in root docker-compose.yml
 
 services:
   # ── Kafka (KRaft) ────────────────────────────────────────────────────────────
@@ -27,7 +29,7 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
-      - default
+      - cv-network
 
   # ── Schema Registry ──────────────────────────────────────────────────────────
   schema-registry:
@@ -46,7 +48,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - default
+      - cv-network
 
   # ── Kafka UI ─────────────────────────────────────────────────────────────────
   kafka-ui:
@@ -62,7 +64,7 @@ services:
       - kafka
       - schema-registry
     networks:
-      - default
+      - cv-network
 
   # ── User Service ─────────────────────────────────────────────────────────────
   user-service:
@@ -78,6 +80,8 @@ services:
       - ConnectionStrings__DefaultConnection=Host=user-db;Port=5432;Database=user_db;Username=postgres;Password=postgres
     depends_on:
       user-db: { condition: service_healthy }
+    networks:
+      - cv-network
 
   # ── User Content Service ─────────────────────────────────────────────────────
   user-content-service:
@@ -93,6 +97,8 @@ services:
       - ConnectionStrings__DefaultConnection=Host=content-db;Port=5432;Database=content_db;Username=postgres;Password=postgres
     depends_on:
       content-db: { condition: service_healthy }
+    networks:
+      - cv-network
 
   # ── Workflow Service ─────────────────────────────────────────────────────────
   workflow-service:
@@ -108,6 +114,8 @@ services:
       - ConnectionStrings__DefaultConnection=Host=workflow-db;Port=5432;Database=workflow_db;Username=postgres;Password=postgres
     depends_on:
       workflow-db: { condition: service_healthy }
+    networks:
+      - cv-network
 
   # ── Application Service ──────────────────────────────────────────────────────
   application-service:
@@ -125,6 +133,8 @@ services:
     depends_on:
       application-db: { condition: service_healthy }
       kafka: { condition: service_healthy }
+    networks:
+      - cv-network
 
   # ── Job Offer Service ────────────────────────────────────────────────────────
   job-offer-service:
@@ -139,6 +149,8 @@ services:
       - ConnectionStrings__DefaultConnection=Host=job-offer-db;Port=5432;Database=job_offer_db;Username=postgres;Password=postgres
     depends_on:
       job-offer-db: { condition: service_healthy }
+    networks:
+      - cv-network
 
   # ── Notification Service ─────────────────────────────────────────────────────
   notification-service:
@@ -153,6 +165,48 @@ services:
       - ConnectionStrings__DefaultConnection=Host=notification-db;Port=5432;Database=notification_db;Username=postgres;Password=postgres
     depends_on:
       notification-db: { condition: service_healthy }
+    networks:
+      - cv-network
+
+  # ── CV Service ───────────────────────────────────────────────────────────────
+  cv-service:
+    build:
+      context: .
+      dockerfile: ./src/cv-service/Dockerfile
+    container_name: cv-cv-service
+    ports:
+      - "8088:8088"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8088
+      - ConnectionStrings__DefaultConnection=Host=cv-db;Port=5432;Database=cv_db;Username=postgres;Password=postgres
+      - JWT_AUTHORITY=http://cv-keycloak:8080/realms/cv-realm
+    depends_on:
+      cv-db: { condition: service_healthy }
+    networks:
+      - cv-network
+
+  # ── MinIO (Object Storage for CVs) ──────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: cv-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cv-network
 
   # ── Databases ───────────────────────────────────────────────────────────────
   user-db:
@@ -169,14 +223,16 @@ services:
       retries: 5
     volumes:
       - user_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
 
   content-db:
     image: pgvector/pgvector:pg16
     container_name: cv-content-db
     environment:
-     POSTGRES_USER: postgres
-     POSTGRES_PASSWORD: postgres
-     POSTGRES_DB: content_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: content_db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d content_db"]
       interval: 10s
@@ -184,6 +240,8 @@ services:
       retries: 5
     volumes:
       - content_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
 
   workflow-db:
     image: pgvector/pgvector:pg16
@@ -199,6 +257,8 @@ services:
       retries: 5
     volumes:
       - workflow_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
 
   application-db:
     image: pgvector/pgvector:pg16
@@ -214,6 +274,8 @@ services:
       retries: 5
     volumes:
       - application_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
 
   job-offer-db:
     image: pgvector/pgvector:pg16
@@ -229,6 +291,8 @@ services:
       retries: 5
     volumes:
       - job_offer_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
 
   notification-db:
     image: pgvector/pgvector:pg16
@@ -244,6 +308,25 @@ services:
       retries: 5
     volumes:
       - notification_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
+
+  cv-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-cv-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cv_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cv_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - cv_db_data:/var/lib/postgresql/data
+    networks:
+      - cv-network
 
 volumes:
   kafka_data:
@@ -253,7 +336,9 @@ volumes:
   application_db_data:
   job_offer_db_data:
   notification_db_data:
+  cv_db_data:
+  minio_data:
 
 networks:
-  default:
+  cv-network:
     name: cv-network

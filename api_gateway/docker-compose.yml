@@ -1,3 +1,7 @@
+# API Gateway compose
+# Can be used standalone: cd api_gateway && docker compose up
+# Or included from root: include in root docker-compose.yml
+
 services:
   keycloak-db:
     image: postgres:17-alpine
@@ -51,7 +55,7 @@ services:
 
   api-gateway:
     build: .
-    container_name: cv-api-gateway-standalone
+    container_name: cv-api-gateway
     ports:
       - "8080:8080"
     environment:
@@ -69,4 +73,4 @@ volumes:
 
 networks:
   cv-network:
-    external: true
+    name: cv-network

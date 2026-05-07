@@ -13,9 +13,9 @@ terraform {
 }
 
 provider "vmworkstation" {
-  url      = "http://localhost:8697/api"
-  user     = "hamid"
-  password = "Hamid@123"
+  url      = "http://127.0.0.1:8697/api"
+  user     = "user"
+  password = "password"
   https    = false
   debug    = false
 }
@@ -25,10 +25,10 @@ resource "random_id" "vm_suffix" {
 }
 
 resource "vmworkstation_vm" "my_vm" {
-  sourceid     = "KOEGDG921ESMRFMLAIQ858LBPGR3K8GK"
+  sourceid     = "M2CA80KMFMEK3JA0TM6797U26DFHI8F3"
   denomination = "my-terraform-vm-${random_id.vm_suffix.hex}"
   description  = "VM created by Terraform"
-  path         = "C:\\Users\\mohsi\\Documents\\Virtual Machines\\my-terraform-vm-${random_id.vm_suffix.hex}\\my-terraform-vm-${random_id.vm_suffix.hex}.vmx"
+  path         = "C:\\Users\\Stronger\\Documents\\Virtual Machines\\my-terraform-vm-${random_id.vm_suffix.hex}\\my-terraform-vm-${random_id.vm_suffix.hex}.vmx"
   processors   = 2
   memory       = 2048
 }
