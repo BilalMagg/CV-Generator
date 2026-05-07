@@ -2,9 +2,10 @@
 minio_storage.py  -  MinIO Object Storage Utilities
 =====================================================
 Upload and retrieve files from MinIO (S3-compatible storage).
-Used by CV services to store generated PDF files.
+Used by CV services to store generated PDF files and CV templates.
 """
 
+import json
 import os
 from typing import Optional
 
@@ -14,6 +15,9 @@ from minio.error import S3Error
 
 # Default bucket name for CV PDFs
 DEFAULT_BUCKET = "cv-pdfs"
+
+# Bucket name for CV templates
+TEMPLATES_BUCKET = "cv-templates"
 
 
 def get_minio_client(
@@ -110,3 +114,39 @@ def download_pdf(
 
     client.fget_object(bucket_name, object_name, download_path)
     return os.path.abspath(download_path)
+
+
+def ensure_templates_bucket(client: Minio) -> None:
+    """
+    Create the cv-templates bucket if it doesn't already exist.
+    """
+    if not client.bucket_exists(TEMPLATES_BUCKET):
+        client.make_bucket(TEMPLATES_BUCKET)
+
+
+def get_template_object(
+    template_id: str,
+    bucket_name: str = TEMPLATES_BUCKET,
+    client: Optional[Minio] = None,
+) -> dict:
+    """
+    Fetch template JSON from MinIO.
+
+    Args:
+        template_id:  The template ID (object key) to fetch.
+        bucket_name:  The MinIO bucket name (default: cv-templates).
+        client:       An existing Minio client. If None, one will be created.
+
+    Returns:
+        dict with keys: id, type, latex_code, html_code
+        Example: {"id": "template_001", "type": "latex", "latex_code": "...", "html_code": ""}
+
+    Raises:
+        S3Error: If the object doesn't exist or bucket is inaccessible.
+    """
+    if client is None:
+        client = get_minio_client()
+
+    response = client.get_object(bucket_name, template_id)
+    data = json.loads(response.read().decode("utf-8"))
+    return data
