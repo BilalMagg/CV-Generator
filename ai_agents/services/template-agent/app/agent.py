@@ -1,8 +1,6 @@
 """
 Template agent — renders CV sections from matched data.
 """
-import json
-import re
 from langchain.agents import create_agent
 from cvtools.core.llm import get_llm
 from app.schemas import TemplateInput, RenderedCV

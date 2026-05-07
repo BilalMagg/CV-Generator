@@ -5,6 +5,7 @@ import json
 import re
 from cvtools import get_template_object, TEMPLATES_BUCKET
 from cvtools.models.cv_model import CVSection
+from app.schemas import TemplateInput
 
 #tools for data transformation
 def build_cv_data(input_data: TemplateInput) -> str:
