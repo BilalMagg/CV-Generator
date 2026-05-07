@@ -121,7 +121,7 @@ def reorder_projects(cv_projects: str, job_data: str) -> str:
     RULES:
     - NEVER remove any project
     - Most relevant project first, less relevant last
-    - NEVER modify project descriptions or facts
+    - NEVER modify facts, but you MAY shorten descriptions to save space and keep the CV under 1 page
     - NEVER invent new projects
     - NEVER change project names
     
@@ -139,6 +139,7 @@ def reorder_experience(cv_experience: str, job_data: str) -> str:
     - NEVER remove any experience
     - Most relevant experience first, less relevant last
     - NEVER modify dates, company names, or job titles
+    - NEVER modify or shorten the bullet points/descriptions of the experiences
     - NEVER invent new experiences
     - Use action verbs aligned with job tone
     
@@ -164,17 +165,20 @@ def adapt_tone(cv_content: str, job_data: str) -> str:
 
 
 @tool
-def optimize_profile(cv_profile: str, job_data: str) -> str:
+def optimize_profile(cv_profile: str, job_data: str, candidate_name: str) -> str:
     """Optimize the professional profile section to match the job offer."""
     return f"""
     Optimize ONLY the professional profile section:
     
     RULES:
-    - Keep it concise (3-5 sentences)
+   
+    - Adapt the French grammatical gender (masculine/feminine) according to the candidate's name: {candidate_name}.
+    - STRICT LENGTH LIMIT: Keep it to EXACTLY 3 sentences (or 3 lines maximum).
     - Highlight keywords from the job offer
     - Maintain the candidate's core identity
     - Use a professional and impactful tone
     
+    CANDIDATE NAME: {candidate_name}
     CV PROFILE: {cv_profile}
     JOB OFFER: {job_data}
     """
