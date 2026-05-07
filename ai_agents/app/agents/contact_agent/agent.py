@@ -1,15 +1,151 @@
 """
-Contact agent — logic to deliver the CV.
-"""
-from uuid import uuid4
-from app.agents.contact_agent.schemas import ContactInput, ContactOutput
+agent.py  –  Contact Agent Entry Point
+========================================
+Called by the Orchestrator. Receives a ContactInput, runs the 4-tool
+LangGraph ReAct agent, and returns a ContactOutput.
 
+Complete data flow:
+─────────────────────────────────────────────────────────────────────────────
+  Orchestrator
+      │
+      │  ContactInput(
+      │      optimized_cv      ← OptimizedCV from CV Optimizer  (pipeline step 4)
+      │      job_title         ← from Job Extractor             (pipeline step 1)
+      │      company_name      ← from Job Extractor             (pipeline step 1)
+      │      job_description   ← from Job Extractor             (pipeline step 1)
+      │      recipient_email   ← HR / RH contact email (NOT the candidate's email)
+      │      cover_letter_hint ← optional candidate direction (can be None)
+      │  )
+      ▼
+  deliver_cv()
+      │
+      │  [agent.py serializes optimized_cv.final_sections → JSON string]
+      │  [agent.py reads optimized_cv.pdf_url             → passed to Tool 4]
+      │
+      ├─► Tool 1: extract_cv_text        (sections_json)
+      │         └─► cv_text: str
+      │
+      ├─► Tool 2: generate_email_subject (job_title, company_name)
+      │         └─► subject: str
+      │
+      ├─► Tool 3: generate_email_body    (subject, job_description, cv_text, hint)
+      │         └─► body: str
+      │
+      └─► Tool 4: send_email_with_cv     (recipient_email, subject, body, pdf_url)
+                └─► "SUCCESS ... delivery_id=<uuid>"
+      │
+      ▼
+  ContactOutput(success, delivery_id, sent_at, subject_used, error_message)
+      │
+      ▼
+  Orchestrator
+─────────────────────────────────────────────────────────────────────────────
+"""
+
+import json
+import re
+import uuid
+
+from langchain_groq import ChatGroq
+from langgraph.prebuilt import create_react_agent
+from dotenv import load_dotenv
+
+from langchain_core.messages import SystemMessage
+
+from .schemas import ContactInput, ContactOutput
+from .prompt import CONTACT_AGENT_SYSTEM_PROMPT
+from .tools import (
+    extract_cv_text,
+    generate_email_subject,
+    generate_email_body,
+    send_email_with_cv,
+)
+
+load_dotenv()
+
+
+# ── Build the agent once at module load time ──────────────────────────────────
+_llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+
+_tools = [
+    extract_cv_text,          # Step 1 — flatten OptimizedCV sections → plain text
+    generate_email_subject,   # Step 2 — craft subject line
+    generate_email_body,      # Step 3 — write cover paragraph
+    send_email_with_cv,       # Step 4 — send email + attach PDF
+]
+
+# Pass the system prompt as a SystemMessage — compatible with all LangGraph versions
+_system_message = SystemMessage(content=CONTACT_AGENT_SYSTEM_PROMPT)
+
+_agent = create_react_agent(
+    _llm,
+    _tools,
+    prompt=_system_message,
+)
+
+
+# ── Public function called by the Orchestrator ────────────────────────────────
 async def deliver_cv(input_data: ContactInput) -> ContactOutput:
     """
-    TODO: Implement SMTP delivery logic.
-    For now, returns success.
+    Main entry point for the Contact Agent.
+    Receives a ContactInput, runs the 4-tool ReAct agent, returns a ContactOutput.
     """
-    return ContactOutput(
-        success=True,
-        delivery_id=str(uuid4())
+
+    # Serialize final_sections to JSON so Tool 1 (extract_cv_text) can receive it
+    # LangGraph tools only accept simple types — we can't pass Pydantic objects directly
+    sections_json = json.dumps(
+        [section.model_dump() for section in input_data.optimized_cv.final_sections]
     )
+
+    # pdf_url may be None if the optimizer didn't generate a PDF yet
+    pdf_url = input_data.optimized_cv.pdf_url or ""
+
+    # Build the user message that hands all context to the agent in one shot
+    user_message = (
+        f"Send a job application email using the information below.\n\n"
+        f"job_title          : {input_data.job_title}\n"
+        f"company_name       : {input_data.company_name}\n"
+        f"recipient_email    : {input_data.recipient_email}\n"
+        f"pdf_url            : {pdf_url}\n"
+        f"cover_letter_hint  : {input_data.cover_letter_hint or ''}\n\n"
+        f"--- JOB DESCRIPTION ---\n{input_data.job_description}\n\n"
+        f"--- CV SECTIONS (JSON) ---\n{sections_json}\n"
+    )
+
+    result = await _agent.ainvoke(
+        {"messages": [{"role": "user", "content": user_message}]}
+    )
+
+    # ── Parse the agent's final AI response ──────────────────────────────────
+    final_text = ""
+    for msg in reversed(result["messages"]):
+        if hasattr(msg, "type") and msg.type == "ai" and msg.content:
+            final_text = msg.content
+            break
+
+    success = "SUCCESS" in final_text.upper()
+
+    # Extract delivery_id from the Tool 4 output string
+    match      = re.search(r"delivery_id=([a-f0-9\-]+)", final_text)
+    delivery_id = match.group(1) if match else str(uuid.uuid4())
+
+    # Extract the subject line that was generated by Tool 2
+    subject_used = _extract_tool_output(result["messages"], "generate_email_subject")
+
+    return ContactOutput(
+        success=success,
+        delivery_id=delivery_id,
+        subject_used=subject_used,
+        error_message=None if success else final_text,
+    )
+
+
+def _extract_tool_output(messages: list, tool_name: str) -> str:
+    """
+    Walk the agent message history and return the content of
+    a specific tool's response message, identified by tool name.
+    """
+    for msg in messages:
+        if hasattr(msg, "name") and msg.name == tool_name:
+            return str(msg.content).strip()
+    return "N/A"

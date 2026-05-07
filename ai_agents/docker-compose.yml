@@ -1,11 +1,102 @@
-name: cv
+name: cv-microservices
 
 services:
-  ai_agents:
-    build: .
-    container_name: cv-ai-agents
+  job-extractor:
+    build:
+      context: .
+      dockerfile: services/job-extractor/Dockerfile
+    container_name: cv-job-extractor
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./services/job-extractor/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  search-agent:
+    build:
+      context: .
+      dockerfile: services/search-agent/Dockerfile
+    container_name: cv-search-agent
+    ports:
+      - "8002:8002"
+    env_file:
+      - ./services/search-agent/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  template-agent:
+    build:
+      context: .
+      dockerfile: services/template-agent/Dockerfile
+    container_name: cv-template-agent
+    ports:
+      - "8003:8003"
+    env_file:
+      - ./services/template-agent/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  cv-optimizer:
+    build:
+      context: .
+      dockerfile: services/cv-optimizer/Dockerfile
+    container_name: cv-cv-optimizer
+    ports:
+      - "8004:8004"
+    env_file:
+      - ./services/cv-optimizer/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  contact-agent:
+    build:
+      context: .
+      dockerfile: services/contact-agent/Dockerfile
+    container_name: cv-contact-agent
+    ports:
+      - "8005:8005"
+    env_file:
+      - ./services/contact-agent/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: services/orchestrator/Dockerfile
+    container_name: cv-orchestrator
     ports:
       - "8000:8000"
-    restart: unless-stopped
     env_file:
-      - ./.env
+      - ./services/orchestrator/.env
+    depends_on:
+      job-extractor:   { condition: service_healthy }
+      search-agent:     { condition: service_healthy }
+      template-agent:  { condition: service_healthy }
+      cv-optimizer:    { condition: service_healthy }
+      contact-agent:   { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: cv-network

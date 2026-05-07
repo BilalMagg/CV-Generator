@@ -9,7 +9,7 @@ AI_CONTAINER=cv-ai-agents
 
 # Build and start all containers
 dev:
-	docker compose up --build
+	docker compose up --build -d
 
 # Start containers in background
 up:
@@ -86,6 +86,9 @@ build-ai:
 
 run-ai:
 	docker run -d -p 8000:8000 --name $(AI_CONTAINER) ai-agents-image
+
+test-template:
+	cd ai_agents && PYTHONPATH=. .venv/Scripts/python.exe app/agents/template_agent/test_template_agent.py
 
 # ----------------------------------
 # Cleanup

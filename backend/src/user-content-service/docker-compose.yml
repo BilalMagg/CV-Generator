@@ -1,0 +1,38 @@
+services:
+  user-content-service:
+    build:
+      context: ../../
+      dockerfile: src/user-content-service/Dockerfile
+    container_name: cv-user-content-service-standalone
+    ports:
+      - "8083:8083"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://0.0.0.0:8083
+      - ConnectionStrings__DefaultConnection=Host=content-db;Port=5432;Database=content_db;Username=postgres;Password=postgres
+    depends_on:
+      content-db: { condition: service_healthy }
+    networks:
+      - cv-network
+
+  content-db:
+    image: pgvector/pgvector:pg16
+    container_name: cv-content-db-standalone
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=content_db
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d content_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cv-network
+
+networks:
+  cv-network:
+    name: cv-network
+    driver: bridge
