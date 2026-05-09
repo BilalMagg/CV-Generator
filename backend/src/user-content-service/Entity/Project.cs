@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Pgvector;
+using System.Text.Json.Serialization;
+
 
 namespace UserContentService.Entity;
 
@@ -41,12 +42,7 @@ public class Project
     [Required]
     public Guid UserId { get; set; }
 
-    [ForeignKey(nameof(UserId))]
-    public User? User { get; set; }
-
     public string? SkillsJson { get; set; }
-    public string? AiSummaryJson { get; set; }
 
-    [Column(TypeName = "vector(384)")]
-    public Vector? DescriptionEmbedding { get; set; }
+
 }

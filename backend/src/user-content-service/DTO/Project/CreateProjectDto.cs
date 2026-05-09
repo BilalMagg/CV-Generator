@@ -1,24 +1,20 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
+namespace UserContentService.dto.Project{
 
-namespace UserContentService.Entity;
-
-[Table("experiences")]
-public class Experience
-{
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
-    [Required]
+public class CreateProjectDto{
+ [Required]
     [MaxLength(150)]
     public required string Title { get; set; }
 
-    [MaxLength(150)]
-    public string? Company { get; set; }
-
-    [MaxLength(500)]
+    [MaxLength(1000)]
     public string? Description { get; set; }
+
+    [MaxLength(50)]
+    public string? Role { get; set; }
+
+    [MaxLength(1000)]
+    public string? Achievements { get; set; }
 
     [Required]
     public DateTime StartDate { get; set; }
@@ -26,7 +22,10 @@ public class Experience
     public DateTime? EndDate { get; set; }
 
     [MaxLength(300)]
-    public string? ReferenceUrl { get; set; }
+    public string? RepositoryUrl { get; set; }
+
+    [MaxLength(300)]
+    public string? DemoUrl { get; set; }
 
     [Required]
     [MaxLength(20)]
@@ -35,5 +34,6 @@ public class Experience
     [Required]
     public Guid UserId { get; set; }
 
-
+    public string? SkillsJson { get; set; }
+}
 }

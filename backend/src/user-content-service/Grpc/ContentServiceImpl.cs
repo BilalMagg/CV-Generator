@@ -229,8 +229,7 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         DemoUrl = p.DemoUrl ?? "",
         Status = p.Status,
         UserId = p.UserId.ToString(),
-        SkillsJson = p.SkillsJson ?? "",
-        AiSummaryJson = p.AiSummaryJson ?? ""
+        SkillsJson = p.SkillsJson ?? ""
     };
 
     private static SkillProto ToSkillProto(Skill s) => new()
@@ -254,6 +253,6 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         ReferenceUrl = e.ReferenceUrl ?? "",
         Status = e.Status,
         UserId = e.UserId.ToString(),
-        AiSummaryJson = e.AiSummaryJson ?? ""
+
     };
 }
