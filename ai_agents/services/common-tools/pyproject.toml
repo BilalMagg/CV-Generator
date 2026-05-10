@@ -13,6 +13,7 @@ dependencies = [
     "weasyprint>=62.0",
     "minio>=7.2.0",
     "fpdf2>=2.8.7",
+    "pypdf>=4.0",
 ]
 
 [project.optional-dependencies]

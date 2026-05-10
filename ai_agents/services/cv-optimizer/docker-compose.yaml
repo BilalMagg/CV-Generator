@@ -2,7 +2,9 @@ services:
 
   # ─── Votre agent ─────────────────────────────────────────
   cv-optimizer:
-    build: .
+    build:
+      context: ../..
+      dockerfile: services/cv-optimizer/Dockerfile
     ports:
       - "8004:8004"
     environment:
