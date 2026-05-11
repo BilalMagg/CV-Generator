@@ -38,7 +38,7 @@
         <div class="card-title">Application pipeline</div>
         <div class="card-sub">Overview · hover for details</div>
       </div>
-      <svg viewBox="0 0 540 220" width="100%" height="220" [innerHTML]="sankeySvgPath"></svg>
+      <svg viewBox="0 0 540 220" width="100%" height="220" [innerHTML]="sankeySvg()"></svg>
     </div>
     <div class="card">
       <div class="card-header"><div class="card-title">Recent activity</div></div>
@@ -80,6 +80,6 @@
       <div class="card-title">Applications over time</div>
       <div class="card-sub">Daily count — last 30 days</div>
     </div>
-    <svg viewBox="0 0 620 96" width="100%" height="96" [innerHTML]="timelineSvgPath"></svg>
+    <svg viewBox="0 0 620 96" width="100%" height="96" [innerHTML]="timelineSvg()"></svg>
   </div>
 </div>
