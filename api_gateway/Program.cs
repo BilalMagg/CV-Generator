@@ -115,6 +115,7 @@ app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
         + $"&redirect_uri={Uri.EscapeDataString(redirectUri)}"
         + $"&response_type=code"
         + $"&scope={scope}"
+        + $"&prompt=login"
         + $"&state={encodedState}:{encodedReturn}"
         + $"&nonce={encodedNonce}";
 
@@ -139,11 +140,17 @@ app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
 
 app.MapGet("/api/auth/logout", async (HttpContext ctx) =>
 {
-    var logoutUrl = $"{keycloakLogoutUrl}"
-        + $"?client_id={Uri.EscapeDataString(keycloakClientId)}"
-        + $"&post_logout_redirect_uri={Uri.EscapeDataString("http://localhost:4200/login")}";
+    // Retrieve id_token from server-side session before signing out
+    var authResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    var idToken = authResult?.Properties?.Items?.TryGetValue("id_token", out var t) == true ? t ?? "" : "";
 
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+    var logoutUrl = $"{keycloakLogoutUrl}"
+        + $"?client_id={Uri.EscapeDataString(keycloakClientId)}"
+        + $"&id_token_hint={Uri.EscapeDataString(idToken)}"
+        + $"&post_logout_redirect_uri={Uri.EscapeDataString("http://localhost:4200/login")}";
+
     ctx.Response.Redirect(logoutUrl);
 })
 .RequireCors("Default");
@@ -225,12 +232,16 @@ app.MapGet("/api/auth/callback", async (HttpContext ctx, IHttpClientFactory http
     identity.AddClaim(new Claim("access_token", accessToken));
     var principal = new ClaimsPrincipal(identity);
 
-    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties
+    var authProps = new AuthenticationProperties
     {
         IsPersistent = true,
         ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
         RedirectUri = expectedReturn,
-    });
+    };
+    // Store id_token in server-side session props (not in cookie) for logout
+    authProps.Items["id_token"] = idToken;
+
+    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
 
     ctx.Items["access_token"] = accessToken;
 
