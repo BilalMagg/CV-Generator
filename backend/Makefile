@@ -101,6 +101,23 @@ clean-all:
 	docker system prune -f
 
 #################################
+# Tests
+#################################
+
+test-all:
+	dotnet test --no-restore
+
+test:
+	dotnet test tests/$(service).Tests/$(service).Tests.csproj
+
+test-coverage:
+	dotnet test --collect:"XPlat Code Coverage" --results-directory coverage/
+	@echo "Coverage report: coverage/latest/coverage.cobertura.xml"
+
+test-watch:
+	dotnet watch test --project tests/$(service).Tests/$(service).Tests.csproj
+
+#################################
 # Help
 #################################
 
@@ -135,6 +152,12 @@ help:
 	@echo "  make kafka-create-topic topic=X"
 	@echo "  make kafka-consume topic=X"
 	@echo "  make kafka-ui           → http://localhost:8090"
+	@echo ""
+	@echo "  TESTS"
+	@echo "  make test-all           → run all test projects"
+	@echo "  make test service=ApplicationService.Tests  → run specific test project"
+	@echo "  make test-coverage      → run all with coverage report"
+	@echo "  make test-watch service=ApplicationService.Tests  → watch mode"
 	@echo ""
 	@echo "  CLEANUP"
 	@echo "  make clean              → prune unused images"
