@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
-import { ApplicationCreateComponent } from './application-create.component';
+import { ApplicationCreateComponent } from '../applications/create/application-create.component';
 
 describe('ApplicationCreateComponent', () => {
   beforeEach(async () => {

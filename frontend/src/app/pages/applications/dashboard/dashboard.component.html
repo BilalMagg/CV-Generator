@@ -1,0 +1,85 @@
+<div class="content">
+  <div class="stat-row">
+    <div class="stat-card" (click)="goToApplications()">
+      <div class="stat-label">Applications sent</div>
+      <div class="stat-val">{{ stats().total }}</div>
+      <div class="stat-sub stat-up">Total tracked</div>
+    </div>
+    <div class="stat-card" (click)="goToApplications()">
+      <div class="stat-label">Response rate</div>
+      <div class="stat-val">{{ stats().total ? getConversion(stats().total, stats().interview + stats().accepted + stats().rejected) : '0%' }}</div>
+      <div class="stat-sub stat-neu">including screening</div>
+    </div>
+    <div class="stat-card" (click)="goToApplications()">
+      <div class="stat-label">Interview rate</div>
+      <div class="stat-val">{{ getConversion(stats().total, stats().interview) }}</div>
+      <div class="stat-sub stat-neu">— steady</div>
+    </div>
+    <div class="stat-card" (click)="goToApplications()">
+      <div class="stat-label">Offers received</div>
+      <div class="stat-val">{{ stats().accepted }}</div>
+      <div class="stat-sub stat-up">accepted</div>
+    </div>
+    <div class="stat-card" (click)="goToApplications()">
+      <div class="stat-label">Rejected</div>
+      <div class="stat-val">{{ stats().rejected }}</div>
+      <div class="stat-sub stat-dn">keep going</div>
+    </div>
+    <div class="stat-card" (click)="goToApplications()">
+      <div class="stat-label">Pending</div>
+      <div class="stat-val">{{ stats().pending }}</div>
+      <div class="stat-sub stat-neu">awaiting response</div>
+    </div>
+  </div>
+
+  <div class="section-row">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Application pipeline</div>
+        <div class="card-sub">Overview · hover for details</div>
+      </div>
+      <svg viewBox="0 0 540 220" width="100%" height="220" [innerHTML]="sankeySvgPath"></svg>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Recent activity</div></div>
+      <div class="activity">
+        <div class="act-item">
+          <div class="act-icon teal"><i class="ti ti-check"></i></div>
+          <div class="act-body">
+            <div class="act-title">Applications being tracked</div>
+            <div class="act-meta">{{ stats().total }} total applications</div>
+          </div>
+        </div>
+        <div class="act-item">
+          <div class="act-icon purple"><i class="ti ti-video"></i></div>
+          <div class="act-body">
+            <div class="act-title">{{ stats().interview }} in interview stage</div>
+            <div class="act-meta">Move forward!</div>
+          </div>
+        </div>
+        <div class="act-item">
+          <div class="act-icon amber"><i class="ti ti-mail"></i></div>
+          <div class="act-body">
+            <div class="act-title">{{ stats().pending }} pending responses</div>
+            <div class="act-meta">Consider follow-ups</div>
+          </div>
+        </div>
+        <div class="act-item">
+          <div class="act-icon coral"><i class="ti ti-x"></i></div>
+          <div class="act-body">
+            <div class="act-title">{{ stats().rejected }} rejected</div>
+            <div class="act-meta">Keep applying!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="timeline-card">
+    <div class="card-header">
+      <div class="card-title">Applications over time</div>
+      <div class="card-sub">Daily count — last 30 days</div>
+    </div>
+    <svg viewBox="0 0 620 96" width="100%" height="96" [innerHTML]="timelineSvgPath"></svg>
+  </div>
+</div>

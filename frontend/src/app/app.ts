@@ -14,12 +14,15 @@ export class App {
   private router = inject(Router);
 
   isAuthPage = false;
+  showHeader = false;
 
   ngOnInit(): void {
     this.router.events.subscribe(() => {
       const url = this.router.url;
       this.isAuthPage = url === '/' || url === '/login' || url === '/register';
+      this.showHeader = !this.isAuthPage;
     });
     this.isAuthPage = this.router.url === '/' || this.router.url === '/login' || this.router.url === '/register';
+    this.showHeader = !this.isAuthPage;
   }
 }

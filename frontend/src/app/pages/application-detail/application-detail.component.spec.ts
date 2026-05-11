@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
-import { ApplicationDetailComponent } from './application-detail.component';
+import { ApplicationDetailComponent } from '../applications/detail/application-detail.component';
 
 describe('ApplicationDetailComponent', () => {
   beforeEach(async () => {
