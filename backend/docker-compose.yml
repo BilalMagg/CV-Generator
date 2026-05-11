@@ -131,6 +131,7 @@ services:
       - ASPNETCORE_URLS=http://0.0.0.0:8085
       - ConnectionStrings__DefaultConnection=Host=application-db;Port=5432;Database=application_db;Username=postgres;Password=postgres
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - JWT_AUTHORITY=http://cv-keycloak:8080/realms/cv-realm
     depends_on:
       application-db: { condition: service_healthy }
       kafka: { condition: service_healthy }
