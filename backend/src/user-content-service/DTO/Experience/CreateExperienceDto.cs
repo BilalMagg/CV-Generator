@@ -1,16 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
+namespace UserContentService.dto.Experience {
 
-namespace UserContentService.Entity;
-
-[Table("experiences")]
-public class Experience
-{
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
-    [Required]
+    public class CreateExperienceDto{
+     
+     [Required]
     [MaxLength(150)]
     public required string Title { get; set; }
 
@@ -35,5 +29,5 @@ public class Experience
     [Required]
     public Guid UserId { get; set; }
 
-
+    }
 }

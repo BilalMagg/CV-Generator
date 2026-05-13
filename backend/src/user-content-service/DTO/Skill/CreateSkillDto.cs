@@ -1,12 +1,9 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-namespace UserContentService.Entity;
 
-[Table("skills")]
-public class Skill
-{
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
+namespace UserContentService.dto.Skill{
+
+    public class CreateSkillDto {
+
 
     [Required]
     [MaxLength(100)]
@@ -22,6 +19,5 @@ public class Skill
 
     [MaxLength(50)]
     public string? Category { get; set; }
-
-
+    }
 }
