@@ -76,6 +76,9 @@ public class WorkflowsController : ControllerBase
 
         _db.Workflows.Remove(workflow);
         await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPost("generate-cv")]
     public async Task<IActionResult> GenerateTailoredCv([FromBody] WorkflowService.Models.GenerateCvRequest request, [FromServices] WorkflowService.Services.WorkflowExecutionService executionService)
     {
