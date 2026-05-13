@@ -144,7 +144,8 @@ services:
   # ── Job Offer Service ────────────────────────────────────────────────────────
   job-offer-service:
     build:
-      context: ./src/job-offer-service
+      context: .
+      dockerfile: ./src/job-offer-service/Dockerfile
     container_name: cv-job-offer-service
     ports:
       - "8086:8086"

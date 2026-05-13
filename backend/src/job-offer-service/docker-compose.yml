@@ -1,7 +1,7 @@
 services:
   job-offer-service:
     build: .
-    container_name: cv-job-offer-service-standalone
+    container_name: cv-job-offer-service
     ports:
       - "8086:8086"
     environment:
@@ -16,7 +16,7 @@ services:
 
   job-offer-db:
     image: pgvector/pgvector:pg16
-    container_name: cv-job-offer-db-standalone
+    container_name: cv-job-offer-db
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
