@@ -58,6 +58,7 @@ var app = builder.Build();
 // ------------------------
 // Run database migrations (only if needed)
 // ------------------------
+
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

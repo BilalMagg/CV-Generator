@@ -11,6 +11,7 @@ services:
   frontend:
     build:
       context: ./frontend
+    image: salmanelghrich/cv-frontend:latest
     container_name: cv-frontend
     ports:
       - "4200:80"
