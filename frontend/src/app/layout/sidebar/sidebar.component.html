@@ -8,7 +8,7 @@
         <a class="nav-item"
            [routerLink]="item.route"
            routerLinkActive="active"
-           [routerLinkActiveOptions]="{ exact: true }"
+           [routerLinkActiveOptions]="{ exact: item.exact ?? true }"
            [title]="item.label">
            @switch (item.icon) {
              @case ('applications') {

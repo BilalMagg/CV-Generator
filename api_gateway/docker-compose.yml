@@ -65,6 +65,9 @@ services:
       - KEYCLOAK_CLIENT_ID=cv-gateway
       - KEYCLOAK_CLIENT_SECRET=change-me-in-production
       - GATEWAY_URL=http://localhost:8080
+      - USER_SERVICE_URL=http://cv-user-service:8082
+      - KEYCLOAK_ADMIN_USERNAME=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
     networks:
       - cv-network
 

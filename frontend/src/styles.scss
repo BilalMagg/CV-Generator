@@ -1,4 +1,49 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
 
+:root {
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --color-background-primary: #1c1c1c;
+  --color-background-secondary: #141414;
+  --color-background-tertiary: #0e0e0e;
+
+  --color-text-primary: #ededed;
+  --color-text-secondary: #a0a0a0;
+  --color-text-tertiary: #666;
+
+  --color-border-primary: rgba(255, 255, 255, 0.12);
+  --color-border-secondary: rgba(255, 255, 255, 0.15);
+  --color-border-tertiary: rgba(255, 255, 255, 0.07);
+
+  --color-accent: #7F77DD;
+  --color-accent-light: #EEEDFE;
+  --color-accent-text: #534AB7;
+
+  --color-success: #639922;
+  --color-success-bg: #EAF3DE;
+  --color-success-text: #3B6D11;
+
+  --color-warning: #EF9F27;
+  --color-warning-bg: #FAEEDA;
+  --color-warning-text: #854F0B;
+
+  --color-danger: #E24B4A;
+  --color-danger-bg: #FCEBEB;
+  --color-danger-text: #A32D2D;
+
+  --color-info: #378ADD;
+  --color-info-bg: #E6F1FB;
+  --color-info-text: #185FA5;
+
+  --border-radius-sm: 4px;
+  --border-radius-md: 6px;
+  --border-radius-lg: 10px;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'DM Sans', sans-serif; background: #0e0e0e; }
+body {
+  font-family: var(--font-sans);
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}

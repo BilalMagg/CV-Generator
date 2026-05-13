@@ -79,6 +79,24 @@ public class WorkflowsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("generate-cv")]
+    public async Task<IActionResult> GenerateTailoredCv([FromBody] WorkflowService.Models.GenerateCvRequest request, [FromServices] WorkflowService.Services.WorkflowExecutionService executionService)
+    {
+        if (request == null || request.UserId == Guid.Empty || string.IsNullOrWhiteSpace(request.JobDescription))
+            return BadRequest(ApiResponse<object>.Error("Invalid request payload. UserId and JobDescription are required."));
+
+        try
+        {
+            var finalResult = await executionService.GenerateTailoredCvAsync(request);
+            return Ok(ApiResponse<WorkflowService.Models.ContactOutput>.Ok(finalResult));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating tailored CV for User {UserId}", request.UserId);
+            return StatusCode(500, ApiResponse<object>.Error(ex.Message));
+        }
+    }
+
     public record CreateWorkflowDto(string? Name, string? Description, string? DefinitionJson);
     public record UpdateWorkflowDto(string? Name, string? Description, string? DefinitionJson, bool IsActive);
 }

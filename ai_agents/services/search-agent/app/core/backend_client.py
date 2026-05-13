@@ -11,6 +11,9 @@ from cvtools.core.backend_client import (
     get_user_projects,
     get_user_skills,
     get_workflow,
+    check_vectors_status,
+    sync_vectors,
+    search_vectors,
 )
 
 __all__ = [
@@ -23,4 +26,7 @@ __all__ = [
     "get_user_projects",
     "get_user_skills",
     "get_workflow",
+    "check_vectors_status",
+    "sync_vectors",
+    "search_vectors",
 ]

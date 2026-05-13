@@ -12,6 +12,31 @@ builder.Services.AddDbContext<WorkflowDbContext>(options =>
 builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddGrpc();
 
+// Old untyped client & generic service
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<WorkflowService.Services.WorkflowExecutionService>();
+
+// New Strongly-Typed Agent SDK Clients
+builder.Services.AddHttpClient<WorkflowService.AgentClients.IJobExtractorClient, WorkflowService.AgentClients.JobExtractorClient>(client =>
+{
+    client.BaseAddress = new Uri("http://cv-job-extractor:8001/api/v1/");
+});
+
+builder.Services.AddHttpClient<WorkflowService.AgentClients.ISearchAgentClient, WorkflowService.AgentClients.SearchAgentClient>(client =>
+{
+    client.BaseAddress = new Uri("http://cv-search-agent:8002/api/v1/");
+});
+
+builder.Services.AddHttpClient<WorkflowService.AgentClients.ITemplateAgentClient, WorkflowService.AgentClients.TemplateAgentClient>(client =>
+{
+    client.BaseAddress = new Uri("http://cv-template-agent:8003/api/v1/");
+});
+
+builder.Services.AddHttpClient<WorkflowService.AgentClients.IContactAgentClient, WorkflowService.AgentClients.ContactAgentClient>(client =>
+{
+    client.BaseAddress = new Uri("http://cv-contact-agent:8005/api/v1/");
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

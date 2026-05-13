@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using FluentValidation;
 using ApplicationService;
 using ApplicationService.Services;
@@ -38,8 +40,15 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        options.Authority = Environment.GetEnvironmentVariable("JWT_AUTHORITY") ?? "";
+        var jwtAuthority = Environment.GetEnvironmentVariable("JWT_AUTHORITY") ?? "";
+        options.Authority = jwtAuthority;
         options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters.ValidateAudience = false;
+        // Accept the external URL as a valid issuer (the JWT's iss claim)
+        options.TokenValidationParameters.ValidIssuers = new[]
+        {
+            "http://localhost:9090/realms/cv-realm",
+        };
     });
 
 builder.Services.AddAuthorization();
