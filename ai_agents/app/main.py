@@ -53,3 +53,4 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+#cd CV-Generator/ai_agents/services/cv-optimizer

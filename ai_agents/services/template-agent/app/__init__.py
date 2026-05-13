@@ -1,4 +1,4 @@
 from app.agent import render_template
-from app.schemas import TemplateInput, TemplateOutput
+from app.schemas import TemplateInput, RenderedCV
 
-__all__ = ["render_template", "TemplateInput", "TemplateOutput"]
+__all__ = ["render_template", "TemplateInput", "RenderedCV"]
