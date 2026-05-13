@@ -24,6 +24,16 @@ from cvtools.core import (
     get_workflow,
     get_llm,
 )
+from cvtools.core.tools import (
+    html_to_pdf,
+    latex_to_pdf,
+    get_minio_client,
+    upload_pdf,
+    download_pdf,
+    get_template_object,
+    ensure_templates_bucket,
+    TEMPLATES_BUCKET,
+)
 
 __all__ = [
     # models
@@ -50,4 +60,13 @@ __all__ = [
     "get_user_skills",
     "get_workflow",
     "get_llm",
+    # tools
+    "html_to_pdf",
+    "latex_to_pdf",
+    "get_minio_client",
+    "upload_pdf",
+    "download_pdf",
+    "get_template_object",
+    "ensure_templates_bucket",
+    "TEMPLATES_BUCKET",
 ]
