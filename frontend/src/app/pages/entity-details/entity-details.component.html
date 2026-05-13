@@ -1,0 +1,20 @@
+<h2>Detail {{ entity }}</h2>
+
+@if(entity === 'projects') {
+  <h3>{{ item.title }}</h3>
+  <p>{{ item.description }}</p>
+  <a>{{ item.link }}</a>
+}
+
+@if(entity === 'skills') {
+  <h3>{{ item.name }}</h3>
+  <p>Level: {{ item.level }}</p>
+}
+
+@if(entity === 'experiences') {
+  <h3>{{ item.company }}</h3>
+  <p>{{ item.role }}</p>
+  <p>{{ item.date }}</p>
+}
+
+<button (click)="goToEdit()">Edit</button>

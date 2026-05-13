@@ -1,0 +1,21 @@
+<h2>Add {{ entity }}</h2>
+
+<form (ngSubmit)="submit()">
+
+  <!-- TITLE -->
+  @if(entity === 'projects') {
+    <input [(ngModel)]="form.title" name="title" placeholder="Title" />
+    <input [(ngModel)]="form.description" name="description" placeholder="Description" />
+  }
+
+  <!-- SKILLS -->
+  @if(entity === 'skills') {
+    <input [(ngModel)]="form.name" name="name" placeholder="Skill name" />
+    <input [(ngModel)]="form.level" name="level" placeholder="Level" />
+  }
+
+  <button type="submit">
+    Save
+  </button>
+
+</form>

@@ -1,0 +1,36 @@
+<h2>{{ entity | uppercase }}</h2>
+
+<hr>
+
+<!-- bouton ajouter -->
+<button [routerLink]="['/my-cv', entity, 'add']">
+  + Add {{ entity }}
+</button>
+
+<hr>
+
+<!-- liste des items -->
+@for(item of data; track item) {
+
+  <div class="card"
+   (click)="goToDetail(item.id)">
+
+    <!-- affichage générique -->
+    <h3>
+      {{ item.title || item.name }}
+    </h3>
+
+    <!-- affichage complet (debug utile au début) -->
+    <pre>{{ item | json }}</pre>
+
+    <!-- actions -->
+    
+
+  </div>
+
+}
+
+<!-- si aucune donnée -->
+@if(data.length === 0) {
+  <p>No {{ entity }} found</p>
+}
