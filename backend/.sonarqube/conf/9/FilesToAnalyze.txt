@@ -1,0 +1,12 @@
+﻿/app/src/user-service/Controllers/UsersController.cs
+/app/src/user-service/Entity/User.cs
+/app/src/user-service/Grpc/UserServiceImpl.cs
+/app/src/user-service/Program.cs
+/app/src/user-service/UserDbContext.cs
+/app/src/user-service/obj/Debug/net10.0/UserService.GlobalUsings.g.cs
+/app/src/user-service/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs
+/app/src/user-service/obj/Debug/net10.0/UserService.AssemblyInfo.cs
+/app/src/user-service/obj/Debug/net10.0/UserService.MvcApplicationPartsAssemblyInfo.cs
+/app/src/user-service/docker-compose.yml
+/app/src/user-service/Dockerfile
+/app/src/user-service/Makefile

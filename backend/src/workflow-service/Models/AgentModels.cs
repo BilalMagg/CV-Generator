@@ -108,7 +108,7 @@ public class OptimizerOutput
 public class TemplateInput
 {
     [JsonPropertyName("cv_draft")]
-    public dynamic CvDraft { get; set; } = new(); // Assuming dynamic to avoid replicating the entire CV model tree
+    public dynamic CvDraft { get; set; } = new System.Dynamic.ExpandoObject(); // Assuming dynamic to avoid replicating the entire CV model tree
 
     [JsonPropertyName("template_id")]
     public string TemplateId { get; set; } = "default";
@@ -136,7 +136,7 @@ public class RenderedCV
 public class ContactInput
 {
     [JsonPropertyName("optimized_cv")]
-    public dynamic OptimizedCv { get; set; } = new();
+    public dynamic OptimizedCv { get; set; } = new System.Dynamic.ExpandoObject();
 
     [JsonPropertyName("job_title")]
     public string JobTitle { get; set; } = string.Empty;

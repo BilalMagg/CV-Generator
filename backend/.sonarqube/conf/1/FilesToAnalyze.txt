@@ -1,0 +1,3 @@
+﻿/app/src/common-protos/content.proto
+/app/src/common-protos/user.proto
+/app/src/common-protos/workflow.proto

@@ -1,0 +1,756 @@
+Ó
+-/app/src/cv-service/Config/StorageSettings.csßnamespace CvService.Config;
+
+// CV Service configuration models
+// e.g., StorageSettings, MinIOConfig, CvTemplateSettings
+
+public class StorageSettings
+{
+    public string Provider { get; set; } = "MinIO";
+    public string Endpoint { get; set; } = "";
+    public string AccessKey { get; set; } = "";
+    public string SecretKey { get; set; } = "";
+    public string BucketName { get; set; } = "cv-storage";
+}
+ParseOptions.0.jsonç
+5/app/src/cv-service/Controllers/CvExportController.csæusing Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CvService.Controllers;
+
+[ApiController]
+[Route("api/cv/{cvId}/export")]
+[Authorize]
+public class CvExportController : ControllerBase
+{
+    /// POST /api/cv/{cvId}/export/pdf
+    [HttpPost("pdf")]
+    public async Task<IActionResult> ExportPdf(Guid cvId, [FromQuery] Guid? versionId)
+    {
+        // TODO: Generate PDF from CV data
+        return Ok(new { message = "PDF export endpoint - implementation pending" });
+    }
+
+    /// POST /api/cv/{cvId}/export/docx
+    [HttpPost("docx")]
+    public async Task<IActionResult> ExportDocx(Guid cvId, [FromQuery] Guid? versionId)
+    {
+        // TODO: Generate DOCX from CV data
+        return Ok(new { message = "DOCX export endpoint - implementation pending" });
+    }
+}
+ParseOptions.0.jsonè
+0/app/src/cv-service/Controllers/CvsController.cs≈using CVGenerator.Shared;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using CvService.DTOs;
+using CvService.Services;
+
+namespace CvService.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class CvsController : ControllerBase
+{
+    private readonly ICvService _service;
+
+    public CvsController(ICvService service)
+    {
+        _service = service;
+    }
+
+    /// GET /api/cv
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var cvs = await _service.GetAllAsync(GetUserId());
+        return Ok(ApiResponse<List<CvDto>>.Ok(cvs));
+    }
+
+    /// GET /api/cv/{id}
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var cv = await _service.GetByIdAsync(id, GetUserId());
+        if (cv == null) return NotFound(ApiResponse<CvDto>.Error("CV not found"));
+        return Ok(ApiResponse<CvDto>.Ok(cv));
+    }
+
+    /// POST /api/cv
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateCvDto dto)
+    {
+        var created = await _service.CreateAsync(dto, GetUserId());
+        return Created($"/api/cv/{created.Id}", ApiResponse<CvDto>.Created(created));
+    }
+
+    /// PUT /api/cv/{id}
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCvDto dto)
+    {
+        var updated = await _service.UpdateAsync(id, dto, GetUserId());
+        if (updated == null) return NotFound(ApiResponse<CvDto>.Error("CV not found"));
+        return Ok(ApiResponse<CvDto>.Ok(updated));
+    }
+
+    /// DELETE /api/cv/{id}
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var deleted = await _service.DeleteAsync(id, GetUserId());
+        if (!deleted) return NotFound(ApiResponse<object>.Error("CV not found"));
+        return NoContent();
+    }
+
+    private string GetUserId()
+    {
+        return User.FindFirst("sub")?.Value
+            ?? User.FindFirst("local_user_id")?.Value
+            ?? throw new UnauthorizedAccessException();
+    }
+}
+ParseOptions.0.json≈
+7/app/src/cv-service/Controllers/CvSectionsController.csÙusing CVGenerator.Shared;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using CvService.DTOs;
+using CvService.Services;
+
+namespace CvService.Controllers;
+
+[ApiController]
+[Route("api/cv/versions/{versionId}/sections")]
+[Authorize]
+public class CvSectionsController : ControllerBase
+{
+    private readonly ICvSectionService _service;
+
+    public CvSectionsController(ICvSectionService service)
+    {
+        _service = service;
+    }
+
+    /// GET /api/cv/versions/{versionId}/sections
+    [HttpGet]
+    public async Task<IActionResult> GetAll(Guid versionId)
+    {
+        var sections = await _service.GetByVersionIdAsync(versionId, GetUserId());
+        return Ok(ApiResponse<List<CvSectionDto>>.Ok(sections));
+    }
+
+    /// GET /api/cv/versions/{versionId}/sections/{sectionType}
+    [HttpGet("{sectionType}")]
+    public async Task<IActionResult> GetByType(Guid versionId, string sectionType)
+    {
+        var section = await _service.GetByTypeAsync(versionId, sectionType, GetUserId());
+        if (section == null) return NotFound(ApiResponse<CvSectionDto>.Error("Section not found"));
+        return Ok(ApiResponse<CvSectionDto>.Ok(section));
+    }
+
+    /// PUT /api/cv/versions/{versionId}/sections/{sectionType}
+    [HttpPut("{sectionType}")]
+    public async Task<IActionResult> Upsert(Guid versionId, string sectionType, [FromBody] UpdateSectionDto dto)
+    {
+        var section = await _service.UpsertAsync(versionId, sectionType, dto, GetUserId());
+        return Ok(ApiResponse<CvSectionDto>.Ok(section));
+    }
+
+    /// DELETE /api/cv/versions/{versionId}/sections/{id}
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid versionId, Guid id)
+    {
+        var deleted = await _service.DeleteAsync(id, GetUserId());
+        if (!deleted) return NotFound(ApiResponse<object>.Error("Section not found"));
+        return NoContent();
+    }
+
+    private string GetUserId()
+    {
+        return User.FindFirst("sub")?.Value
+            ?? User.FindFirst("local_user_id")?.Value
+            ?? throw new UnauthorizedAccessException();
+    }
+}
+ParseOptions.0.jsonƒ
+8/app/src/cv-service/Controllers/CvTemplatesController.csÚusing CVGenerator.Shared;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CvService.Controllers;
+
+[ApiController]
+[Route("api/cv/templates")]
+[Authorize]
+public class CvTemplatesController : ControllerBase
+{
+    /// GET /api/cv/templates
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        // TODO: Return available CV templates
+        return Ok(ApiResponse<List<object>>.Ok(new List<object>()));
+    }
+
+    /// GET /api/cv/templates/{id}
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(string id)
+    {
+        // TODO: Return template details with preview
+        return Ok(ApiResponse<object>.Ok(new { id, name = "Template preview" }));
+    }
+}
+ParseOptions.0.jsonû
+7/app/src/cv-service/Controllers/CvVersionsController.csÕusing CVGenerator.Shared;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using CvService.DTOs;
+using CvService.Services;
+
+namespace CvService.Controllers;
+
+[ApiController]
+[Route("api/cv/{cvId}/versions")]
+[Authorize]
+public class CvVersionsController : ControllerBase
+{
+    private readonly ICvVersionService _service;
+
+    public CvVersionsController(ICvVersionService service)
+    {
+        _service = service;
+    }
+
+    /// GET /api/cv/{cvId}/versions
+    [HttpGet]
+    public async Task<IActionResult> GetAll(Guid cvId)
+    {
+        var versions = await _service.GetByCvIdAsync(cvId, GetUserId());
+        return Ok(ApiResponse<List<CvVersionDto>>.Ok(versions));
+    }
+
+    /// GET /api/cv/{cvId}/versions/{id}
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid cvId, Guid id)
+    {
+        var version = await _service.GetByIdAsync(id, GetUserId());
+        if (version == null) return NotFound(ApiResponse<CvVersionDto>.Error("Version not found"));
+        return Ok(ApiResponse<CvVersionDto>.Ok(version));
+    }
+
+    /// POST /api/cv/{cvId}/versions
+    [HttpPost]
+    public async Task<IActionResult> Create(Guid cvId, [FromBody] CreateCvVersionDto dto)
+    {
+        var created = await _service.CreateAsync(cvId, dto, GetUserId());
+        return Created($"/api/cv/{cvId}/versions/{created.Id}", ApiResponse<CvVersionDto>.Created(created));
+    }
+
+    /// DELETE /api/cv/{cvId}/versions/{id}
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid cvId, Guid id)
+    {
+        var deleted = await _service.DeleteAsync(id, GetUserId());
+        if (!deleted) return NotFound(ApiResponse<object>.Error("Version not found"));
+        return NoContent();
+    }
+
+    private string GetUserId()
+    {
+        return User.FindFirst("sub")?.Value
+            ?? User.FindFirst("local_user_id")?.Value
+            ?? throw new UnauthorizedAccessException();
+    }
+}
+ParseOptions.0.jsonŸ
+"/app/src/cv-service/CvDbContext.csùusing Microsoft.EntityFrameworkCore;
+using CvService.Entities;
+
+namespace CvService;
+
+public class CvDbContext : DbContext
+{
+    public CvDbContext(DbContextOptions<CvDbContext> options) : base(options) { }
+
+    public DbSet<Cv> Cvs { get; set; }
+    public DbSet<CvVersion> CvVersions { get; set; }
+    public DbSet<CvSection> CvSections { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // TODO: Configure entity relationships, indexes, and constraints
+        // modelBuilder.Entity<Cv>(entity =>
+        // {
+        //     entity.HasIndex(e => e.UserId);
+        //     entity.HasMany(e => e.Versions).WithOne(e => e.Cv).HasForeignKey(e => e.CvId);
+        // });
+    }
+}
+ParseOptions.0.jsonú
+"/app/src/cv-service/DTOs/CvDtos.cs‡namespace CvService.DTOs;
+
+public record CvDto(
+    Guid Id,
+    Guid UserId,
+    string Title,
+    string TemplateId,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    bool IsActive,
+    List<CvVersionDto>? Versions = null
+);
+
+public record CvVersionDto(
+    Guid Id,
+    Guid CvId,
+    int VersionNumber,
+    string Label,
+    string? FileUrl,
+    string? PdfUrl,
+    string ContentJson,
+    DateTime CreatedAt
+);
+
+public record CvSectionDto(
+    Guid Id,
+    Guid VersionId,
+    string SectionType,
+    int DisplayOrder,
+    string ContentJson,
+    DateTime UpdatedAt
+);
+ParseOptions.0.jsonœ
+'/app/src/cv-service/DTOs/RequestDtos.csénamespace CvService.DTOs;
+
+public record CreateCvDto(
+    string Title,
+    string TemplateId
+);
+
+public record UpdateCvDto(
+    string? Title,
+    string? TemplateId,
+    bool? IsActive
+);
+
+public record CreateCvVersionDto(
+    string Label,
+    string? ContentJson
+);
+
+public record UpdateSectionDto(
+    string SectionType,
+    int DisplayOrder,
+    string ContentJson
+);
+ParseOptions.0.json«
+"/app/src/cv-service/Entities/Cv.csãnamespace CvService.Entities;
+
+// CV entity
+// Represents a user's CV document
+public class Cv
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string TemplateId { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsActive { get; set; }
+
+    public List<CvVersion> Versions { get; set; } = new();
+}
+ParseOptions.0.jsonÊ
+)/app/src/cv-service/Entities/CvSection.cs£namespace CvService.Entities;
+
+// CV section entity
+// Stores individual sections of a CV version
+public class CvSection
+{
+    public Guid Id { get; set; }
+    public Guid VersionId { get; set; }
+    public string SectionType { get; set; } = string.Empty; // personal_info, experience, education, skills, projects, etc.
+    public int DisplayOrder { get; set; }
+    public string ContentJson { get; set; } = "{}";
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    public CvVersion Version { get; set; } = null!;
+}
+ParseOptions.0.jsonÔ
+)/app/src/cv-service/Entities/CvVersion.cs¨namespace CvService.Entities;
+
+// CV version entity
+// Each CV can have multiple versions (drafts, revisions)
+public class CvVersion
+{
+    public Guid Id { get; set; }
+    public Guid CvId { get; set; }
+    public int VersionNumber { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public string? FileUrl { get; set; }
+    public string? PdfUrl { get; set; }
+    public string ContentJson { get; set; } = "{}";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public Cv Cv { get; set; } = null!;
+}
+ParseOptions.0.jsonà
+(/app/src/cv-service/Migrations/README.cs∆// Migrations will be generated using:
+// dotnet ef migrations add InitialCreate --project CvService.csproj
+//
+// After this file is removed by the first migration, the Migrations/
+// directory will contain:
+// - {Timestamp}_InitialCreate.cs
+// - {Timestamp}_InitialCreate.Designer.cs
+// - CvDbContextModelSnapshot.cs
+ParseOptions.0.jsonà
+/app/src/cv-service/Program.cs–using Microsoft.EntityFrameworkCore;
+using FluentValidation;
+using CvService;
+using CvService.DTOs;
+using CvService.Services;
+using CvService.Validators;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Database
+builder.Services.AddDbContext<CvDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    options.UseNpgsql(connectionString);
+});
+
+// Repositories
+// TODO: Register repository implementations
+// builder.Services.AddScoped<ICvRepository, CvRepository>();
+// builder.Services.AddScoped<ICvVersionRepository, CvVersionRepository>();
+// builder.Services.AddScoped<ICvSectionRepository, CvSectionRepository>();
+
+// Services
+builder.Services.AddScoped<ICvService, CvServiceImpl>();
+builder.Services.AddScoped<ICvVersionService, CvVersionServiceImpl>();
+builder.Services.AddScoped<ICvSectionService, CvSectionServiceImpl>();
+
+// Validators
+builder.Services.AddScoped<IValidator<CreateCvDto>, CreateCvValidator>();
+
+// AutoMapper
+builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
+
+// Controllers
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Auth (JWT from gateway/keycloak)
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.Authority = Environment.GetEnvironmentVariable("JWT_AUTHORITY") ?? "";
+        options.RequireHttpsMetadata = false;
+    });
+
+builder.Services.AddAuthorization();
+
+var app = builder.Build();
+
+// Run database migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<CvDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+
+        if (pendingMigrations.Any())
+        {
+            logger.LogInformation("Found {Count} pending migrations. Applying...", pendingMigrations.Count());
+            await dbContext.Database.MigrateAsync();
+            logger.LogInformation("Migrations applied successfully.");
+        }
+        else
+        {
+            logger.LogInformation("No pending migrations found. Database is up to date.");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while applying migrations.");
+    }
+}
+
+app.UseSwagger();
+app.UseSwaggerUI();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+ParseOptions.0.json≥
+1/app/src/cv-service/Repositories/ICvRepository.csËusing CvService.Entities;
+
+namespace CvService.Repositories;
+
+public interface ICvRepository
+{
+    Task<List<Cv>> GetAllByUserIdAsync(string userId);
+    Task<Cv?> GetByIdAsync(Guid id);
+    Task<Cv> CreateAsync(Cv cv);
+    Task UpdateAsync(Cv cv);
+    Task<bool> DeleteAsync(Guid id);
+    Task<bool> IsOwnedByUserAsync(Guid id, string userId);
+}
+ParseOptions.0.json–
+8/app/src/cv-service/Repositories/ICvSectionRepository.cs˛using CvService.Entities;
+
+namespace CvService.Repositories;
+
+public interface ICvSectionRepository
+{
+    Task<List<CvSection>> GetByVersionIdAsync(Guid versionId);
+    Task<CvSection?> GetByTypeAsync(Guid versionId, string sectionType);
+    Task<CvSection> CreateAsync(CvSection section);
+    Task UpdateAsync(CvSection section);
+    Task<bool> DeleteAsync(Guid id);
+}
+ParseOptions.0.json¥
+8/app/src/cv-service/Repositories/ICvVersionRepository.cs‚using CvService.Entities;
+
+namespace CvService.Repositories;
+
+public interface ICvVersionRepository
+{
+    Task<List<CvVersion>> GetByCvIdAsync(Guid cvId);
+    Task<CvVersion?> GetByIdAsync(Guid id);
+    Task<int> GetNextVersionNumberAsync(Guid cvId);
+    Task<CvVersion> CreateAsync(CvVersion version);
+    Task<bool> DeleteAsync(Guid id);
+}
+ParseOptions.0.json”
+4/app/src/cv-service/Services/CvSectionServiceImpl.csÖusing CvService.DTOs;
+
+namespace CvService.Services;
+
+public class CvSectionServiceImpl : ICvSectionService
+{
+    public Task<List<CvSectionDto>> GetByVersionIdAsync(Guid versionId, string userId)
+    {
+        // TODO: Implement fetching sections by version ID with ownership check
+        return Task.FromResult(new List<CvSectionDto>());
+    }
+
+    public Task<CvSectionDto?> GetByTypeAsync(Guid versionId, string sectionType, string userId)
+    {
+        // TODO: Implement fetching section by type with ownership check
+        return Task.FromResult<CvSectionDto?>(null);
+    }
+
+    public Task<CvSectionDto> UpsertAsync(Guid versionId, string sectionType, UpdateSectionDto dto, string userId)
+    {
+        // TODO: Implement section create/update (upsert pattern)
+        throw new NotImplementedException();
+    }
+
+    public Task<bool> DeleteAsync(Guid id, string userId)
+    {
+        // TODO: Implement section deletion with ownership check
+        return Task.FromResult(false);
+    }
+}
+ParseOptions.0.json»
+-/app/src/cv-service/Services/CvServiceImpl.csÅusing CvService.DTOs;
+
+namespace CvService.Services;
+
+public class CvServiceImpl : ICvService
+{
+    public Task<List<CvDto>> GetAllAsync(string userId)
+    {
+        // TODO: Implement fetching all CVs for user
+        return Task.FromResult(new List<CvDto>());
+    }
+
+    public Task<CvDto?> GetByIdAsync(Guid id, string userId)
+    {
+        // TODO: Implement fetching CV by ID with ownership check
+        return Task.FromResult<CvDto?>(null);
+    }
+
+    public Task<CvDto> CreateAsync(CreateCvDto dto, string userId)
+    {
+        // TODO: Implement CV creation
+        throw new NotImplementedException();
+    }
+
+    public Task<CvDto?> UpdateAsync(Guid id, UpdateCvDto dto, string userId)
+    {
+        // TODO: Implement CV update with ownership check
+        return Task.FromResult<CvDto?>(null);
+    }
+
+    public Task<bool> DeleteAsync(Guid id, string userId)
+    {
+        // TODO: Implement soft/hard delete with ownership check
+        return Task.FromResult(false);
+    }
+}
+ParseOptions.0.jsonõ
+4/app/src/cv-service/Services/CvVersionServiceImpl.csÕusing CvService.DTOs;
+
+namespace CvService.Services;
+
+public class CvVersionServiceImpl : ICvVersionService
+{
+    public Task<List<CvVersionDto>> GetByCvIdAsync(Guid cvId, string userId)
+    {
+        // TODO: Implement fetching versions by CV ID with ownership check
+        return Task.FromResult(new List<CvVersionDto>());
+    }
+
+    public Task<CvVersionDto?> GetByIdAsync(Guid id, string userId)
+    {
+        // TODO: Implement fetching version by ID with ownership check
+        return Task.FromResult<CvVersionDto?>(null);
+    }
+
+    public Task<CvVersionDto> CreateAsync(Guid cvId, CreateCvVersionDto dto, string userId)
+    {
+        // TODO: Implement version creation (copy from latest or create fresh)
+        throw new NotImplementedException();
+    }
+
+    public Task<bool> DeleteAsync(Guid id, string userId)
+    {
+        // TODO: Implement version deletion with ownership check
+        return Task.FromResult(false);
+    }
+}
+ParseOptions.0.jsonÄ
+1/app/src/cv-service/Services/ICvSectionService.csµusing CvService.DTOs;
+
+namespace CvService.Services;
+
+public interface ICvSectionService
+{
+    Task<List<CvSectionDto>> GetByVersionIdAsync(Guid versionId, string userId);
+    Task<CvSectionDto?> GetByTypeAsync(Guid versionId, string sectionType, string userId);
+    Task<CvSectionDto> UpsertAsync(Guid versionId, string sectionType, UpdateSectionDto dto, string userId);
+    Task<bool> DeleteAsync(Guid id, string userId);
+}
+ParseOptions.0.json«
+*/app/src/cv-service/Services/ICvService.csÉusing CvService.DTOs;
+
+namespace CvService.Services;
+
+public interface ICvService
+{
+    Task<List<CvDto>> GetAllAsync(string userId);
+    Task<CvDto?> GetByIdAsync(Guid id, string userId);
+    Task<CvDto> CreateAsync(CreateCvDto dto, string userId);
+    Task<CvDto?> UpdateAsync(Guid id, UpdateCvDto dto, string userId);
+    Task<bool> DeleteAsync(Guid id, string userId);
+}
+ParseOptions.0.json¬
+1/app/src/cv-service/Services/ICvVersionService.cs˜using CvService.DTOs;
+
+namespace CvService.Services;
+
+public interface ICvVersionService
+{
+    Task<List<CvVersionDto>> GetByCvIdAsync(Guid cvId, string userId);
+    Task<CvVersionDto?> GetByIdAsync(Guid id, string userId);
+    Task<CvVersionDto> CreateAsync(Guid cvId, CreateCvVersionDto dto, string userId);
+    Task<bool> DeleteAsync(Guid id, string userId);
+}
+ParseOptions.0.json•
+./app/src/cv-service/Validators/CvValidators.cs›using FluentValidation;
+using CvService.DTOs;
+
+namespace CvService.Validators;
+
+public class CreateCvValidator : AbstractValidator<CreateCvDto>
+{
+    public CreateCvValidator()
+    {
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage("Title is required")
+            .MaximumLength(200).WithMessage("Title must not exceed 200 characters");
+
+        RuleFor(x => x.TemplateId)
+            .NotEmpty().WithMessage("Template is required");
+    }
+}
+ParseOptions.0.jsonÃ
+A/app/src/cv-service/obj/Debug/net10.0/CvService.GlobalUsings.g.csÒ// <auto-generated/>
+global using Microsoft.AspNetCore.Builder;
+global using Microsoft.AspNetCore.Hosting;
+global using Microsoft.AspNetCore.Http;
+global using Microsoft.AspNetCore.Routing;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Hosting;
+global using Microsoft.Extensions.Logging;
+global using System;
+global using System.Collections.Generic;
+global using System.IO;
+global using System.Linq;
+global using System.Net.Http;
+global using System.Net.Http.Json;
+global using System.Threading;
+global using System.Threading.Tasks;
+ParseOptions.0.json≥
+U/app/src/cv-service/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.csƒ// <autogenerated />
+using System;
+using System.Reflection;
+[assembly: global::System.Runtime.Versioning.TargetFrameworkAttribute(".NETCoreApp,Version=v10.0", FrameworkDisplayName = ".NET 10.0")]
+ParseOptions.0.jsonÉ
+?/app/src/cv-service/obj/Debug/net10.0/CvService.AssemblyInfo.cs™//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated by a tool.
+//
+//     Changes to this file may cause incorrect behavior and will be lost if
+//     the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+using System;
+using System.Reflection;
+
+[assembly: System.Reflection.AssemblyCompanyAttribute("CvService")]
+[assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
+[assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyProductAttribute("CvService")]
+[assembly: System.Reflection.AssemblyTitleAttribute("CvService")]
+[assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
+
+// Generated by the MSBuild WriteCodeFragment class.
+
+ParseOptions.0.jsonì
+R/app/src/cv-service/obj/Debug/net10.0/CvService.MvcApplicationPartsAssemblyInfo.csß//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated by a tool.
+//
+//     Changes to this file may cause incorrect behavior and will be lost if
+//     the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+using System;
+using System.Reflection;
+
+[assembly: Microsoft.AspNetCore.Mvc.ApplicationParts.ApplicationPartAttribute("FluentValidation.AspNetCore")]
+[assembly: Microsoft.AspNetCore.Mvc.ApplicationParts.ApplicationPartAttribute("Swashbuckle.AspNetCore.SwaggerGen")]
+
+// Generated by the MSBuild WriteCodeFragment class.
+
+ParseOptions.0.json˜
+∑/app/src/cv-service/obj/Debug/net10.0/Microsoft.AspNetCore.App.SourceGenerators/Microsoft.AspNetCore.SourceGenerators.PublicProgramSourceGenerator/PublicTopLevelProgram.Generated.g.cs•// <auto-generated />
+/// <summary>
+/// Auto-generated public partial Program class for top-level statement apps.
+/// </summary>
+public partial class Program { }ParseOptions.0.json
