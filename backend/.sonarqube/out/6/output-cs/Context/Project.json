@@ -1,0 +1,7 @@
+{
+  "language": "C#",
+  "targetFramework": "net10.0",
+  "assemblyName": "ApplicationService",
+  "projectType": "Product",
+  "projectPath": "/app/src/application-service/ApplicationService.csproj"
+}

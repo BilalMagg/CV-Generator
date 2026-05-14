@@ -1,0 +1,7 @@
+organization=nour1902
+projectKey=cv-generator-backend
+serverUrl=https://sonarcloud.io
+serverVersion=8.0.0.87504
+dashboardUrl=https://sonarcloud.io/dashboard?id=cv-generator-backend
+ceTaskId=AZ4nHlU-CFT794HD61VD
+ceTaskUrl=https://sonarcloud.io/api/ce/task?id=AZ4nHlU-CFT794HD61VD
