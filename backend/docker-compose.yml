@@ -82,8 +82,10 @@ services:
       - ASPNETCORE_URLS=http://0.0.0.0:8082
       - ConnectionStrings__DefaultConnection=Host=user-db;Port=5432;Database=user_db;Username=postgres;Password=postgres
       - JWT_AUTHORITY=http://cv-keycloak:8080/realms/cv-realm
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       user-db: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     networks:
       - cv-network
 
@@ -138,6 +140,7 @@ services:
       - ConnectionStrings__DefaultConnection=Host=application-db;Port=5432;Database=application_db;Username=postgres;Password=postgres
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - JWT_AUTHORITY=http://cv-keycloak:8080/realms/cv-realm
+      - USER_SERVICE_GRPC_URL=http://cv-user-service:8082
     depends_on:
       application-db: { condition: service_healthy }
       kafka: { condition: service_healthy }
@@ -147,7 +150,8 @@ services:
   # ── Job Offer Service ────────────────────────────────────────────────────────
   job-offer-service:
     build:
-      context: ./src/job-offer-service
+      context: .
+      dockerfile: ./src/job-offer-service/Dockerfile
     container_name: cv-job-offer-service
     ports:
       - "8086:8086"

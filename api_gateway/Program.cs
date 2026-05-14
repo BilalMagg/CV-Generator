@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text;
+using Confluent.Kafka;
 using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -91,6 +92,21 @@ builder.Services.AddSwaggerGen();
 
 // ── HTTP Client for token exchange ───────────────────────────────────────────
 builder.Services.AddHttpClient();
+
+// ── Kafka Producer ──────────────────────────────────────────────────────────
+var kafkaBootstrapServers = Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS") ?? "kafka:9092";
+builder.Services.AddSingleton<IProducer<string, string>>(_ =>
+{
+    var config = new ProducerConfig
+    {
+        BootstrapServers = kafkaBootstrapServers,
+        Acks = Acks.Leader,
+        MessageTimeoutMs = 5000,
+        RequestTimeoutMs = 5000,
+        RetryBackoffMs = 100,
+    };
+    return new ProducerBuilder<string, string>(config).Build();
+});
 
 var app = builder.Build();
 
@@ -230,6 +246,14 @@ app.MapGet("/api/auth/callback", async (HttpContext ctx, IHttpClientFactory http
     // Store only the essential access_token for proxy forwarding.
     // Avoid storing id_token/refresh_token — they make the cookie too large (>4 KB).
     identity.AddClaim(new Claim("access_token", accessToken));
+
+    // Sync user to user-service and capture internal userId
+    var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
+    if (!string.IsNullOrEmpty(userId))
+    {
+        identity.AddClaim(new Claim("user_id", userId));
+    }
+
     var principal = new ClaimsPrincipal(identity);
 
     var authProps = new AuthenticationProperties
@@ -242,11 +266,6 @@ app.MapGet("/api/auth/callback", async (HttpContext ctx, IHttpClientFactory http
     authProps.Items["id_token"] = idToken;
 
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
-
-    ctx.Items["access_token"] = accessToken;
-
-    // Fire-and-forget: sync user to user-service
-    _ = SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
 
     ctx.Response.Redirect(expectedReturn);
 })
@@ -264,7 +283,7 @@ app.MapGet("/api/auth/me", async (HttpContext ctx) =>
     }
 
     var accessToken = result.Principal.FindFirstValue("access_token") ?? "";
-    var userId = result.Principal.FindFirstValue("userId")
+    var userId = result.Principal.FindFirstValue("user_id")
         ?? result.Principal.FindFirstValue("sub")
         ?? "";
     var keycloakId = result.Principal.FindFirstValue("sub") ?? "";
@@ -294,7 +313,7 @@ app.MapGet("/api/auth/me", async (HttpContext ctx) =>
 })
 .RequireCors("Default");
 
-app.MapPost("/api/auth/register", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
+app.MapPost("/api/auth/register", async (HttpContext ctx, IHttpClientFactory httpClientFactory, IProducer<string, string> kafkaProducer) =>
 {
     try
     {
@@ -326,6 +345,9 @@ app.MapPost("/api/auth/register", async (HttpContext ctx, IHttpClientFactory htt
             await ctx.Response.WriteAsJsonAsync(new { success = false, message = "User with this email already exists" });
             return;
         }
+
+        // Emit registration event to Kafka (fire-and-forget)
+        _ = PublishRegistrationEvent(kafkaProducer, email, firstName, lastName);
 
         await ctx.Response.WriteAsJsonAsync(new { success = true, message = "Account created successfully. You can now login." });
     }
@@ -361,7 +383,7 @@ app.MapReverseProxy(proxyApp =>
     });
 });
 
-async Task SyncUserAsync(IHttpClientFactory factory, string baseUrl, string token)
+async Task<string?> SyncUserAsync(IHttpClientFactory factory, string baseUrl, string token)
 {
     try
     {
@@ -373,11 +395,21 @@ async Task SyncUserAsync(IHttpClientFactory factory, string baseUrl, string toke
         {
             var body = await response.Content.ReadAsStringAsync();
             Console.Error.WriteLine($"User sync failed ({response.StatusCode}): {body}");
+            return null;
         }
+
+        var bodyJson = await response.Content.ReadFromJsonAsync<JsonElement>();
+        if (bodyJson.TryGetProperty("data", out var data) && data.TryGetProperty("id", out var id))
+        {
+            return id.GetString();
+        }
+
+        return null;
     }
     catch (Exception ex)
     {
         Console.Error.WriteLine($"User sync error: {ex.Message}");
+        return null;
     }
 }
 
@@ -465,6 +497,31 @@ async Task<bool> CreateKeycloakUserAsync(IHttpClientFactory factory, string admi
     catch
     {
         return false;
+    }
+}
+
+async Task PublishRegistrationEvent(IProducer<string, string> producer, string email, string firstName, string lastName)
+{
+    try
+    {
+        var evt = new
+        {
+            EventId = Guid.NewGuid(),
+            OccurredAt = DateTime.UtcNow,
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+        };
+        var value = System.Text.Json.JsonSerializer.Serialize(evt);
+        await producer.ProduceAsync("user.registered", new Message<string, string>
+        {
+            Key = email,
+            Value = value,
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Failed to publish registration event: {ex.Message}");
     }
 }
 

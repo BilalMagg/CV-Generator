@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using UserService;
+using UserService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,8 @@ builder.Services.AddAuthentication("TokenForward")
     .AddScheme<TokenForwardOptions, TokenForwardHandler>("TokenForward", _ => { });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
