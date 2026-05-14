@@ -1,4 +1,116 @@
 <div class="page">
-  <h1>Personal Info</h1>
-  <p>Your personal information will appear here.</p>
+  <div class="page-header">
+    <div>
+      <h1>Profile</h1>
+      <p class="subtitle">Manage your personal information and preferences</p>
+    </div>
+    @if (profile(); as p) {
+      <button class="btn btn-primary" (click)="save()" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner"></span> Saving…
+        } @else {
+          Save changes
+        }
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading profile…</p>
+    </div>
+  } @else if (error(); as err) {
+    <div class="error-banner">{{ err }}</div>
+  } @else if (profile(); as p) {
+    @if (saved()) {
+      <div class="success-banner">Profile saved successfully</div>
+    }
+
+    <div class="profile-layout">
+      <div class="profile-sidebar">
+        <div class="avatar-section">
+          <div class="avatar">
+            @if (p.avatarUrl) {
+              <img [src]="p.avatarUrl" alt="Avatar" />
+            } @else {
+              <span class="avatar-initials">{{ p.firstName[0] }}{{ p.lastName[0] }}</span>
+            }
+          </div>
+          <div class="avatar-role">{{ p.role }}</div>
+          <div class="avatar-status" [class.active]="p.isActive">
+            {{ p.isActive ? 'Active' : 'Inactive' }}
+          </div>
+        </div>
+
+        <div class="meta-section">
+          <div class="meta-item">
+            <span class="meta-label">Member since</span>
+            <span class="meta-value">{{ formatDate(p.createdAt) }}</span>
+          </div>
+          @if (p.lastLogin) {
+            <div class="meta-item">
+              <span class="meta-label">Last login</span>
+              <span class="meta-value">{{ formatDate(p.lastLogin) }}</span>
+            </div>
+          }
+          <div class="meta-item">
+            <span class="meta-label">User ID</span>
+            <span class="meta-value mono">{{ p.id | slice:0:8 }}…</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-form">
+        <div class="form-section">
+          <h3>Basic Information</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="firstName">First name</label>
+              <input id="firstName" type="text" [(ngModel)]="p.firstName" name="firstName" />
+            </div>
+            <div class="form-group">
+              <label for="lastName">Last name</label>
+              <input id="lastName" type="text" [(ngModel)]="p.lastName" name="lastName" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input id="email" type="email" [value]="p.email" disabled />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="phone">Phone number</label>
+              <input id="phone" type="tel" [(ngModel)]="p.phoneNumber" name="phone" placeholder="+1 (555) 123-4567" />
+            </div>
+            <div class="form-group">
+              <label for="birthDate">Birth date</label>
+              <input id="birthDate" type="date" [(ngModel)]="p.birthDate" name="birthDate" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Avatar</h3>
+          <div class="form-group">
+            <label for="avatarUrl">Avatar URL</label>
+            <input id="avatarUrl" type="url" [(ngModel)]="p.avatarUrl" name="avatarUrl" placeholder="https://example.com/avatar.jpg" />
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Preferences</h3>
+          <div class="form-group">
+            <label for="preferences">Preferences (JSON)</label>
+            <textarea id="preferences" [(ngModel)]="p.preferencesJson" name="preferences" rows="4" placeholder='{"theme": "dark", "notifications": true}'></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 </div>
