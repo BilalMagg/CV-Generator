@@ -522,6 +522,7 @@ async Task PublishRegistrationEvent(IProducer<string, string> producer, string e
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Failed to publish registration event: {ex.Message}");
+
     }
 }
 
