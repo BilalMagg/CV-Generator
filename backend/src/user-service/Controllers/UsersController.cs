@@ -1,4 +1,5 @@
-using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Security.Claims;
 using CVGenerator.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,6 +37,75 @@ public class UsersController : ControllerBase
         return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
     }
 
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<IActionResult> GetMe()
+    {
+        var keycloakId = User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(keycloakId))
+            return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid token"));
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
+        if (user == null)
+        {
+            user = new User
+            {
+                KeycloakId = keycloakId,
+                FirstName = User.FindFirstValue("given_name") ?? "",
+                LastName = User.FindFirstValue("family_name") ?? "",
+                Email = User.FindFirstValue("email") ?? "",
+                Role = Role.USER,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
+            _logger.LogInformation("Created user {Id} from JWT (sub={KeycloakId})", user.Id, keycloakId);
+        }
+
+        return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
+    }
+
+    [HttpPost("sync")]
+    [Authorize]
+    public async Task<IActionResult> Sync()
+    {
+        var keycloakId = User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(keycloakId))
+            return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid token"));
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
+
+        var firstName = User.FindFirstValue("given_name") ?? "";
+        var lastName = User.FindFirstValue("family_name") ?? "";
+        var email = User.FindFirstValue("email") ?? "";
+
+        if (user == null)
+        {
+            user = new User
+            {
+                KeycloakId = keycloakId,
+                FirstName = firstName,
+                LastName = lastName,
+                Email = email,
+                Role = Role.USER,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+            _db.Users.Add(user);
+            _logger.LogInformation("Created user {Id} via sync", user.Id);
+        }
+        else
+        {
+            user.FirstName = firstName;
+            user.LastName = lastName;
+            user.Email = email;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
     {
@@ -70,6 +140,8 @@ public class UsersController : ControllerBase
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
         user.PhoneNumber = dto.PhoneNumber;
+        if (dto.BirthDate != null && DateTime.TryParse(dto.BirthDate, null, System.Globalization.DateTimeStyles.AssumeUniversal, out var birthDate))
+            user.BirthDate = DateTime.SpecifyKind(birthDate, DateTimeKind.Utc);
         user.AvatarUrl = dto.AvatarUrl;
         user.PreferencesJson = dto.PreferencesJson;
 
@@ -88,7 +160,6 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
-    // DTOs
     public record CreateUserDto(
         string KeycloakId,
         string FirstName,
@@ -101,6 +172,7 @@ public class UsersController : ControllerBase
         string FirstName,
         string LastName,
         string? PhoneNumber,
+        string? BirthDate,
         string? AvatarUrl,
         string? PreferencesJson
     );

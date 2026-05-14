@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CertificationsController : ControllerBase
+public class CertificationsController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly KafkaProducerService _kafkaProducer;
@@ -24,6 +24,8 @@ public class CertificationsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= GetUserId();
+
         var certs = userId.HasValue
             ? await _db.Certifications.Where(c => c.UserId == userId.Value).ToListAsync()
             : await _db.Certifications.ToListAsync();
@@ -62,6 +64,8 @@ public class CertificationsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCertificationDto dto)
     {
+        if (dto.UserId == Guid.Empty) dto.UserId = GetRequiredUserId();
+
         var cert = new Certification
         {
             Name = dto.Name,

@@ -24,9 +24,13 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["user"],
+      "realmRoles": [
+        "user"
+      ],
       "attributes": {
-        "userId": ["00000000-0000-0000-0000-000000000001"]
+        "userId": [
+          "00000000-0000-0000-0000-000000000001"
+        ]
       }
     }
   ],
@@ -72,7 +76,7 @@
       "fullScopeAllowed": true,
       "attributes": {
         "access.token.lifespan": "3600",
-        "post.logout.redirect.uris": "http://localhost:8080/*"
+        "post.logout.redirect.uris": "http://localhost:8080/*\nhttp://localhost:4200/*"
       }
     },
     {

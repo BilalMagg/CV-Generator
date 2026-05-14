@@ -1,36 +1,39 @@
-<h2>{{ entity | uppercase }}</h2>
-
-<hr>
-
-<!-- bouton ajouter -->
-<button [routerLink]="['/my-cv', entity, 'add']">
-  + Add {{ entity }}
-</button>
-
-<hr>
-
-<!-- liste des items -->
-@for(item of data; track item) {
-
-  <div class="card"
-   (click)="goToDetail(item.id)">
-
-    <!-- affichage générique -->
-    <h3>
-      {{ item.title || item.name }}
-    </h3>
-
-    <!-- affichage complet (debug utile au début) -->
-    <pre>{{ item | json }}</pre>
-
-    <!-- actions -->
+<div class="entity-list-container">
+  <div class="header-actions">
+    <div class="title-group">
+      <h2>{{ entity | titlecase }}</h2>
+      <p class="count">{{ data.length }} items found</p>
+    </div>
     
-
+    <button class="btn btn-primary" [routerLink]="['/my-cv', entity, 'add']">
+      <span class="icon">+</span>
+      Add {{ entity | titlecase }}
+    </button>
   </div>
 
-}
+  <div class="grid-layout" *ngIf="data.length > 0">
+    <div *ngFor="let item of data" class="grid-item">
+      <app-entity-card
+        [title]="getCardData(item).title"
+        [subtitle]="getCardData(item).subtitle || ''"
+        [typeLabel]="getCardData(item).typeLabel"
+        [meta]="getCardData(item).meta || ''"
+        [footer]="getCardData(item).footer || ''"
+        [isCompleted]="getCardData(item).isCompleted || false"
+        (click)="goToDetail(item.id)"
+      ></app-entity-card>
+    </div>
+  </div>
 
-<!-- si aucune donnée -->
-@if(data.length === 0) {
-  <p>No {{ entity }} found</p>
-}
+  <div class="empty-state" *ngIf="data.length === 0">
+    <div class="empty-icon">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12 8V12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12 16H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h3>No {{ entity }} found</h3>
+    <p>Click the button above to add your first {{ entity }}.</p>
+  </div>
+</div>

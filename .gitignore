@@ -57,3 +57,5 @@ CV_Generator.sln
 *.terraform*
 terraform.tfstate*
 venv/
+
+cv-generator.sln

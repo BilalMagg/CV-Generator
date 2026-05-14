@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using CVGenerator.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ using FluentValidation;
 namespace ApplicationService.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class ApplicationsController : ControllerBase
 {
@@ -36,18 +38,35 @@ public class ApplicationsController : ControllerBase
     private string? GetUserId()
     {
         return User.FindFirst("sub")?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? User.FindFirst("local_user_id")?.Value;
+    }
+
+    private Guid? GetUserCandidateId()
+    {
+        var sub = GetUserId();
+        if (sub == null) return null;
+        return Guid.TryParse(sub, out var guid) ? guid : null;
+    }
+
+    private async Task<bool> OwnsApplicationAsync(Guid appId, Guid candidateId)
+    {
+        var app = await _service.GetByIdAsync(appId);
+        return app?.CandidateId == candidateId;
     }
 
     /// GET /applications
     [HttpGet]
     public async Task<IActionResult> GetAll(
-        [FromQuery] Guid? candidateId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
 
         var result = await _service.GetAllAsync(candidateId, page, pageSize);
         return Ok(ApiResponse<ApplicationListDto>.Ok(result));
@@ -57,6 +76,13 @@ public class ApplicationsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        if (!await OwnsApplicationAsync(id, candidateId.Value))
+            return NotFound(ApiResponse<ApplicationResponseDto>.Error("Application not found"));
+
         var app = await _service.GetByIdAsync(id);
         if (app == null) return NotFound(ApiResponse<ApplicationResponseDto>.Error("Application not found"));
         return Ok(ApiResponse<ApplicationResponseDto>.Ok(app));
@@ -66,9 +92,16 @@ public class ApplicationsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateApplicationDto dto)
     {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
         var validation = await _createValidator.ValidateAsync(dto);
         if (!validation.IsValid)
             return BadRequest(ApiResponse<ApplicationResponseDto>.Error(validation.Errors.First().ErrorMessage));
+
+        // Force CandidateId to the authenticated user
+        dto = dto with { CandidateId = candidateId.Value };
 
         var created = await _service.CreateAsync(dto, GetUserId());
         return Created($"/api/applications/{created.Id}", ApiResponse<ApplicationResponseDto>.Created(created));
@@ -78,6 +111,13 @@ public class ApplicationsController : ControllerBase
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusDto dto)
     {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        if (!await OwnsApplicationAsync(id, candidateId.Value))
+            return NotFound(ApiResponse<object>.Error("Application not found"));
+
         var validation = await _statusValidator.ValidateAsync(dto);
         if (!validation.IsValid)
             return BadRequest(ApiResponse<ApplicationResponseDto>.Error(validation.Errors.First().ErrorMessage));
@@ -91,6 +131,13 @@ public class ApplicationsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateApplicationDto dto)
     {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        if (!await OwnsApplicationAsync(id, candidateId.Value))
+            return NotFound(ApiResponse<object>.Error("Application not found"));
+
         var validation = await _updateValidator.ValidateAsync(dto);
         if (!validation.IsValid)
             return BadRequest(ApiResponse<ApplicationResponseDto>.Error(validation.Errors.First().ErrorMessage));
@@ -104,6 +151,13 @@ public class ApplicationsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        if (!await OwnsApplicationAsync(id, candidateId.Value))
+            return NotFound(ApiResponse<object>.Error("Application not found"));
+
         var deleted = await _service.DeleteAsync(id);
         if (!deleted) return NotFound(ApiResponse<object>.Error("Application not found"));
         return NoContent();
@@ -111,8 +165,12 @@ public class ApplicationsController : ControllerBase
 
     /// GET /applications/statistics
     [HttpGet("statistics")]
-    public async Task<IActionResult> GetStatistics([FromQuery] Guid? candidateId)
+    public async Task<IActionResult> GetStatistics()
     {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
         var stats = await _service.GetStatisticsAsync(candidateId);
         return Ok(ApiResponse<ApplicationStatisticsDto>.Ok(stats));
     }

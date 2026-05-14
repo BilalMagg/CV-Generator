@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+
 COPY services/common-tools services/common-tools
 RUN pip install --no-cache-dir --timeout 120 -e ./services/common-tools
 

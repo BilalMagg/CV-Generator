@@ -1,0 +1,58 @@
+.topbar {
+  padding: .875rem 1.5rem; background: var(--color-background-primary);
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  display: flex; align-items: center; gap: 10px;
+}
+.back-btn {
+  width: 28px; height: 28px; border-radius: var(--border-radius-md);
+  border: 0.5px solid var(--color-border-secondary); background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--color-text-secondary); cursor: pointer;
+}
+.topbar-title { font-size: 15px; font-weight: 500; color: var(--color-text-primary); }
+
+.form-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; max-width: 680px; }
+form { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.alert { padding: .75rem 1rem; border-radius: var(--border-radius-md); font-size: 13px; }
+.alert-error { background: var(--color-danger-bg); color: var(--color-danger-text); }
+
+.section { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+.section-header {
+  padding: .875rem 1.25rem; border-bottom: 0.5px solid var(--color-border-tertiary);
+  font-size: 13px; font-weight: 500; color: var(--color-text-primary);
+  display: flex; align-items: center; gap: 8px;
+}
+.section-header i { font-size: 15px; color: var(--color-accent); }
+.section-body { padding: 1.25rem; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field.full { grid-column: 1 / -1; }
+label { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
+.req { color: var(--color-danger); }
+input, select, textarea {
+  width: 100%; padding: 8px 12px; font-size: 13px;
+  border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary); color: var(--color-text-primary);
+  font-family: var(--font-sans); outline: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--color-accent); background: var(--color-background-primary); }
+textarea { resize: vertical; min-height: 80px; }
+
+.footer {
+  padding: 1rem 1.5rem; background: var(--color-background-primary);
+  border-top: 0.5px solid var(--color-border-tertiary);
+  display: flex; justify-content: flex-end; gap: 10px;
+}
+.cancel-btn {
+  padding: 8px 18px; border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md); background: transparent;
+  font-size: 13px; cursor: pointer; color: var(--color-text-secondary); font-family: var(--font-sans);
+}
+.create-btn {
+  padding: 8px 22px; border: none; border-radius: var(--border-radius-md);
+  background: var(--color-accent); color: #fff; font-size: 13px; font-weight: 500;
+  cursor: pointer; font-family: var(--font-sans);
+}
+.create-btn:disabled { background: var(--color-background-secondary); color: var(--color-text-tertiary); cursor: not-allowed; }
+
+:host { display: flex; flex-direction: column; height: 100%; }

@@ -6,6 +6,7 @@ interface NavItem {
   label: string;
   route: string;
   icon: string;
+  exact?: boolean;
 }
 
 @Component({
@@ -19,14 +20,7 @@ export class SidebarComponent {
   private router = inject(Router);
 
   navItems: NavItem[] = [
-    { label: 'Applications',  route: '/applications',  icon: 'applications' },
-    { label: 'Experience',    route: '/experience',    icon: 'experience' },
-    { label: 'Personal Info', route: '/personal-info', icon: 'personal' },
-    { label: 'Education',     route: '/education',     icon: 'education' },
-    { label: 'Skills',        route: '/skills',        icon: 'skills' },
+    { label: 'Applications',  route: '/applications/dashboard',  icon: 'applications', exact: false },
+    { label: 'My CV',         route: '/my-cv',                   icon: 'my-cv',        exact: false },
   ];
-
-  isActive(route: string): boolean {
-    return this.router.url === route;
-  }
 }

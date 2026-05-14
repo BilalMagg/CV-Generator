@@ -26,6 +26,12 @@ public class ProjectsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        // Try to get userId from header/middleware if not in query
+        if (!userId.HasValue && HttpContext.Items.TryGetValue("UserId", out var idStr) && Guid.TryParse(idStr?.ToString(), out var guid))
+        {
+            userId = guid;
+        }
+
         var projects = userId.HasValue
             ? await _db.Projects.Where(p => p.UserId == userId.Value).ToListAsync()
             : await _db.Projects.ToListAsync();
@@ -77,6 +83,12 @@ public class ProjectsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateProjectDto dto)
     {
+        // Auto-fill UserId from header if missing in DTO
+        if (dto.UserId == Guid.Empty && HttpContext.Items.TryGetValue("UserId", out var idStr) && Guid.TryParse(idStr?.ToString(), out var guid))
+        {
+            dto.UserId = guid;
+        }
+
         var project = new Project
         {
             Title = dto.Title,

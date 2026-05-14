@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ExperiencesController : ControllerBase
+public class ExperiencesController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly ILogger<ExperiencesController> _logger;
@@ -26,6 +26,8 @@ public class ExperiencesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= GetUserId();
+
         var experiences = userId.HasValue
             ? await _db.Experiences.Where(e => e.UserId == userId.Value).ToListAsync()
             : await _db.Experiences.ToListAsync();
@@ -71,6 +73,8 @@ public class ExperiencesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateExperienceDto dto)
     {
+        if (dto.UserId == Guid.Empty) dto.UserId = GetRequiredUserId();
+
         var exp = new Experience
         {
             Title = dto.Title,

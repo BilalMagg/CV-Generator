@@ -1,20 +1,39 @@
-<h2>Detail {{ entity }}</h2>
+<div class="detail-container" *ngIf="item">
+  <div class="detail-header">
+    <button class="back-link" (click)="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="icon">
+        <path d="M19 12H5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back to {{ entity | titlecase }}
+    </button>
+    
+    <div class="header-main">
+      <h2>{{ entity | titlecase }} Details</h2>
+      <div class="actions">
+        <button class="btn btn-secondary" (click)="goToEdit()">
+          Edit
+        </button>
+        <button class="btn btn-danger" (click)="deleteItem()">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
 
-@if(entity === 'projects') {
-  <h3>{{ item.title }}</h3>
-  <p>{{ item.description }}</p>
-  <a>{{ item.link }}</a>
-}
-
-@if(entity === 'skills') {
-  <h3>{{ item.name }}</h3>
-  <p>Level: {{ item.level }}</p>
-}
-
-@if(entity === 'experiences') {
-  <h3>{{ item.company }}</h3>
-  <p>{{ item.role }}</p>
-  <p>{{ item.date }}</p>
-}
-
-<button (click)="goToEdit()">Edit</button>
+  <div class="detail-card">
+    <div class="info-grid">
+      <div *ngFor="let field of fields" class="info-item" [class.full-width]="field.type === 'textarea'">
+        <label>{{ field.label }}</label>
+        <div class="value">
+          <ng-container *ngIf="field.type !== 'textarea'; else textareaVal">
+            {{ getFieldValue(field.name) }}
+          </ng-container>
+          <ng-template #textareaVal>
+            <p class="description-text">{{ getFieldValue(field.name) }}</p>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

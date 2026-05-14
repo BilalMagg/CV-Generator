@@ -1,0 +1,54 @@
+<div class="topbar">
+  <button class="back-btn" (click)="router.navigate(['/applications/list'])"><i class="ti ti-arrow-left"></i></button>
+  <div class="topbar-title">New application</div>
+</div>
+
+<div class="form-body">
+  @if (error()) {
+    <div class="alert alert-error">{{ error() }}</div>
+  }
+
+  <form (ngSubmit)="onSubmit()">
+    <div class="section">
+      <div class="section-header"><i class="ti ti-building"></i> Company & position</div>
+      <div class="section-body">
+        <div class="field">
+          <label>Company name <span class="req">*</span></label>
+          <input type="text" placeholder="e.g. Stripe" [(ngModel)]="companyName" name="companyName" required>
+        </div>
+        <div class="field">
+          <label>Position title <span class="req">*</span></label>
+          <input type="text" placeholder="e.g. Senior Backend Engineer" [(ngModel)]="positionTitle" name="positionTitle" required>
+        </div>
+        <div class="field">
+          <label>Source</label>
+          <select [(ngModel)]="offerSource" name="offerSource">
+            <option value="">Select source</option>
+            <option value="LinkedIn">LinkedIn</option>
+            <option value="Indeed">Indeed</option>
+            <option value="Referral">Referral</option>
+            <option value="Company website">Company website</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header"><i class="ti ti-notes"></i> Details</div>
+      <div class="section-body">
+        <div class="field full">
+          <label>Notes</label>
+          <textarea placeholder="Any context about this application…" [(ngModel)]="notes" name="notes"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button type="button" class="cancel-btn" (click)="router.navigate(['/applications/list'])">Cancel</button>
+      <button type="submit" class="create-btn" [disabled]="submitting() || !isFormValid">
+        {{ submitting() ? 'Creating...' : 'Create application' }}
+      </button>
+    </div>
+  </form>
+</div>

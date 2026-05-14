@@ -1,21 +1,69 @@
-<h2>Add {{ entity }}</h2>
+<div class="form-container">
+  <div class="form-header">
+    <h2>{{ id ? 'Edit' : 'Add' }} {{ entity | titlecase }}</h2>
+    <p class="subtitle">Enter the details for your {{ entity }}</p>
+  </div>
 
-<form (ngSubmit)="submit()">
+  <form (ngSubmit)="submit()" class="dynamic-form">
+    <div class="fields-grid">
+      <div *ngFor="let field of fields" class="form-group" [class.full-width]="field.type === 'textarea'">
+        <label [for]="field.name">{{ field.label }} <span *ngIf="field.required" class="required">*</span></label>
+        
+        <!-- Text Input -->
+        <input *ngIf="field.type === 'text'" 
+          [type]="field.type" 
+          [id]="field.name" 
+          [(ngModel)]="form[field.name]" 
+          [name]="field.name" 
+          [placeholder]="field.placeholder || ''"
+          [required]="field.required || false"
+          class="form-control" />
 
-  <!-- TITLE -->
-  @if(entity === 'projects') {
-    <input [(ngModel)]="form.title" name="title" placeholder="Title" />
-    <input [(ngModel)]="form.description" name="description" placeholder="Description" />
-  }
+        <!-- Number Input -->
+        <input *ngIf="field.type === 'number'" 
+          type="number" 
+          [id]="field.name" 
+          [(ngModel)]="form[field.name]" 
+          [name]="field.name" 
+          class="form-control" />
 
-  <!-- SKILLS -->
-  @if(entity === 'skills') {
-    <input [(ngModel)]="form.name" name="name" placeholder="Skill name" />
-    <input [(ngModel)]="form.level" name="level" placeholder="Level" />
-  }
+        <!-- Date Input -->
+        <input *ngIf="field.type === 'date'" 
+          type="date" 
+          [id]="field.name" 
+          [(ngModel)]="form[field.name]" 
+          [name]="field.name" 
+          class="form-control" />
 
-  <button type="submit">
-    Save
-  </button>
+        <!-- Textarea -->
+        <textarea *ngIf="field.type === 'textarea'" 
+          [id]="field.name" 
+          [(ngModel)]="form[field.name]" 
+          [name]="field.name" 
+          [placeholder]="field.placeholder || ''"
+          rows="4"
+          class="form-control"></textarea>
 
-</form>
+        <!-- Select -->
+        <select *ngIf="field.type === 'select'" 
+          [id]="field.name" 
+          [(ngModel)]="form[field.name]" 
+          [name]="field.name" 
+          class="form-control">
+          <option *ngFor="let opt of field.options" [value]="opt">{{ opt }}</option>
+        </select>
+
+        <!-- Checkbox -->
+        <div *ngIf="field.type === 'checkbox'" class="checkbox-group">
+          <input type="checkbox" [id]="field.name" [(ngModel)]="form[field.name]" [name]="field.name" />
+          <label [for]="field.name" class="checkbox-label">{{ field.label }}</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="cancel()">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+</div>

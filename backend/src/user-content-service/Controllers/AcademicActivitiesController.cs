@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AcademicActivitiesController : ControllerBase
+public class AcademicActivitiesController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly KafkaProducerService _kafkaProducer;
@@ -24,6 +24,8 @@ public class AcademicActivitiesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= GetUserId();
+
         var activities = userId.HasValue
             ? await _db.AcademicActivities.Where(a => a.UserId == userId.Value).ToListAsync()
             : await _db.AcademicActivities.ToListAsync();
@@ -64,6 +66,8 @@ public class AcademicActivitiesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAcademicActivityDto dto)
     {
+        if (dto.UserId == Guid.Empty) dto.UserId = GetRequiredUserId();
+
         var a = new AcademicActivity
         {
             Title = dto.Title,
