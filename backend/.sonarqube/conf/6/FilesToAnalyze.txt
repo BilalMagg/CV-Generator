@@ -13,6 +13,7 @@
 /app/src/application-service/Repositories/ApplicationStatusHistoryRepository.cs
 /app/src/application-service/Services/ApplicationServiceImpl.cs
 /app/src/application-service/Services/KafkaPublisher.cs
+/app/src/application-service/Services/UserGrpcClientService.cs
 /app/src/application-service/Validators/ApplicationValidators.cs
 /app/src/application-service/obj/Debug/net10.0/ApplicationService.GlobalUsings.g.cs
 /app/src/application-service/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs

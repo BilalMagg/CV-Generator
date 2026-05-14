@@ -5,7 +5,7 @@
   "outputKind": "ConsoleApplication",
   "scriptClassName": "Script",
   "usings": [],
-  "moduleName": "CvService.dll",
+  "moduleName": "job-offer-service.dll",
   "optionCompareText": false,
   "optionExplicit": false,
   "optionInfer": false,

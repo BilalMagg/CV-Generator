@@ -1,134 +1,810 @@
-1
+¨
+.backend.src.shared.exceptions.BaseApiExceptionSystem.Exceptionobject´
+<BaseApiException(string, System.Net.HttpStatusCode, object?)kbackend.src.shared.exceptions.BaseApiException.BaseApiException(string, System.Net.HttpStatusCode, object?)O
+StatusCode.get=backend.src.shared.exceptions.BaseApiException.StatusCode.getO
+StatusCode.set=backend.src.shared.exceptions.BaseApiException.StatusCode.setG
+
+Errors.get9backend.src.shared.exceptions.BaseApiException.Errors.getG
+
+Errors.set9backend.src.shared.exceptions.BaseApiException.Errors.setÂ
+7backend.src.infrastructure.database.AppDbContextFactoryobjectJMicrosoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory<TContext>n
+CreateDbContext(string[])Qbackend.src.infrastructure.database.AppDbContextFactory.CreateDbContext(string[])f
+AppDbContextFactory()Mbackend.src.infrastructure.database.AppDbContextFactory.AppDbContextFactory()õ
+AppDbContext'Microsoft.EntityFrameworkCore.DbContextobject•
+JAppDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<AppDbContext>)WAppDbContext.AppDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<AppDbContext>)á
+;OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder)HAppDbContext.OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder)#
+	Users.getAppDbContext.Users.get#
+	Users.setAppDbContext.Users.set)
+Projects.getAppDbContext.Projects.get)
+Projects.setAppDbContext.Projects.set/
+Experiences.getAppDbContext.Experiences.get/
+Experiences.setAppDbContext.Experiences.set%
+
+Skills.getAppDbContext.Skills.get%
+
+Skills.setAppDbContext.Skills.set+
+Workflows.getAppDbContext.Workflows.get+
+Workflows.setAppDbContext.Workflows.set1
 Programobject
-	Program()Program.Program()˝
-:NotificationService.Application.DTOs.NotificationResultDtoobjectm
-NotificationResultDto()RNotificationService.Application.DTOs.NotificationResultDto.NotificationResultDto()K
-Id.getANotificationService.Application.DTOs.NotificationResultDto.Id.getK
-Id.setANotificationService.Application.DTOs.NotificationResultDto.Id.setO
-Type.getCNotificationService.Application.DTOs.NotificationResultDto.Type.getO
-Type.setCNotificationService.Application.DTOs.NotificationResultDto.Type.setU
-Subject.getFNotificationService.Application.DTOs.NotificationResultDto.Subject.getU
-Subject.setFNotificationService.Application.DTOs.NotificationResultDto.Subject.setS
+	Program()Program.Program()˝
+backend.Migrations.AddPgVector2Microsoft.EntityFrameworkCore.Migrations.Migrationobjectù
+=Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)\backend.Migrations.AddPgVector.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)°
+?Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)^backend.Migrations.AddPgVector.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)õ
+<BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)[backend.Migrations.AddPgVector.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)=
+AddPgVector(),backend.Migrations.AddPgVector.AddPgVector()ã
+ backend.Migrations.initialCreate2Microsoft.EntityFrameworkCore.Migrations.Migrationobjectü
+=Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)^backend.Migrations.initialCreate.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)£
+?Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)`backend.Migrations.initialCreate.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)ù
+<BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)]backend.Migrations.initialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)C
+initialCreate()0backend.Migrations.initialCreate.initialCreate()û
+*backend.src.middleware.ExceptionMiddlewareobject—
+êExceptionMiddleware(Microsoft.AspNetCore.Http.RequestDelegate, Microsoft.Extensions.Logging.ILogger<backend.src.middleware.ExceptionMiddleware>)ªbackend.src.middleware.ExceptionMiddleware.ExceptionMiddleware(Microsoft.AspNetCore.Http.RequestDelegate, Microsoft.Extensions.Logging.ILogger<backend.src.middleware.ExceptionMiddleware>)ì
+2InvokeAsync(Microsoft.AspNetCore.Http.HttpContext)]backend.src.middleware.ExceptionMiddleware.InvokeAsync(Microsoft.AspNetCore.Http.HttpContext)˝
+backend.Migrations.AddKeycloak2Microsoft.EntityFrameworkCore.Migrations.Migrationobjectù
+=Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)\backend.Migrations.AddKeycloak.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)°
+?Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)^backend.Migrations.AddKeycloak.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)õ
+<BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)[backend.Migrations.AddKeycloak.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)=
+AddKeycloak(),backend.Migrations.AddKeycloak.AddKeycloak()∆
+3backend.src.features.auth.controller.AuthController'Microsoft.AspNetCore.Mvc.ControllerBaseobject∫
+AAuthController(backend.src.features.auth.interfaces.IAuthService)ubackend.src.features.auth.controller.AuthController.AuthController(backend.src.features.auth.interfaces.IAuthService)T
+Login(string?)Bbackend.src.features.auth.controller.AuthController.Login(string?)Z
+Callback(string?)Ebackend.src.features.auth.controller.AuthController.Callback(string?)V
+Logout(string?)Cbackend.src.features.auth.controller.AuthController.Logout(string?)`
+AfterLogout(string?)Hbackend.src.features.auth.controller.AuthController.AfterLogout(string?)X
+GetCurrentUser()Dbackend.src.features.auth.controller.AuthController.GetCurrentUser()T
+RefreshToken()Bbackend.src.features.auth.controller.AuthController.RefreshToken()H
+Denied()<backend.src.features.auth.controller.AuthController.Denied()∫
+ARegister(backend.src.features.auth.interfaces.RegisterRequestDto)ubackend.src.features.auth.controller.AuthController.Register(backend.src.features.auth.interfaces.RegisterRequestDto)ã
+ backend.Migrations.AddVectorType2Microsoft.EntityFrameworkCore.Migrations.Migrationobjectü
+=Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)^backend.Migrations.AddVectorType.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)£
+?Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)`backend.Migrations.AddVectorType.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)ù
+<BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)]backend.Migrations.AddVectorType.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)C
+AddVectorType()0backend.Migrations.AddVectorType.AddVectorType()„
+/backend.src.shared.exceptions.ConflictException.backend.src.shared.exceptions.BaseApiExceptionSystem.Exceptionobjectf
+ConflictException(string)Ibackend.src.shared.exceptions.ConflictException.ConflictException(string)˚
+,backend.Migrations.AppDbContextModelSnapshot:Microsoft.EntityFrameworkCore.Infrastructure.ModelSnapshotobjectù
+6BuildModel(Microsoft.EntityFrameworkCore.ModelBuilder)cbackend.Migrations.AppDbContextModelSnapshot.BuildModel(Microsoft.EntityFrameworkCore.ModelBuilder)g
+AppDbContextModelSnapshot()Hbackend.Migrations.AppDbContextModelSnapshot.AppDbContextModelSnapshot()„
+/backend.src.shared.exceptions.NotFoundException.backend.src.shared.exceptions.BaseApiExceptionSystem.Exceptionobjectf
+NotFoundException(string)Ibackend.src.shared.exceptions.NotFoundException.NotFoundException(string)˝
+1backend.src.shared.exceptions.ValidationException.backend.src.shared.exceptions.BaseApiExceptionSystem.Exceptionobject~
+$ValidationException(string, object?)Vbackend.src.shared.exceptions.ValidationException.ValidationException(string, object?)µ
+?backend.src.features.experience.controller.ExperienceController'Microsoft.AspNetCore.Mvc.ControllerBaseobjectÎ
+SExperienceController(backend.src.features.experience.interfaces.IExperienceService)ìbackend.src.features.experience.controller.ExperienceController.ExperienceController(backend.src.features.experience.interfaces.IExperienceService)T
+GetAll()Hbackend.src.features.experience.controller.ExperienceController.GetAll()l
+GetById(System.Guid)Tbackend.src.features.experience.controller.ExperienceController.GetById(System.Guid)¬
+?Create(backend.src.features.experience.dto.CreateExperienceDto)backend.src.features.experience.controller.ExperienceController.Create(backend.src.features.experience.dto.CreateExperienceDto)›
+LUpdate(System.Guid, backend.src.features.experience.dto.UpdateExperienceDto)åbackend.src.features.experience.controller.ExperienceController.Update(System.Guid, backend.src.features.experience.dto.UpdateExperienceDto)j
+Delete(System.Guid)Sbackend.src.features.experience.controller.ExperienceController.Delete(System.Guid)°
+Hbackend.src.features.auth.controller.AuthController.TokenRefreshResponseobjecty
+TokenRefreshResponse()_backend.src.features.auth.controller.AuthController.TokenRefreshResponse.TokenRefreshResponse()k
+AccessToken.getXbackend.src.features.auth.controller.AuthController.TokenRefreshResponse.AccessToken.getk
+AccessToken.setXbackend.src.features.auth.controller.AuthController.TokenRefreshResponse.AccessToken.setm
+RefreshToken.getYbackend.src.features.auth.controller.AuthController.TokenRefreshResponse.RefreshToken.getm
+RefreshToken.setYbackend.src.features.auth.controller.AuthController.TokenRefreshResponse.RefreshToken.setc
+IdToken.getTbackend.src.features.auth.controller.AuthController.TokenRefreshResponse.IdToken.getc
+IdToken.setTbackend.src.features.auth.controller.AuthController.TokenRefreshResponse.IdToken.setg
+ExpiresIn.getVbackend.src.features.auth.controller.AuthController.TokenRefreshResponse.ExpiresIn.getg
+ExpiresIn.setVbackend.src.features.auth.controller.AuthController.TokenRefreshResponse.ExpiresIn.set¡
 
-IsRead.getENotificationService.Application.DTOs.NotificationResultDto.IsRead.getS
+.backend.src.features.auth.dto.LoginResponseDtoobjectW
+LoginResponseDto()Abackend.src.features.auth.dto.LoginResponseDto.LoginResponseDto()G
 
-IsRead.setENotificationService.Application.DTOs.NotificationResultDto.IsRead.setY
-CreatedAt.getHNotificationService.Application.DTOs.NotificationResultDto.CreatedAt.getY
-CreatedAt.setHNotificationService.Application.DTOs.NotificationResultDto.CreatedAt.set√
-8NotificationService.Application.DTOs.SendNotificationDtoobjectg
-SendNotificationDto()NNotificationService.Application.DTOs.SendNotificationDto.SendNotificationDto()Q
+UserId.get9backend.src.features.auth.dto.LoginResponseDto.UserId.getG
 
-UserId.getCNotificationService.Application.DTOs.SendNotificationDto.UserId.getQ
+UserId.set9backend.src.features.auth.dto.LoginResponseDto.UserId.setO
+KeycloakId.get=backend.src.features.auth.dto.LoginResponseDto.KeycloakId.getO
+KeycloakId.set=backend.src.features.auth.dto.LoginResponseDto.KeycloakId.setM
+FirstName.get<backend.src.features.auth.dto.LoginResponseDto.FirstName.getM
+FirstName.set<backend.src.features.auth.dto.LoginResponseDto.FirstName.setK
+LastName.get;backend.src.features.auth.dto.LoginResponseDto.LastName.getK
+LastName.set;backend.src.features.auth.dto.LoginResponseDto.LastName.setE
+	Email.get8backend.src.features.auth.dto.LoginResponseDto.Email.getE
+	Email.set8backend.src.features.auth.dto.LoginResponseDto.Email.setC
+Role.get7backend.src.features.auth.dto.LoginResponseDto.Role.getC
+Role.set7backend.src.features.auth.dto.LoginResponseDto.Role.setK
+IsActive.get;backend.src.features.auth.dto.LoginResponseDto.IsActive.getK
+IsActive.set;backend.src.features.auth.dto.LoginResponseDto.IsActive.setG
 
-UserId.setCNotificationService.Application.DTOs.SendNotificationDto.UserId.setO
-	Email.getBNotificationService.Application.DTOs.SendNotificationDto.Email.getO
-	Email.setBNotificationService.Application.DTOs.SendNotificationDto.Email.setW
-FirstName.getFNotificationService.Application.DTOs.SendNotificationDto.FirstName.getW
-FirstName.setFNotificationService.Application.DTOs.SendNotificationDto.FirstName.setM
-Data.getANotificationService.Application.DTOs.SendNotificationDto.Data.getM
-Data.setANotificationService.Application.DTOs.SendNotificationDto.Data.setÃ
--notification_service.Migrations.InitialCreate2Microsoft.EntityFrameworkCore.Migrations.Migrationobject¨
-=Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)knotification_service.Migrations.InitialCreate.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)∞
-?Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)mnotification_service.Migrations.InitialCreate.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)™
-<BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)jnotification_service.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)P
-InitialCreate()=notification_service.Migrations.InitialCreate.InitialCreate()–
-Bnotification_service.Migrations.NotificationDbContextModelSnapshot:Microsoft.EntityFrameworkCore.Infrastructure.ModelSnapshotobject≥
-6BuildModel(Microsoft.EntityFrameworkCore.ModelBuilder)ynotification_service.Migrations.NotificationDbContextModelSnapshot.BuildModel(Microsoft.EntityFrameworkCore.ModelBuilder)è
-$NotificationDbContextModelSnapshot()gnotification_service.Migrations.NotificationDbContextModelSnapshot.NotificationDbContextModelSnapshot()≠
-0NotificationService.Domain.Entities.NotificationobjectQ
-Notification()?NotificationService.Domain.Entities.Notification.Notification()A
-Id.get7NotificationService.Domain.Entities.Notification.Id.getA
-Id.set7NotificationService.Domain.Entities.Notification.Id.setI
+Tokens.get9backend.src.features.auth.dto.LoginResponseDto.Tokens.getG
 
-UserId.get;NotificationService.Domain.Entities.Notification.UserId.getI
+Tokens.set9backend.src.features.auth.dto.LoginResponseDto.Tokens.setì
+*backend.src.features.auth.dto.TokenInfoDtoobjectK
+TokenInfoDto()9backend.src.features.auth.dto.TokenInfoDto.TokenInfoDto()M
+AccessToken.get:backend.src.features.auth.dto.TokenInfoDto.AccessToken.getM
+AccessToken.set:backend.src.features.auth.dto.TokenInfoDto.AccessToken.setO
+RefreshToken.get;backend.src.features.auth.dto.TokenInfoDto.RefreshToken.getO
+RefreshToken.set;backend.src.features.auth.dto.TokenInfoDto.RefreshToken.setE
+IdToken.get6backend.src.features.auth.dto.TokenInfoDto.IdToken.getE
+IdToken.set6backend.src.features.auth.dto.TokenInfoDto.IdToken.setI
+ExpiresAt.get8backend.src.features.auth.dto.TokenInfoDto.ExpiresAt.getI
+ExpiresAt.set8backend.src.features.auth.dto.TokenInfoDto.ExpiresAt.setU
+HasRefreshToken.get>backend.src.features.auth.dto.TokenInfoDto.HasRefreshToken.getU
+HasRefreshToken.set>backend.src.features.auth.dto.TokenInfoDto.HasRefreshToken.setÒ
++backend.src.features.auth.dto.UserClaimsDtoobjectN
+UserClaimsDto();backend.src.features.auth.dto.UserClaimsDto.UserClaimsDto()L
+KeycloakId.get:backend.src.features.auth.dto.UserClaimsDto.KeycloakId.getL
+KeycloakId.set:backend.src.features.auth.dto.UserClaimsDto.KeycloakId.setB
+	Email.get5backend.src.features.auth.dto.UserClaimsDto.Email.getB
+	Email.set5backend.src.features.auth.dto.UserClaimsDto.Email.setH
+Username.get8backend.src.features.auth.dto.UserClaimsDto.Username.getH
+Username.set8backend.src.features.auth.dto.UserClaimsDto.Username.setJ
+FirstName.get9backend.src.features.auth.dto.UserClaimsDto.FirstName.getJ
+FirstName.set9backend.src.features.auth.dto.UserClaimsDto.FirstName.setH
+LastName.get8backend.src.features.auth.dto.UserClaimsDto.LastName.getH
+LastName.set8backend.src.features.auth.dto.UserClaimsDto.LastName.setB
+	Roles.get5backend.src.features.auth.dto.UserClaimsDto.Roles.getB
+	Roles.set5backend.src.features.auth.dto.UserClaimsDto.Roles.set≈
++backend.src.shared.filters.ValidationFilterobject.Microsoft.AspNetCore.Mvc.Filters.IActionFilterƒ
+JOnActionExecuting(Microsoft.AspNetCore.Mvc.Filters.ActionExecutingContext)vbackend.src.shared.filters.ValidationFilter.OnActionExecuting(Microsoft.AspNetCore.Mvc.Filters.ActionExecutingContext)¿
+HOnActionExecuted(Microsoft.AspNetCore.Mvc.Filters.ActionExecutedContext)tbackend.src.shared.filters.ValidationFilter.OnActionExecuted(Microsoft.AspNetCore.Mvc.Filters.ActionExecutedContext)T
+ValidationFilter()>backend.src.shared.filters.ValidationFilter.ValidationFilter()6
+4backend.src.features.auth.interfaces.IAuthRepository±
++backend.src.shared.responses.ApiResponse<T>objectJ
+ApiResponse()9backend.src.shared.responses.ApiResponse<T>.ApiResponse()F
+Success.get7backend.src.shared.responses.ApiResponse<T>.Success.getF
+Success.set7backend.src.shared.responses.ApiResponse<T>.Success.setF
+Message.get7backend.src.shared.responses.ApiResponse<T>.Message.getF
+Message.set7backend.src.shared.responses.ApiResponse<T>.Message.set@
+Data.get4backend.src.shared.responses.ApiResponse<T>.Data.get@
+Data.set4backend.src.shared.responses.ApiResponse<T>.Data.setD
 
-UserId.set;NotificationService.Domain.Entities.Notification.UserId.setO
-UserEmail.get>NotificationService.Domain.Entities.Notification.UserEmail.getO
-UserEmail.set>NotificationService.Domain.Entities.Notification.UserEmail.setE
-Type.get9NotificationService.Domain.Entities.Notification.Type.getE
-Type.set9NotificationService.Domain.Entities.Notification.Type.setK
-Channel.get<NotificationService.Domain.Entities.Notification.Channel.getK
-Channel.set<NotificationService.Domain.Entities.Notification.Channel.setK
-Subject.get<NotificationService.Domain.Entities.Notification.Subject.getK
-Subject.set<NotificationService.Domain.Entities.Notification.Subject.setE
-Body.get9NotificationService.Domain.Entities.Notification.Body.getE
-Body.set9NotificationService.Domain.Entities.Notification.Body.setI
+Errors.get6backend.src.shared.responses.ApiResponse<T>.Errors.getD
 
-IsRead.get;NotificationService.Domain.Entities.Notification.IsRead.getI
+Errors.set6backend.src.shared.responses.ApiResponse<T>.Errors.set∫
+1Microsoft.AspNetCore.OpenApi.Generated.XmlCommentobjectSystem.IEquatable<T>¸
+¢XmlComment(string?, string?, string?, string?, string?, bool, System.Collections.Generic.List<string>?, System.Collections.Generic.List<Microsoft.AspNetCore.OpenApi.Generated.XmlParameterComment>?, System.Collections.Generic.List<Microsoft.AspNetCore.OpenApi.Generated.XmlResponseComment>?)‘Microsoft.AspNetCore.OpenApi.Generated.XmlComment.XmlComment(string?, string?, string?, string?, string?, bool, System.Collections.Generic.List<string>?, System.Collections.Generic.List<Microsoft.AspNetCore.OpenApi.Generated.XmlParameterComment>?, System.Collections.Generic.List<Microsoft.AspNetCore.OpenApi.Generated.XmlResponseComment>?)J
 
-IsRead.set;NotificationService.Domain.Entities.Notification.IsRead.setI
+ToString()<Microsoft.AspNetCore.OpenApi.Generated.XmlComment.ToString()Ñ
+'PrintMembers(System.Text.StringBuilder)YMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.PrintMembers(System.Text.StringBuilder)P
+GetHashCode()?Microsoft.AspNetCore.OpenApi.Generated.XmlComment.GetHashCode()T
+Equals(object?)AMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.Equals(object?)™
+:Equals(Microsoft.AspNetCore.OpenApi.Generated.XmlComment?)lMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.Equals(Microsoft.AspNetCore.OpenApi.Generated.XmlComment?)J
 
-IsSent.get;NotificationService.Domain.Entities.Notification.IsSent.getI
+<Clone>$()<Microsoft.AspNetCore.OpenApi.Generated.XmlComment.<Clone>$()∞
+=XmlComment(Microsoft.AspNetCore.OpenApi.Generated.XmlComment)oMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.XmlComment(Microsoft.AspNetCore.OpenApi.Generated.XmlComment)∆
+«Deconstruct(out string?, out string?, out string?, out string?, out string?, out bool, out System.Collections.Generic.List<string>?, out System.Collections.Generic.List<Microsoft.AspNetCore.OpenApi.Generated.XmlParameterComment>?, out System.Collections.Generic.List<Microsoft.AspNetCore.OpenApi.Generated.XmlResponseComment>?)˘Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Deconstruct(out string?, out string?, out string?, out string?, out string?, out bool, out System.Collections.Generic.List<string>?, out System.Collections.Generic.List<Microsoft.AspNetCore.OpenApi.Generated.XmlParameterComment>?, out System.Collections.Generic.List<Microsoft.AspNetCore.OpenApi.Generated.XmlResponseComment>?)^
+EqualityContract.getFMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.EqualityContract.get^
+EqualityContract.setFMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.EqualityContract.setL
+Summary.get=Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Summary.getN
+Summary.init>Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Summary.initT
+Description.getAMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.Description.getV
+Description.initBMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.Description.initL
+Remarks.get=Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Remarks.getN
+Remarks.init>Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Remarks.initL
+Returns.get=Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Returns.getN
+Returns.init>Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Returns.initH
+	Value.get;Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Value.getJ
 
-IsSent.set;NotificationService.Domain.Entities.Notification.IsSent.setU
-ErrorMessage.getANotificationService.Domain.Entities.Notification.ErrorMessage.getU
-ErrorMessage.setANotificationService.Domain.Entities.Notification.ErrorMessage.setO
-CreatedAt.get>NotificationService.Domain.Entities.Notification.CreatedAt.getO
-CreatedAt.set>NotificationService.Domain.Entities.Notification.CreatedAt.setI
+Value.init<Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Value.initR
+Deprecated.get@Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Deprecated.getT
+Deprecated.initAMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.Deprecated.initN
+Examples.get>Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Examples.getP
+Examples.init?Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Examples.initR
+Parameters.get@Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Parameters.getT
+Parameters.initAMicrosoft.AspNetCore.OpenApi.Generated.XmlComment.Parameters.initP
+Responses.get?Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Responses.getR
+Responses.init@Microsoft.AspNetCore.OpenApi.Generated.XmlComment.Responses.init˝
+:Microsoft.AspNetCore.OpenApi.Generated.XmlParameterCommentobjectSystem.IEquatable<T>ß
+4XmlParameterComment(string?, string?, string?, bool)oMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.XmlParameterComment(string?, string?, string?, bool)S
 
-SentAt.get;NotificationService.Domain.Entities.Notification.SentAt.getI
+ToString()EMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.ToString()ç
+'PrintMembers(System.Text.StringBuilder)bMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.PrintMembers(System.Text.StringBuilder)Y
+GetHashCode()HMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.GetHashCode()]
+Equals(object?)JMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Equals(object?)≈
+CEquals(Microsoft.AspNetCore.OpenApi.Generated.XmlParameterComment?)~Microsoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Equals(Microsoft.AspNetCore.OpenApi.Generated.XmlParameterComment?)S
 
-SentAt.set;NotificationService.Domain.Entities.Notification.SentAt.set⁄
-ANotificationService.Infrastructure.Messaging.KafkaConsumerService.Microsoft.Extensions.Hosting.BackgroundServiceobject¶
-ÔKafkaConsumerService(Microsoft.Extensions.Configuration.IConfiguration, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory, Microsoft.Extensions.Logging.ILogger<NotificationService.Infrastructure.Messaging.KafkaConsumerService>)±NotificationService.Infrastructure.Messaging.KafkaConsumerService.KafkaConsumerService(Microsoft.Extensions.Configuration.IConfiguration, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory, Microsoft.Extensions.Logging.ILogger<NotificationService.Infrastructure.Messaging.KafkaConsumerService>)¶
-0ExecuteAsync(System.Threading.CancellationToken)rNotificationService.Infrastructure.Messaging.KafkaConsumerService.ExecuteAsync(System.Threading.CancellationToken)ä
-"HandleMessageAsync(string, string)dNotificationService.Infrastructure.Messaging.KafkaConsumerService.HandleMessageAsync(string, string)¯
-DNotificationService.Infrastructure.Persistence.NotificationDbContext'Microsoft.EntityFrameworkCore.DbContextobject·
-ãNotificationDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<NotificationService.Infrastructure.Persistence.NotificationDbContext>)–NotificationService.Infrastructure.Persistence.NotificationDbContext.NotificationDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<NotificationService.Infrastructure.Persistence.NotificationDbContext>)¿
-;OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder)ÄNotificationService.Infrastructure.Persistence.NotificationDbContext.OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder)k
-Notifications.getVNotificationService.Infrastructure.Persistence.NotificationDbContext.Notifications.getk
-Notifications.setVNotificationService.Infrastructure.Persistence.NotificationDbContext.Notifications.set˚
-$NotificationService.Jobs.ReminderJobobjectÁ
-ﬁReminderJob(NotificationService.Infrastructure.Persistence.NotificationDbContext, NotificationService.Application.Interfaces.INotificationService, Microsoft.Extensions.Logging.ILogger<NotificationService.Jobs.ReminderJob>)ÉNotificationService.Jobs.ReminderJob.ReminderJob(NotificationService.Infrastructure.Persistence.NotificationDbContext, NotificationService.Application.Interfaces.INotificationService, Microsoft.Extensions.Logging.ILogger<NotificationService.Jobs.ReminderJob>)a
-CheckAndSendRemindersAsync()ANotificationService.Jobs.ReminderJob.CheckAndSendRemindersAsync():
-8NotificationService.Application.Interfaces.IEmailServiceA
-?NotificationService.Application.Interfaces.INotificationService†
-;NotificationService.API.Controllers.NotificationsController'Microsoft.AspNetCore.Mvc.ControllerBaseobjectÒ
-XNotificationsController(NotificationService.Application.Interfaces.INotificationService)îNotificationService.API.Controllers.NotificationsController.NotificationsController(NotificationService.Application.Interfaces.INotificationService)Ç
-!GetUserNotifications(System.Guid)]NotificationService.API.Controllers.NotificationsController.GetUserNotifications(System.Guid)n
-MarkAsRead(System.Guid)SNotificationService.API.Controllers.NotificationsController.MarkAsRead(System.Guid)∆
-CTestWelcome(NotificationService.API.Controllers.TestWelcomeRequest)NotificationService.API.Controllers.NotificationsController.TestWelcome(NotificationService.API.Controllers.TestWelcomeRequest)>
-<NotificationService.Application.Interfaces.ITemplateRendererˇ
-5NotificationService.Application.Services.EmailServiceobject8NotificationService.Application.Interfaces.IEmailServiceÙ
-úEmailService(Microsoft.Extensions.Configuration.IConfiguration, Microsoft.Extensions.Logging.ILogger<NotificationService.Application.Services.EmailService>)“NotificationService.Application.Services.EmailService.EmailService(Microsoft.Extensions.Configuration.IConfiguration, Microsoft.Extensions.Logging.ILogger<NotificationService.Application.Services.EmailService>)å
-)SendAsync(string, string, string, string)_NotificationService.Application.Services.EmailService.SendAsync(string, string, string, string)¶
-<NotificationService.Application.Services.NotificationServiceobject?NotificationService.Application.Interfaces.INotificationService≠
-µNotificationService(NotificationService.Application.Interfaces.IEmailService, NotificationService.Application.Interfaces.ITemplateRenderer, NotificationService.Infrastructure.Persistence.NotificationDbContext, Microsoft.Extensions.Logging.ILogger<NotificationService.Application.Services.NotificationService>)ÚNotificationService.Application.Services.NotificationService.NotificationService(NotificationService.Application.Interfaces.IEmailService, NotificationService.Application.Interfaces.ITemplateRenderer, NotificationService.Infrastructure.Persistence.NotificationDbContext, Microsoft.Extensions.Logging.ILogger<NotificationService.Application.Services.NotificationService>)õ
--SendWelcomeAsync(System.Guid, string, string)jNotificationService.Application.Services.NotificationService.SendWelcomeAsync(System.Guid, string, string)≥
-9SendCvGeneratedAsync(System.Guid, string, string, string)vNotificationService.Application.Services.NotificationService.SendCvGeneratedAsync(System.Guid, string, string, string)“
-HSendApplicationCreatedAsync(System.Guid, string, string, string, string)ÖNotificationService.Application.Services.NotificationService.SendApplicationCreatedAsync(System.Guid, string, string, string, string)Ó
-VSendApplicationStatusChangedAsync(System.Guid, string, string, string, string, string)ìNotificationService.Application.Services.NotificationService.SendApplicationStatusChangedAsync(System.Guid, string, string, string, string, string)‹
-MSendNoResponseReminderAsync(System.Guid, string, string, string, string, int)äNotificationService.Application.Services.NotificationService.SendNoResponseReminderAsync(System.Guid, string, string, string, string, int)√
-ASendWeeklyDigestAsync(System.Guid, string, string, int, int, int)~NotificationService.Application.Services.NotificationService.SendWeeklyDigestAsync(System.Guid, string, string, int, int, int)ç
-&GetUserNotificationsAsync(System.Guid)cNotificationService.Application.Services.NotificationService.GetUserNotificationsAsync(System.Guid)y
-MarkAsReadAsync(System.Guid)YNotificationService.Application.Services.NotificationService.MarkAsReadAsync(System.Guid)¢
-pSaveAndSendAsync(System.Guid, string, string, NotificationService.Domain.Enums.NotificationType, string, string)≠NotificationService.Application.Services.NotificationService.SaveAndSendAsync(System.Guid, string, string, NotificationService.Domain.Enums.NotificationType, string, string)€
-9NotificationService.Application.Services.TemplateRendererobject<NotificationService.Application.Interfaces.ITemplateRendererb
-TemplateRenderer()LNotificationService.Application.Services.TemplateRenderer.TemplateRenderer()t
-RenderAsync(string, object)UNotificationService.Application.Services.TemplateRenderer.RenderAsync(string, object)¬
-4NotificationService.Domain.Enums.NotificationChannelSystem.EnumSystem.ValueTypeobjectc
-NotificationChannel()JNotificationService.Domain.Enums.NotificationChannel.NotificationChannel()∂
-1NotificationService.Domain.Enums.NotificationTypeSystem.EnumSystem.ValueTypeobjectZ
-NotificationType()DNotificationService.Domain.Enums.NotificationType.NotificationType()≈
-6NotificationService.API.Controllers.TestWelcomeRequestobjectSystem.IEquatable<T>ô
-/TestWelcomeRequest(System.Guid, string, string)fNotificationService.API.Controllers.TestWelcomeRequest.TestWelcomeRequest(System.Guid, string, string)O
+<Clone>$()EMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.<Clone>$()ﬁ
+OXmlParameterComment(Microsoft.AspNetCore.OpenApi.Generated.XmlParameterComment)äMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.XmlParameterComment(Microsoft.AspNetCore.OpenApi.Generated.XmlParameterComment)∑
+<Deconstruct(out string?, out string?, out string?, out bool)wMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Deconstruct(out string?, out string?, out string?, out bool)g
+EqualityContract.getOMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.EqualityContract.getg
+EqualityContract.setOMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.EqualityContract.setO
+Name.getCMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Name.getQ
+	Name.initDMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Name.init]
+Description.getJMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Description.get_
+Description.initKMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Description.initU
+Example.getFMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Example.getW
+Example.initGMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Example.init[
+Deprecated.getIMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Deprecated.get]
+Deprecated.initJMicrosoft.AspNetCore.OpenApi.Generated.XmlParameterComment.Deprecated.initˇ
+1backend.src.features.project.dto.CreateProjectDtoobjectZ
+CreateProjectDto()Dbackend.src.features.project.dto.CreateProjectDto.CreateProjectDto()H
+	Title.get;backend.src.features.project.dto.CreateProjectDto.Title.getH
+	Title.set;backend.src.features.project.dto.CreateProjectDto.Title.setT
+Description.getAbackend.src.features.project.dto.CreateProjectDto.Description.getT
+Description.setAbackend.src.features.project.dto.CreateProjectDto.Description.setF
+Role.get:backend.src.features.project.dto.CreateProjectDto.Role.getF
+Role.set:backend.src.features.project.dto.CreateProjectDto.Role.setV
+Achievements.getBbackend.src.features.project.dto.CreateProjectDto.Achievements.getV
+Achievements.setBbackend.src.features.project.dto.CreateProjectDto.Achievements.setP
+StartDate.get?backend.src.features.project.dto.CreateProjectDto.StartDate.getP
+StartDate.set?backend.src.features.project.dto.CreateProjectDto.StartDate.setL
+EndDate.get=backend.src.features.project.dto.CreateProjectDto.EndDate.getL
+EndDate.set=backend.src.features.project.dto.CreateProjectDto.EndDate.setX
+RepositoryUrl.getCbackend.src.features.project.dto.CreateProjectDto.RepositoryUrl.getX
+RepositoryUrl.setCbackend.src.features.project.dto.CreateProjectDto.RepositoryUrl.setL
+DemoUrl.get=backend.src.features.project.dto.CreateProjectDto.DemoUrl.getL
+DemoUrl.set=backend.src.features.project.dto.CreateProjectDto.DemoUrl.setJ
 
-ToString()ANotificationService.API.Controllers.TestWelcomeRequest.ToString()â
-'PrintMembers(System.Text.StringBuilder)^NotificationService.API.Controllers.TestWelcomeRequest.PrintMembers(System.Text.StringBuilder)U
-GetHashCode()DNotificationService.API.Controllers.TestWelcomeRequest.GetHashCode()Y
-Equals(object?)FNotificationService.API.Controllers.TestWelcomeRequest.Equals(object?)π
-?Equals(NotificationService.API.Controllers.TestWelcomeRequest?)vNotificationService.API.Controllers.TestWelcomeRequest.Equals(NotificationService.API.Controllers.TestWelcomeRequest?)O
+Status.get<backend.src.features.project.dto.CreateProjectDto.Status.getJ
 
-<Clone>$()ANotificationService.API.Controllers.TestWelcomeRequest.<Clone>$()–
-JTestWelcomeRequest(NotificationService.API.Controllers.TestWelcomeRequest)ÅNotificationService.API.Controllers.TestWelcomeRequest.TestWelcomeRequest(NotificationService.API.Controllers.TestWelcomeRequest)£
-4Deconstruct(out System.Guid, out string, out string)kNotificationService.API.Controllers.TestWelcomeRequest.Deconstruct(out System.Guid, out string, out string)c
-EqualityContract.getKNotificationService.API.Controllers.TestWelcomeRequest.EqualityContract.getc
-EqualityContract.setKNotificationService.API.Controllers.TestWelcomeRequest.EqualityContract.setO
+Status.set<backend.src.features.project.dto.CreateProjectDto.Status.setJ
 
-UserId.getANotificationService.API.Controllers.TestWelcomeRequest.UserId.getQ
-UserId.initBNotificationService.API.Controllers.TestWelcomeRequest.UserId.initM
-	Email.get@NotificationService.API.Controllers.TestWelcomeRequest.Email.getO
+UserId.get<backend.src.features.project.dto.CreateProjectDto.UserId.getJ
 
-Email.initANotificationService.API.Controllers.TestWelcomeRequest.Email.initU
-FirstName.getDNotificationService.API.Controllers.TestWelcomeRequest.FirstName.getW
-FirstName.initENotificationService.API.Controllers.TestWelcomeRequest.FirstName.init
+UserId.set<backend.src.features.project.dto.CreateProjectDto.UserId.setR
+SkillsJson.get@backend.src.features.project.dto.CreateProjectDto.SkillsJson.getR
+SkillsJson.set@backend.src.features.project.dto.CreateProjectDto.SkillsJson.setÖ
+7backend.src.features.experience.dto.CreateExperienceDtoobjectf
+CreateExperienceDto()Mbackend.src.features.experience.dto.CreateExperienceDto.CreateExperienceDto()N
+	Title.getAbackend.src.features.experience.dto.CreateExperienceDto.Title.getN
+	Title.setAbackend.src.features.experience.dto.CreateExperienceDto.Title.setR
+Company.getCbackend.src.features.experience.dto.CreateExperienceDto.Company.getR
+Company.setCbackend.src.features.experience.dto.CreateExperienceDto.Company.setZ
+Description.getGbackend.src.features.experience.dto.CreateExperienceDto.Description.getZ
+Description.setGbackend.src.features.experience.dto.CreateExperienceDto.Description.setV
+StartDate.getEbackend.src.features.experience.dto.CreateExperienceDto.StartDate.getV
+StartDate.setEbackend.src.features.experience.dto.CreateExperienceDto.StartDate.setR
+EndDate.getCbackend.src.features.experience.dto.CreateExperienceDto.EndDate.getR
+EndDate.setCbackend.src.features.experience.dto.CreateExperienceDto.EndDate.set\
+ReferenceUrl.getHbackend.src.features.experience.dto.CreateExperienceDto.ReferenceUrl.get\
+ReferenceUrl.setHbackend.src.features.experience.dto.CreateExperienceDto.ReferenceUrl.setP
+
+Status.getBbackend.src.features.experience.dto.CreateExperienceDto.Status.getP
+
+Status.setBbackend.src.features.experience.dto.CreateExperienceDto.Status.setP
+
+UserId.getBbackend.src.features.experience.dto.CreateExperienceDto.UserId.getP
+
+UserId.setBbackend.src.features.experience.dto.CreateExperienceDto.UserId.setß
+5backend.src.features.skill.controller.SkillController'Microsoft.AspNetCore.Mvc.ControllerBaseobject¬
+DSkillController(backend.src.features.skill.interfaces.ISkillService)zbackend.src.features.skill.controller.SkillController.SkillController(backend.src.features.skill.interfaces.ISkillService)J
+GetAll()>backend.src.features.skill.controller.SkillController.GetAll()b
+GetById(System.Guid)Jbackend.src.features.skill.controller.SkillController.GetById(System.Guid)§
+5Create(backend.src.features.skill.dto.CreateSkillDto)kbackend.src.features.skill.controller.SkillController.Create(backend.src.features.skill.dto.CreateSkillDto)æ
+BUpdate(System.Guid, backend.src.features.skill.dto.UpdateSkillDto)xbackend.src.features.skill.controller.SkillController.Update(System.Guid, backend.src.features.skill.dto.UpdateSkillDto)`
+Delete(System.Guid)Ibackend.src.features.skill.controller.SkillController.Delete(System.Guid)3
+1backend.src.features.auth.interfaces.IAuthService·
+9backend.src.features.project.controller.ProjectController'Microsoft.AspNetCore.Mvc.ControllerBaseobject”
+JProjectController(backend.src.features.project.interfaces.IProjectService)Ñbackend.src.features.project.controller.ProjectController.ProjectController(backend.src.features.project.interfaces.IProjectService)N
+GetAll()Bbackend.src.features.project.controller.ProjectController.GetAll()f
+GetById(System.Guid)Nbackend.src.features.project.controller.ProjectController.GetById(System.Guid)∞
+9Create(backend.src.features.project.dto.CreateProjectDto)sbackend.src.features.project.controller.ProjectController.Create(backend.src.features.project.dto.CreateProjectDto)À
+FUpdate(System.Guid, backend.src.features.project.dto.UpdateProjectDto)Äbackend.src.features.project.controller.ProjectController.Update(System.Guid, backend.src.features.project.dto.UpdateProjectDto)d
+Delete(System.Guid)Mbackend.src.features.project.controller.ProjectController.Delete(System.Guid)œ
+7backend.src.features.auth.interfaces.RegisterRequestDtoobjectd
+RegisterRequestDto()Lbackend.src.features.auth.interfaces.RegisterRequestDto.RegisterRequestDto()N
+	Email.getAbackend.src.features.auth.interfaces.RegisterRequestDto.Email.getN
+	Email.setAbackend.src.features.auth.interfaces.RegisterRequestDto.Email.setT
+Password.getDbackend.src.features.auth.interfaces.RegisterRequestDto.Password.getT
+Password.setDbackend.src.features.auth.interfaces.RegisterRequestDto.Password.setV
+FirstName.getEbackend.src.features.auth.interfaces.RegisterRequestDto.FirstName.getV
+FirstName.setEbackend.src.features.auth.interfaces.RegisterRequestDto.FirstName.setT
+LastName.getDbackend.src.features.auth.interfaces.RegisterRequestDto.LastName.getT
+LastName.setDbackend.src.features.auth.interfaces.RegisterRequestDto.LastName.set„
+?backend.src.features.auth.interfaces.KeycloakUserCreationResultobject|
+KeycloakUserCreationResult()\backend.src.features.auth.interfaces.KeycloakUserCreationResult.KeycloakUserCreationResult()Z
+Success.getKbackend.src.features.auth.interfaces.KeycloakUserCreationResult.Success.getZ
+Success.setKbackend.src.features.auth.interfaces.KeycloakUserCreationResult.Success.setX
+
+UserId.getJbackend.src.features.auth.interfaces.KeycloakUserCreationResult.UserId.getX
+
+UserId.setJbackend.src.features.auth.interfaces.KeycloakUserCreationResult.UserId.setV
+	Error.getIbackend.src.features.auth.interfaces.KeycloakUserCreationResult.Error.getV
+	Error.setIbackend.src.features.auth.interfaces.KeycloakUserCreationResult.Error.setÉ
+-backend.src.features.skill.dto.CreateSkillDtoobjectR
+CreateSkillDto()>backend.src.features.skill.dto.CreateSkillDto.CreateSkillDto()B
+Name.get6backend.src.features.skill.dto.CreateSkillDto.Name.getB
+Name.set6backend.src.features.skill.dto.CreateSkillDto.Name.setD
+	Level.get7backend.src.features.skill.dto.CreateSkillDto.Level.getD
+	Level.set7backend.src.features.skill.dto.CreateSkillDto.Level.set\
+YearsOfExperience.getCbackend.src.features.skill.dto.CreateSkillDto.YearsOfExperience.get\
+YearsOfExperience.setCbackend.src.features.skill.dto.CreateSkillDto.YearsOfExperience.setF
+
+UserId.get8backend.src.features.skill.dto.CreateSkillDto.UserId.getF
+
+UserId.set8backend.src.features.skill.dto.CreateSkillDto.UserId.setJ
+Category.get:backend.src.features.skill.dto.CreateSkillDto.Category.getJ
+Category.set:backend.src.features.skill.dto.CreateSkillDto.Category.setÛ
+-backend.src.features.skill.dto.UpdateSkillDtoobjectR
+UpdateSkillDto()>backend.src.features.skill.dto.UpdateSkillDto.UpdateSkillDto()B
+Name.get6backend.src.features.skill.dto.UpdateSkillDto.Name.getB
+Name.set6backend.src.features.skill.dto.UpdateSkillDto.Name.setD
+	Level.get7backend.src.features.skill.dto.UpdateSkillDto.Level.getD
+	Level.set7backend.src.features.skill.dto.UpdateSkillDto.Level.set\
+YearsOfExperience.getCbackend.src.features.skill.dto.UpdateSkillDto.YearsOfExperience.get\
+YearsOfExperience.setCbackend.src.features.skill.dto.UpdateSkillDto.YearsOfExperience.setJ
+Category.get:backend.src.features.skill.dto.UpdateSkillDto.Category.getJ
+Category.set:backend.src.features.skill.dto.UpdateSkillDto.Category.setÁ
+1backend.src.features.project.dto.UpdateProjectDtoobjectZ
+UpdateProjectDto()Dbackend.src.features.project.dto.UpdateProjectDto.UpdateProjectDto()H
+	Title.get;backend.src.features.project.dto.UpdateProjectDto.Title.getH
+	Title.set;backend.src.features.project.dto.UpdateProjectDto.Title.setT
+Description.getAbackend.src.features.project.dto.UpdateProjectDto.Description.getT
+Description.setAbackend.src.features.project.dto.UpdateProjectDto.Description.setF
+Role.get:backend.src.features.project.dto.UpdateProjectDto.Role.getF
+Role.set:backend.src.features.project.dto.UpdateProjectDto.Role.setV
+Achievements.getBbackend.src.features.project.dto.UpdateProjectDto.Achievements.getV
+Achievements.setBbackend.src.features.project.dto.UpdateProjectDto.Achievements.setP
+StartDate.get?backend.src.features.project.dto.UpdateProjectDto.StartDate.getP
+StartDate.set?backend.src.features.project.dto.UpdateProjectDto.StartDate.setL
+EndDate.get=backend.src.features.project.dto.UpdateProjectDto.EndDate.getL
+EndDate.set=backend.src.features.project.dto.UpdateProjectDto.EndDate.setX
+RepositoryUrl.getCbackend.src.features.project.dto.UpdateProjectDto.RepositoryUrl.getX
+RepositoryUrl.setCbackend.src.features.project.dto.UpdateProjectDto.RepositoryUrl.setL
+DemoUrl.get=backend.src.features.project.dto.UpdateProjectDto.DemoUrl.getL
+DemoUrl.set=backend.src.features.project.dto.UpdateProjectDto.DemoUrl.setJ
+
+Status.get<backend.src.features.project.dto.UpdateProjectDto.Status.getJ
+
+Status.set<backend.src.features.project.dto.UpdateProjectDto.Status.setR
+SkillsJson.get@backend.src.features.project.dto.UpdateProjectDto.SkillsJson.getR
+SkillsJson.set@backend.src.features.project.dto.UpdateProjectDto.SkillsJson.set≥
+3backend.src.features.auth.repository.AuthRepositoryobject4backend.src.features.auth.interfaces.IAuthRepositoryp
+AuthRepository(AppDbContext)Pbackend.src.features.auth.repository.AuthRepository.AuthRepository(AppDbContext)p
+GetByKeycloakIdAsync(string)Pbackend.src.features.auth.repository.AuthRepository.GetByKeycloakIdAsync(string)f
+GetByEmailAsync(string)Kbackend.src.features.auth.repository.AuthRepository.GetByEmailAsync(string)ú
+2CreateAsync(backend.src.features.user.entity.User)fbackend.src.features.auth.repository.AuthRepository.CreateAsync(backend.src.features.user.entity.User)ú
+2UpdateAsync(backend.src.features.user.entity.User)fbackend.src.features.auth.repository.AuthRepository.UpdateAsync(backend.src.features.user.entity.User)24backend.src.features.auth.interfaces.IAuthRepository·
+
+7backend.src.features.experience.dto.UpdateExperienceDtoobjectf
+UpdateExperienceDto()Mbackend.src.features.experience.dto.UpdateExperienceDto.UpdateExperienceDto()N
+	Title.getAbackend.src.features.experience.dto.UpdateExperienceDto.Title.getN
+	Title.setAbackend.src.features.experience.dto.UpdateExperienceDto.Title.setR
+Company.getCbackend.src.features.experience.dto.UpdateExperienceDto.Company.getR
+Company.setCbackend.src.features.experience.dto.UpdateExperienceDto.Company.setZ
+Description.getGbackend.src.features.experience.dto.UpdateExperienceDto.Description.getZ
+Description.setGbackend.src.features.experience.dto.UpdateExperienceDto.Description.setV
+StartDate.getEbackend.src.features.experience.dto.UpdateExperienceDto.StartDate.getV
+StartDate.setEbackend.src.features.experience.dto.UpdateExperienceDto.StartDate.setR
+EndDate.getCbackend.src.features.experience.dto.UpdateExperienceDto.EndDate.getR
+EndDate.setCbackend.src.features.experience.dto.UpdateExperienceDto.EndDate.set\
+ReferenceUrl.getHbackend.src.features.experience.dto.UpdateExperienceDto.ReferenceUrl.get\
+ReferenceUrl.setHbackend.src.features.experience.dto.UpdateExperienceDto.ReferenceUrl.setP
+
+Status.getBbackend.src.features.experience.dto.UpdateExperienceDto.Status.getP
+
+Status.setBbackend.src.features.experience.dto.UpdateExperienceDto.Status.setñ
+
+.backend.src.features.auth.services.AuthServiceobject1backend.src.features.auth.interfaces.IAuthServiceâ
+™AuthService(backend.src.features.auth.interfaces.IAuthRepository, Microsoft.AspNetCore.Http.IHttpContextAccessor, backend.src.features.auth.services.KeycloakAdminService)Ÿbackend.src.features.auth.services.AuthService.AuthService(backend.src.features.auth.interfaces.IAuthRepository, Microsoft.AspNetCore.Http.IHttpContextAccessor, backend.src.features.auth.services.KeycloakAdminService)ß
+:ProvisionUserAsync(System.Security.Claims.ClaimsPrincipal)ibackend.src.features.auth.services.AuthService.ProvisionUserAsync(System.Security.Claims.ClaimsPrincipal)Ø
+>GetUserFromClaimsAsync(System.Security.Claims.ClaimsPrincipal)mbackend.src.features.auth.services.AuthService.GetUserFromClaimsAsync(System.Security.Claims.ClaimsPrincipal)√
+HBuildLoginResponseAsync(System.Security.Claims.ClaimsPrincipal, string?)wbackend.src.features.auth.services.AuthService.BuildLoginResponseAsync(System.Security.Claims.ClaimsPrincipal, string?)«
+JRegisterUserAsync(backend.src.features.auth.interfaces.RegisterRequestDto)ybackend.src.features.auth.services.AuthService.RegisterUserAsync(backend.src.features.auth.interfaces.RegisterRequestDto)21backend.src.features.auth.interfaces.IAuthService”	
+/backend.src.features.skill.dto.SkillResponseDtoobjectX
+SkillResponseDto()Bbackend.src.features.skill.dto.SkillResponseDto.SkillResponseDto()@
+Id.get6backend.src.features.skill.dto.SkillResponseDto.Id.get@
+Id.set6backend.src.features.skill.dto.SkillResponseDto.Id.setD
+Name.get8backend.src.features.skill.dto.SkillResponseDto.Name.getD
+Name.set8backend.src.features.skill.dto.SkillResponseDto.Name.setF
+	Level.get9backend.src.features.skill.dto.SkillResponseDto.Level.getF
+	Level.set9backend.src.features.skill.dto.SkillResponseDto.Level.set^
+YearsOfExperience.getEbackend.src.features.skill.dto.SkillResponseDto.YearsOfExperience.get^
+YearsOfExperience.setEbackend.src.features.skill.dto.SkillResponseDto.YearsOfExperience.setH
+
+UserId.get:backend.src.features.skill.dto.SkillResponseDto.UserId.getH
+
+UserId.set:backend.src.features.skill.dto.SkillResponseDto.UserId.setL
+Category.get<backend.src.features.skill.dto.SkillResponseDto.Category.getL
+Category.set<backend.src.features.skill.dto.SkillResponseDto.Category.setV
+NameEmbedding.getAbackend.src.features.skill.dto.SkillResponseDto.NameEmbedding.getV
+NameEmbedding.setAbackend.src.features.skill.dto.SkillResponseDto.NameEmbedding.setÀ
+3backend.src.features.project.dto.ProjectResponseDtoobject`
+ProjectResponseDto()Hbackend.src.features.project.dto.ProjectResponseDto.ProjectResponseDto()D
+Id.get:backend.src.features.project.dto.ProjectResponseDto.Id.getD
+Id.set:backend.src.features.project.dto.ProjectResponseDto.Id.setJ
+	Title.get=backend.src.features.project.dto.ProjectResponseDto.Title.getJ
+	Title.set=backend.src.features.project.dto.ProjectResponseDto.Title.setV
+Description.getCbackend.src.features.project.dto.ProjectResponseDto.Description.getV
+Description.setCbackend.src.features.project.dto.ProjectResponseDto.Description.setH
+Role.get<backend.src.features.project.dto.ProjectResponseDto.Role.getH
+Role.set<backend.src.features.project.dto.ProjectResponseDto.Role.setX
+Achievements.getDbackend.src.features.project.dto.ProjectResponseDto.Achievements.getX
+Achievements.setDbackend.src.features.project.dto.ProjectResponseDto.Achievements.setR
+StartDate.getAbackend.src.features.project.dto.ProjectResponseDto.StartDate.getR
+StartDate.setAbackend.src.features.project.dto.ProjectResponseDto.StartDate.setN
+EndDate.get?backend.src.features.project.dto.ProjectResponseDto.EndDate.getN
+EndDate.set?backend.src.features.project.dto.ProjectResponseDto.EndDate.setZ
+RepositoryUrl.getEbackend.src.features.project.dto.ProjectResponseDto.RepositoryUrl.getZ
+RepositoryUrl.setEbackend.src.features.project.dto.ProjectResponseDto.RepositoryUrl.setN
+DemoUrl.get?backend.src.features.project.dto.ProjectResponseDto.DemoUrl.getN
+DemoUrl.set?backend.src.features.project.dto.ProjectResponseDto.DemoUrl.setL
+
+Status.get>backend.src.features.project.dto.ProjectResponseDto.Status.getL
+
+Status.set>backend.src.features.project.dto.ProjectResponseDto.Status.setL
+
+UserId.get>backend.src.features.project.dto.ProjectResponseDto.UserId.getL
+
+UserId.set>backend.src.features.project.dto.ProjectResponseDto.UserId.setT
+SkillsJson.getBbackend.src.features.project.dto.ProjectResponseDto.SkillsJson.getT
+SkillsJson.setBbackend.src.features.project.dto.ProjectResponseDto.SkillsJson.setZ
+AiSummaryJson.getEbackend.src.features.project.dto.ProjectResponseDto.AiSummaryJson.getZ
+AiSummaryJson.setEbackend.src.features.project.dto.ProjectResponseDto.AiSummaryJson.seth
+DescriptionEmbedding.getLbackend.src.features.project.dto.ProjectResponseDto.DescriptionEmbedding.geth
+DescriptionEmbedding.setLbackend.src.features.project.dto.ProjectResponseDto.DescriptionEmbedding.setÈ
+9backend.src.features.experience.dto.ExperienceResponseDtoobjectl
+ExperienceResponseDto()Qbackend.src.features.experience.dto.ExperienceResponseDto.ExperienceResponseDto()J
+Id.get@backend.src.features.experience.dto.ExperienceResponseDto.Id.getJ
+Id.set@backend.src.features.experience.dto.ExperienceResponseDto.Id.setP
+	Title.getCbackend.src.features.experience.dto.ExperienceResponseDto.Title.getP
+	Title.setCbackend.src.features.experience.dto.ExperienceResponseDto.Title.setT
+Company.getEbackend.src.features.experience.dto.ExperienceResponseDto.Company.getT
+Company.setEbackend.src.features.experience.dto.ExperienceResponseDto.Company.set\
+Description.getIbackend.src.features.experience.dto.ExperienceResponseDto.Description.get\
+Description.setIbackend.src.features.experience.dto.ExperienceResponseDto.Description.setX
+StartDate.getGbackend.src.features.experience.dto.ExperienceResponseDto.StartDate.getX
+StartDate.setGbackend.src.features.experience.dto.ExperienceResponseDto.StartDate.setT
+EndDate.getEbackend.src.features.experience.dto.ExperienceResponseDto.EndDate.getT
+EndDate.setEbackend.src.features.experience.dto.ExperienceResponseDto.EndDate.set^
+ReferenceUrl.getJbackend.src.features.experience.dto.ExperienceResponseDto.ReferenceUrl.get^
+ReferenceUrl.setJbackend.src.features.experience.dto.ExperienceResponseDto.ReferenceUrl.setR
+
+Status.getDbackend.src.features.experience.dto.ExperienceResponseDto.Status.getR
+
+Status.setDbackend.src.features.experience.dto.ExperienceResponseDto.Status.setR
+
+UserId.getDbackend.src.features.experience.dto.ExperienceResponseDto.UserId.getR
+
+UserId.setDbackend.src.features.experience.dto.ExperienceResponseDto.UserId.set`
+AiSummaryJson.getKbackend.src.features.experience.dto.ExperienceResponseDto.AiSummaryJson.get`
+AiSummaryJson.setKbackend.src.features.experience.dto.ExperienceResponseDto.AiSummaryJson.setn
+DescriptionEmbedding.getRbackend.src.features.experience.dto.ExperienceResponseDto.DescriptionEmbedding.getn
+DescriptionEmbedding.setRbackend.src.features.experience.dto.ExperienceResponseDto.DescriptionEmbedding.set„
+7backend.src.features.auth.services.KeycloakAdminServiceobjectú
+0KeycloakAdminService(System.Net.Http.HttpClient)hbackend.src.features.auth.services.KeycloakAdminService.KeycloakAdminService(System.Net.Http.HttpClient)d
+GetAdminTokenAsync()Lbackend.src.features.auth.services.KeycloakAdminService.GetAdminTokenAsync()ö
+/CreateUserAsync(string, string, string, string)gbackend.src.features.auth.services.KeycloakAdminService.CreateUserAsync(string, string, string, string)ç
+Ebackend.src.features.auth.services.KeycloakAdminService.TokenResponseobjecth
+TokenResponse()Ubackend.src.features.auth.services.KeycloakAdminService.TokenResponse.TokenResponse()h
+AccessToken.getUbackend.src.features.auth.services.KeycloakAdminService.TokenResponse.AccessToken.geth
+AccessToken.setUbackend.src.features.auth.services.KeycloakAdminService.TokenResponse.AccessToken.setπ	
+'backend.src.features.skill.entity.Skillobject:
+Skill()/backend.src.features.skill.entity.Skill.Skill()8
+Id.get.backend.src.features.skill.entity.Skill.Id.get8
+Id.set.backend.src.features.skill.entity.Skill.Id.set<
+Name.get0backend.src.features.skill.entity.Skill.Name.get<
+Name.set0backend.src.features.skill.entity.Skill.Name.set>
+	Level.get1backend.src.features.skill.entity.Skill.Level.get>
+	Level.set1backend.src.features.skill.entity.Skill.Level.setV
+YearsOfExperience.get=backend.src.features.skill.entity.Skill.YearsOfExperience.getV
+YearsOfExperience.set=backend.src.features.skill.entity.Skill.YearsOfExperience.set@
+
+UserId.get2backend.src.features.skill.entity.Skill.UserId.get@
+
+UserId.set2backend.src.features.skill.entity.Skill.UserId.set<
+User.get0backend.src.features.skill.entity.Skill.User.get<
+User.set0backend.src.features.skill.entity.Skill.User.setD
+Category.get4backend.src.features.skill.entity.Skill.Category.getD
+Category.set4backend.src.features.skill.entity.Skill.Category.setN
+NameEmbedding.get9backend.src.features.skill.entity.Skill.NameEmbedding.getN
+NameEmbedding.set9backend.src.features.skill.entity.Skill.NameEmbedding.set£
+1backend.src.features.experience.entity.ExperienceobjectN
+Experience()>backend.src.features.experience.entity.Experience.Experience()B
+Id.get8backend.src.features.experience.entity.Experience.Id.getB
+Id.set8backend.src.features.experience.entity.Experience.Id.setH
+	Title.get;backend.src.features.experience.entity.Experience.Title.getH
+	Title.set;backend.src.features.experience.entity.Experience.Title.setL
+Company.get=backend.src.features.experience.entity.Experience.Company.getL
+Company.set=backend.src.features.experience.entity.Experience.Company.setT
+Description.getAbackend.src.features.experience.entity.Experience.Description.getT
+Description.setAbackend.src.features.experience.entity.Experience.Description.setP
+StartDate.get?backend.src.features.experience.entity.Experience.StartDate.getP
+StartDate.set?backend.src.features.experience.entity.Experience.StartDate.setL
+EndDate.get=backend.src.features.experience.entity.Experience.EndDate.getL
+EndDate.set=backend.src.features.experience.entity.Experience.EndDate.setV
+ReferenceUrl.getBbackend.src.features.experience.entity.Experience.ReferenceUrl.getV
+ReferenceUrl.setBbackend.src.features.experience.entity.Experience.ReferenceUrl.setJ
+
+Status.get<backend.src.features.experience.entity.Experience.Status.getJ
+
+Status.set<backend.src.features.experience.entity.Experience.Status.setJ
+
+UserId.get<backend.src.features.experience.entity.Experience.UserId.getJ
+
+UserId.set<backend.src.features.experience.entity.Experience.UserId.setF
+User.get:backend.src.features.experience.entity.Experience.User.getF
+User.set:backend.src.features.experience.entity.Experience.User.setX
+AiSummaryJson.getCbackend.src.features.experience.entity.Experience.AiSummaryJson.getX
+AiSummaryJson.setCbackend.src.features.experience.entity.Experience.AiSummaryJson.setf
+DescriptionEmbedding.getJbackend.src.features.experience.entity.Experience.DescriptionEmbedding.getf
+DescriptionEmbedding.setJbackend.src.features.experience.entity.Experience.DescriptionEmbedding.setÉ
+9Microsoft.AspNetCore.OpenApi.Generated.XmlResponseCommentobjectSystem.IEquatable<T>ñ
+,XmlResponseComment(string, string?, string?)fMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.XmlResponseComment(string, string?, string?)R
+
+ToString()DMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.ToString()å
+'PrintMembers(System.Text.StringBuilder)aMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.PrintMembers(System.Text.StringBuilder)X
+GetHashCode()GMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.GetHashCode()\
+Equals(object?)IMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.Equals(object?)¬
+BEquals(Microsoft.AspNetCore.OpenApi.Generated.XmlResponseComment?)|Microsoft.AspNetCore.OpenApi.Generated.XmlResponseComment.Equals(Microsoft.AspNetCore.OpenApi.Generated.XmlResponseComment?)R
+
+<Clone>$()DMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.<Clone>$()Ÿ
+MXmlResponseComment(Microsoft.AspNetCore.OpenApi.Generated.XmlResponseComment)áMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.XmlResponseComment(Microsoft.AspNetCore.OpenApi.Generated.XmlResponseComment)†
+1Deconstruct(out string, out string?, out string?)kMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.Deconstruct(out string, out string?, out string?)f
+EqualityContract.getNMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.EqualityContract.getf
+EqualityContract.setNMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.EqualityContract.setN
+Code.getBMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.Code.getP
+	Code.initCMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.Code.init\
+Description.getIMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.Description.get^
+Description.initJMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.Description.initT
+Example.getEMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.Example.getV
+Example.initFMicrosoft.AspNetCore.OpenApi.Generated.XmlResponseComment.Example.init8
+6backend.src.features.skill.interfaces.ISkillRepository5
+3backend.src.features.skill.interfaces.ISkillService…
++backend.src.features.project.entity.ProjectobjectB
+	Project()5backend.src.features.project.entity.Project.Project()<
+Id.get2backend.src.features.project.entity.Project.Id.get<
+Id.set2backend.src.features.project.entity.Project.Id.setB
+	Title.get5backend.src.features.project.entity.Project.Title.getB
+	Title.set5backend.src.features.project.entity.Project.Title.setN
+Description.get;backend.src.features.project.entity.Project.Description.getN
+Description.set;backend.src.features.project.entity.Project.Description.set@
+Role.get4backend.src.features.project.entity.Project.Role.get@
+Role.set4backend.src.features.project.entity.Project.Role.setP
+Achievements.get<backend.src.features.project.entity.Project.Achievements.getP
+Achievements.set<backend.src.features.project.entity.Project.Achievements.setJ
+StartDate.get9backend.src.features.project.entity.Project.StartDate.getJ
+StartDate.set9backend.src.features.project.entity.Project.StartDate.setF
+EndDate.get7backend.src.features.project.entity.Project.EndDate.getF
+EndDate.set7backend.src.features.project.entity.Project.EndDate.setR
+RepositoryUrl.get=backend.src.features.project.entity.Project.RepositoryUrl.getR
+RepositoryUrl.set=backend.src.features.project.entity.Project.RepositoryUrl.setF
+DemoUrl.get7backend.src.features.project.entity.Project.DemoUrl.getF
+DemoUrl.set7backend.src.features.project.entity.Project.DemoUrl.setD
+
+Status.get6backend.src.features.project.entity.Project.Status.getD
+
+Status.set6backend.src.features.project.entity.Project.Status.setD
+
+UserId.get6backend.src.features.project.entity.Project.UserId.getD
+
+UserId.set6backend.src.features.project.entity.Project.UserId.set@
+User.get4backend.src.features.project.entity.Project.User.get@
+User.set4backend.src.features.project.entity.Project.User.setL
+SkillsJson.get:backend.src.features.project.entity.Project.SkillsJson.getL
+SkillsJson.set:backend.src.features.project.entity.Project.SkillsJson.setR
+AiSummaryJson.get=backend.src.features.project.entity.Project.AiSummaryJson.getR
+AiSummaryJson.set=backend.src.features.project.entity.Project.AiSummaryJson.set`
+DescriptionEmbedding.getDbackend.src.features.project.entity.Project.DescriptionEmbedding.get`
+DescriptionEmbedding.setDbackend.src.features.project.entity.Project.DescriptionEmbedding.setÌ
+5backend.src.features.skill.repository.SkillRepositoryobject6backend.src.features.skill.interfaces.ISkillRepositoryt
+SkillRepository(AppDbContext)Sbackend.src.features.skill.repository.SkillRepository.SkillRepository(AppDbContext)J
+GetAll()>backend.src.features.skill.repository.SkillRepository.GetAll()b
+GetById(System.Guid)Jbackend.src.features.skill.repository.SkillRepository.GetById(System.Guid)ò
+/Create(backend.src.features.skill.entity.Skill)ebackend.src.features.skill.repository.SkillRepository.Create(backend.src.features.skill.entity.Skill)ò
+/Update(backend.src.features.skill.entity.Skill)ebackend.src.features.skill.repository.SkillRepository.Update(backend.src.features.skill.entity.Skill)`
+Delete(System.Guid)Ibackend.src.features.skill.repository.SkillRepository.Delete(System.Guid)26backend.src.features.skill.interfaces.ISkillRepository<
+:backend.src.features.project.interfaces.IProjectRepositoryÖ
++backend.src.features.user.dto.CreateUserDtoobjectN
+CreateUserDto();backend.src.features.user.dto.CreateUserDto.CreateUserDto()J
+FirstName.get9backend.src.features.user.dto.CreateUserDto.FirstName.getJ
+FirstName.set9backend.src.features.user.dto.CreateUserDto.FirstName.setH
+LastName.get8backend.src.features.user.dto.CreateUserDto.LastName.getH
+LastName.set8backend.src.features.user.dto.CreateUserDto.LastName.setB
+	Email.get5backend.src.features.user.dto.CreateUserDto.Email.getB
+	Email.set5backend.src.features.user.dto.CreateUserDto.Email.setH
+Password.get8backend.src.features.user.dto.CreateUserDto.Password.getH
+Password.set8backend.src.features.user.dto.CreateUserDto.Password.setN
+PhoneNumber.get;backend.src.features.user.dto.CreateUserDto.PhoneNumber.getN
+PhoneNumber.set;backend.src.features.user.dto.CreateUserDto.PhoneNumber.setJ
+BirthDate.get9backend.src.features.user.dto.CreateUserDto.BirthDate.getJ
+BirthDate.set9backend.src.features.user.dto.CreateUserDto.BirthDate.set…
+8backend.src.features.experience.ExperienceMappingProfileAutoMapper.Profileobjectq
+ExperienceMappingProfile()Sbackend.src.features.experience.ExperienceMappingProfile.ExperienceMappingProfile()ã
+3backend.src.features.user.controller.UserController'Microsoft.AspNetCore.Mvc.ControllerBaseobject∫
+AUserController(backend.src.features.user.interfaces.IUserService)ubackend.src.features.user.controller.UserController.UserController(backend.src.features.user.interfaces.IUserService)H
+GetAll()<backend.src.features.user.controller.UserController.GetAll()`
+GetById(System.Guid)Hbackend.src.features.user.controller.UserController.GetById(System.Guid)û
+3Create(backend.src.features.user.dto.CreateUserDto)gbackend.src.features.user.controller.UserController.Create(backend.src.features.user.dto.CreateUserDto)∏
+@Update(System.Guid, backend.src.features.user.dto.UpdateUserDto)tbackend.src.features.user.controller.UserController.Update(System.Guid, backend.src.features.user.dto.UpdateUserDto)^
+Delete(System.Guid)Gbackend.src.features.user.controller.UserController.Delete(System.Guid)´
+.backend.src.features.skill.SkillMappingProfileAutoMapper.Profileobject]
+SkillMappingProfile()Dbackend.src.features.skill.SkillMappingProfile.SkillMappingProfile()‘
+/backend.src.features.skill.service.SkillServiceobject3backend.src.features.skill.interfaces.ISkillService“
+éSkillService(backend.src.features.skill.interfaces.ISkillRepository, backend.src.features.user.interfaces.IUserRepository, AutoMapper.IMapper)æbackend.src.features.skill.service.SkillService.SkillService(backend.src.features.skill.interfaces.ISkillRepository, backend.src.features.user.interfaces.IUserRepository, AutoMapper.IMapper)D
+GetAll()8backend.src.features.skill.service.SkillService.GetAll()\
+GetById(System.Guid)Dbackend.src.features.skill.service.SkillService.GetById(System.Guid)û
+5Create(backend.src.features.skill.dto.CreateSkillDto)ebackend.src.features.skill.service.SkillService.Create(backend.src.features.skill.dto.CreateSkillDto)∏
+BUpdate(System.Guid, backend.src.features.skill.dto.UpdateSkillDto)rbackend.src.features.skill.service.SkillService.Update(System.Guid, backend.src.features.skill.dto.UpdateSkillDto)Z
+Delete(System.Guid)Cbackend.src.features.skill.service.SkillService.Delete(System.Guid)23backend.src.features.skill.interfaces.ISkillServiceB
+@backend.src.features.experience.interfaces.IExperienceRepository?
+=backend.src.features.experience.interfaces.IExperienceServiceâ	
+-backend.src.features.user.dto.UserResponseDtoobjectT
+UserResponseDto()?backend.src.features.user.dto.UserResponseDto.UserResponseDto()>
+Id.get4backend.src.features.user.dto.UserResponseDto.Id.get>
+Id.set4backend.src.features.user.dto.UserResponseDto.Id.setL
+FirstName.get;backend.src.features.user.dto.UserResponseDto.FirstName.getL
+FirstName.set;backend.src.features.user.dto.UserResponseDto.FirstName.setJ
+LastName.get:backend.src.features.user.dto.UserResponseDto.LastName.getJ
+LastName.set:backend.src.features.user.dto.UserResponseDto.LastName.setD
+	Email.get7backend.src.features.user.dto.UserResponseDto.Email.getD
+	Email.set7backend.src.features.user.dto.UserResponseDto.Email.setB
+Role.get6backend.src.features.user.dto.UserResponseDto.Role.getB
+Role.set6backend.src.features.user.dto.UserResponseDto.Role.setJ
+IsActive.get:backend.src.features.user.dto.UserResponseDto.IsActive.getJ
+IsActive.set:backend.src.features.user.dto.UserResponseDto.IsActive.setL
+CreatedAt.get;backend.src.features.user.dto.UserResponseDto.CreatedAt.getL
+CreatedAt.set;backend.src.features.user.dto.UserResponseDto.CreatedAt.setÅ
++backend.src.features.user.dto.UpdateUserDtoobjectN
+UpdateUserDto();backend.src.features.user.dto.UpdateUserDto.UpdateUserDto()J
+FirstName.get9backend.src.features.user.dto.UpdateUserDto.FirstName.getJ
+FirstName.set9backend.src.features.user.dto.UpdateUserDto.FirstName.setH
+LastName.get8backend.src.features.user.dto.UpdateUserDto.LastName.getH
+LastName.set8backend.src.features.user.dto.UpdateUserDto.LastName.setN
+PhoneNumber.get;backend.src.features.user.dto.UpdateUserDto.PhoneNumber.getN
+PhoneNumber.set;backend.src.features.user.dto.UpdateUserDto.PhoneNumber.setJ
+BirthDate.get9backend.src.features.user.dto.UpdateUserDto.BirthDate.getJ
+BirthDate.set9backend.src.features.user.dto.UpdateUserDto.BirthDate.setJ
+AvatarUrl.get9backend.src.features.user.dto.UpdateUserDto.AvatarUrl.getJ
+AvatarUrl.set9backend.src.features.user.dto.UpdateUserDto.AvatarUrl.set9
+7backend.src.features.project.interfaces.IProjectService˙
+?backend.src.features.experience.repository.ExperienceRepositoryobject@backend.src.features.experience.interfaces.IExperienceRepositoryà
+"ExperienceRepository(AppDbContext)bbackend.src.features.experience.repository.ExperienceRepository.ExperienceRepository(AppDbContext)T
+GetAll()Hbackend.src.features.experience.repository.ExperienceRepository.GetAll()l
+GetById(System.Guid)Tbackend.src.features.experience.repository.ExperienceRepository.GetById(System.Guid)∂
+9Create(backend.src.features.experience.entity.Experience)ybackend.src.features.experience.repository.ExperienceRepository.Create(backend.src.features.experience.entity.Experience)∂
+9Update(backend.src.features.experience.entity.Experience)ybackend.src.features.experience.repository.ExperienceRepository.Update(backend.src.features.experience.entity.Experience)j
+Delete(System.Guid)Sbackend.src.features.experience.repository.ExperienceRepository.Delete(System.Guid)2@backend.src.features.experience.interfaces.IExperienceRepository∑
+2backend.src.features.project.ProjectMappingProfileAutoMapper.Profileobjecte
+ProjectMappingProfile()Jbackend.src.features.project.ProjectMappingProfile.ProjectMappingProfile()î
+EMicrosoft.AspNetCore.OpenApi.Generated.XmlCommentOperationTransformerobject9Microsoft.AspNetCore.OpenApi.IOpenApiOperationTransformer˙
+óTransformAsync(Microsoft.OpenApi.OpenApiOperation, Microsoft.AspNetCore.OpenApi.OpenApiOperationTransformerContext, System.Threading.CancellationToken)›Microsoft.AspNetCore.OpenApi.Generated.XmlCommentOperationTransformer.TransformAsync(Microsoft.OpenApi.OpenApiOperation, Microsoft.AspNetCore.OpenApi.OpenApiOperationTransformerContext, System.Threading.CancellationToken)ä
+ XmlCommentOperationTransformer()fMicrosoft.AspNetCore.OpenApi.Generated.XmlCommentOperationTransformer.XmlCommentOperationTransformer()ı	
+9backend.src.features.experience.service.ExperienceServiceobject=backend.src.features.experience.interfaces.IExperienceService˙
+ùExperienceService(backend.src.features.experience.interfaces.IExperienceRepository, backend.src.features.user.interfaces.IUserRepository, AutoMapper.IMapper)◊backend.src.features.experience.service.ExperienceService.ExperienceService(backend.src.features.experience.interfaces.IExperienceRepository, backend.src.features.user.interfaces.IUserRepository, AutoMapper.IMapper)N
+GetAll()Bbackend.src.features.experience.service.ExperienceService.GetAll()f
+GetById(System.Guid)Nbackend.src.features.experience.service.ExperienceService.GetById(System.Guid)º
+?Create(backend.src.features.experience.dto.CreateExperienceDto)ybackend.src.features.experience.service.ExperienceService.Create(backend.src.features.experience.dto.CreateExperienceDto)◊
+LUpdate(System.Guid, backend.src.features.experience.dto.UpdateExperienceDto)Übackend.src.features.experience.service.ExperienceService.Update(System.Guid, backend.src.features.experience.dto.UpdateExperienceDto)d
+Delete(System.Guid)Mbackend.src.features.experience.service.ExperienceService.Delete(System.Guid)2=backend.src.features.experience.interfaces.IExperienceServiceÍ
+;System.Runtime.CompilerServices.InterceptsLocationAttributeSystem.Attributeobjectê
+(InterceptsLocationAttribute(int, string)dSystem.Runtime.CompilerServices.InterceptsLocationAttribute.InterceptsLocationAttribute(int, string)ß
+%backend.src.features.user.entity.Userobject6
+User(),backend.src.features.user.entity.User.User()6
+Id.get,backend.src.features.user.entity.User.Id.get6
+Id.set,backend.src.features.user.entity.User.Id.setF
+KeycloakId.get4backend.src.features.user.entity.User.KeycloakId.getF
+KeycloakId.set4backend.src.features.user.entity.User.KeycloakId.setD
+FirstName.get3backend.src.features.user.entity.User.FirstName.getD
+FirstName.set3backend.src.features.user.entity.User.FirstName.setB
+LastName.get2backend.src.features.user.entity.User.LastName.getB
+LastName.set2backend.src.features.user.entity.User.LastName.set<
+	Email.get/backend.src.features.user.entity.User.Email.get<
+	Email.set/backend.src.features.user.entity.User.Email.setH
+PhoneNumber.get5backend.src.features.user.entity.User.PhoneNumber.getH
+PhoneNumber.set5backend.src.features.user.entity.User.PhoneNumber.setD
+BirthDate.get3backend.src.features.user.entity.User.BirthDate.getD
+BirthDate.set3backend.src.features.user.entity.User.BirthDate.set:
+Role.get.backend.src.features.user.entity.User.Role.get:
+Role.set.backend.src.features.user.entity.User.Role.setD
+AvatarUrl.get3backend.src.features.user.entity.User.AvatarUrl.getD
+AvatarUrl.set3backend.src.features.user.entity.User.AvatarUrl.setD
+CreatedAt.get3backend.src.features.user.entity.User.CreatedAt.getD
+CreatedAt.set3backend.src.features.user.entity.User.CreatedAt.setD
+LastLogin.get3backend.src.features.user.entity.User.LastLogin.getD
+LastLogin.set3backend.src.features.user.entity.User.LastLogin.setB
+IsActive.get2backend.src.features.user.entity.User.IsActive.getB
+IsActive.set2backend.src.features.user.entity.User.IsActive.setT
+AiProfileDataJson.get;backend.src.features.user.entity.User.AiProfileDataJson.getT
+AiProfileDataJson.set;backend.src.features.user.entity.User.AiProfileDataJson.setP
+PreferencesJson.get9backend.src.features.user.entity.User.PreferencesJson.getP
+PreferencesJson.set9backend.src.features.user.entity.User.PreferencesJson.setB
+Projects.get2backend.src.features.user.entity.User.Projects.getB
+Projects.set2backend.src.features.user.entity.User.Projects.set>
+
+Skills.get0backend.src.features.user.entity.User.Skills.get>
+
+Skills.set0backend.src.features.user.entity.User.Skills.setH
+Experiences.get5backend.src.features.user.entity.User.Experiences.getH
+Experiences.set5backend.src.features.user.entity.User.Experiences.set•
+9backend.src.features.project.repository.ProjectRepositoryobject:backend.src.features.project.interfaces.IProjectRepository|
+ProjectRepository(AppDbContext)Ybackend.src.features.project.repository.ProjectRepository.ProjectRepository(AppDbContext)N
+GetAll()Bbackend.src.features.project.repository.ProjectRepository.GetAll()f
+GetById(System.Guid)Nbackend.src.features.project.repository.ProjectRepository.GetById(System.Guid)§
+3Create(backend.src.features.project.entity.Project)mbackend.src.features.project.repository.ProjectRepository.Create(backend.src.features.project.entity.Project)§
+3Update(backend.src.features.project.entity.Project)mbackend.src.features.project.repository.ProjectRepository.Update(backend.src.features.project.entity.Project)d
+Delete(System.Guid)Mbackend.src.features.project.repository.ProjectRepository.Delete(System.Guid)2:backend.src.features.project.interfaces.IProjectRepositoryî	
+3backend.src.features.project.service.ProjectServiceobject7backend.src.features.project.interfaces.IProjectService‚
+îProjectService(backend.src.features.project.interfaces.IProjectRepository, backend.src.features.user.interfaces.IUserRepository, AutoMapper.IMapper)»backend.src.features.project.service.ProjectService.ProjectService(backend.src.features.project.interfaces.IProjectRepository, backend.src.features.user.interfaces.IUserRepository, AutoMapper.IMapper)H
+GetAll()<backend.src.features.project.service.ProjectService.GetAll()`
+GetById(System.Guid)Hbackend.src.features.project.service.ProjectService.GetById(System.Guid)™
+9Create(backend.src.features.project.dto.CreateProjectDto)mbackend.src.features.project.service.ProjectService.Create(backend.src.features.project.dto.CreateProjectDto)ƒ
+FUpdate(System.Guid, backend.src.features.project.dto.UpdateProjectDto)zbackend.src.features.project.service.ProjectService.Update(System.Guid, backend.src.features.project.dto.UpdateProjectDto)^
+Delete(System.Guid)Gbackend.src.features.project.service.ProjectService.Delete(System.Guid)27backend.src.features.project.interfaces.IProjectServiceˆ
+BMicrosoft.AspNetCore.OpenApi.Generated.XmlCommentSchemaTransformerobject6Microsoft.AspNetCore.OpenApi.IOpenApiSchemaTransformerÎ
+ëTransformAsync(Microsoft.OpenApi.OpenApiSchema, Microsoft.AspNetCore.OpenApi.OpenApiSchemaTransformerContext, System.Threading.CancellationToken)‘Microsoft.AspNetCore.OpenApi.Generated.XmlCommentSchemaTransformer.TransformAsync(Microsoft.OpenApi.OpenApiSchema, Microsoft.AspNetCore.OpenApi.OpenApiSchemaTransformerContext, System.Threading.CancellationToken)Å
+XmlCommentSchemaTransformer()`Microsoft.AspNetCore.OpenApi.Generated.XmlCommentSchemaTransformer.XmlCommentSchemaTransformer()˝
+;backend.src.features.workflow.controller.WorkflowController'Microsoft.AspNetCore.Mvc.ControllerBaseobject€
+MWorkflowController(backend.src.features.workflow.interfaces.IWorkflowService)âbackend.src.features.workflow.controller.WorkflowController.WorkflowController(backend.src.features.workflow.interfaces.IWorkflowService)P
+GetAll()Dbackend.src.features.workflow.controller.WorkflowController.GetAll()h
+GetById(System.Guid)Pbackend.src.features.workflow.controller.WorkflowController.GetById(System.Guid)∂
+;Create(backend.src.features.workflow.dto.CreateWorkflowDto)wbackend.src.features.workflow.controller.WorkflowController.Create(backend.src.features.workflow.dto.CreateWorkflowDto)—
+HUpdate(System.Guid, backend.src.features.workflow.dto.UpdateWorkflowDto)Ñbackend.src.features.workflow.controller.WorkflowController.Update(System.Guid, backend.src.features.workflow.dto.UpdateWorkflowDto)f
+Delete(System.Guid)Obackend.src.features.workflow.controller.WorkflowController.Delete(System.Guid)Ü
+%backend.src.features.user.entity.RoleSystem.EnumSystem.ValueTypeobject6
+Role(),backend.src.features.user.entity.Role.Role()ù
+3backend.src.features.workflow.dto.CreateWorkflowDtoobject^
+CreateWorkflowDto()Gbackend.src.features.workflow.dto.CreateWorkflowDto.CreateWorkflowDto()H
+Name.get<backend.src.features.workflow.dto.CreateWorkflowDto.Name.getH
+Name.set<backend.src.features.workflow.dto.CreateWorkflowDto.Name.setV
+Description.getCbackend.src.features.workflow.dto.CreateWorkflowDto.Description.getV
+Description.setCbackend.src.features.workflow.dto.CreateWorkflowDto.Description.set\
+DefinitionJson.getFbackend.src.features.workflow.dto.CreateWorkflowDto.DefinitionJson.get\
+DefinitionJson.setFbackend.src.features.workflow.dto.CreateWorkflowDto.DefinitionJson.setï	
+5backend.src.features.workflow.dto.WorkflowResponseDtoobjectd
+WorkflowResponseDto()Kbackend.src.features.workflow.dto.WorkflowResponseDto.WorkflowResponseDto()F
+Id.get<backend.src.features.workflow.dto.WorkflowResponseDto.Id.getF
+Id.set<backend.src.features.workflow.dto.WorkflowResponseDto.Id.setJ
+Name.get>backend.src.features.workflow.dto.WorkflowResponseDto.Name.getJ
+Name.set>backend.src.features.workflow.dto.WorkflowResponseDto.Name.setX
+Description.getEbackend.src.features.workflow.dto.WorkflowResponseDto.Description.getX
+Description.setEbackend.src.features.workflow.dto.WorkflowResponseDto.Description.set^
+DefinitionJson.getHbackend.src.features.workflow.dto.WorkflowResponseDto.DefinitionJson.get^
+DefinitionJson.setHbackend.src.features.workflow.dto.WorkflowResponseDto.DefinitionJson.setR
+IsActive.getBbackend.src.features.workflow.dto.WorkflowResponseDto.IsActive.getR
+IsActive.setBbackend.src.features.workflow.dto.WorkflowResponseDto.IsActive.setT
+CreatedAt.getCbackend.src.features.workflow.dto.WorkflowResponseDto.CreatedAt.getT
+CreatedAt.setCbackend.src.features.workflow.dto.WorkflowResponseDto.CreatedAt.set6
+4backend.src.features.user.interfaces.IUserRepositoryè
+-backend.src.features.workflow.entity.WorkflowobjectF
+
+Workflow()8backend.src.features.workflow.entity.Workflow.Workflow()>
+Id.get4backend.src.features.workflow.entity.Workflow.Id.get>
+Id.set4backend.src.features.workflow.entity.Workflow.Id.setB
+Name.get6backend.src.features.workflow.entity.Workflow.Name.getB
+Name.set6backend.src.features.workflow.entity.Workflow.Name.setP
+Description.get=backend.src.features.workflow.entity.Workflow.Description.getP
+Description.set=backend.src.features.workflow.entity.Workflow.Description.setV
+DefinitionJson.get@backend.src.features.workflow.entity.Workflow.DefinitionJson.getV
+DefinitionJson.set@backend.src.features.workflow.entity.Workflow.DefinitionJson.setJ
+IsActive.get:backend.src.features.workflow.entity.Workflow.IsActive.getJ
+IsActive.set:backend.src.features.workflow.entity.Workflow.IsActive.setL
+CreatedAt.get;backend.src.features.workflow.entity.Workflow.CreatedAt.getL
+CreatedAt.set;backend.src.features.workflow.entity.Workflow.CreatedAt.set3
+1backend.src.features.user.interfaces.IUserServiceØ
+3backend.src.features.user.repository.UserRepositoryobject4backend.src.features.user.interfaces.IUserRepositoryp
+UserRepository(AppDbContext)Pbackend.src.features.user.repository.UserRepository.UserRepository(AppDbContext)H
+GetAll()<backend.src.features.user.repository.UserRepository.GetAll()`
+GetById(System.Guid)Hbackend.src.features.user.repository.UserRepository.GetById(System.Guid)\
+GetByEmail(string)Fbackend.src.features.user.repository.UserRepository.GetByEmail(string)í
+-Create(backend.src.features.user.entity.User)abackend.src.features.user.repository.UserRepository.Create(backend.src.features.user.entity.User)í
+-Update(backend.src.features.user.entity.User)abackend.src.features.user.repository.UserRepository.Update(backend.src.features.user.entity.User)^
+Delete(System.Guid)Gbackend.src.features.user.repository.UserRepository.Delete(System.Guid)24backend.src.features.user.interfaces.IUserRepository«
+-backend.src.features.user.service.UserServiceobject1backend.src.features.user.interfaces.IUserService›
+UUserService(backend.src.features.user.interfaces.IUserRepository, AutoMapper.IMapper)Ébackend.src.features.user.service.UserService.UserService(backend.src.features.user.interfaces.IUserRepository, AutoMapper.IMapper)B
+GetAll()6backend.src.features.user.service.UserService.GetAll()Z
+GetById(System.Guid)Bbackend.src.features.user.service.UserService.GetById(System.Guid)ò
+3Create(backend.src.features.user.dto.CreateUserDto)abackend.src.features.user.service.UserService.Create(backend.src.features.user.dto.CreateUserDto)≤
+@Update(System.Guid, backend.src.features.user.dto.UpdateUserDto)nbackend.src.features.user.service.UserService.Update(System.Guid, backend.src.features.user.dto.UpdateUserDto)X
+Delete(System.Guid)Abackend.src.features.user.service.UserService.Delete(System.Guid)21backend.src.features.user.interfaces.IUserService•
+,backend.src.features.user.UserMappingProfileAutoMapper.ProfileobjectY
+UserMappingProfile()Abackend.src.features.user.UserMappingProfile.UserMappingProfile();
+9backend.src.features.workflow.interfaces.IWorkflowService>
+<backend.src.features.workflow.interfaces.IWorkflowRepository¬
+;backend.src.features.workflow.repository.WorkflowRepositoryobject<backend.src.features.workflow.interfaces.IWorkflowRepositoryÄ
+ WorkflowRepository(AppDbContext)\backend.src.features.workflow.repository.WorkflowRepository.WorkflowRepository(AppDbContext)P
+GetAll()Dbackend.src.features.workflow.repository.WorkflowRepository.GetAll()h
+GetById(System.Guid)Pbackend.src.features.workflow.repository.WorkflowRepository.GetById(System.Guid)™
+5Create(backend.src.features.workflow.entity.Workflow)qbackend.src.features.workflow.repository.WorkflowRepository.Create(backend.src.features.workflow.entity.Workflow)™
+5Update(backend.src.features.workflow.entity.Workflow)qbackend.src.features.workflow.repository.WorkflowRepository.Update(backend.src.features.workflow.entity.Workflow)f
+Delete(System.Guid)Obackend.src.features.workflow.repository.WorkflowRepository.Delete(System.Guid)2<backend.src.features.workflow.interfaces.IWorkflowRepository«
+5backend.src.features.workflow.service.WorkflowServiceobject9backend.src.features.workflow.interfaces.IWorkflowService˝
+aWorkflowService(backend.src.features.workflow.interfaces.IWorkflowRepository, AutoMapper.IMapper)óbackend.src.features.workflow.service.WorkflowService.WorkflowService(backend.src.features.workflow.interfaces.IWorkflowRepository, AutoMapper.IMapper)J
+GetAll()>backend.src.features.workflow.service.WorkflowService.GetAll()b
+GetById(System.Guid)Jbackend.src.features.workflow.service.WorkflowService.GetById(System.Guid)∞
+;Create(backend.src.features.workflow.dto.CreateWorkflowDto)qbackend.src.features.workflow.service.WorkflowService.Create(backend.src.features.workflow.dto.CreateWorkflowDto) 
+HUpdate(System.Guid, backend.src.features.workflow.dto.UpdateWorkflowDto)~backend.src.features.workflow.service.WorkflowService.Update(System.Guid, backend.src.features.workflow.dto.UpdateWorkflowDto)`
+Delete(System.Guid)Ibackend.src.features.workflow.service.WorkflowService.Delete(System.Guid)29backend.src.features.workflow.interfaces.IWorkflowServiceΩ
+4backend.src.features.workflow.WorkflowMappingProfileAutoMapper.Profileobjecti
+WorkflowMappingProfile()Mbackend.src.features.workflow.WorkflowMappingProfile.WorkflowMappingProfile()¡
+3backend.src.features.workflow.dto.UpdateWorkflowDtoobject^
+UpdateWorkflowDto()Gbackend.src.features.workflow.dto.UpdateWorkflowDto.UpdateWorkflowDto()H
+Name.get<backend.src.features.workflow.dto.UpdateWorkflowDto.Name.getH
+Name.set<backend.src.features.workflow.dto.UpdateWorkflowDto.Name.setV
+Description.getCbackend.src.features.workflow.dto.UpdateWorkflowDto.Description.getV
+Description.setCbackend.src.features.workflow.dto.UpdateWorkflowDto.Description.set\
+DefinitionJson.getFbackend.src.features.workflow.dto.UpdateWorkflowDto.DefinitionJson.get\
+DefinitionJson.setFbackend.src.features.workflow.dto.UpdateWorkflowDto.DefinitionJson.setP
+IsActive.get@backend.src.features.workflow.dto.UpdateWorkflowDto.IsActive.getP
+IsActive.set@backend.src.features.workflow.dto.UpdateWorkflowDto.IsActive.set

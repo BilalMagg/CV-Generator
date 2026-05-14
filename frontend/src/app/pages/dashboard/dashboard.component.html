@@ -1,0 +1,46 @@
+<div class="container">
+  <header class="header">
+    <h1>Dashboard</h1>
+    <button (click)="logout()" class="btn-logout">Logout</button>
+  </header>
+
+  <main class="content">
+    @if (loading()) {
+      <p>Loading...</p>
+    } @else if (user()) {
+      <div class="user-info">
+        <h2>Welcome, {{ user()?.firstName }} {{ user()?.lastName }}!</h2>
+
+        <div class="card">
+          <h3>Profile Information</h3>
+          <dl>
+            <dt>Email</dt>
+            <dd>{{ user()?.email }}</dd>
+
+            <dt>Role</dt>
+            <dd>{{ user()?.role }}</dd>
+
+            <dt>Status</dt>
+            <dd>{{ user()?.isActive ? 'Active' : 'Inactive' }}</dd>
+
+            <dt>User ID</dt>
+            <dd>{{ user()?.userId }}</dd>
+
+            <dt>Keycloak ID</dt>
+            <dd>{{ user()?.keycloakId }}</dd>
+          </dl>
+        </div>
+
+        @if (user()?.tokens?.hasRefreshToken) {
+          <div class="card">
+            <h3>Session</h3>
+            <p>You have an active session with refresh token available.</p>
+            <p class="token-info">Token expires: {{ user()?.tokens?.expiresAt || 'Unknown' }}</p>
+          </div>
+        }
+      </div>
+    } @else {
+      <p>Unable to load user information.</p>
+    }
+  </main>
+</div>

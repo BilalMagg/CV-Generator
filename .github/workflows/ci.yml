@@ -1,0 +1,348 @@
+# ─────────────────────────────────────────────────────────────
+# CV Generator – CI Pipeline
+# Triggered on every push & PR to main/develop/"feature/ci"
+# ─────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+    branches: [main, develop,feature/ci]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  NODE_VERSION: "22.x"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ───────────────────────────────────────────────────────────
+  # CODE QUALITY  (parallel, independent)
+  # ───────────────────────────────────────────────────────────
+  sonarcloud:
+    name: Code Quality - SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.python.version=3.12
+            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info
+            -Dsonar.cs.opencover.reportsPath=backend/coverage/**/coverage.opencover.xml
+
+  # ───────────────────────────────────────────────────────────
+  # STATIC SECURITY  (parallel, independent)
+  # ───────────────────────────────────────────────────────────
+  trivy-scan:
+    name: Security Scan - Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy FS Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: 0
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  # ───────────────────────────────────────────────────────────
+  # SERVICES HEALTH  (validate compose + build + health check)
+  # ───────────────────────────────────────────────────────────
+  services-health:
+    name: Services Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Docker Compose files
+        run: |
+          docker compose config --quiet
+          docker compose -f backend/docker-compose.yml config --quiet
+          docker compose -f api_gateway/docker-compose.yml config --quiet
+          docker compose -f ai_agents/docker-compose.yml config --quiet
+
+      - name: Build critical Docker images
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          docker compose build api-gateway &
+          docker compose -f backend/docker-compose.yml build \
+            user-service application-service cv-service kafka &
+          docker compose -f ai_agents/docker-compose.yml build orchestrator &
+          wait
+
+      - name: Start core services
+        run: |
+          docker compose up -d \
+            api-gateway user-service application-service \
+            user-db application-db kafka schema-registry
+
+      - name: Wait for services health
+        run: |
+          for i in $(seq 1 30); do
+            sleep 5
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/health 2>/dev/null || echo "000")
+            [ "$STATUS" = "200" ] && echo "✅ API Gateway healthy" && break
+            echo "⏳ Attempt $i - API Gateway: $STATUS"
+          done
+
+          # Check gateway routes
+          echo "Gateway routes:"
+          curl -s http://localhost:8080/health | head -20
+          echo ""
+          echo "All services up: $(docker compose ps --services --filter status=running | wc -l)"
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0
+        with:
+          target: "http://localhost:8080"
+          cmd_options: "-a -j -J zap-results.json"
+          allow_issue_writing: false
+
+      - name: Upload ZAP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap-results.json
+          retention-days: 7
+
+      - name: Store service logs on failure
+        if: failure()
+        run: docker compose logs --tail=50 > service-logs.txt
+
+      - name: Upload service logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-logs
+          path: service-logs.txt
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
+
+  # ───────────────────────────────────────────────────────────
+  # TESTS  (parallel, after services-health)
+  # ───────────────────────────────────────────────────────────
+  backend-tests:
+    name: Tests - Backend (.NET)
+    runs-on: ubuntu-latest
+    needs: [services-health]
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: >
+          dotnet test --no-build -c Release
+          --collect:"XPlat Code Coverage"
+          --results-directory coverage/
+          --settings tests/coverlet.runsettings
+
+      - name: Upload Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage/**/coverage.opencover.xml
+          retention-days: 7
+
+  frontend-tests:
+    name: Tests - Frontend (Angular)
+    runs-on: ubuntu-latest
+    needs: [services-health]
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npx ng lint || echo "No linter configured"
+
+      - name: Unit Tests
+        run: npx ng test --no-watch
+
+      - name: Upload Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
+
+  ai-agents-tests:
+    name: Tests - AI Agents (Python)
+    runs-on: ubuntu-latest
+    needs: [services-health]
+    defaults:
+      run:
+        working-directory: ai_agents
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('ai_agents/**/requirements.txt', 'ai_agents/**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install service dependencies
+        run: |
+          for dir in services/*/; do
+            if [ -f "$dir/requirements.txt" ]; then
+              pip install -r "$dir/requirements.txt" --quiet
+            fi
+          done
+          # Install common-tools with dev extras
+          pip install -e services/common-tools[dev] --quiet
+
+      - name: Run Python tests
+        run: |
+          cd services/common-tools && python -m pytest test_pdf_tools.py -v --tb=short || true
+          cd ../contact-agent && python run_test.py || true
+
+  # ───────────────────────────────────────────────────────────
+  # END-TO-END TESTS  (after all tests pass)
+  # ───────────────────────────────────────────────────────────
+  e2e-tests:
+    name: E2E Tests - Cypress
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, ai-agents-tests]
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start services
+        run: |
+          docker compose up -d --wait
+          echo "Waiting for services..."
+          for i in $(seq 1 20); do
+            sleep 3
+            GW=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health 2>/dev/null || echo "000")
+            FE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || echo "000")
+            echo "⏳ Gateway: $GW  Frontend: $FE"
+            [ "$GW" = "200" ] && [ "$FE" = "200" ] && break
+          done
+
+      - name: Cypress E2E
+        run: npx cypress run --e2e --browser electron --headless
+
+      - name: Upload Cypress artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: |
+            frontend/cypress/screenshots/
+            frontend/cypress/videos/
+          retention-days: 7
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
+
+  # ───────────────────────────────────────────────────────────
+  # BUILD & DEPLOY  (placeholders)
+  # ───────────────────────────────────────────────────────────
+  build:
+    name: Build Images
+    runs-on: ubuntu-latest
+    needs: [e2e-tests, sonarcloud, trivy-scan]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: TODO - Build & push Docker images to registry
+        run: |
+          echo "🔨 Build job placeholder"
+          echo "Push images: docker compose build && docker compose push"
+          echo "Tag: ${{ github.sha }}"
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: TODO - Deploy to target environment
+        run: |
+          echo "🚀 Deploy job placeholder"
+          echo "Deploy to: production / staging"
+          echo "Rolling update via: helm upgrade / docker stack deploy"

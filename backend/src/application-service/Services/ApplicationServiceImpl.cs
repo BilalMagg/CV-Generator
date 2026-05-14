@@ -21,17 +21,20 @@ public class ApplicationServiceImpl : IApplicationService
     private readonly IApplicationRepository _appRepo;
     private readonly IApplicationStatusHistoryRepository _historyRepo;
     private readonly IKafkaPublisher _kafkaPublisher;
+    private readonly IUserGrpcClientService _userGrpc;
     private readonly ILogger<ApplicationServiceImpl> _logger;
 
     public ApplicationServiceImpl(
         IApplicationRepository appRepo,
         IApplicationStatusHistoryRepository historyRepo,
         IKafkaPublisher kafkaPublisher,
+        IUserGrpcClientService userGrpc,
         ILogger<ApplicationServiceImpl> logger)
     {
         _appRepo = appRepo;
         _historyRepo = historyRepo;
         _kafkaPublisher = kafkaPublisher;
+        _userGrpc = userGrpc;
         _logger = logger;
     }
 
@@ -56,6 +59,14 @@ public class ApplicationServiceImpl : IApplicationService
 
     public async Task<ApplicationResponseDto> CreateAsync(CreateApplicationDto dto, string? userId)
     {
+        // Validate candidate exists via gRPC
+        if (userId != null && Guid.TryParse(userId, out var userGuid))
+        {
+            var exists = await _userGrpc.UserExistsAsync(userGuid);
+            if (!exists)
+                _logger.LogWarning("Creating application for unknown user {UserId} — gRPC validation skipped if user-service unavailable", userId);
+        }
+
         var application = new Application
         {
             CandidateId = dto.CandidateId,

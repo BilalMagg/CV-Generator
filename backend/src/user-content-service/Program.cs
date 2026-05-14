@@ -1,20 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using UserContentService;
+using UserContentService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ContentDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-    dataSourceBuilder.UseVector();
-    var dataSource = dataSourceBuilder.Build();
-    options.UseNpgsql(dataSource, o => o.UseVector());
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+
 });
 
 builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddGrpc();
+builder.Services.AddSingleton<KafkaProducerService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -42,10 +42,11 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.UseSwagger();
-app.UseSwaggerUI();
 app.UseRouting();
 app.MapControllers();
 app.MapGrpcService<UserContentService.Grpc.ContentServiceImpl>();
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.Run();

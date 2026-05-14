@@ -1,0 +1,124 @@
+<div class="container">
+  <div class="card">
+    <h1>Create Account</h1>
+    <p>Register to get started with CV Generator.</p>
+
+    @if (error()) {
+      <div class="alert error">{{ error() }}</div>
+    }
+
+    @if (success()) {
+      <div class="alert success">{{ success() }}</div>
+    }
+
+    <form (ngSubmit)="onSubmit()" #registerForm="ngForm">
+      <div class="form-group">
+        <label for="firstName">First Name</label>
+        <input
+          type="text"
+          id="firstName"
+          name="firstName"
+          [(ngModel)]="firstName"
+          #firstNameRef="ngModel"
+          required
+          placeholder="John"
+          [class.input-error]="firstNameRef.invalid && firstNameRef.dirty"
+        />
+        @if (firstNameRef.invalid && firstNameRef.dirty) {
+          <span class="field-error">First name is required</span>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="lastName">Last Name</label>
+        <input
+          type="text"
+          id="lastName"
+          name="lastName"
+          [(ngModel)]="lastName"
+          #lastNameRef="ngModel"
+          required
+          placeholder="Doe"
+          [class.input-error]="lastNameRef.invalid && lastNameRef.dirty"
+        />
+        @if (lastNameRef.invalid && lastNameRef.dirty) {
+          <span class="field-error">Last name is required</span>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          [(ngModel)]="email"
+          #emailRef="ngModel"
+          required
+          email
+          placeholder="john.doe@example.com"
+          [class.input-error]="emailRef.invalid && emailRef.dirty"
+        />
+        @if (emailRef.invalid && emailRef.dirty) {
+          @if (emailRef.errors?.['required']) {
+            <span class="field-error">Email is required</span>
+          } @else {
+            <span class="field-error">Enter a valid email address</span>
+          }
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          [(ngModel)]="password"
+          #passwordRef="ngModel"
+          required
+          minlength="8"
+          placeholder="Minimum 8 characters"
+          [class.input-error]="passwordRef.invalid && passwordRef.dirty"
+        />
+        @if (passwordRef.invalid && passwordRef.dirty) {
+          @if (passwordRef.errors?.['required']) {
+            <span class="field-error">Password is required</span>
+          } @else {
+            <span class="field-error">At least 8 characters</span>
+          }
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          name="confirmPassword"
+          [(ngModel)]="confirmPassword"
+          #confirmRef="ngModel"
+          required
+          placeholder="Repeat your password"
+          [class.input-error]="confirmRef.invalid && confirmRef.dirty"
+        />
+        @if (confirmRef.invalid && confirmRef.dirty && confirmRef.errors?.['required']) {
+          <span class="field-error">Please confirm your password</span>
+        }
+      </div>
+
+      <button type="submit" [disabled]="loading()" class="btn btn-primary">
+        @if (loading()) {
+          <span class="spinner"></span> Creating Account...
+        } @else {
+          Create Account
+        }
+      </button>
+    </form>
+
+    <div class="links">
+      <a routerLink="/login">Already have an account? Login</a>
+      <a routerLink="/">Back to Home</a>
+    </div>
+  </div>
+</div>

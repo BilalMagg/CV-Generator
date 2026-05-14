@@ -13,19 +13,19 @@
         {
           "ruleId": "CS8618",
           "level": "warning",
-          "message": "Non-nullable property 'Cvs' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
+          "message": "Non-nullable property 'JobOffers' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
           "suppressionStates": [
             "suppressedInSource"
           ],
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/CvDbContext.cs",
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
                 "region": {
                   "startLine": 8,
                   "startColumn": 12,
                   "endLine": 8,
-                  "endColumn": 23
+                  "endColumn": 29
                 }
               }
             }
@@ -33,12 +33,12 @@
           "relatedLocations": [
             {
               "physicalLocation": {
-                "uri": "file:///app/src/cv-service/CvDbContext.cs",
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
                 "region": {
                   "startLine": 10,
-                  "startColumn": 22,
+                  "startColumn": 28,
                   "endLine": 10,
-                  "endColumn": 25
+                  "endColumn": 37
                 }
               }
             }
@@ -50,19 +50,19 @@
         {
           "ruleId": "CS8618",
           "level": "warning",
-          "message": "Non-nullable property 'CvVersions' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
+          "message": "Non-nullable property 'JobSkills' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
           "suppressionStates": [
             "suppressedInSource"
           ],
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/CvDbContext.cs",
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
                 "region": {
                   "startLine": 8,
                   "startColumn": 12,
                   "endLine": 8,
-                  "endColumn": 23
+                  "endColumn": 29
                 }
               }
             }
@@ -70,12 +70,12 @@
           "relatedLocations": [
             {
               "physicalLocation": {
-                "uri": "file:///app/src/cv-service/CvDbContext.cs",
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
                 "region": {
                   "startLine": 11,
-                  "startColumn": 29,
+                  "startColumn": 28,
                   "endLine": 11,
-                  "endColumn": 39
+                  "endColumn": 37
                 }
               }
             }
@@ -87,19 +87,19 @@
         {
           "ruleId": "CS8618",
           "level": "warning",
-          "message": "Non-nullable property 'CvSections' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
+          "message": "Non-nullable property 'JobResponsibilities' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
           "suppressionStates": [
             "suppressedInSource"
           ],
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/CvDbContext.cs",
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
                 "region": {
                   "startLine": 8,
                   "startColumn": 12,
                   "endLine": 8,
-                  "endColumn": 23
+                  "endColumn": 29
                 }
               }
             }
@@ -107,12 +107,12 @@
           "relatedLocations": [
             {
               "physicalLocation": {
-                "uri": "file:///app/src/cv-service/CvDbContext.cs",
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
                 "region": {
                   "startLine": 12,
-                  "startColumn": 29,
+                  "startColumn": 37,
                   "endLine": 12,
-                  "endColumn": 39
+                  "endColumn": 56
                 }
               }
             }
@@ -122,81 +122,34 @@
           }
         },
         {
-          "ruleId": "S1135",
+          "ruleId": "CS8618",
           "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
+          "message": "Non-nullable property 'JobBenefits' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/Controllers/CvExportController.cs",
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
                 "region": {
-                  "startLine": 15,
+                  "startLine": 8,
                   "startColumn": 12,
-                  "endLine": 15,
-                  "endColumn": 16
+                  "endLine": 8,
+                  "endColumn": 29
                 }
               }
             }
           ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
+          "relatedLocations": [
             {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Controllers/CvExportController.cs",
+              "physicalLocation": {
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
                 "region": {
-                  "startLine": 23,
-                  "startColumn": 12,
-                  "endLine": 23,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Controllers/CvTemplatesController.cs",
-                "region": {
-                  "startLine": 16,
-                  "startColumn": 12,
-                  "endLine": 16,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Controllers/CvTemplatesController.cs",
-                "region": {
-                  "startLine": 24,
-                  "startColumn": 12,
-                  "endLine": 24,
-                  "endColumn": 16
+                  "startLine": 13,
+                  "startColumn": 30,
+                  "endLine": 13,
+                  "endColumn": 41
                 }
               }
             }
@@ -212,12 +165,12 @@
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/CvDbContext.cs",
+                "uri": "file:///app/src/job-offer-service/controllers/JobOfferController.cs",
                 "region": {
-                  "startLine": 20,
+                  "startLine": 58,
                   "startColumn": 9,
-                  "endLine": 20,
-                  "endColumn": 13
+                  "endLine": 58,
+                  "endColumn": 77
                 }
               }
             }
@@ -227,18 +180,39 @@
           }
         },
         {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
+          "ruleId": "CA1050",
+          "level": "note",
+          "message": "Declare types in namespaces",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/CvDbContext.cs",
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
                 "region": {
-                  "startLine": 18,
-                  "startColumn": 12,
-                  "endLine": 18,
-                  "endColumn": 16
+                  "startLine": 6,
+                  "startColumn": 14,
+                  "endLine": 6,
+                  "endColumn": 31
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S3903",
+          "level": "warning",
+          "message": "Move 'JobOfferDbContext' into a named namespace.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/JobOfferDbContext.cs",
+                "region": {
+                  "startLine": 6,
+                  "startColumn": 14,
+                  "endLine": 6,
+                  "endColumn": 31
                 }
               }
             }
@@ -254,12 +228,12 @@
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/Program.cs",
+                "uri": "file:///app/src/job-offer-service/services/JobOfferService.cs",
                 "region": {
-                  "startLine": 19,
-                  "startColumn": 1,
-                  "endLine": 19,
-                  "endColumn": 62
+                  "startLine": 49,
+                  "startColumn": 9,
+                  "endLine": 49,
+                  "endColumn": 85
                 }
               }
             }
@@ -275,32 +249,11 @@
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/Program.cs",
+                "uri": "file:///app/src/job-offer-service/services/JobOfferService.cs",
                 "region": {
-                  "startLine": 18,
-                  "startColumn": 4,
-                  "endLine": 18,
-                  "endColumn": 8
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvSectionServiceImpl.cs",
-                "region": {
-                  "startLine": 9,
+                  "startLine": 48,
                   "startColumn": 12,
-                  "endLine": 9,
+                  "endLine": 48,
                   "endColumn": 16
                 }
               }
@@ -317,11 +270,11 @@
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvSectionServiceImpl.cs",
+                "uri": "file:///app/src/job-offer-service/services/JobOfferService.cs",
                 "region": {
-                  "startLine": 15,
+                  "startLine": 100,
                   "startColumn": 12,
-                  "endLine": 15,
+                  "endLine": 100,
                   "endColumn": 16
                 }
               }
@@ -332,18 +285,18 @@
           }
         },
         {
-          "ruleId": "S1135",
+          "ruleId": "S1144",
           "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
+          "message": "Remove the unused private method 'GetUserId'.",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvSectionServiceImpl.cs",
+                "uri": "file:///app/src/job-offer-service/controllers/JobOfferController.cs",
                 "region": {
-                  "startLine": 21,
-                  "startColumn": 12,
-                  "endLine": 21,
-                  "endColumn": 16
+                  "startLine": 37,
+                  "startColumn": 21,
+                  "endLine": 37,
+                  "endColumn": 30
                 }
               }
             }
@@ -353,18 +306,18 @@
           }
         },
         {
-          "ruleId": "S1135",
+          "ruleId": "S6608",
           "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
+          "message": "Indexing at 0 should be used instead of the \"Enumerable\" extension method \"First\"",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvSectionServiceImpl.cs",
+                "uri": "file:///app/src/job-offer-service/controllers/JobOfferController.cs",
                 "region": {
-                  "startLine": 27,
-                  "startColumn": 12,
-                  "endLine": 27,
-                  "endColumn": 16
+                  "startLine": 93,
+                  "startColumn": 73,
+                  "endLine": 93,
+                  "endColumn": 78
                 }
               }
             }
@@ -374,207 +327,18 @@
           }
         },
         {
-          "ruleId": "S1135",
+          "ruleId": "S6964",
           "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
+          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvServiceImpl.cs",
+                "uri": "file:///app/src/job-offer-service/DTOs/JobOfferDtos.cs",
                 "region": {
-                  "startLine": 9,
-                  "startColumn": 12,
-                  "endLine": 9,
+                  "startLine": 98,
+                  "startColumn": 10,
+                  "endLine": 98,
                   "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvServiceImpl.cs",
-                "region": {
-                  "startLine": 15,
-                  "startColumn": 12,
-                  "endLine": 15,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvServiceImpl.cs",
-                "region": {
-                  "startLine": 21,
-                  "startColumn": 12,
-                  "endLine": 21,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvServiceImpl.cs",
-                "region": {
-                  "startLine": 27,
-                  "startColumn": 12,
-                  "endLine": 27,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvServiceImpl.cs",
-                "region": {
-                  "startLine": 33,
-                  "startColumn": 12,
-                  "endLine": 33,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvVersionServiceImpl.cs",
-                "region": {
-                  "startLine": 9,
-                  "startColumn": 12,
-                  "endLine": 9,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvVersionServiceImpl.cs",
-                "region": {
-                  "startLine": 15,
-                  "startColumn": 12,
-                  "endLine": 15,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvVersionServiceImpl.cs",
-                "region": {
-                  "startLine": 21,
-                  "startColumn": 12,
-                  "endLine": 21,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1135",
-          "level": "warning",
-          "message": "Complete the task associated to this 'TODO' comment.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/Services/CvVersionServiceImpl.cs",
-                "region": {
-                  "startLine": 27,
-                  "startColumn": 12,
-                  "endLine": 27,
-                  "endColumn": 16
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1185",
-          "level": "warning",
-          "message": "Remove this method 'OnModelCreating' to simply inherit its behavior.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/cv-service/CvDbContext.cs",
-                "region": {
-                  "startLine": 14,
-                  "startColumn": 5,
-                  "endLine": 24,
-                  "endColumn": 6
                 }
               }
             }
@@ -590,11 +354,137 @@
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/Program.cs",
+                "uri": "file:///app/src/job-offer-service/controllers/JobOfferController.cs",
                 "region": {
-                  "startLine": 63,
+                  "startLine": 97,
+                  "startColumn": 9,
+                  "endLine": 97,
+                  "endColumn": 95
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S6608",
+          "level": "warning",
+          "message": "Indexing at 0 should be used instead of the \"Enumerable\" extension method \"First\"",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/controllers/JobOfferController.cs",
+                "region": {
+                  "startLine": 114,
+                  "startColumn": 75,
+                  "endLine": 114,
+                  "endColumn": 80
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/controllers/JobOfferController.cs",
+                "region": {
+                  "startLine": 120,
                   "startColumn": 13,
-                  "endLine": 63,
+                  "endLine": 120,
+                  "endColumn": 102
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S6608",
+          "level": "warning",
+          "message": "Indexing at 0 should be used instead of the \"Enumerable\" extension method \"First\"",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/controllers/JobOfferController.cs",
+                "region": {
+                  "startLine": 141,
+                  "startColumn": 75,
+                  "endLine": 141,
+                  "endColumn": 80
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/controllers/JobOfferController.cs",
+                "region": {
+                  "startLine": 147,
+                  "startColumn": 13,
+                  "endLine": 147,
+                  "endColumn": 100
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/controllers/JobOfferController.cs",
+                "region": {
+                  "startLine": 172,
+                  "startColumn": 9,
+                  "endLine": 172,
+                  "endColumn": 61
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/Program.cs",
+                "region": {
+                  "startLine": 64,
+                  "startColumn": 13,
+                  "endLine": 64,
                   "endColumn": 110
                 }
               }
@@ -611,11 +501,11 @@
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/Program.cs",
+                "uri": "file:///app/src/job-offer-service/Program.cs",
                 "region": {
-                  "startLine": 84,
+                  "startLine": 88,
                   "startColumn": 1,
-                  "endLine": 84,
+                  "endLine": 88,
                   "endColumn": 10
                 }
               }
@@ -626,18 +516,81 @@
           }
         },
         {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/cv-service/DTOs/RequestDtos.cs",
+                "uri": "file:///app/src/job-offer-service/Repositories/JobOfferRepository.cs",
                 "region": {
-                  "startLine": 21,
+                  "startLine": 79,
                   "startColumn": 9,
-                  "endLine": 21,
-                  "endColumn": 21
+                  "endLine": 79,
+                  "endColumn": 70
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/Repositories/JobOfferRepository.cs",
+                "region": {
+                  "startLine": 95,
+                  "startColumn": 9,
+                  "endLine": 95,
+                  "endColumn": 138
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/Repositories/JobOfferRepository.cs",
+                "region": {
+                  "startLine": 107,
+                  "startColumn": 9,
+                  "endLine": 107,
+                  "endColumn": 61
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/job-offer-service/Repositories/JobOfferRepository.cs",
+                "region": {
+                  "startLine": 70,
+                  "startColumn": 9,
+                  "endLine": 70,
+                  "endColumn": 70
                 }
               }
             }
@@ -648,6 +601,22 @@
         }
       ],
       "rules": {
+        "CA1050": {
+          "id": "CA1050",
+          "shortDescription": "Declare types in namespaces",
+          "fullDescription": "Types are declared in namespaces to prevent name collisions and as a way to organize related types in an object hierarchy.",
+          "defaultLevel": "note",
+          "helpUri": "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1050",
+          "properties": {
+            "category": "Design",
+            "isEnabledByDefault": true,
+            "tags": [
+              "PortedFromFxCop",
+              "Telemetry",
+              "EnabledRuleInAggressiveMode"
+            ]
+          }
+        },
         "CA1873": {
           "id": "CA1873",
           "shortDescription": "Avoid potentially expensive logging",
@@ -693,13 +662,13 @@
             ]
           }
         },
-        "S1185": {
-          "id": "S1185",
-          "shortDescription": "Overriding members should do more than simply call the same member in the base class",
-          "fullDescription": "Overriding a method just to call the same method from the base class without performing any other actions is useless and misleading. The only time this is justified is in sealed overriding methods, where the effect is to lock in the parent class behavior. This rule ignores overrides of Equals and GetHashCode.",
+        "S1144": {
+          "id": "S1144",
+          "shortDescription": "Unused private types or members should be removed",
+          "fullDescription": "This rule raises an issue when a private/internal type or member is never referenced in the code.",
           "defaultLevel": "warning",
           "properties": {
-            "category": "Minor Code Smell",
+            "category": "Major Code Smell",
             "isEnabledByDefault": true,
             "tags": [
               "C#",
@@ -716,6 +685,38 @@
           "defaultLevel": "warning",
           "properties": {
             "category": "Major Code Smell",
+            "isEnabledByDefault": true,
+            "tags": [
+              "C#",
+              "MainSourceScope",
+              "TestSourceScope",
+              "SonarWay"
+            ]
+          }
+        },
+        "S3903": {
+          "id": "S3903",
+          "shortDescription": "Types should be defined in named namespaces",
+          "fullDescription": "Types are declared in namespaces in order to prevent name collisions and as a way to organize them into the object hierarchy. Types that are defined outside any named namespace are in a global namespace that cannot be referenced in code.",
+          "defaultLevel": "warning",
+          "properties": {
+            "category": "Major Bug",
+            "isEnabledByDefault": true,
+            "tags": [
+              "C#",
+              "MainSourceScope",
+              "TestSourceScope",
+              "SonarWay"
+            ]
+          }
+        },
+        "S6608": {
+          "id": "S6608",
+          "shortDescription": "Prefer indexing instead of \"Enumerable\" methods on types implementing \"IList\"",
+          "fullDescription": "Indexes in C# provide direct access to an element at a specific position within an array or collection. When compared to Enumerable methods, indexing can be more efficient for certain scenarios, such as iterating over a large collection, due to avoiding the overhead of checking the underlying collection type before accessing it.",
+          "defaultLevel": "warning",
+          "properties": {
+            "category": "Minor Code Smell",
             "isEnabledByDefault": true,
             "tags": [
               "C#",

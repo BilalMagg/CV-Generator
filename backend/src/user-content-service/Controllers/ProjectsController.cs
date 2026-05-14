@@ -1,9 +1,10 @@
-using System.ComponentModel.DataAnnotations;
 using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using UserContentService;
 using UserContentService.Entity;
+using UserContentService.Events.ProjectEvent;
+using UserContentService.Services;
+using UserContentService.dto.Project;
 
 namespace UserContentService.Controllers;
 
@@ -13,11 +14,13 @@ public class ProjectsController : ControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly ILogger<ProjectsController> _logger;
+    private readonly KafkaProducerService _kafkaProducer;
 
-    public ProjectsController(ContentDbContext db, ILogger<ProjectsController> logger)
+    public ProjectsController(ContentDbContext db, ILogger<ProjectsController> logger, KafkaProducerService kafkaProducer )
     {
         _db = db;
         _logger = logger;
+        _kafkaProducer = kafkaProducer;
     }
 
     [HttpGet]
@@ -26,15 +29,49 @@ public class ProjectsController : ControllerBase
         var projects = userId.HasValue
             ? await _db.Projects.Where(p => p.UserId == userId.Value).ToListAsync()
             : await _db.Projects.ToListAsync();
-        return Ok(ApiResponse<List<Project>>.Ok(projects));
+
+        var response = projects.Select(p => new ProjectResponseDto
+        {
+            Id = p.Id,
+            Title = p.Title,
+            Description = p.Description,
+            Role = p.Role,
+            Achievements = p.Achievements,
+            StartDate = p.StartDate,
+            EndDate = p.EndDate,
+            RepositoryUrl = p.RepositoryUrl,
+            DemoUrl = p.DemoUrl,
+            Status = p.Status,
+            UserId = p.UserId,
+            SkillsJson = p.SkillsJson
+        }).ToList();
+
+        return Ok(ApiResponse<List<ProjectResponseDto>>.Ok(response));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var project = await _db.Projects.FindAsync(id);
-        if (project == null) return NotFound(ApiResponse<Project>.Error("Project not found"));
-        return Ok(ApiResponse<Project>.Ok(project));
+        var p = await _db.Projects.FindAsync(id);
+        if (p == null) return NotFound(ApiResponse<ProjectResponseDto>.Error("Project not found"));
+
+        var response = new ProjectResponseDto
+        {
+            Id = p.Id,
+            Title = p.Title,
+            Description = p.Description,
+            Role = p.Role,
+            Achievements = p.Achievements,
+            StartDate = p.StartDate,
+            EndDate = p.EndDate,
+            RepositoryUrl = p.RepositoryUrl,
+            DemoUrl = p.DemoUrl,
+            Status = p.Status,
+            UserId = p.UserId,
+            SkillsJson = p.SkillsJson
+        };
+
+        return Ok(ApiResponse<ProjectResponseDto>.Ok(response));
     }
 
     [HttpPost]
@@ -54,19 +91,52 @@ public class ProjectsController : ControllerBase
             UserId = dto.UserId,
             SkillsJson = dto.SkillsJson
         };
-
+        
         _db.Projects.Add(project);
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Created project {Id}", project.Id);
-        return Created($"/api/projects/{project.Id}", ApiResponse<Project>.Created(project));
+        await _kafkaProducer.PublishAsync("project-created", new ProjectCreatedEvent
+        {
+            Id = project.Id,
+            Title = project.Title,
+            Description = project.Description,
+            Role = project.Role,
+            Achievements = project.Achievements,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            RepositoryUrl = project.RepositoryUrl,
+            DemoUrl = project.DemoUrl,
+            Status = project.Status,
+            SkillsJson = project.SkillsJson,
+            UserId = project.UserId
+        });
+
+        _logger.LogInformation("Created project {Id} and published event", project.Id);
+
+        var response = new ProjectResponseDto
+        {
+            Id = project.Id,
+            Title = project.Title,
+            Description = project.Description,
+            Role = project.Role,
+            Achievements = project.Achievements,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            RepositoryUrl = project.RepositoryUrl,
+            DemoUrl = project.DemoUrl,
+            Status = project.Status,
+            UserId = project.UserId,
+            SkillsJson = project.SkillsJson
+        };
+
+        return Created($"/api/projects/{project.Id}", ApiResponse<ProjectResponseDto>.Created(response));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectDto dto)
     {
         var project = await _db.Projects.FindAsync(id);
-        if (project == null) return NotFound(ApiResponse<Project>.Error("Project not found"));
+        if (project == null) return NotFound(ApiResponse<ProjectResponseDto>.Error("Project not found"));
 
         project.Title = dto.Title;
         project.Description = dto.Description;
@@ -80,7 +150,40 @@ public class ProjectsController : ControllerBase
         project.SkillsJson = dto.SkillsJson;
 
         await _db.SaveChangesAsync();
-        return Ok(ApiResponse<Project>.Ok(project));
+
+        await _kafkaProducer.PublishAsync("project-updated", new ProjectUpdatedEvent
+        {
+            Id = project.Id,
+            Title = project.Title,
+            Description = project.Description,
+            Role = project.Role,
+            Achievements = project.Achievements,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            RepositoryUrl = project.RepositoryUrl,
+            DemoUrl = project.DemoUrl,
+            Status = project.Status,
+            SkillsJson = project.SkillsJson,
+            UserId = project.UserId
+        });
+
+        var response = new ProjectResponseDto
+        {
+            Id = project.Id,
+            Title = project.Title,
+            Description = project.Description,
+            Role = project.Role,
+            Achievements = project.Achievements,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            RepositoryUrl = project.RepositoryUrl,
+            DemoUrl = project.DemoUrl,
+            Status = project.Status,
+            UserId = project.UserId,
+            SkillsJson = project.SkillsJson
+        };
+
+        return Ok(ApiResponse<ProjectResponseDto>.Ok(response));
     }
 
     [HttpDelete("{id}")]
@@ -89,35 +192,19 @@ public class ProjectsController : ControllerBase
         var project = await _db.Projects.FindAsync(id);
         if (project == null) return NotFound(ApiResponse<object>.Error("Project not found"));
 
+        var userId = project.UserId;
+
         _db.Projects.Remove(project);
         await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("project-deleted", new ProjectDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        _logger.LogInformation("Deleted project {Id} and published event", id);
         return NoContent();
     }
 
-    public record CreateProjectDto(
-        string Title,
-        string? Description,
-        string? Role,
-        string? Achievements,
-        DateTime StartDate,
-        DateTime? EndDate,
-        string? RepositoryUrl,
-        string? DemoUrl,
-        string Status,
-        Guid UserId,
-        string? SkillsJson
-    );
-
-    public record UpdateProjectDto(
-        string Title,
-        string? Description,
-        string? Role,
-        string? Achievements,
-        DateTime StartDate,
-        DateTime? EndDate,
-        string? RepositoryUrl,
-        string? DemoUrl,
-        string Status,
-        string? SkillsJson
-    );
 }

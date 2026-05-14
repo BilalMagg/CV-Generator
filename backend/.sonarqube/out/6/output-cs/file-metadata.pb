@@ -4,7 +4,8 @@ d/app/src/application-service/obj/Debug/net10.0/ApplicationService.MvcApplicatio
 Q/app/src/application-service/obj/Debug/net10.0/ApplicationService.AssemblyInfo.csutf-8i
 ^/app/src/application-service/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.csutf-8^
 S/app/src/application-service/obj/Debug/net10.0/ApplicationService.GlobalUsings.g.csutf-8I
-@/app/src/application-service/Validators/ApplicationValidators.csutf-8@
+@/app/src/application-service/Validators/ApplicationValidators.csutf-8G
+>/app/src/application-service/Services/UserGrpcClientService.csutf-8@
 7/app/src/application-service/Services/KafkaPublisher.csutf-8H
 ?/app/src/application-service/Services/ApplicationServiceImpl.csutf-8X
 O/app/src/application-service/Repositories/ApplicationStatusHistoryRepository.csutf-8K

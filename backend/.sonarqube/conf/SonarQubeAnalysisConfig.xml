@@ -175,7 +175,7 @@
     <Property Name="sonar.vbnet.analyzer.security.staticResourceName">SonarAnalyzer.Security.VisualBasic-11.30.0.46311.zip</Property>
     <Property Name="sonar.branch.longLivedBranches.regex">(branch|release)-.*</Property>
     <Property Name="sonar.objc.file.suffixes">.m</Property>
-    <Property Name="sonar.autoscan.enabled">true</Property>
+    <Property Name="sonar.autoscan.enabled">false</Property>
     <Property Name="sonar.ruby.coverage.reportPaths">coverage/.resultset.json</Property>
     <Property Name="sonar.text.inclusions">**/*.sh,**/*.bash,**/*.zsh,**/*.ksh,**/*.ps1,**/*.properties,**/*.conf,**/*.pem,**/*.config,.env,.aws/config,**/*.key</Property>
     <Property Name="rp.entitlements.api.enabled">true</Property>

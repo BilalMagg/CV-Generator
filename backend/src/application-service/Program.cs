@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using FluentValidation;
+using CommonProtos.User;
 using ApplicationService;
 using ApplicationService.Services;
 using ApplicationService.Repositories;
@@ -19,7 +22,25 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IApplicationRepository, ApplicationRepository>();
 builder.Services.AddScoped<IApplicationStatusHistoryRepository, ApplicationStatusHistoryRepository>();
 builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>();
+builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
 builder.Services.AddScoped<ApplicationService.Services.IApplicationService, ApplicationServiceImpl>();
+
+// gRPC client — UserService
+builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
+{
+    var grpcUrl = builder.Configuration.GetValue<string>("USER_SERVICE_GRPC_URL")
+        ?? Environment.GetEnvironmentVariable("USER_SERVICE_GRPC_URL")
+        ?? "http://cv-user-service:8082";
+    o.Address = new Uri(grpcUrl);
+})
+.ConfigureChannel(o =>
+{
+    o.HttpHandler = new SocketsHttpHandler
+    {
+        EnableMultipleHttp2Connections = true,
+        ConnectTimeout = TimeSpan.FromSeconds(5),
+    };
+});
 
 // Validators
 builder.Services.AddScoped<IValidator<CreateApplicationDto>, CreateApplicationValidator>();
@@ -38,8 +59,15 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        options.Authority = Environment.GetEnvironmentVariable("JWT_AUTHORITY") ?? "";
+        var jwtAuthority = Environment.GetEnvironmentVariable("JWT_AUTHORITY") ?? "";
+        options.Authority = jwtAuthority;
         options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters.ValidateAudience = false;
+        // Accept the external URL as a valid issuer (the JWT's iss claim)
+        options.TokenValidationParameters.ValidIssuers = new[]
+        {
+            "http://localhost:9090/realms/cv-realm",
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -49,6 +77,7 @@ var app = builder.Build();
 // ------------------------
 // Run database migrations (only if needed)
 // ------------------------
+
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

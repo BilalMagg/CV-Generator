@@ -1,0 +1,30 @@
+<div class="container">
+  <header class="hero">
+    <h1>CV Generator</h1>
+    <p class="tagline">AI-powered CV creation and optimization</p>
+
+    <div class="cta-group">
+      @if (auth.isAuthenticated()) {
+        <a routerLink="/applications" class="btn btn-primary">Go to Dashboard</a>
+      } @else {
+        <a routerLink="/login" class="btn btn-primary">Login</a>
+        <a routerLink="/register" class="btn btn-secondary">Register</a>
+      }
+    </div>
+  </header>
+
+  <section class="features">
+    <div class="feature">
+      <h3>AI-Powered</h3>
+      <p>Let AI help you create and optimize your CV for maximum impact.</p>
+    </div>
+    <div class="feature">
+      <h3>Vector Search</h3>
+      <p>Smart matching to find the perfect skills and experiences.</p>
+    </div>
+    <div class="feature">
+      <h3>Easy Integration</h3>
+      <p>Connect with Keycloak for secure authentication.</p>
+    </div>
+  </section>
+</div>

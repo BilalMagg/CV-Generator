@@ -1,450 +1,1115 @@
-Ó
--/app/src/cv-service/Config/StorageSettings.csßnamespace CvService.Config;
-
-// CV Service configuration models
-// e.g., StorageSettings, MinIOConfig, CvTemplateSettings
-
-public class StorageSettings
-{
-    public string Provider { get; set; } = "MinIO";
-    public string Endpoint { get; set; } = "";
-    public string AccessKey { get; set; } = "";
-    public string SecretKey { get; set; } = "";
-    public string BucketName { get; set; } = "cv-storage";
-}
-ParseOptions.0.jsonç
-5/app/src/cv-service/Controllers/CvExportController.csæusing Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
-namespace CvService.Controllers;
-
-[ApiController]
-[Route("api/cv/{cvId}/export")]
-[Authorize]
-public class CvExportController : ControllerBase
-{
-    /// POST /api/cv/{cvId}/export/pdf
-    [HttpPost("pdf")]
-    public async Task<IActionResult> ExportPdf(Guid cvId, [FromQuery] Guid? versionId)
-    {
-        // TODO: Generate PDF from CV data
-        return Ok(new { message = "PDF export endpoint - implementation pending" });
-    }
-
-    /// POST /api/cv/{cvId}/export/docx
-    [HttpPost("docx")]
-    public async Task<IActionResult> ExportDocx(Guid cvId, [FromQuery] Guid? versionId)
-    {
-        // TODO: Generate DOCX from CV data
-        return Ok(new { message = "DOCX export endpoint - implementation pending" });
-    }
-}
-ParseOptions.0.jsonè
-0/app/src/cv-service/Controllers/CvsController.cs≈using CVGenerator.Shared;
+”:
+</app/src/job-offer-service/controllers/JobOfferController.cs˝9using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using CvService.DTOs;
-using CvService.Services;
+using JobOfferService.DTOs;
+using JobOfferService.Services;
+using JobOfferService.Validators;
+using CVGenerator.Shared;
+using FluentValidation;
 
-namespace CvService.Controllers;
+namespace JobOfferService.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-[Authorize]
-public class CvsController : ControllerBase
+[Route("api/v1/job-offers")]
+// [Authorize] // Uncomment this if the service requires JWT authentication
+public class JobOffersController : ControllerBase
 {
-    private readonly ICvService _service;
+    private readonly IJobOfferService _service;
+    private readonly IValidator<SubmitJobOfferDto> _submitValidator;
+    private readonly IValidator<ExtractedJobDto> _extractedValidator;
+    private readonly IValidator<UpdateJobStatusDto> _statusValidator;
+    private readonly ILogger<JobOffersController> _logger;
 
-    public CvsController(ICvService service)
+    public JobOffersController(
+        IJobOfferService service,
+        IValidator<SubmitJobOfferDto> submitValidator,
+        IValidator<ExtractedJobDto> extractedValidator,
+        IValidator<UpdateJobStatusDto> statusValidator,
+        ILogger<JobOffersController> logger)
     {
         _service = service;
+        _submitValidator = submitValidator;
+        _extractedValidator = extractedValidator;
+        _statusValidator = statusValidator;
+        _logger = logger;
     }
 
-    /// GET /api/cv
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
+    private string? GetUserId()
     {
-        var cvs = await _service.GetAllAsync(GetUserId());
-        return Ok(ApiResponse<List<CvDto>>.Ok(cvs));
+        // Extracts the User ID from the JWT Token
+        return User.FindFirst("sub")?.Value 
+            ?? User.FindFirst("local_user_id")?.Value;
     }
 
-    /// GET /api/cv/{id}
-    [HttpGet("{id}")]
+    /// <summary>
+    /// Retrieves a paginated list of job offers for a specific user.
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<JobOfferListDto>), 200)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] Guid userId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+        // If you want to force the user ID from the token instead of query:
+        // var currentUserId = Guid.Parse(GetUserId() ?? userId.ToString());
+
+        var result = await _service.GetAllAsync(userId, page, pageSize);
+        return Ok(ApiResponse<JobOfferListDto>.Ok(result));
+    }
+
+    /// <summary>
+    /// Retrieves the full details of a specific job offer, including extracted skills.
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<JobOfferDetailDto>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var cv = await _service.GetByIdAsync(id, GetUserId());
-        if (cv == null) return NotFound(ApiResponse<CvDto>.Error("CV not found"));
-        return Ok(ApiResponse<CvDto>.Ok(cv));
+        var job = await _service.GetByIdAsync(id);
+        if (job == null) 
+        {
+            _logger.LogWarning("Job offer with ID {Id} was not found.", id);
+            return NotFound(ApiResponse<JobOfferDetailDto>.Error("Job offer not found"));
+        }
+        return Ok(ApiResponse<JobOfferDetailDto>.Ok(job));
     }
 
-    /// POST /api/cv
+    /// <summary>
+    /// Submits a raw job description or LinkedIn URL for AI processing.
+    /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateCvDto dto)
+    [ProducesResponseType(typeof(ApiResponse<Guid>), 201)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    public async Task<IActionResult> SubmitJob([FromBody] SubmitJobOfferDto dto)
     {
-        var created = await _service.CreateAsync(dto, GetUserId());
-        return Created($"/api/cv/{created.Id}", ApiResponse<CvDto>.Created(created));
+        var validation = await _submitValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+        {
+            _logger.LogWarning("Validation failed for SubmitJobOfferDto: {Errors}", validation.Errors);
+            return BadRequest(ApiResponse<Guid>.Error(validation.Errors.First().ErrorMessage));
+        }
+
+        var createdId = await _service.SubmitRawJobOfferAsync(dto);
+        _logger.LogInformation("Successfully submitted raw job offer with ID {Id}", createdId);
+        
+        return Created($"/api/v1/job-offers/{createdId}", ApiResponse<Guid>.Created(createdId));
     }
 
-    /// PUT /api/cv/{id}
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCvDto dto)
+    /// <summary>
+    /// Callback endpoint for the AI Agent to post the extracted JSON data.
+    /// </summary>
+    [HttpPost("{id:guid}/extracted")]
+    [ProducesResponseType(typeof(ApiResponse<string>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<IActionResult> ProcessExtractedData(Guid id, [FromBody] ExtractedJobDto dto)
     {
-        var updated = await _service.UpdateAsync(id, dto, GetUserId());
-        if (updated == null) return NotFound(ApiResponse<CvDto>.Error("CV not found"));
-        return Ok(ApiResponse<CvDto>.Ok(updated));
+        var validation = await _extractedValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+        {
+            return BadRequest(ApiResponse<string>.Error(validation.Errors.First().ErrorMessage));
+        }
+
+        try
+        {
+            await _service.ProcessExtractedDataAsync(id, dto);
+            _logger.LogInformation("Successfully processed AI extracted data for job offer {Id}", id);
+            return Ok(ApiResponse<string>.Ok("Job offer data extracted and saved successfully."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogError(ex, "Failed to process extracted data. Job {Id} not found.", id);
+            return NotFound(ApiResponse<string>.Error(ex.Message));
+        }
     }
 
-    /// DELETE /api/cv/{id}
-    [HttpDelete("{id}")]
+    /// <summary>
+    /// Updates the status of a job offer (e.g., DRAFT, OPEN, CLOSED).
+    /// </summary>
+    [HttpPatch("{id:guid}/status")]
+    [ProducesResponseType(typeof(ApiResponse<string>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateJobStatusDto dto)
+    {
+        var validation = await _statusValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+        {
+            return BadRequest(ApiResponse<string>.Error(validation.Errors.First().ErrorMessage));
+        }
+
+        try
+        {
+            await _service.UpdateStatusAsync(id, dto);
+            _logger.LogInformation("Updated status to {Status} for job offer {Id}", dto.Status, id);
+            return Ok(ApiResponse<string>.Ok("Status updated successfully."));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(ApiResponse<string>.Error("Job offer not found"));
+        }
+    }
+
+    /// <summary>
+    /// Deletes a job offer entirely.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var deleted = await _service.DeleteAsync(id, GetUserId());
-        if (!deleted) return NotFound(ApiResponse<object>.Error("CV not found"));
+        // Added a check so you don't return 204 if it didn't exist
+        var jobExists = await _service.GetByIdAsync(id);
+        if (jobExists == null)
+        {
+             return NotFound(ApiResponse<object>.Error("Job offer not found"));
+        }
+
+        await _service.DeleteAsync(id);
+        _logger.LogInformation("Deleted job offer {Id}", id);
         return NoContent();
     }
 
-    private string GetUserId()
+    /// <summary>
+    /// Retrieves statistics for the user's dashboard.
+    /// </summary>
+    [HttpGet("statistics")]
+    [ProducesResponseType(typeof(ApiResponse<JobOfferStatisticsDto>), 200)]
+    public async Task<IActionResult> GetStatistics([FromQuery] Guid userId)
     {
-        return User.FindFirst("sub")?.Value
-            ?? User.FindFirst("local_user_id")?.Value
-            ?? throw new UnauthorizedAccessException();
+        if (userId == Guid.Empty) 
+        {
+            return BadRequest(ApiResponse<JobOfferStatisticsDto>.Error("userId query parameter is required."));
+        }
+
+        var stats = await _service.GetStatisticsAsync(userId);
+        return Ok(ApiResponse<JobOfferStatisticsDto>.Ok(stats));
     }
-}
-ParseOptions.0.json≈
-7/app/src/cv-service/Controllers/CvSectionsController.csÙusing CVGenerator.Shared;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using CvService.DTOs;
-using CvService.Services;
+}ParseOptions.0.jsonç
+//app/src/job-offer-service/DTOs/JobOfferDtos.csƒnamespace JobOfferService.DTOs;
 
-namespace CvService.Controllers;
+// ‚îÄ‚îÄ‚îÄ RESPONSES (OUTPUTS) ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+public record JobOfferDetailDto(
+    Guid Id,
+    Guid UserId,
+    string EnterpriseName,
+    string? EnterpriseDescription,
+    string JobRole,
+    string RawDescription,
+    int? RequiredExperienceYears,
+    string? SeniorityLevel,
+    string? EmploymentType,
+    string? Location,
+    string? LocationType,
+    string? EducationRequirements,
+    string? SourceUrl,
+    string Status,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    
+    // Nested collections for the detailed view
+    List<JobSkillDto> Skills,
+    List<JobResponsibilityDto> Responsibilities,
+    List<JobBenefitDto> Benefits
+);
 
-[ApiController]
-[Route("api/cv/versions/{versionId}/sections")]
-[Authorize]
-public class CvSectionsController : ControllerBase
+// Child DTOs needed for the detailed view
+public record JobSkillDto(
+    Guid Id, 
+    string Name, 
+    string Type, 
+    bool IsMandatory
+);
+
+public record JobResponsibilityDto(
+    Guid Id, 
+    string Description
+);
+
+public record JobBenefitDto(
+    Guid Id, 
+    string Description
+);
+public record JobOfferResponseDto(
+    Guid Id,
+    Guid UserId,
+    string EnterpriseName,
+    string? EnterpriseDescription,
+    string JobRole,
+    string RawDescription,
+    int? RequiredExperienceYears,
+    string? SeniorityLevel,
+    string? EmploymentType,
+    string? Location,
+    string? LocationType,
+    string? EducationRequirements,
+    string? SourceUrl,
+    string Status,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    // Nested lists are optional so we don't over-fetch data if we don't need it
+    List<JobSkillDto>? Skills = null,
+    List<JobResponsibilityDto>? Responsibilities = null,
+    List<JobBenefitDto>? Benefits = null
+);
+
+public record JobOfferSummaryDto(
+    Guid Id,
+    Guid UserId,
+    string EnterpriseName,
+    string JobRole,
+    string? Location,
+    string Status,
+    DateTime CreatedAt
+);
+
+public record JobOfferListDto(
+    List<JobOfferSummaryDto> Items,
+    int Total,
+    int Page,
+    int PageSize
+);
+
+public record JobOfferStatisticsDto(
+    int Total,
+    int Draft,
+    int Open,
+    int Closed,
+    int Archived
+);
+
+
+// ‚îÄ‚îÄ‚îÄ REQUESTS (INPUTS) ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+
+// 1. What the user sends when they paste a link or raw text into the UI
+public record SubmitJobOfferDto(
+    Guid UserId,
+    string? RawText,
+    string? SourceUrl
+);
+
+// 2. What the AI Agent sends back after parsing the text
+public record ExtractedJobDto(
+    string EnterpriseName,
+    string? EnterpriseDescription,
+    string JobRole,
+    string RawDescription,
+    List<string> Responsibilities,
+    List<string> RequiredSkills,
+    List<string> SoftSkills,
+    int? RequiredExperienceYears,
+    string? SeniorityLevel,
+    string? EmploymentType,
+    string? Location,
+    string? LocationType,
+    string? EducationRequirements,
+    List<string> Benefits,
+    string? SourceUrl
+);
+
+
+
+// 3. For partial updates by the user (if they want to manually edit a typo)
+public record UpdateJobOfferDto(
+    string? EnterpriseName,
+    string? JobRole,
+    string? Location,
+    string? EmploymentType,
+    int? RequiredExperienceYears
+);
+
+// 4. For updating the state of the job offer
+public record UpdateJobStatusDto(
+    string Status
+);ParseOptions.0.jsonÃ
+1/app/src/job-offer-service/Entities/JobBenefit.csÅnamespace JobOfferService.Entities;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+[Table("job_benefits")]
+public class JobBenefit
 {
-    private readonly ICvSectionService _service;
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
 
-    public CvSectionsController(ICvSectionService service)
-    {
-        _service = service;
-    }
+    [Required]
+    public Guid JobOfferId { get; set; }
 
-    /// GET /api/cv/versions/{versionId}/sections
-    [HttpGet]
-    public async Task<IActionResult> GetAll(Guid versionId)
-    {
-        var sections = await _service.GetByVersionIdAsync(versionId, GetUserId());
-        return Ok(ApiResponse<List<CvSectionDto>>.Ok(sections));
-    }
+    [Required]
+    [MaxLength(300)]
+    public required string Description { get; set; }
 
-    /// GET /api/cv/versions/{versionId}/sections/{sectionType}
-    [HttpGet("{sectionType}")]
-    public async Task<IActionResult> GetByType(Guid versionId, string sectionType)
-    {
-        var section = await _service.GetByTypeAsync(versionId, sectionType, GetUserId());
-        if (section == null) return NotFound(ApiResponse<CvSectionDto>.Error("Section not found"));
-        return Ok(ApiResponse<CvSectionDto>.Ok(section));
-    }
+    // Navigation
+    [ForeignKey(nameof(JobOfferId))]
+    public JobOffer? JobOffer { get; set; }
+}ParseOptions.0.jsonÔ
+//app/src/job-offer-service/Entities/JobOffer.cs¶using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Pgvector; // Required for pgvector support
 
-    /// PUT /api/cv/versions/{versionId}/sections/{sectionType}
-    [HttpPut("{sectionType}")]
-    public async Task<IActionResult> Upsert(Guid versionId, string sectionType, [FromBody] UpdateSectionDto dto)
-    {
-        var section = await _service.UpsertAsync(versionId, sectionType, dto, GetUserId());
-        return Ok(ApiResponse<CvSectionDto>.Ok(section));
-    }
 
-    /// DELETE /api/cv/versions/{versionId}/sections/{id}
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid versionId, Guid id)
-    {
-        var deleted = await _service.DeleteAsync(id, GetUserId());
-        if (!deleted) return NotFound(ApiResponse<object>.Error("Section not found"));
-        return NoContent();
-    }
+namespace JobOfferService.Entities;
 
-    private string GetUserId()
-    {
-        return User.FindFirst("sub")?.Value
-            ?? User.FindFirst("local_user_id")?.Value
-            ?? throw new UnauthorizedAccessException();
-    }
-}
-ParseOptions.0.jsonƒ
-8/app/src/cv-service/Controllers/CvTemplatesController.csÚusing CVGenerator.Shared;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
-namespace CvService.Controllers;
-
-[ApiController]
-[Route("api/cv/templates")]
-[Authorize]
-public class CvTemplatesController : ControllerBase
+[Table("job_offers")]
+public class JobOffer
 {
-    /// GET /api/cv/templates
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        // TODO: Return available CV templates
-        return Ok(ApiResponse<List<object>>.Ok(new List<object>()));
-    }
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
 
-    /// GET /api/cv/templates/{id}
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
-    {
-        // TODO: Return template details with preview
-        return Ok(ApiResponse<object>.Ok(new { id, name = "Template preview" }));
-    }
+    [Required]
+    public Guid UserId { get; set; }
+
+    [Required]
+    [MaxLength(200)]
+    public required string EnterpriseName { get; set; }
+
+    public string? EnterpriseDescription { get; set; }
+
+    [Required]
+    [MaxLength(150)]
+    public required string JobRole { get; set; }
+
+    [Required]
+    public required string RawDescription { get; set; }
+
+    // Maps to pgvector extension in PostgreSQL
+    [Column(TypeName = "vector(1536)")] 
+    public Vector? DescriptionVector { get; set; }
+
+    public int? RequiredExperienceYears { get; set; }
+
+    [MaxLength(100)]
+    public string? SeniorityLevel { get; set; }
+
+    [MaxLength(100)]
+    public string? EmploymentType { get; set; }
+
+    [MaxLength(200)]
+    public string? Location { get; set; }
+
+    [MaxLength(100)]
+    public string? LocationType { get; set; }
+
+    public string? EducationRequirements { get; set; }
+
+    [MaxLength(500)]
+    public string? SourceUrl { get; set; }
+    
+    [Required]
+    public JobOfferStatus Status { get; set; } = JobOfferStatus.OPEN;
+
+    [Required]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation
+    public ICollection<JobSkill> Skills { get; set; } = new List<JobSkill>();
+    public ICollection<JobResponsibility> Responsibilities { get; set; } = new List<JobResponsibility>();
+    public ICollection<JobBenefit> Benefits { get; set; } = new List<JobBenefit>();
 }
-ParseOptions.0.jsonû
-7/app/src/cv-service/Controllers/CvVersionsController.csÕusing CVGenerator.Shared;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using CvService.DTOs;
-using CvService.Services;
 
-namespace CvService.Controllers;
+ParseOptions.0.json…
+5/app/src/job-offer-service/Entities/JobOfferStatus.cs{namespace JobOfferService.Entities;
 
-[ApiController]
-[Route("api/cv/{cvId}/versions")]
-[Authorize]
-public class CvVersionsController : ControllerBase
+public enum JobOfferStatus
 {
-    private readonly ICvVersionService _service;
-
-    public CvVersionsController(ICvVersionService service)
-    {
-        _service = service;
-    }
-
-    /// GET /api/cv/{cvId}/versions
-    [HttpGet]
-    public async Task<IActionResult> GetAll(Guid cvId)
-    {
-        var versions = await _service.GetByCvIdAsync(cvId, GetUserId());
-        return Ok(ApiResponse<List<CvVersionDto>>.Ok(versions));
-    }
-
-    /// GET /api/cv/{cvId}/versions/{id}
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(Guid cvId, Guid id)
-    {
-        var version = await _service.GetByIdAsync(id, GetUserId());
-        if (version == null) return NotFound(ApiResponse<CvVersionDto>.Error("Version not found"));
-        return Ok(ApiResponse<CvVersionDto>.Ok(version));
-    }
-
-    /// POST /api/cv/{cvId}/versions
-    [HttpPost]
-    public async Task<IActionResult> Create(Guid cvId, [FromBody] CreateCvVersionDto dto)
-    {
-        var created = await _service.CreateAsync(cvId, dto, GetUserId());
-        return Created($"/api/cv/{cvId}/versions/{created.Id}", ApiResponse<CvVersionDto>.Created(created));
-    }
-
-    /// DELETE /api/cv/{cvId}/versions/{id}
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid cvId, Guid id)
-    {
-        var deleted = await _service.DeleteAsync(id, GetUserId());
-        if (!deleted) return NotFound(ApiResponse<object>.Error("Version not found"));
-        return NoContent();
-    }
-
-    private string GetUserId()
-    {
-        return User.FindFirst("sub")?.Value
-            ?? User.FindFirst("local_user_id")?.Value
-            ?? throw new UnauthorizedAccessException();
-    }
+    DRAFT,
+    OPEN,
+    CLOSED,
+    ARCHIVED
 }
-ParseOptions.0.jsonŸ
-"/app/src/cv-service/CvDbContext.csùusing Microsoft.EntityFrameworkCore;
-using CvService.Entities;
+ParseOptions.0.json‚
+8/app/src/job-offer-service/Entities/JobResponsibility.csênamespace JobOfferService.Entities;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CvService;
-
-public class CvDbContext : DbContext
+[Table("job_responsibilities")]
+public class JobResponsibility
 {
-    public CvDbContext(DbContextOptions<CvDbContext> options) : base(options) { }
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
 
-    public DbSet<Cv> Cvs { get; set; }
-    public DbSet<CvVersion> CvVersions { get; set; }
-    public DbSet<CvSection> CvSections { get; set; }
+    [Required]
+    public Guid JobOfferId { get; set; }
+
+    [Required]
+    [MaxLength(500)]
+    public required string Description { get; set; }
+
+    // Navigation
+    [ForeignKey(nameof(JobOfferId))]
+    public JobOffer? JobOffer { get; set; }
+}ParseOptions.0.json¡
+//app/src/job-offer-service/Entities/JobSkill.cs¯
+namespace JobOfferService.Entities;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+[Table("job_skills")]
+public class JobSkill
+{
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required]
+    public Guid JobOfferId { get; set; }
+
+    [Required]
+    [MaxLength(150)]
+    public required string Name { get; set; }
+
+    [Required]
+    public SkillType Type { get; set; }
+
+    [Required]
+    public bool IsMandatory { get; set; } = true;
+
+    // Navigation
+    [ForeignKey(nameof(JobOfferId))]
+    public JobOffer? JobOffer { get; set; }
+}ParseOptions.0.json–
+0/app/src/job-offer-service/Entities/SkillType.csÜnamespace JobOfferService.Entities;
+
+public enum SkillType
+{
+    HARD_SKILL,
+    SOFT_SKILL,
+    LANGUAGE,
+    CERTIFICATION
+}ParseOptions.0.json˝
+
+//app/src/job-offer-service/JobOfferDbContext.cs¥
+using Microsoft.EntityFrameworkCore;
+using JobOfferService.Entities;
+using Pgvector.EntityFrameworkCore; // Required for pgvector
+
+
+public class JobOfferDbContext : DbContext
+{
+    public JobOfferDbContext(DbContextOptions<JobOfferDbContext> options) : base(options) { }
+
+    public DbSet<JobOffer> JobOffers { get; set; }
+    public DbSet<JobSkill> JobSkills { get; set; }
+    public DbSet<JobResponsibility> JobResponsibilities { get; set; }
+    public DbSet<JobBenefit> JobBenefits { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // TODO: Configure entity relationships, indexes, and constraints
-        // modelBuilder.Entity<Cv>(entity =>
-        // {
-        //     entity.HasIndex(e => e.UserId);
-        //     entity.HasMany(e => e.Versions).WithOne(e => e.Cv).HasForeignKey(e => e.CvId);
-        // });
+        // 1. CRITICAL: Tell PostgreSQL to enable the vector extension
+        modelBuilder.HasPostgresExtension("vector");
+
+        // 2. Configure the JobOffer table and its relationships
+        modelBuilder.Entity<JobOffer>(entity =>
+        {
+            entity.HasMany(j => j.Skills).WithOne(s => s.JobOffer).HasForeignKey(s => s.JobOfferId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(j => j.Responsibilities).WithOne(r => r.JobOffer).HasForeignKey(r => r.JobOfferId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(j => j.Benefits).WithOne(b => b.JobOffer).HasForeignKey(b => b.JobOfferId).OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+}ParseOptions.0.jsonﬁ3
+E/app/src/job-offer-service/Migrations/20260511120331_InitialCreate.csˇ2using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Pgvector;
+
+#nullable disable
+
+namespace job_offer_service.Migrations
+{
+    /// <inheritdoc />
+    public partial class InitialCreate : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:PostgresExtension:vector", ",,");
+
+            migrationBuilder.CreateTable(
+                name: "job_offers",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    EnterpriseName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    EnterpriseDescription = table.Column<string>(type: "text", nullable: true),
+                    JobRole = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    RawDescription = table.Column<string>(type: "text", nullable: false),
+                    DescriptionVector = table.Column<Vector>(type: "vector(1536)", nullable: true),
+                    RequiredExperienceYears = table.Column<int>(type: "integer", nullable: true),
+                    SeniorityLevel = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    EmploymentType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Location = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    LocationType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    EducationRequirements = table.Column<string>(type: "text", nullable: true),
+                    SourceUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_job_offers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "job_benefits",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    JobOfferId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Description = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_job_benefits", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_job_benefits_job_offers_JobOfferId",
+                        column: x => x.JobOfferId,
+                        principalTable: "job_offers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "job_responsibilities",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    JobOfferId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_job_responsibilities", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_job_responsibilities_job_offers_JobOfferId",
+                        column: x => x.JobOfferId,
+                        principalTable: "job_offers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "job_skills",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    JobOfferId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    IsMandatory = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_job_skills", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_job_skills_job_offers_JobOfferId",
+                        column: x => x.JobOfferId,
+                        principalTable: "job_offers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_job_benefits_JobOfferId",
+                table: "job_benefits",
+                column: "JobOfferId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_job_responsibilities_JobOfferId",
+                table: "job_responsibilities",
+                column: "JobOfferId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_job_skills_JobOfferId",
+                table: "job_skills",
+                column: "JobOfferId");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "job_benefits");
+
+            migrationBuilder.DropTable(
+                name: "job_responsibilities");
+
+            migrationBuilder.DropTable(
+                name: "job_skills");
+
+            migrationBuilder.DropTable(
+                name: "job_offers");
+        }
     }
 }
-ParseOptions.0.jsonú
-"/app/src/cv-service/DTOs/CvDtos.cs‡namespace CvService.DTOs;
+ParseOptions.0.json·<
+N/app/src/job-offer-service/Migrations/20260511120331_InitialCreate.Designer.cs˘;// <auto-generated />
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using Pgvector;
 
-public record CvDto(
-    Guid Id,
-    Guid UserId,
-    string Title,
-    string TemplateId,
-    DateTime CreatedAt,
-    DateTime UpdatedAt,
-    bool IsActive,
-    List<CvVersionDto>? Versions = null
-);
+#nullable disable
 
-public record CvVersionDto(
-    Guid Id,
-    Guid CvId,
-    int VersionNumber,
-    string Label,
-    string? FileUrl,
-    string? PdfUrl,
-    string ContentJson,
-    DateTime CreatedAt
-);
-
-public record CvSectionDto(
-    Guid Id,
-    Guid VersionId,
-    string SectionType,
-    int DisplayOrder,
-    string ContentJson,
-    DateTime UpdatedAt
-);
-ParseOptions.0.jsonœ
-'/app/src/cv-service/DTOs/RequestDtos.csénamespace CvService.DTOs;
-
-public record CreateCvDto(
-    string Title,
-    string TemplateId
-);
-
-public record UpdateCvDto(
-    string? Title,
-    string? TemplateId,
-    bool? IsActive
-);
-
-public record CreateCvVersionDto(
-    string Label,
-    string? ContentJson
-);
-
-public record UpdateSectionDto(
-    string SectionType,
-    int DisplayOrder,
-    string ContentJson
-);
-ParseOptions.0.json«
-"/app/src/cv-service/Entities/Cv.csãnamespace CvService.Entities;
-
-// CV entity
-// Represents a user's CV document
-public class Cv
+namespace job_offer_service.Migrations
 {
-    public Guid Id { get; set; }
-    public Guid UserId { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string TemplateId { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    public bool IsActive { get; set; }
+    [DbContext(typeof(JobOfferDbContext))]
+    [Migration("20260511120331_InitialCreate")]
+    partial class InitialCreate
+    {
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-    public List<CvVersion> Versions { get; set; } = new();
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("JobOfferService.Entities.JobBenefit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("JobOfferId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobOfferId");
+
+                    b.ToTable("job_benefits");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobOffer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Vector>("DescriptionVector")
+                        .HasColumnType("vector(1536)");
+
+                    b.Property<string>("EducationRequirements")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmploymentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("EnterpriseDescription")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EnterpriseName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("JobRole")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("LocationType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RawDescription")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("RequiredExperienceYears")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SeniorityLevel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("job_offers");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobResponsibility", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("JobOfferId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobOfferId");
+
+                    b.ToTable("job_responsibilities");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsMandatory")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("JobOfferId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobOfferId");
+
+                    b.ToTable("job_skills");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobBenefit", b =>
+                {
+                    b.HasOne("JobOfferService.Entities.JobOffer", "JobOffer")
+                        .WithMany("Benefits")
+                        .HasForeignKey("JobOfferId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobOffer");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobResponsibility", b =>
+                {
+                    b.HasOne("JobOfferService.Entities.JobOffer", "JobOffer")
+                        .WithMany("Responsibilities")
+                        .HasForeignKey("JobOfferId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobOffer");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobSkill", b =>
+                {
+                    b.HasOne("JobOfferService.Entities.JobOffer", "JobOffer")
+                        .WithMany("Skills")
+                        .HasForeignKey("JobOfferId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobOffer");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobOffer", b =>
+                {
+                    b.Navigation("Benefits");
+
+                    b.Navigation("Responsibilities");
+
+                    b.Navigation("Skills");
+                });
+#pragma warning restore 612, 618
+        }
+    }
 }
-ParseOptions.0.jsonÊ
-)/app/src/cv-service/Entities/CvSection.cs£namespace CvService.Entities;
+ParseOptions.0.json˜;
+G/app/src/job-offer-service/Migrations/JobOfferDbContextModelSnapshot.csñ;// <auto-generated />
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using Pgvector;
 
-// CV section entity
-// Stores individual sections of a CV version
-public class CvSection
+#nullable disable
+
+namespace job_offer_service.Migrations
 {
-    public Guid Id { get; set; }
-    public Guid VersionId { get; set; }
-    public string SectionType { get; set; } = string.Empty; // personal_info, experience, education, skills, projects, etc.
-    public int DisplayOrder { get; set; }
-    public string ContentJson { get; set; } = "{}";
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    [DbContext(typeof(JobOfferDbContext))]
+    partial class JobOfferDbContextModelSnapshot : ModelSnapshot
+    {
+        protected override void BuildModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-    public CvVersion Version { get; set; } = null!;
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("JobOfferService.Entities.JobBenefit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("JobOfferId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobOfferId");
+
+                    b.ToTable("job_benefits");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobOffer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Vector>("DescriptionVector")
+                        .HasColumnType("vector(1536)");
+
+                    b.Property<string>("EducationRequirements")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmploymentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("EnterpriseDescription")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EnterpriseName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("JobRole")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("LocationType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RawDescription")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("RequiredExperienceYears")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SeniorityLevel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("job_offers");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobResponsibility", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("JobOfferId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobOfferId");
+
+                    b.ToTable("job_responsibilities");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsMandatory")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("JobOfferId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobOfferId");
+
+                    b.ToTable("job_skills");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobBenefit", b =>
+                {
+                    b.HasOne("JobOfferService.Entities.JobOffer", "JobOffer")
+                        .WithMany("Benefits")
+                        .HasForeignKey("JobOfferId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobOffer");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobResponsibility", b =>
+                {
+                    b.HasOne("JobOfferService.Entities.JobOffer", "JobOffer")
+                        .WithMany("Responsibilities")
+                        .HasForeignKey("JobOfferId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobOffer");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobSkill", b =>
+                {
+                    b.HasOne("JobOfferService.Entities.JobOffer", "JobOffer")
+                        .WithMany("Skills")
+                        .HasForeignKey("JobOfferId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobOffer");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.JobOffer", b =>
+                {
+                    b.Navigation("Benefits");
+
+                    b.Navigation("Responsibilities");
+
+                    b.Navigation("Skills");
+                });
+#pragma warning restore 612, 618
+        }
+    }
 }
-ParseOptions.0.jsonÔ
-)/app/src/cv-service/Entities/CvVersion.cs¨namespace CvService.Entities;
-
-// CV version entity
-// Each CV can have multiple versions (drafts, revisions)
-public class CvVersion
-{
-    public Guid Id { get; set; }
-    public Guid CvId { get; set; }
-    public int VersionNumber { get; set; }
-    public string Label { get; set; } = string.Empty;
-    public string? FileUrl { get; set; }
-    public string? PdfUrl { get; set; }
-    public string ContentJson { get; set; } = "{}";
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public Cv Cv { get; set; } = null!;
-}
-ParseOptions.0.jsonà
-(/app/src/cv-service/Migrations/README.cs∆// Migrations will be generated using:
-// dotnet ef migrations add InitialCreate --project CvService.csproj
-//
-// After this file is removed by the first migration, the Migrations/
-// directory will contain:
-// - {Timestamp}_InitialCreate.cs
-// - {Timestamp}_InitialCreate.Designer.cs
-// - CvDbContextModelSnapshot.cs
-ParseOptions.0.jsonà
-/app/src/cv-service/Program.cs–using Microsoft.EntityFrameworkCore;
+ParseOptions.0.jsonµ
+%/app/src/job-offer-service/Program.csˆusing Microsoft.EntityFrameworkCore;
 using FluentValidation;
-using CvService;
-using CvService.DTOs;
-using CvService.Services;
-using CvService.Validators;
+using JobOfferService;
+using JobOfferService.Services;
+using JobOfferService.Repositories;
+using JobOfferService.DTOs;
+using JobOfferService.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database
-builder.Services.AddDbContext<CvDbContext>(options =>
+// 1. Database (Configured with pgvector via the DbContext)
+builder.Services.AddDbContext<JobOfferDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    options.UseNpgsql(connectionString);
+    options.UseNpgsql(connectionString, o => o.UseVector());
 });
 
-// Repositories
-// TODO: Register repository implementations
-// builder.Services.AddScoped<ICvRepository, CvRepository>();
-// builder.Services.AddScoped<ICvVersionRepository, CvVersionRepository>();
-// builder.Services.AddScoped<ICvSectionRepository, CvSectionRepository>();
+// 2. Repositories
+builder.Services.AddScoped<IJobOfferRepository, JobOfferRepository>();
+// builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>(); // Uncomment when Kafka is ready
 
-// Services
-builder.Services.AddScoped<ICvService, CvServiceImpl>();
-builder.Services.AddScoped<ICvVersionService, CvVersionServiceImpl>();
-builder.Services.AddScoped<ICvSectionService, CvSectionServiceImpl>();
+// 3. Services
+builder.Services.AddScoped<IJobOfferService, JobOfferService.Services.JobOfferService>();
 
-// Validators
-builder.Services.AddScoped<IValidator<CreateCvDto>, CreateCvValidator>();
+// 4. Validators
+builder.Services.AddScoped<IValidator<SubmitJobOfferDto>, SubmitJobOfferValidator>();
+builder.Services.AddScoped<IValidator<ExtractedJobDto>, ExtractedJobValidator>();
+builder.Services.AddScoped<IValidator<UpdateJobStatusDto>, UpdateJobStatusValidator>();
 
-// AutoMapper
+// 5. AutoMapper
 builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
 
-// Controllers
+// 6. Controllers & API Explorer
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Auth (JWT from gateway/keycloak)
+// 8. Auth (JWT from gateway/keycloak)
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -456,10 +1121,12 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// ------------------------
 // Run database migrations on startup
+// ------------------------
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<CvDbContext>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<JobOfferDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
     try
@@ -483,209 +1150,378 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// ------------------------
+// Middleware Pipeline
+// ------------------------
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-app.Run();
-ParseOptions.0.json≥
-1/app/src/cv-service/Repositories/ICvRepository.csËusing CvService.Entities;
+app.Run();ParseOptions.0.jsonü$
+=/app/src/job-offer-service/Repositories/JobOfferRepository.cs»#using Microsoft.EntityFrameworkCore;
+using JobOfferService.Entities;
 
-namespace CvService.Repositories;
 
-public interface ICvRepository
+namespace JobOfferService.Repositories;
+
+public interface IJobOfferRepository
 {
-    Task<List<Cv>> GetAllByUserIdAsync(string userId);
-    Task<Cv?> GetByIdAsync(Guid id);
-    Task<Cv> CreateAsync(Cv cv);
-    Task UpdateAsync(Cv cv);
+    Task<JobOffer?> GetByIdAsync(Guid id);
+    Task<JobOffer?> GetByIdWithDetailsAsync(Guid id);
+    Task<List<JobOffer>> GetAllAsync(Guid? userId, int page, int pageSize);
+    Task<int> GetTotalCountAsync(Guid? userId);
+    Task<JobOffer> CreateAsync(JobOffer jobOffer);
+    Task<JobOffer> UpdateAsync(JobOffer jobOffer);
+    Task<JobOffer> UpdateWithDetailsAsync(JobOffer jobOffer);
     Task<bool> DeleteAsync(Guid id);
-    Task<bool> IsOwnedByUserAsync(Guid id, string userId);
+    Task<bool> ExistsAsync(Guid id);
+    Task<Dictionary<JobOfferStatus, int>> GetStatisticsAsync(Guid? userId);
 }
-ParseOptions.0.json–
-8/app/src/cv-service/Repositories/ICvSectionRepository.cs˛using CvService.Entities;
 
-namespace CvService.Repositories;
-
-public interface ICvSectionRepository
+public class JobOfferRepository : IJobOfferRepository
 {
-    Task<List<CvSection>> GetByVersionIdAsync(Guid versionId);
-    Task<CvSection?> GetByTypeAsync(Guid versionId, string sectionType);
-    Task<CvSection> CreateAsync(CvSection section);
-    Task UpdateAsync(CvSection section);
-    Task<bool> DeleteAsync(Guid id);
-}
-ParseOptions.0.json¥
-8/app/src/cv-service/Repositories/ICvVersionRepository.cs‚using CvService.Entities;
+    private readonly JobOfferDbContext _db;
+    private readonly ILogger<JobOfferRepository> _logger;
 
-namespace CvService.Repositories;
+    public JobOfferRepository(JobOfferDbContext db, ILogger<JobOfferRepository> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
-public interface ICvVersionRepository
+    public async Task<JobOffer?> GetByIdAsync(Guid id)
+        => await _db.JobOffers.FindAsync(id);
+
+    // This replaces GetByIdWithHistoryAsync. It loads the 3 child tables.
+    public async Task<JobOffer?> GetByIdWithDetailsAsync(Guid id)
+        => await _db.JobOffers
+            .Include(j => j.Skills)
+            .Include(j => j.Responsibilities)
+            .Include(j => j.Benefits)
+            .FirstOrDefaultAsync(j => j.Id == id);
+
+    public async Task<List<JobOffer>> GetAllAsync(Guid? userId, int page, int pageSize)
+    {
+        var query = _db.JobOffers.AsQueryable();
+
+        // Filter by the user who ingested the job offer
+        if (userId.HasValue)
+            query = query.Where(j => j.UserId == userId.Value);
+
+        return await query
+            .OrderByDescending(j => j.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetTotalCountAsync(Guid? userId)
+    {
+        var query = _db.JobOffers.AsQueryable();
+        if (userId.HasValue)
+            query = query.Where(j => j.UserId == userId.Value);
+        return await query.CountAsync();
+    }
+
+    public async Task<JobOffer> CreateAsync(JobOffer jobOffer)
+    {
+        _db.JobOffers.Add(jobOffer);
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Created job offer {Id}", jobOffer.Id);
+        return jobOffer;
+    }
+
+    public async Task<JobOffer> UpdateAsync(JobOffer jobOffer)
+    {
+        jobOffer.UpdatedAt = DateTime.UtcNow;
+        _db.JobOffers.Update(jobOffer);
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Updated job offer {Id}", jobOffer.Id);
+        return jobOffer;
+    }
+    public async Task<JobOffer> UpdateWithDetailsAsync(JobOffer jobOffer)
+    {
+        // 1. Always update the modification timestamp
+        jobOffer.UpdatedAt = DateTime.UtcNow;
+        
+        // 2. We do NOT call _db.JobOffers.Update(jobOffer) here!
+        // Why? Because in the Service layer, we fetched this jobOffer using GetByIdWithDetailsAsync().
+        // That means Entity Framework Core is already "Tracking" this object in memory. 
+        // When you modified the lists (.Clear(), .Add()) in the Service layer, EF Core was watching.
+        
+        // 3. Just save the tracked changes to PostgreSQL
+        await _db.SaveChangesAsync();
+        
+        _logger.LogInformation("Successfully updated job offer {Id} along with its skills, responsibilities, and benefits.", jobOffer.Id);
+        
+        return jobOffer;
+    }
+
+    public async Task<bool> DeleteAsync(Guid id)
+    {
+        var jobOffer = await _db.JobOffers.FindAsync(id);
+        if (jobOffer == null) return false;
+
+        _db.JobOffers.Remove(jobOffer);
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Deleted job offer {Id}", id);
+        return true;
+    }
+
+    public async Task<bool> ExistsAsync(Guid id)
+        => await _db.JobOffers.AnyAsync(j => j.Id == id);
+
+    public async Task<Dictionary<JobOfferStatus, int>> GetStatisticsAsync(Guid? userId)
+    {
+        var query = _db.JobOffers.AsQueryable();
+        if (userId.HasValue)
+            query = query.Where(j => j.UserId == userId.Value);
+
+        return await query
+            .GroupBy(j => j.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count);
+    }
+}ParseOptions.0.jsonå9
+6/app/src/job-offer-service/services/JobOfferService.csº8using JobOfferService.DTOs;
+using JobOfferService.Entities;
+using JobOfferService.Repositories;
+
+namespace JobOfferService.Services;
+
+public interface IJobOfferService
 {
-    Task<List<CvVersion>> GetByCvIdAsync(Guid cvId);
-    Task<CvVersion?> GetByIdAsync(Guid id);
-    Task<int> GetNextVersionNumberAsync(Guid cvId);
-    Task<CvVersion> CreateAsync(CvVersion version);
-    Task<bool> DeleteAsync(Guid id);
+    // Write Operations
+    Task<Guid> SubmitRawJobOfferAsync(SubmitJobOfferDto dto);
+    Task ProcessExtractedDataAsync(Guid jobId, ExtractedJobDto dto);
+    Task UpdateStatusAsync(Guid id, UpdateJobStatusDto dto);
+    Task DeleteAsync(Guid id);
+
+    // Read Operations
+    Task<JobOfferDetailDto?> GetByIdAsync(Guid id);
+    Task<JobOfferListDto> GetAllAsync(Guid userId, int page, int pageSize);
+    Task<JobOfferStatisticsDto> GetStatisticsAsync(Guid userId);
 }
-ParseOptions.0.json”
-4/app/src/cv-service/Services/CvSectionServiceImpl.csÖusing CvService.DTOs;
 
-namespace CvService.Services;
-
-public class CvSectionServiceImpl : ICvSectionService
+public class JobOfferService : IJobOfferService
 {
-    public Task<List<CvSectionDto>> GetByVersionIdAsync(Guid versionId, string userId)
+    private readonly IJobOfferRepository _repository;
+    // private readonly IKafkaPublisher _kafkaPublisher; // (Uncomment when you add Kafka)
+
+    public JobOfferService(IJobOfferRepository repository)
     {
-        // TODO: Implement fetching sections by version ID with ownership check
-        return Task.FromResult(new List<CvSectionDto>());
+        _repository = repository;
     }
 
-    public Task<CvSectionDto?> GetByTypeAsync(Guid versionId, string sectionType, string userId)
+    // 1. STEP ONE: User pastes a link or text
+    public async Task<Guid> SubmitRawJobOfferAsync(SubmitJobOfferDto dto)
     {
-        // TODO: Implement fetching section by type with ownership check
-        return Task.FromResult<CvSectionDto?>(null);
+        var jobOffer = new JobOffer
+        {
+            UserId = dto.UserId,
+            RawDescription = dto.RawText ?? "No description provided",
+            SourceUrl = dto.SourceUrl,
+            Status = JobOfferStatus.DRAFT, // Starts as a draft while AI works
+            
+            // Temporary placeholders until the AI extracts the real data
+            EnterpriseName = "Pending AI Extraction...",
+            JobRole = "Pending AI Extraction..."
+        };
+
+        await _repository.CreateAsync(jobOffer);
+
+        // TODO: Publish event to Kafka: "ExtractJobDataEvent(jobOffer.Id)"
+        // await _kafkaPublisher.PublishAsync(new ExtractJobDataEvent(jobOffer.Id));
+
+        return jobOffer.Id;
     }
 
-    public Task<CvSectionDto> UpsertAsync(Guid versionId, string sectionType, UpdateSectionDto dto, string userId)
+    // 2. STEP TWO: AI finishes and sends the structured JSON here
+    public async Task ProcessExtractedDataAsync(Guid jobId, ExtractedJobDto dto)
     {
-        // TODO: Implement section create/update (upsert pattern)
-        throw new NotImplementedException();
+        // We must fetch it WITH its details to update properly
+        var jobOffer = await _repository.GetByIdWithDetailsAsync(jobId);
+        if (jobOffer == null) throw new KeyNotFoundException("Job offer not found");
+
+        // Update scalar properties
+        jobOffer.EnterpriseName = dto.EnterpriseName;
+        jobOffer.EnterpriseDescription = dto.EnterpriseDescription;
+        jobOffer.JobRole = dto.JobRole;
+        jobOffer.RawDescription = dto.RawDescription;
+        jobOffer.RequiredExperienceYears = dto.RequiredExperienceYears;
+        jobOffer.SeniorityLevel = dto.SeniorityLevel;
+        jobOffer.EmploymentType = dto.EmploymentType;
+        jobOffer.Location = dto.Location;
+        jobOffer.LocationType = dto.LocationType;
+        jobOffer.EducationRequirements = dto.EducationRequirements;
+        jobOffer.Status = JobOfferStatus.OPEN; // Now it's ready!
+
+        // Clear existing lists (in case this is a re-extraction)
+        jobOffer.Skills.Clear();
+        jobOffer.Responsibilities.Clear();
+        jobOffer.Benefits.Clear();
+
+        // Map arrays to Database Entities
+        foreach (var reqSkill in dto.RequiredSkills)
+        {
+            jobOffer.Skills.Add(new JobSkill { Name = reqSkill, Type = SkillType.HARD_SKILL, IsMandatory = true });
+        }
+        foreach (var softSkill in dto.SoftSkills)
+        {
+            jobOffer.Skills.Add(new JobSkill { Name = softSkill, Type = SkillType.SOFT_SKILL, IsMandatory = false });
+        }
+        foreach (var resp in dto.Responsibilities)
+        {
+            jobOffer.Responsibilities.Add(new JobResponsibility { Description = resp });
+        }
+        foreach (var benefit in dto.Benefits)
+        {
+            jobOffer.Benefits.Add(new JobBenefit { Description = benefit });
+        }
+
+        // Save everything to the database
+        await _repository.UpdateWithDetailsAsync(jobOffer);
+
+        // TODO: Publish event: "JobOfferReadyForCvGenerationEvent(jobOffer.Id)"
     }
 
-    public Task<bool> DeleteAsync(Guid id, string userId)
+    // 3. GET FULL DETAILS (Used by the frontend and gRPC)
+    public async Task<JobOfferDetailDto?> GetByIdAsync(Guid id)
     {
-        // TODO: Implement section deletion with ownership check
-        return Task.FromResult(false);
+        var job = await _repository.GetByIdWithDetailsAsync(id);
+        if (job == null) return null;
+
+        // Map Entity -> DTO (You can use AutoMapper for this later to save time)
+        return new JobOfferDetailDto(
+            Id: job.Id,
+            UserId: job.UserId,
+            EnterpriseName: job.EnterpriseName,
+            EnterpriseDescription: job.EnterpriseDescription,
+            JobRole: job.JobRole,
+            RawDescription: job.RawDescription,
+            RequiredExperienceYears: job.RequiredExperienceYears,
+            SeniorityLevel: job.SeniorityLevel,
+            EmploymentType: job.EmploymentType,
+            Location: job.Location,
+            LocationType: job.LocationType,
+            EducationRequirements: job.EducationRequirements,
+            SourceUrl: job.SourceUrl,
+            Status: job.Status.ToString(),
+            CreatedAt: job.CreatedAt,
+            UpdatedAt: job.UpdatedAt,
+            Skills: job.Skills.Select(s => new JobSkillDto(s.Id, s.Name, s.Type.ToString(), s.IsMandatory)).ToList(),
+            Responsibilities: job.Responsibilities.Select(r => new JobResponsibilityDto(r.Id, r.Description)).ToList(),
+            Benefits: job.Benefits.Select(b => new JobBenefitDto(b.Id, b.Description)).ToList()
+        );
     }
-}
-ParseOptions.0.json»
--/app/src/cv-service/Services/CvServiceImpl.csÅusing CvService.DTOs;
 
-namespace CvService.Services;
+    // 4. GET ALL (Summary view for the dashboard)
+    public async Task<JobOfferListDto> GetAllAsync(Guid userId, int page, int pageSize)
+    {
+        var total = await _repository.GetTotalCountAsync(userId);
+        var jobs = await _repository.GetAllAsync(userId, page, pageSize);
 
-public class CvServiceImpl : ICvService
+        var items = jobs.Select(job => new JobOfferSummaryDto(
+            Id: job.Id,
+            UserId: job.UserId,
+            EnterpriseName: job.EnterpriseName,
+            JobRole: job.JobRole,
+            Location: job.Location,
+            Status: job.Status.ToString(),
+            CreatedAt: job.CreatedAt
+        )).ToList();
+
+        return new JobOfferListDto(items, total, page, pageSize);
+    }
+
+    public async Task UpdateStatusAsync(Guid id, UpdateJobStatusDto dto)
+    {
+        var job = await _repository.GetByIdAsync(id);
+        if (job == null) throw new KeyNotFoundException("Job not found");
+
+        if (Enum.TryParse<JobOfferStatus>(dto.Status, true, out var status))
+        {
+            job.Status = status;
+            await _repository.UpdateAsync(job);
+        }
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        await _repository.DeleteAsync(id);
+    }
+
+    public async Task<JobOfferStatisticsDto> GetStatisticsAsync(Guid userId)
+    {
+        var stats = await _repository.GetStatisticsAsync(userId);
+        return new JobOfferStatisticsDto(
+            Total: stats.Values.Sum(),
+            Draft: stats.GetValueOrDefault(JobOfferStatus.DRAFT, 0),
+            Open: stats.GetValueOrDefault(JobOfferStatus.OPEN, 0),
+            Closed: stats.GetValueOrDefault(JobOfferStatus.CLOSED, 0),
+            Archived: stats.GetValueOrDefault(JobOfferStatus.ARCHIVED, 0)
+        );
+    }
+}ParseOptions.0.jsonŒ
+:/app/src/job-offer-service/validators/JobOfferValidator.cs˙using FluentValidation;
+using JobOfferService.DTOs;
+using JobOfferService.Entities; // Needed for the enum validation
+
+namespace JobOfferService.Validators;
+
+public class SubmitJobOfferValidator : AbstractValidator<SubmitJobOfferDto>
 {
-    public Task<List<CvDto>> GetAllAsync(string userId)
+    public SubmitJobOfferValidator()
     {
-        // TODO: Implement fetching all CVs for user
-        return Task.FromResult(new List<CvDto>());
-    }
+        RuleFor(x => x.UserId)
+            .NotEmpty().WithMessage("UserId is required.");
 
-    public Task<CvDto?> GetByIdAsync(Guid id, string userId)
-    {
-        // TODO: Implement fetching CV by ID with ownership check
-        return Task.FromResult<CvDto?>(null);
-    }
-
-    public Task<CvDto> CreateAsync(CreateCvDto dto, string userId)
-    {
-        // TODO: Implement CV creation
-        throw new NotImplementedException();
-    }
-
-    public Task<CvDto?> UpdateAsync(Guid id, UpdateCvDto dto, string userId)
-    {
-        // TODO: Implement CV update with ownership check
-        return Task.FromResult<CvDto?>(null);
-    }
-
-    public Task<bool> DeleteAsync(Guid id, string userId)
-    {
-        // TODO: Implement soft/hard delete with ownership check
-        return Task.FromResult(false);
+        // Must have either raw text OR a URL to be valid
+        RuleFor(x => x)
+            .Must(x => !string.IsNullOrWhiteSpace(x.RawText) || !string.IsNullOrWhiteSpace(x.SourceUrl))
+            .WithMessage("You must provide either RawText or a SourceUrl.");
     }
 }
-ParseOptions.0.jsonõ
-4/app/src/cv-service/Services/CvVersionServiceImpl.csÕusing CvService.DTOs;
 
-namespace CvService.Services;
-
-public class CvVersionServiceImpl : ICvVersionService
+public class ExtractedJobValidator : AbstractValidator<ExtractedJobDto>
 {
-    public Task<List<CvVersionDto>> GetByCvIdAsync(Guid cvId, string userId)
+    public ExtractedJobValidator()
     {
-        // TODO: Implement fetching versions by CV ID with ownership check
-        return Task.FromResult(new List<CvVersionDto>());
-    }
+        RuleFor(x => x.EnterpriseName)
+            .NotEmpty().WithMessage("Enterprise name is required")
+            .MaximumLength(200).WithMessage("Enterprise name cannot exceed 200 characters");
 
-    public Task<CvVersionDto?> GetByIdAsync(Guid id, string userId)
-    {
-        // TODO: Implement fetching version by ID with ownership check
-        return Task.FromResult<CvVersionDto?>(null);
-    }
+        RuleFor(x => x.JobRole)
+            .NotEmpty().WithMessage("Job role is required")
+            .MaximumLength(150).WithMessage("Job role cannot exceed 150 characters");
 
-    public Task<CvVersionDto> CreateAsync(Guid cvId, CreateCvVersionDto dto, string userId)
-    {
-        // TODO: Implement version creation (copy from latest or create fresh)
-        throw new NotImplementedException();
-    }
-
-    public Task<bool> DeleteAsync(Guid id, string userId)
-    {
-        // TODO: Implement version deletion with ownership check
-        return Task.FromResult(false);
+        RuleFor(x => x.RawDescription)
+            .NotEmpty().WithMessage("Raw description cannot be empty");
+            
+        // Ensure lists aren't null (they can be empty, but not null)
+        RuleFor(x => x.RequiredSkills).NotNull();
+        RuleFor(x => x.Responsibilities).NotNull();
     }
 }
-ParseOptions.0.jsonÄ
-1/app/src/cv-service/Services/ICvSectionService.csµusing CvService.DTOs;
 
-namespace CvService.Services;
-
-public interface ICvSectionService
+public class UpdateJobStatusValidator : AbstractValidator<UpdateJobStatusDto>
 {
-    Task<List<CvSectionDto>> GetByVersionIdAsync(Guid versionId, string userId);
-    Task<CvSectionDto?> GetByTypeAsync(Guid versionId, string sectionType, string userId);
-    Task<CvSectionDto> UpsertAsync(Guid versionId, string sectionType, UpdateSectionDto dto, string userId);
-    Task<bool> DeleteAsync(Guid id, string userId);
-}
-ParseOptions.0.json«
-*/app/src/cv-service/Services/ICvService.csÉusing CvService.DTOs;
-
-namespace CvService.Services;
-
-public interface ICvService
-{
-    Task<List<CvDto>> GetAllAsync(string userId);
-    Task<CvDto?> GetByIdAsync(Guid id, string userId);
-    Task<CvDto> CreateAsync(CreateCvDto dto, string userId);
-    Task<CvDto?> UpdateAsync(Guid id, UpdateCvDto dto, string userId);
-    Task<bool> DeleteAsync(Guid id, string userId);
-}
-ParseOptions.0.json¬
-1/app/src/cv-service/Services/ICvVersionService.cs˜using CvService.DTOs;
-
-namespace CvService.Services;
-
-public interface ICvVersionService
-{
-    Task<List<CvVersionDto>> GetByCvIdAsync(Guid cvId, string userId);
-    Task<CvVersionDto?> GetByIdAsync(Guid id, string userId);
-    Task<CvVersionDto> CreateAsync(Guid cvId, CreateCvVersionDto dto, string userId);
-    Task<bool> DeleteAsync(Guid id, string userId);
-}
-ParseOptions.0.json•
-./app/src/cv-service/Validators/CvValidators.cs›using FluentValidation;
-using CvService.DTOs;
-
-namespace CvService.Validators;
-
-public class CreateCvValidator : AbstractValidator<CreateCvDto>
-{
-    public CreateCvValidator()
+    public UpdateJobStatusValidator()
     {
-        RuleFor(x => x.Title)
-            .NotEmpty().WithMessage("Title is required")
-            .MaximumLength(200).WithMessage("Title must not exceed 200 characters");
-
-        RuleFor(x => x.TemplateId)
-            .NotEmpty().WithMessage("Template is required");
+        RuleFor(x => x.Status)
+            .NotEmpty().WithMessage("Status is required")
+            .Must(BeValidStatus).WithMessage("Invalid status value. Valid values: DRAFT, OPEN, CLOSED, ARCHIVED");
     }
-}
-ParseOptions.0.jsonÃ
-A/app/src/cv-service/obj/Debug/net10.0/CvService.GlobalUsings.g.csÒ// <auto-generated/>
+
+    private static bool BeValidStatus(string status)
+    {
+        var validStatuses = new[] { "DRAFT", "OPEN", "CLOSED", "ARCHIVED" };
+        return validStatuses.Contains(status.ToUpperInvariant());
+    }
+}ParseOptions.0.json€
+P/app/src/job-offer-service/obj/Debug/net10.0/job-offer-service.GlobalUsings.g.csÒ// <auto-generated/>
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.AspNetCore.Hosting;
 global using Microsoft.AspNetCore.Http;
@@ -702,13 +1538,13 @@ global using System.Net.Http;
 global using System.Net.Http.Json;
 global using System.Threading;
 global using System.Threading.Tasks;
-ParseOptions.0.json≥
-U/app/src/cv-service/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.csƒ// <autogenerated />
+ParseOptions.0.json∫
+\/app/src/job-offer-service/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.csƒ// <autogenerated />
 using System;
 using System.Reflection;
 [assembly: global::System.Runtime.Versioning.TargetFrameworkAttribute(".NETCoreApp,Version=v10.0", FrameworkDisplayName = ".NET 10.0")]
-ParseOptions.0.jsonÉ
-?/app/src/cv-service/obj/Debug/net10.0/CvService.AssemblyInfo.cs™//------------------------------------------------------------------------------
+ParseOptions.0.json™
+N/app/src/job-offer-service/obj/Debug/net10.0/job-offer-service.AssemblyInfo.cs¬//------------------------------------------------------------------------------
 // <auto-generated>
 //     This code was generated by a tool.
 //
@@ -720,18 +1556,18 @@ using System.Reflection;
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("CvService")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("job-offer-service")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
-[assembly: System.Reflection.AssemblyProductAttribute("CvService")]
-[assembly: System.Reflection.AssemblyTitleAttribute("CvService")]
+[assembly: System.Reflection.AssemblyProductAttribute("job-offer-service")]
+[assembly: System.Reflection.AssemblyTitleAttribute("job-offer-service")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 
 // Generated by the MSBuild WriteCodeFragment class.
 
-ParseOptions.0.jsonì
-R/app/src/cv-service/obj/Debug/net10.0/CvService.MvcApplicationPartsAssemblyInfo.csß//------------------------------------------------------------------------------
+ParseOptions.0.json¢
+a/app/src/job-offer-service/obj/Debug/net10.0/job-offer-service.MvcApplicationPartsAssemblyInfo.csß//------------------------------------------------------------------------------
 // <auto-generated>
 //     This code was generated by a tool.
 //
@@ -748,8 +1584,26 @@ using System.Reflection;
 
 // Generated by the MSBuild WriteCodeFragment class.
 
-ParseOptions.0.json˜
-∑/app/src/cv-service/obj/Debug/net10.0/Microsoft.AspNetCore.App.SourceGenerators/Microsoft.AspNetCore.SourceGenerators.PublicProgramSourceGenerator/PublicTopLevelProgram.Generated.g.cs•// <auto-generated />
+ParseOptions.0.jsonÑ
+D/app/src/job-offer-service/obj/Debug/net10.0/EFCoreNpgsqlPgvector.cs¶//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated by a tool.
+//
+//     Changes to this file may cause incorrect behavior and will be lost if
+//     the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+using System;
+using System.Reflection;
+
+[assembly: Microsoft.EntityFrameworkCore.Design.DesignTimeServicesReferenceAttribute(("Pgvector.EntityFrameworkCore.VectorDesignTimeServices, Pgvector.EntityFrameworkCo" +
+    "re"), "Npgsql.EntityFrameworkCore.PostgreSQL")]
+
+// Generated by the MSBuild WriteCodeFragment class.
+
+ParseOptions.0.json˛
+æ/app/src/job-offer-service/obj/Debug/net10.0/Microsoft.AspNetCore.App.SourceGenerators/Microsoft.AspNetCore.SourceGenerators.PublicProgramSourceGenerator/PublicTopLevelProgram.Generated.g.cs•// <auto-generated />
 /// <summary>
 /// Auto-generated public partial Program class for top-level statement apps.
 /// </summary>

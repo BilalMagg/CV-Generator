@@ -1,61 +1,695 @@
-¥
-1/app/src/user-content-service/ContentDbContext.csÈusing Microsoft.EntityFrameworkCore;
-using Pgvector;
+£
+1/app/src/user-content-service/ContentDbContext.csÿusing Microsoft.EntityFrameworkCore;
+
 using UserContentService.Entity;
 
 namespace UserContentService;
 
 public class ContentDbContext : DbContext
 {
-    public DbSet<User> Users { get; set; }
+    public ContentDbContext(DbContextOptions<ContentDbContext> options) : base(options) { }
+
     public DbSet<Project> Projects { get; set; }
     public DbSet<Skill> Skills { get; set; }
     public DbSet<Experience> Experiences { get; set; }
+    public DbSet<Education> Educations { get; set; }
+    public DbSet<SocialLink> SocialLinks { get; set; }
+    public DbSet<Interest> Interests { get; set; }
+    public DbSet<Language> Languages { get; set; }
+    public DbSet<Certification> Certifications { get; set; }
+    public DbSet<CVProfile> CVProfiles { get; set; }
+    public DbSet<Hackathon> Hackathons { get; set; }
+    public DbSet<AcademicActivity> AcademicActivities { get; set; }
+}ParseOptions.0.json∏
+8/app/src/user-content-service/ContentDbContextFactory.csÊusing Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+using Npgsql;
 
-    public ContentDbContext(DbContextOptions<ContentDbContext> options) : base(options) { }
+namespace UserContentService;
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+public class ContentDbContextFactory : IDesignTimeDbContextFactory<ContentDbContext>
+{
+    public ContentDbContext CreateDbContext(string[] args)
     {
-        base.OnModelCreating(modelBuilder);
-        modelBuilder.HasPostgresExtension("vector");
+        var connectionString = "Host=content-db;Port=5432;Database=content_db;Username=postgres;Password=postgres";
 
-        modelBuilder.Entity<User>()
-            .HasIndex(u => u.Email)
-            .IsUnique();
+        var optionsBuilder = new DbContextOptionsBuilder<ContentDbContext>();
+        optionsBuilder.UseNpgsql(connectionString);
 
-        modelBuilder.Entity<Project>()
-            .Property(p => p.DescriptionEmbedding)
-            .HasColumnType("vector(384)");
 
-        modelBuilder.Entity<Skill>()
-            .Property(s => s.NameEmbedding)
-            .HasColumnType("vector(384)");
-
-        modelBuilder.Entity<Experience>()
-            .Property(e => e.DescriptionEmbedding)
-            .HasColumnType("vector(384)");
-
-        modelBuilder.Entity<Project>()
-            .HasOne(p => p.User)
-            .WithMany(u => u.Projects)
-            .HasForeignKey(p => p.UserId);
-
-        modelBuilder.Entity<Skill>()
-            .HasOne(s => s.User)
-            .WithMany(u => u.Skills)
-            .HasForeignKey(s => s.UserId);
-
-        modelBuilder.Entity<Experience>()
-            .HasOne(e => e.User)
-            .WithMany(u => u.Experiences)
-            .HasForeignKey(e => e.UserId);
+        return new ContentDbContext(optionsBuilder.Options);
     }
-}ParseOptions.0.json…
-B/app/src/user-content-service/Controllers/ExperiencesController.csÌusing CVGenerator.Shared;
+}ParseOptions.0.json«*
+I/app/src/user-content-service/Controllers/AcademicActivitiesController.cs‰)using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using UserContentService;
 using UserContentService.Entity;
+using UserContentService.Events.AcademicActivityEvent;
+using UserContentService.Services;
+using UserContentService.dto.AcademicActivity;
+
+namespace UserContentService.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AcademicActivitiesController : ControllerBase
+{
+    private readonly ContentDbContext _db;
+    private readonly KafkaProducerService _kafkaProducer;
+
+    public AcademicActivitiesController(ContentDbContext db, KafkaProducerService kafkaProducer)
+    {
+        _db = db;
+        _kafkaProducer = kafkaProducer;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
+    {
+        var activities = userId.HasValue
+            ? await _db.AcademicActivities.Where(a => a.UserId == userId.Value).ToListAsync()
+            : await _db.AcademicActivities.ToListAsync();
+
+        var response = activities.Select(a => new AcademicActivityResponseDto
+        {
+            Id = a.Id,
+            Title = a.Title,
+            Organization = a.Organization,
+            Description = a.Description,
+            StartDate = a.StartDate,
+            EndDate = a.EndDate,
+            UserId = a.UserId
+        }).ToList();
+
+        return Ok(ApiResponse<List<AcademicActivityResponseDto>>.Ok(response));
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var a = await _db.AcademicActivities.FindAsync(id);
+        if (a == null) return NotFound(ApiResponse<AcademicActivityResponseDto>.Error("Academic activity not found"));
+
+        var response = new AcademicActivityResponseDto
+        {
+            Id = a.Id,
+            Title = a.Title,
+            Organization = a.Organization,
+            Description = a.Description,
+            StartDate = a.StartDate,
+            EndDate = a.EndDate,
+            UserId = a.UserId
+        };
+        return Ok(ApiResponse<AcademicActivityResponseDto>.Ok(response));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateAcademicActivityDto dto)
+    {
+        var a = new AcademicActivity
+        {
+            Title = dto.Title,
+            Organization = dto.Organization,
+            Description = dto.Description,
+            StartDate = dto.StartDate,
+            EndDate = dto.EndDate,
+            UserId = dto.UserId
+        };
+
+        _db.AcademicActivities.Add(a);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("academic-activity-created", new AcademicActivityCreatedEvent
+        {
+            Id = a.Id,
+            Title = a.Title,
+            Organization = a.Organization,
+            Description = a.Description,
+            StartDate = a.StartDate,
+            EndDate = a.EndDate,
+            UserId = a.UserId
+        });
+
+        var response = new AcademicActivityResponseDto
+        {
+            Id = a.Id,
+            Title = a.Title,
+            Organization = a.Organization,
+            Description = a.Description,
+            StartDate = a.StartDate,
+            EndDate = a.EndDate,
+            UserId = a.UserId
+        };
+        return CreatedAtAction(nameof(GetById), new { id = a.Id }, ApiResponse<AcademicActivityResponseDto>.Created(response));
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAcademicActivityDto dto)
+    {
+        var a = await _db.AcademicActivities.FindAsync(id);
+        if (a == null) return NotFound(ApiResponse<AcademicActivityResponseDto>.Error("Academic activity not found"));
+
+        a.Title = dto.Title;
+        a.Organization = dto.Organization;
+        a.Description = dto.Description;
+        a.StartDate = dto.StartDate;
+        a.EndDate = dto.EndDate;
+
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("academic-activity-updated", new AcademicActivityUpdatedEvent
+        {
+            Id = a.Id,
+            Title = a.Title,
+            Organization = a.Organization,
+            Description = a.Description,
+            StartDate = a.StartDate,
+            EndDate = a.EndDate,
+            UserId = a.UserId
+        });
+
+        var response = new AcademicActivityResponseDto
+        {
+            Id = a.Id,
+            Title = a.Title,
+            Organization = a.Organization,
+            Description = a.Description,
+            StartDate = a.StartDate,
+            EndDate = a.EndDate,
+            UserId = a.UserId
+        };
+        return Ok(ApiResponse<AcademicActivityResponseDto>.Ok(response));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var a = await _db.AcademicActivities.FindAsync(id);
+        if (a == null) return NotFound(ApiResponse<object>.Error("Academic activity not found"));
+
+        var userId = a.UserId;
+
+        _db.AcademicActivities.Remove(a);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("academic-activity-deleted", new AcademicActivityDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        return NoContent();
+    }
+
+}
+ParseOptions.0.json§)
+E/app/src/user-content-service/Controllers/CertificationsController.cs≈(using CVGenerator.Shared;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UserContentService.Entity;
+using UserContentService.Events.CertificationEvent;
+using UserContentService.Services;
+using UserContentService.dto.Certification;
+
+namespace UserContentService.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class CertificationsController : ControllerBase
+{
+    private readonly ContentDbContext _db;
+    private readonly KafkaProducerService _kafkaProducer;
+
+    public CertificationsController(ContentDbContext db, KafkaProducerService kafkaProducer)
+    {
+        _db = db;
+        _kafkaProducer = kafkaProducer;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
+    {
+        var certs = userId.HasValue
+            ? await _db.Certifications.Where(c => c.UserId == userId.Value).ToListAsync()
+            : await _db.Certifications.ToListAsync();
+
+        var response = certs.Select(c => new CertificationResponseDto
+        {
+            Id = c.Id,
+            Name = c.Name,
+            IssuingOrganization = c.IssuingOrganization,
+            IssueDate = c.IssueDate,
+            CredentialUrl = c.CredentialUrl,
+            UserId = c.UserId
+        }).ToList();
+
+        return Ok(ApiResponse<List<CertificationResponseDto>>.Ok(response));
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var c = await _db.Certifications.FindAsync(id);
+        if (c == null) return NotFound(ApiResponse<CertificationResponseDto>.Error("Certification not found"));
+
+        var response = new CertificationResponseDto
+        {
+            Id = c.Id,
+            Name = c.Name,
+            IssuingOrganization = c.IssuingOrganization,
+            IssueDate = c.IssueDate,
+            CredentialUrl = c.CredentialUrl,
+            UserId = c.UserId
+        };
+        return Ok(ApiResponse<CertificationResponseDto>.Ok(response));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateCertificationDto dto)
+    {
+        var cert = new Certification
+        {
+            Name = dto.Name,
+            IssuingOrganization = dto.IssuingOrganization,
+            IssueDate = dto.IssueDate,
+            CredentialUrl = dto.CredentialUrl,
+            UserId = dto.UserId
+        };
+
+        _db.Certifications.Add(cert);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("certification-created", new CertificationCreatedEvent
+        {
+            Id = cert.Id,
+            Name = cert.Name,
+            IssuingOrganization = cert.IssuingOrganization,
+            IssueDate = cert.IssueDate,
+            CredentialUrl = cert.CredentialUrl,
+            UserId = cert.UserId
+        });
+
+        var response = new CertificationResponseDto
+        {
+            Id = cert.Id,
+            Name = cert.Name,
+            IssuingOrganization = cert.IssuingOrganization,
+            IssueDate = cert.IssueDate,
+            CredentialUrl = cert.CredentialUrl,
+            UserId = cert.UserId
+        };
+        return CreatedAtAction(nameof(GetById), new { id = cert.Id }, ApiResponse<CertificationResponseDto>.Created(response));
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCertificationDto dto)
+    {
+        var cert = await _db.Certifications.FindAsync(id);
+        if (cert == null) return NotFound(ApiResponse<CertificationResponseDto>.Error("Certification not found"));
+
+        cert.Name = dto.Name;
+        cert.IssuingOrganization = dto.IssuingOrganization;
+        cert.IssueDate = dto.IssueDate;
+        cert.CredentialUrl = dto.CredentialUrl;
+
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("certification-updated", new CertificationUpdatedEvent
+        {
+            Id = cert.Id,
+            Name = cert.Name,
+            IssuingOrganization = cert.IssuingOrganization,
+            IssueDate = cert.IssueDate,
+            CredentialUrl = cert.CredentialUrl,
+            UserId = cert.UserId
+        });
+
+        var response = new CertificationResponseDto
+        {
+            Id = cert.Id,
+            Name = cert.Name,
+            IssuingOrganization = cert.IssuingOrganization,
+            IssueDate = cert.IssueDate,
+            CredentialUrl = cert.CredentialUrl,
+            UserId = cert.UserId
+        };
+        return Ok(ApiResponse<CertificationResponseDto>.Ok(response));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var cert = await _db.Certifications.FindAsync(id);
+        if (cert == null) return NotFound(ApiResponse<object>.Error("Certification not found"));
+
+        var userId = cert.UserId;
+
+        _db.Certifications.Remove(cert);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("certification-deleted", new CertificationDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        return NoContent();
+    }
+
+}
+ParseOptions.0.json« 
+A/app/src/user-content-service/Controllers/CVProfilesController.csÏusing CVGenerator.Shared;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UserContentService.Entity;
+using UserContentService.Events.CVProfileEvent;
+using UserContentService.Services;
+using UserContentService.dto.CVProfile;
+
+namespace UserContentService.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class CVProfilesController : ControllerBase
+{
+    private readonly ContentDbContext _db;
+    private readonly KafkaProducerService _kafkaProducer;
+
+    public CVProfilesController(ContentDbContext db, KafkaProducerService kafkaProducer)
+    {
+        _db = db;
+        _kafkaProducer = kafkaProducer;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
+    {
+        var profiles = userId.HasValue
+            ? await _db.CVProfiles.Where(p => p.UserId == userId.Value).ToListAsync()
+            : await _db.CVProfiles.ToListAsync();
+
+        var response = profiles.Select(p => new CVProfileResponseDto
+        {
+            Id = p.Id,
+            Title = p.Title,
+            Summary = p.Summary,
+            UserId = p.UserId
+        }).ToList();
+
+        return Ok(ApiResponse<List<CVProfileResponseDto>>.Ok(response));
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var p = await _db.CVProfiles.FindAsync(id);
+        if (p == null) return NotFound(ApiResponse<CVProfileResponseDto>.Error("CV Profile not found"));
+
+        var response = new CVProfileResponseDto
+        {
+            Id = p.Id,
+            Title = p.Title,
+            Summary = p.Summary,
+            UserId = p.UserId
+        };
+        return Ok(ApiResponse<CVProfileResponseDto>.Ok(response));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateCVProfileDto dto)
+    {
+        var profile = new CVProfile { Title = dto.Title, Summary = dto.Summary, UserId = dto.UserId };
+        
+        _db.CVProfiles.Add(profile);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("cvprofile-created", new CVProfileCreatedEvent
+        {
+            Id = profile.Id,
+            Title = profile.Title,
+            Summary = profile.Summary,
+            UserId = profile.UserId
+        });
+
+        var response = new CVProfileResponseDto { Id = profile.Id, Title = profile.Title, Summary = profile.Summary, UserId = profile.UserId };
+        return CreatedAtAction(nameof(GetById), new { id = profile.Id }, ApiResponse<CVProfileResponseDto>.Created(response));
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCVProfileDto dto)
+    {
+        var profile = await _db.CVProfiles.FindAsync(id);
+        if (profile == null) return NotFound(ApiResponse<CVProfileResponseDto>.Error("CV Profile not found"));
+
+        profile.Title = dto.Title;
+        profile.Summary = dto.Summary;
+
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("cvprofile-updated", new CVProfileUpdatedEvent
+        {
+            Id = profile.Id,
+            Title = profile.Title,
+            Summary = profile.Summary,
+            UserId = profile.UserId
+        });
+
+        var response = new CVProfileResponseDto { Id = profile.Id, Title = profile.Title, Summary = profile.Summary, UserId = profile.UserId };
+        return Ok(ApiResponse<CVProfileResponseDto>.Ok(response));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var profile = await _db.CVProfiles.FindAsync(id);
+        if (profile == null) return NotFound(ApiResponse<object>.Error("CV Profile not found"));
+
+        var userId = profile.UserId;
+
+        _db.CVProfiles.Remove(profile);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("cvprofile-deleted", new CVProfileDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        return NoContent();
+    }
+
+}
+ParseOptions.0.json›6
+A/app/src/user-content-service/Controllers/EducationsController.csÇ6using CVGenerator.Shared;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UserContentService.Entity;
+using UserContentService.Events.EducationEvent;
+using UserContentService.Services;
+using UserContentService.dto.Education;
+
+namespace UserContentService.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class EducationsController : ControllerBase
+{
+    private readonly ContentDbContext _db;
+    private readonly ILogger<EducationsController> _logger;
+    private readonly KafkaProducerService _kafkaProducer;
+
+    public EducationsController(ContentDbContext db, ILogger<EducationsController> logger, KafkaProducerService kafkaProducer )
+    {
+        _db = db;
+        _logger = logger;
+        _kafkaProducer = kafkaProducer;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
+    {
+        var educations = userId.HasValue
+            ? await _db.Educations.Where(e => e.UserId == userId.Value).ToListAsync()
+            : await _db.Educations.ToListAsync();
+
+        var response = educations.Select(e => new EducationResponseDto
+        {
+            Id = e.Id,
+            InstitutionName = e.InstitutionName,
+            DegreeType = e.DegreeType,
+            FieldOfStudy = e.FieldOfStudy,
+            Specialization = e.Specialization,
+            StartDate = e.StartDate,
+            EndDate = e.EndDate,
+            Status = e.Status,
+            City = e.City,
+            DiplomaFileUrl = e.DiplomaFileUrl,
+            UserId = e.UserId
+        }).ToList();
+
+        return Ok(ApiResponse<List<EducationResponseDto>>.Ok(response));
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var e = await _db.Educations.FindAsync(id);
+        if (e == null) return NotFound(ApiResponse<EducationResponseDto>.Error("Education not found"));
+
+        var response = new EducationResponseDto
+        {
+            Id = e.Id,
+            InstitutionName = e.InstitutionName,
+            DegreeType = e.DegreeType,
+            FieldOfStudy = e.FieldOfStudy,
+            Specialization = e.Specialization,
+            StartDate = e.StartDate,
+            EndDate = e.EndDate,
+            Status = e.Status,
+            City = e.City,
+            DiplomaFileUrl = e.DiplomaFileUrl,
+            UserId = e.UserId
+        };
+
+        return Ok(ApiResponse<EducationResponseDto>.Ok(response));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateEducationDto dto)
+    {
+        var edu = new Education
+        {
+            InstitutionName = dto.InstitutionName,
+            DegreeType = dto.DegreeType,
+            FieldOfStudy = dto.FieldOfStudy,
+            Specialization = dto.Specialization,
+            StartDate = dto.StartDate,
+            EndDate = dto.EndDate,
+            Status = dto.Status,
+            City = dto.City,
+            DiplomaFileUrl = dto.DiplomaFileUrl,
+            UserId = dto.UserId
+        };
+
+        _db.Educations.Add(edu);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("education-created", new EducationCreatedEvent
+        {
+            Id = edu.Id,
+            InstitutionName = edu.InstitutionName,
+            DegreeType = edu.DegreeType,
+            FieldOfStudy = edu.FieldOfStudy,
+            Specialization = edu.Specialization,
+            StartDate = edu.StartDate,
+            EndDate = edu.EndDate,
+            Status = edu.Status,
+            City = edu.City,
+            DiplomaFileUrl = edu.DiplomaFileUrl,
+            UserId = edu.UserId
+        });
+
+        _logger.LogInformation("Created education {Id} and published event", edu.Id);
+
+        var response = new EducationResponseDto
+        {
+            Id = edu.Id,
+            InstitutionName = edu.InstitutionName,
+            DegreeType = edu.DegreeType,
+            FieldOfStudy = edu.FieldOfStudy,
+            Specialization = edu.Specialization,
+            StartDate = edu.StartDate,
+            EndDate = edu.EndDate,
+            Status = edu.Status,
+            City = edu.City,
+            DiplomaFileUrl = edu.DiplomaFileUrl,
+            UserId = edu.UserId
+        };
+
+        return Created($"/api/educations/{edu.Id}", ApiResponse<EducationResponseDto>.Created(response));
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateEducationDto dto)
+    {
+        var edu = await _db.Educations.FindAsync(id);
+        if (edu == null) return NotFound(ApiResponse<EducationResponseDto>.Error("Education not found"));
+
+        edu.InstitutionName = dto.InstitutionName;
+        edu.DegreeType = dto.DegreeType;
+        edu.FieldOfStudy = dto.FieldOfStudy;
+        edu.Specialization = dto.Specialization;
+        edu.StartDate = dto.StartDate;
+        edu.EndDate = dto.EndDate;
+        edu.Status = dto.Status;
+        edu.City = dto.City;
+        edu.DiplomaFileUrl = dto.DiplomaFileUrl;
+
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("education-updated", new EducationUpdatedEvent
+        {
+            Id = edu.Id,
+            InstitutionName = edu.InstitutionName,
+            DegreeType = edu.DegreeType,
+            FieldOfStudy = edu.FieldOfStudy,
+            Specialization = edu.Specialization,
+            StartDate = edu.StartDate,
+            EndDate = edu.EndDate,
+            Status = edu.Status,
+            City = edu.City,
+            DiplomaFileUrl = edu.DiplomaFileUrl,
+            UserId = edu.UserId
+        });
+
+        var response = new EducationResponseDto
+        {
+            Id = edu.Id,
+            InstitutionName = edu.InstitutionName,
+            DegreeType = edu.DegreeType,
+            FieldOfStudy = edu.FieldOfStudy,
+            Specialization = edu.Specialization,
+            StartDate = edu.StartDate,
+            EndDate = edu.EndDate,
+            Status = edu.Status,
+            City = edu.City,
+            DiplomaFileUrl = edu.DiplomaFileUrl,
+            UserId = edu.UserId
+        };
+
+        return Ok(ApiResponse<EducationResponseDto>.Ok(response));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var edu = await _db.Educations.FindAsync(id);
+        if (edu == null) return NotFound(ApiResponse<object>.Error("Education not found"));
+
+        var userId = edu.UserId;
+
+        _db.Educations.Remove(edu);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("education-deleted", new EducationDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        _logger.LogInformation("Deleted education {Id} and published event", id);
+        return NoContent();
+    }
+
+}
+ParseOptions.0.json¢0
+B/app/src/user-content-service/Controllers/ExperiencesController.cs∆/using CVGenerator.Shared;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UserContentService.Entity;
+using UserContentService.Events.ExperienceEvent;
+using UserContentService.Services;
+using UserContentService.dto.Experience;
 
 namespace UserContentService.Controllers;
 
@@ -65,11 +699,13 @@ public class ExperiencesController : ControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly ILogger<ExperiencesController> _logger;
+    private readonly KafkaProducerService _kafkaProducer;
 
-    public ExperiencesController(ContentDbContext db, ILogger<ExperiencesController> logger)
+    public ExperiencesController(ContentDbContext db, ILogger<ExperiencesController> logger, KafkaProducerService kafkaProducer )
     {
         _db = db;
         _logger = logger;
+        _kafkaProducer = kafkaProducer;
     }
 
     [HttpGet]
@@ -78,15 +714,43 @@ public class ExperiencesController : ControllerBase
         var experiences = userId.HasValue
             ? await _db.Experiences.Where(e => e.UserId == userId.Value).ToListAsync()
             : await _db.Experiences.ToListAsync();
-        return Ok(ApiResponse<List<Experience>>.Ok(experiences));
+
+        var response = experiences.Select(e => new ExperienceResponseDto
+        {
+            Id = e.Id,
+            Title = e.Title,
+            Company = e.Company,
+            Description = e.Description,
+            StartDate = e.StartDate,
+            EndDate = e.EndDate,
+            ReferenceUrl = e.ReferenceUrl,
+            Status = e.Status,
+            UserId = e.UserId
+        }).ToList();
+
+        return Ok(ApiResponse<List<ExperienceResponseDto>>.Ok(response));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
         var exp = await _db.Experiences.FindAsync(id);
-        if (exp == null) return NotFound(ApiResponse<Experience>.Error("Experience not found"));
-        return Ok(ApiResponse<Experience>.Ok(exp));
+        if (exp == null) return NotFound(ApiResponse<ExperienceResponseDto>.Error("Experience not found"));
+
+        var response = new ExperienceResponseDto
+        {
+            Id = exp.Id,
+            Title = exp.Title,
+            Company = exp.Company,
+            Description = exp.Description,
+            StartDate = exp.StartDate,
+            EndDate = exp.EndDate,
+            ReferenceUrl = exp.ReferenceUrl,
+            Status = exp.Status,
+            UserId = exp.UserId
+        };
+
+        return Ok(ApiResponse<ExperienceResponseDto>.Ok(response));
     }
 
     [HttpPost]
@@ -107,15 +771,42 @@ public class ExperiencesController : ControllerBase
         _db.Experiences.Add(exp);
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Created experience {Id}", exp.Id);
-        return Created($"/api/experiences/{exp.Id}", ApiResponse<Experience>.Created(exp));
+        await _kafkaProducer.PublishAsync("experience-created", new ExperienceCreatedEvent
+        {
+            Id = exp.Id,
+            Title = exp.Title,
+            Company = exp.Company,
+            Description = exp.Description,
+            StartDate = exp.StartDate,
+            EndDate = exp.EndDate,
+            ReferenceUrl = exp.ReferenceUrl,
+            Status = exp.Status,
+            UserId = exp.UserId
+        });
+
+        _logger.LogInformation("Created experience {Id} and published event", exp.Id);
+
+        var response = new ExperienceResponseDto
+        {
+            Id = exp.Id,
+            Title = exp.Title,
+            Company = exp.Company,
+            Description = exp.Description,
+            StartDate = exp.StartDate,
+            EndDate = exp.EndDate,
+            ReferenceUrl = exp.ReferenceUrl,
+            Status = exp.Status,
+            UserId = exp.UserId
+        };
+
+        return Created($"/api/experiences/{exp.Id}", ApiResponse<ExperienceResponseDto>.Created(response));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateExperienceDto dto)
     {
         var exp = await _db.Experiences.FindAsync(id);
-        if (exp == null) return NotFound(ApiResponse<Experience>.Error("Experience not found"));
+        if (exp == null) return NotFound(ApiResponse<ExperienceResponseDto>.Error("Experience not found"));
 
         exp.Title = dto.Title;
         exp.Company = dto.Company;
@@ -126,7 +817,34 @@ public class ExperiencesController : ControllerBase
         exp.Status = dto.Status;
 
         await _db.SaveChangesAsync();
-        return Ok(ApiResponse<Experience>.Ok(exp));
+
+        await _kafkaProducer.PublishAsync("experience-updated", new ExperienceUpdatedEvent
+        {
+            Id = exp.Id,
+            Title = exp.Title,
+            Company = exp.Company,
+            Description = exp.Description,
+            StartDate = exp.StartDate,
+            EndDate = exp.EndDate,
+            ReferenceUrl = exp.ReferenceUrl,
+            Status = exp.Status,
+            UserId = exp.UserId
+        });
+
+        var response = new ExperienceResponseDto
+        {
+            Id = exp.Id,
+            Title = exp.Title,
+            Company = exp.Company,
+            Description = exp.Description,
+            StartDate = exp.StartDate,
+            EndDate = exp.EndDate,
+            ReferenceUrl = exp.ReferenceUrl,
+            Status = exp.Status,
+            UserId = exp.UserId
+        };
+
+        return Ok(ApiResponse<ExperienceResponseDto>.Ok(response));
     }
 
     [HttpDelete("{id}")]
@@ -135,38 +853,430 @@ public class ExperiencesController : ControllerBase
         var exp = await _db.Experiences.FindAsync(id);
         if (exp == null) return NotFound(ApiResponse<object>.Error("Experience not found"));
 
+        var userId = exp.UserId;
+
         _db.Experiences.Remove(exp);
         await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("experience-deleted", new ExperienceDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        _logger.LogInformation("Deleted experience {Id} and published event", id);
         return NoContent();
     }
 
-    public record CreateExperienceDto(
-        string Title,
-        string? Company,
-        string? Description,
-        DateTime StartDate,
-        DateTime? EndDate,
-        string? ReferenceUrl,
-        string Status,
-        Guid UserId
-    );
-
-    public record UpdateExperienceDto(
-        string Title,
-        string? Company,
-        string? Description,
-        DateTime StartDate,
-        DateTime? EndDate,
-        string? ReferenceUrl,
-        string Status
-    );
-}ParseOptions.0.jsonï
-?/app/src/user-content-service/Controllers/ProjectsController.csºusing System.ComponentModel.DataAnnotations;
-using CVGenerator.Shared;
+}ParseOptions.0.jsonª)
+A/app/src/user-content-service/Controllers/HackathonsController.cs‡(using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using UserContentService;
 using UserContentService.Entity;
+using UserContentService.Events.HackathonEvent;
+using UserContentService.Services;
+using UserContentService.dto.Hackathon;
+
+namespace UserContentService.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class HackathonsController : ControllerBase
+{
+    private readonly ContentDbContext _db;
+    private readonly KafkaProducerService _kafkaProducer;
+
+    public HackathonsController(ContentDbContext db, KafkaProducerService kafkaProducer)
+    {
+        _db = db;
+        _kafkaProducer = kafkaProducer;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
+    {
+        var hackathons = userId.HasValue
+            ? await _db.Hackathons.Where(h => h.UserId == userId.Value).ToListAsync()
+            : await _db.Hackathons.ToListAsync();
+
+        var response = hackathons.Select(h => new HackathonResponseDto
+        {
+            Id = h.Id,
+            Name = h.Name,
+            Organization = h.Organization,
+            Date = h.Date,
+            Description = h.Description,
+            Role = h.Role,
+            Result = h.Result,
+            UserId = h.UserId
+        }).ToList();
+
+        return Ok(ApiResponse<List<HackathonResponseDto>>.Ok(response));
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var h = await _db.Hackathons.FindAsync(id);
+        if (h == null) return NotFound(ApiResponse<HackathonResponseDto>.Error("Hackathon not found"));
+
+        var response = new HackathonResponseDto
+        {
+            Id = h.Id,
+            Name = h.Name,
+            Organization = h.Organization,
+            Date = h.Date,
+            Description = h.Description,
+            Role = h.Role,
+            Result = h.Result,
+            UserId = h.UserId
+        };
+        return Ok(ApiResponse<HackathonResponseDto>.Ok(response));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateHackathonDto dto)
+    {
+        var h = new Hackathon
+        {
+            Name = dto.Name,
+            Organization = dto.Organization,
+            Date = dto.Date,
+            Description = dto.Description,
+            Role = dto.Role,
+            Result = dto.Result,
+            UserId = dto.UserId
+        };
+
+        _db.Hackathons.Add(h);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("hackathon-created", new HackathonCreatedEvent
+        {
+            Id = h.Id,
+            Name = h.Name,
+            Organization = h.Organization,
+            Date = h.Date,
+            Description = h.Description,
+            Role = h.Role,
+            Result = h.Result,
+            UserId = h.UserId
+        });
+
+        var response = new HackathonResponseDto
+        {
+            Id = h.Id,
+            Name = h.Name,
+            Organization = h.Organization,
+            Date = h.Date,
+            Description = h.Description,
+            Role = h.Role,
+            Result = h.Result,
+            UserId = h.UserId
+        };
+        return CreatedAtAction(nameof(GetById), new { id = h.Id }, ApiResponse<HackathonResponseDto>.Created(response));
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateHackathonDto dto)
+    {
+        var h = await _db.Hackathons.FindAsync(id);
+        if (h == null) return NotFound(ApiResponse<HackathonResponseDto>.Error("Hackathon not found"));
+
+        h.Name = dto.Name;
+        h.Organization = dto.Organization;
+        h.Date = dto.Date;
+        h.Description = dto.Description;
+        h.Role = dto.Role;
+        h.Result = dto.Result;
+
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("hackathon-updated", new HackathonUpdatedEvent
+        {
+            Id = h.Id,
+            Name = h.Name,
+            Organization = h.Organization,
+            Date = h.Date,
+            Description = h.Description,
+            Role = h.Role,
+            Result = h.Result,
+            UserId = h.UserId
+        });
+
+        var response = new HackathonResponseDto
+        {
+            Id = h.Id,
+            Name = h.Name,
+            Organization = h.Organization,
+            Date = h.Date,
+            Description = h.Description,
+            Role = h.Role,
+            Result = h.Result,
+            UserId = h.UserId
+        };
+        return Ok(ApiResponse<HackathonResponseDto>.Ok(response));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var h = await _db.Hackathons.FindAsync(id);
+        if (h == null) return NotFound(ApiResponse<object>.Error("Hackathon not found"));
+
+        var userId = h.UserId;
+
+        _db.Hackathons.Remove(h);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("hackathon-deleted", new HackathonDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        return NoContent();
+    }
+
+}
+ParseOptions.0.jsonˇ
+@/app/src/user-content-service/Controllers/InterestsController.cs•using CVGenerator.Shared;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UserContentService.Entity;
+using UserContentService.Events.InterestEvent;
+using UserContentService.Services;
+using UserContentService.dto.Interest;
+
+namespace UserContentService.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class InterestsController : ControllerBase
+{
+    private readonly ContentDbContext _db;
+    private readonly KafkaProducerService _kafkaProducer;
+
+    public InterestsController(ContentDbContext db, KafkaProducerService kafkaProducer)
+    {
+        _db = db;
+        _kafkaProducer = kafkaProducer;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
+    {
+        var interests = userId.HasValue
+            ? await _db.Interests.Where(i => i.UserId == userId.Value).ToListAsync()
+            : await _db.Interests.ToListAsync();
+
+        var response = interests.Select(i => new InterestResponseDto
+        {
+            Id = i.Id,
+            Name = i.Name,
+            UserId = i.UserId
+        }).ToList();
+
+        return Ok(ApiResponse<List<InterestResponseDto>>.Ok(response));
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var interest = await _db.Interests.FindAsync(id);
+        if (interest == null) return NotFound(ApiResponse<InterestResponseDto>.Error("Interest not found"));
+
+        var response = new InterestResponseDto { Id = interest.Id, Name = interest.Name, UserId = interest.UserId };
+        return Ok(ApiResponse<InterestResponseDto>.Ok(response));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateInterestDto dto)
+    {
+        var interest = new Interest { Name = dto.Name, UserId = dto.UserId };
+        _db.Interests.Add(interest);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("interest-created", new InterestCreatedEvent
+        {
+            Id = interest.Id,
+            Name = interest.Name,
+            UserId = interest.UserId
+        });
+
+        var response = new InterestResponseDto { Id = interest.Id, Name = interest.Name, UserId = interest.UserId };
+        return CreatedAtAction(nameof(GetById), new { id = interest.Id }, ApiResponse<InterestResponseDto>.Created(response));
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateInterestDto dto)
+    {
+        var interest = await _db.Interests.FindAsync(id);
+        if (interest == null) return NotFound(ApiResponse<InterestResponseDto>.Error("Interest not found"));
+
+        interest.Name = dto.Name;
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("interest-updated", new InterestUpdatedEvent
+        {
+            Id = interest.Id,
+            Name = interest.Name,
+            UserId = interest.UserId
+        });
+
+        var response = new InterestResponseDto { Id = interest.Id, Name = interest.Name, UserId = interest.UserId };
+        return Ok(ApiResponse<InterestResponseDto>.Ok(response));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var interest = await _db.Interests.FindAsync(id);
+        if (interest == null) return NotFound(ApiResponse<object>.Error("Interest not found"));
+
+        var userId = interest.UserId;
+
+        _db.Interests.Remove(interest);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("interest-deleted", new InterestDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        return NoContent();
+    }
+
+}
+ParseOptions.0.jsonÉ 
+@/app/src/user-content-service/Controllers/LanguagesController.cs©using CVGenerator.Shared;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UserContentService.Entity;
+using UserContentService.Events.LanguageEvent;
+using UserContentService.Services;
+using UserContentService.dto.Language;
+
+namespace UserContentService.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class LanguagesController : ControllerBase
+{
+    private readonly ContentDbContext _db;
+    private readonly KafkaProducerService _kafkaProducer;
+
+    public LanguagesController(ContentDbContext db, KafkaProducerService kafkaProducer)
+    {
+        _db = db;
+        _kafkaProducer = kafkaProducer;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
+    {
+        var languages = userId.HasValue
+            ? await _db.Languages.Where(l => l.UserId == userId.Value).ToListAsync()
+            : await _db.Languages.ToListAsync();
+
+        var response = languages.Select(l => new LanguageResponseDto
+        {
+            Id = l.Id,
+            Name = l.Name,
+            Level = l.Level,
+            UserId = l.UserId
+        }).ToList();
+
+        return Ok(ApiResponse<List<LanguageResponseDto>>.Ok(response));
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var l = await _db.Languages.FindAsync(id);
+        if (l == null) return NotFound(ApiResponse<LanguageResponseDto>.Error("Language not found"));
+
+        var response = new LanguageResponseDto
+        {
+            Id = l.Id,
+            Name = l.Name,
+            Level = l.Level,
+            UserId = l.UserId
+        };
+        return Ok(ApiResponse<LanguageResponseDto>.Ok(response));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateLanguageDto dto)
+    {
+        var language = new Language { Name = dto.Name, Level = dto.Level, UserId = dto.UserId };
+        _db.Languages.Add(language);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("language-created", new LanguageCreatedEvent
+        {
+            Id = language.Id,
+            Name = language.Name,
+            Level = language.Level,
+            UserId = language.UserId
+        });
+
+        var response = new LanguageResponseDto { Id = language.Id, Name = language.Name, Level = language.Level, UserId = language.UserId };
+        return CreatedAtAction(nameof(GetById), new { id = language.Id }, ApiResponse<LanguageResponseDto>.Created(response));
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateLanguageDto dto)
+    {
+        var language = await _db.Languages.FindAsync(id);
+        if (language == null) return NotFound(ApiResponse<LanguageResponseDto>.Error("Language not found"));
+
+        language.Name = dto.Name;
+        language.Level = dto.Level;
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("language-updated", new LanguageUpdatedEvent
+        {
+            Id = language.Id,
+            Name = language.Name,
+            Level = language.Level,
+            UserId = language.UserId
+        });
+
+        var response = new LanguageResponseDto { Id = language.Id, Name = language.Name, Level = language.Level, UserId = language.UserId };
+        return Ok(ApiResponse<LanguageResponseDto>.Ok(response));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var language = await _db.Languages.FindAsync(id);
+        if (language == null) return NotFound(ApiResponse<object>.Error("Language not found"));
+
+        var userId = language.UserId;
+
+        _db.Languages.Remove(language);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("language-deleted", new LanguageDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        return NoContent();
+    }
+
+}
+ParseOptions.0.json›8
+?/app/src/user-content-service/Controllers/ProjectsController.csÑ8using CVGenerator.Shared;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UserContentService.Entity;
+using UserContentService.Events.ProjectEvent;
+using UserContentService.Services;
+using UserContentService.dto.Project;
 
 namespace UserContentService.Controllers;
 
@@ -176,11 +1286,13 @@ public class ProjectsController : ControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly ILogger<ProjectsController> _logger;
+    private readonly KafkaProducerService _kafkaProducer;
 
-    public ProjectsController(ContentDbContext db, ILogger<ProjectsController> logger)
+    public ProjectsController(ContentDbContext db, ILogger<ProjectsController> logger, KafkaProducerService kafkaProducer )
     {
         _db = db;
         _logger = logger;
+        _kafkaProducer = kafkaProducer;
     }
 
     [HttpGet]
@@ -189,15 +1301,49 @@ public class ProjectsController : ControllerBase
         var projects = userId.HasValue
             ? await _db.Projects.Where(p => p.UserId == userId.Value).ToListAsync()
             : await _db.Projects.ToListAsync();
-        return Ok(ApiResponse<List<Project>>.Ok(projects));
+
+        var response = projects.Select(p => new ProjectResponseDto
+        {
+            Id = p.Id,
+            Title = p.Title,
+            Description = p.Description,
+            Role = p.Role,
+            Achievements = p.Achievements,
+            StartDate = p.StartDate,
+            EndDate = p.EndDate,
+            RepositoryUrl = p.RepositoryUrl,
+            DemoUrl = p.DemoUrl,
+            Status = p.Status,
+            UserId = p.UserId,
+            SkillsJson = p.SkillsJson
+        }).ToList();
+
+        return Ok(ApiResponse<List<ProjectResponseDto>>.Ok(response));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var project = await _db.Projects.FindAsync(id);
-        if (project == null) return NotFound(ApiResponse<Project>.Error("Project not found"));
-        return Ok(ApiResponse<Project>.Ok(project));
+        var p = await _db.Projects.FindAsync(id);
+        if (p == null) return NotFound(ApiResponse<ProjectResponseDto>.Error("Project not found"));
+
+        var response = new ProjectResponseDto
+        {
+            Id = p.Id,
+            Title = p.Title,
+            Description = p.Description,
+            Role = p.Role,
+            Achievements = p.Achievements,
+            StartDate = p.StartDate,
+            EndDate = p.EndDate,
+            RepositoryUrl = p.RepositoryUrl,
+            DemoUrl = p.DemoUrl,
+            Status = p.Status,
+            UserId = p.UserId,
+            SkillsJson = p.SkillsJson
+        };
+
+        return Ok(ApiResponse<ProjectResponseDto>.Ok(response));
     }
 
     [HttpPost]
@@ -217,19 +1363,52 @@ public class ProjectsController : ControllerBase
             UserId = dto.UserId,
             SkillsJson = dto.SkillsJson
         };
-
+        
         _db.Projects.Add(project);
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Created project {Id}", project.Id);
-        return Created($"/api/projects/{project.Id}", ApiResponse<Project>.Created(project));
+        await _kafkaProducer.PublishAsync("project-created", new ProjectCreatedEvent
+        {
+            Id = project.Id,
+            Title = project.Title,
+            Description = project.Description,
+            Role = project.Role,
+            Achievements = project.Achievements,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            RepositoryUrl = project.RepositoryUrl,
+            DemoUrl = project.DemoUrl,
+            Status = project.Status,
+            SkillsJson = project.SkillsJson,
+            UserId = project.UserId
+        });
+
+        _logger.LogInformation("Created project {Id} and published event", project.Id);
+
+        var response = new ProjectResponseDto
+        {
+            Id = project.Id,
+            Title = project.Title,
+            Description = project.Description,
+            Role = project.Role,
+            Achievements = project.Achievements,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            RepositoryUrl = project.RepositoryUrl,
+            DemoUrl = project.DemoUrl,
+            Status = project.Status,
+            UserId = project.UserId,
+            SkillsJson = project.SkillsJson
+        };
+
+        return Created($"/api/projects/{project.Id}", ApiResponse<ProjectResponseDto>.Created(response));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectDto dto)
     {
         var project = await _db.Projects.FindAsync(id);
-        if (project == null) return NotFound(ApiResponse<Project>.Error("Project not found"));
+        if (project == null) return NotFound(ApiResponse<ProjectResponseDto>.Error("Project not found"));
 
         project.Title = dto.Title;
         project.Description = dto.Description;
@@ -243,7 +1422,40 @@ public class ProjectsController : ControllerBase
         project.SkillsJson = dto.SkillsJson;
 
         await _db.SaveChangesAsync();
-        return Ok(ApiResponse<Project>.Ok(project));
+
+        await _kafkaProducer.PublishAsync("project-updated", new ProjectUpdatedEvent
+        {
+            Id = project.Id,
+            Title = project.Title,
+            Description = project.Description,
+            Role = project.Role,
+            Achievements = project.Achievements,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            RepositoryUrl = project.RepositoryUrl,
+            DemoUrl = project.DemoUrl,
+            Status = project.Status,
+            SkillsJson = project.SkillsJson,
+            UserId = project.UserId
+        });
+
+        var response = new ProjectResponseDto
+        {
+            Id = project.Id,
+            Title = project.Title,
+            Description = project.Description,
+            Role = project.Role,
+            Achievements = project.Achievements,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            RepositoryUrl = project.RepositoryUrl,
+            DemoUrl = project.DemoUrl,
+            Status = project.Status,
+            UserId = project.UserId,
+            SkillsJson = project.SkillsJson
+        };
+
+        return Ok(ApiResponse<ProjectResponseDto>.Ok(response));
     }
 
     [HttpDelete("{id}")]
@@ -252,43 +1464,29 @@ public class ProjectsController : ControllerBase
         var project = await _db.Projects.FindAsync(id);
         if (project == null) return NotFound(ApiResponse<object>.Error("Project not found"));
 
+        var userId = project.UserId;
+
         _db.Projects.Remove(project);
         await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("project-deleted", new ProjectDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        _logger.LogInformation("Deleted project {Id} and published event", id);
         return NoContent();
     }
 
-    public record CreateProjectDto(
-        string Title,
-        string? Description,
-        string? Role,
-        string? Achievements,
-        DateTime StartDate,
-        DateTime? EndDate,
-        string? RepositoryUrl,
-        string? DemoUrl,
-        string Status,
-        Guid UserId,
-        string? SkillsJson
-    );
-
-    public record UpdateProjectDto(
-        string Title,
-        string? Description,
-        string? Role,
-        string? Achievements,
-        DateTime StartDate,
-        DateTime? EndDate,
-        string? RepositoryUrl,
-        string? DemoUrl,
-        string Status,
-        string? SkillsJson
-    );
-}ParseOptions.0.jsonÏ
-=/app/src/user-content-service/Controllers/SkillsController.csïusing CVGenerator.Shared;
+}ParseOptions.0.jsonó(
+=/app/src/user-content-service/Controllers/SkillsController.cs¿'using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using UserContentService;
 using UserContentService.Entity;
+using UserContentService.Events.SkillEvent;
+using UserContentService.Services;
+using UserContentService.dto.Skill;
 
 namespace UserContentService.Controllers;
 
@@ -298,11 +1496,13 @@ public class SkillsController : ControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly ILogger<SkillsController> _logger;
+    private readonly KafkaProducerService _kafkaProducer;
 
-    public SkillsController(ContentDbContext db, ILogger<SkillsController> logger)
+    public SkillsController(ContentDbContext db, ILogger<SkillsController> logger, KafkaProducerService kafkaProducer )
     {
         _db = db;
         _logger = logger;
+        _kafkaProducer = kafkaProducer;
     }
 
     [HttpGet]
@@ -311,15 +1511,37 @@ public class SkillsController : ControllerBase
         var skills = userId.HasValue
             ? await _db.Skills.Where(s => s.UserId == userId.Value).ToListAsync()
             : await _db.Skills.ToListAsync();
-        return Ok(ApiResponse<List<Skill>>.Ok(skills));
+
+        var response = skills.Select(s => new SkillResponseDto
+        {
+            Id = s.Id,
+            Name = s.Name,
+            Level = s.Level,
+            YearsOfExperience = s.YearsOfExperience,
+            UserId = s.UserId,
+            Category = s.Category
+        }).ToList();
+
+        return Ok(ApiResponse<List<SkillResponseDto>>.Ok(response));
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var skill = await _db.Skills.FindAsync(id);
-        if (skill == null) return NotFound(ApiResponse<Skill>.Error("Skill not found"));
-        return Ok(ApiResponse<Skill>.Ok(skill));
+        var s = await _db.Skills.FindAsync(id);
+        if (s == null) return NotFound(ApiResponse<SkillResponseDto>.Error("Skill not found"));
+
+        var response = new SkillResponseDto
+        {
+            Id = s.Id,
+            Name = s.Name,
+            Level = s.Level,
+            YearsOfExperience = s.YearsOfExperience,
+            UserId = s.UserId,
+            Category = s.Category
+        };
+
+        return Ok(ApiResponse<SkillResponseDto>.Ok(response));
     }
 
     [HttpPost]
@@ -337,15 +1559,36 @@ public class SkillsController : ControllerBase
         _db.Skills.Add(skill);
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Created skill {Id}", skill.Id);
-        return Created($"/api/skills/{skill.Id}", ApiResponse<Skill>.Created(skill));
+        await _kafkaProducer.PublishAsync("skill-created", new SkillCreatedEvent
+        {
+            Id = skill.Id,
+            Name = skill.Name,
+            Level = skill.Level,
+            YearsOfExperience = skill.YearsOfExperience,
+            UserId = skill.UserId,
+            Category = skill.Category
+        });
+
+        _logger.LogInformation("Created skill {Id} and published event", skill.Id);
+
+        var response = new SkillResponseDto
+        {
+            Id = skill.Id,
+            Name = skill.Name,
+            Level = skill.Level,
+            YearsOfExperience = skill.YearsOfExperience,
+            UserId = skill.UserId,
+            Category = skill.Category
+        };
+
+        return Created($"/api/skills/{skill.Id}", ApiResponse<SkillResponseDto>.Created(response));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSkillDto dto)
     {
         var skill = await _db.Skills.FindAsync(id);
-        if (skill == null) return NotFound(ApiResponse<Skill>.Error("Skill not found"));
+        if (skill == null) return NotFound(ApiResponse<SkillResponseDto>.Error("Skill not found"));
 
         skill.Name = dto.Name;
         skill.Level = dto.Level;
@@ -353,7 +1596,28 @@ public class SkillsController : ControllerBase
         skill.Category = dto.Category;
 
         await _db.SaveChangesAsync();
-        return Ok(ApiResponse<Skill>.Ok(skill));
+
+        await _kafkaProducer.PublishAsync("skill-updated", new SkillUpdatedEvent
+        {
+            Id = skill.Id,
+            Name = skill.Name,
+            Level = skill.Level,
+            YearsOfExperience = skill.YearsOfExperience,
+            UserId = skill.UserId,
+            Category = skill.Category
+        });
+
+        var response = new SkillResponseDto
+        {
+            Id = skill.Id,
+            Name = skill.Name,
+            Level = skill.Level,
+            YearsOfExperience = skill.YearsOfExperience,
+            UserId = skill.UserId,
+            Category = skill.Category
+        };
+
+        return Ok(ApiResponse<SkillResponseDto>.Ok(response));
     }
 
     [HttpDelete("{id}")]
@@ -362,17 +1626,880 @@ public class SkillsController : ControllerBase
         var skill = await _db.Skills.FindAsync(id);
         if (skill == null) return NotFound(ApiResponse<object>.Error("Skill not found"));
 
+        var userId = skill.UserId;
+
         _db.Skills.Remove(skill);
         await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("skill-deleted", new SkillDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        _logger.LogInformation("Deleted skill {Id} and published event", id);
         return NoContent();
     }
 
-    public record CreateSkillDto(string Name, string? Level, int? YearsOfExperience, Guid UserId, string? Category);
-    public record UpdateSkillDto(string Name, string? Level, int? YearsOfExperience, string? Category);
-}ParseOptions.0.json‚
-2/app/src/user-content-service/Entity/Experience.csñusing System.ComponentModel.DataAnnotations;
+}ParseOptions.0.jsonã 
+B/app/src/user-content-service/Controllers/SocialLinksController.csØusing CVGenerator.Shared;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UserContentService.Entity;
+using UserContentService.Events.SocialLinkEvent;
+using UserContentService.Services;
+using UserContentService.dto.SocialLink;
+
+namespace UserContentService.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class SocialLinksController : ControllerBase
+{
+    private readonly ContentDbContext _db;
+    private readonly KafkaProducerService _kafkaProducer;
+
+    public SocialLinksController(ContentDbContext db, KafkaProducerService kafkaProducer)
+    {
+        _db = db;
+        _kafkaProducer = kafkaProducer;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
+    {
+        var links = userId.HasValue
+            ? await _db.SocialLinks.Where(s => s.UserId == userId.Value).ToListAsync()
+            : await _db.SocialLinks.ToListAsync();
+
+        var response = links.Select(s => new SocialLinkResponseDto
+        {
+            Id = s.Id,
+            Platform = s.Platform,
+            Url = s.Url,
+            UserId = s.UserId
+        }).ToList();
+
+        return Ok(ApiResponse<List<SocialLinkResponseDto>>.Ok(response));
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var link = await _db.SocialLinks.FindAsync(id);
+        if (link == null) return NotFound(ApiResponse<SocialLinkResponseDto>.Error("Social link not found"));
+
+        var response = new SocialLinkResponseDto
+        {
+            Id = link.Id,
+            Platform = link.Platform,
+            Url = link.Url,
+            UserId = link.UserId
+        };
+        return Ok(ApiResponse<SocialLinkResponseDto>.Ok(response));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateSocialLinkDto dto)
+    {
+        var link = new SocialLink { Platform = dto.Platform, Url = dto.Url, UserId = dto.UserId };
+        _db.SocialLinks.Add(link);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("social-link-created", new SocialLinkCreatedEvent
+        {
+            Id = link.Id,
+            Platform = link.Platform,
+            Url = link.Url,
+            UserId = link.UserId
+        });
+
+        var response = new SocialLinkResponseDto { Id = link.Id, Platform = link.Platform, Url = link.Url, UserId = link.UserId };
+        return CreatedAtAction(nameof(GetById), new { id = link.Id }, ApiResponse<SocialLinkResponseDto>.Created(response));
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSocialLinkDto dto)
+    {
+        var link = await _db.SocialLinks.FindAsync(id);
+        if (link == null) return NotFound(ApiResponse<SocialLinkResponseDto>.Error("Social link not found"));
+
+        link.Platform = dto.Platform;
+        link.Url = dto.Url;
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("social-link-updated", new SocialLinkUpdatedEvent
+        {
+            Id = link.Id,
+            Platform = link.Platform,
+            Url = link.Url,
+            UserId = link.UserId
+        });
+
+        var response = new SocialLinkResponseDto { Id = link.Id, Platform = link.Platform, Url = link.Url, UserId = link.UserId };
+        return Ok(ApiResponse<SocialLinkResponseDto>.Ok(response));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var link = await _db.SocialLinks.FindAsync(id);
+        if (link == null) return NotFound(ApiResponse<object>.Error("Social link not found"));
+
+        var userId = link.UserId;
+
+        _db.SocialLinks.Remove(link);
+        await _db.SaveChangesAsync();
+
+        await _kafkaProducer.PublishAsync("social-link-deleted", new SocialLinkDeletedEvent
+        {
+            Id = id,
+            UserId = userId
+        });
+
+        return NoContent();
+    }
+
+}
+ParseOptions.0.jsonñ
+J/app/src/user-content-service/DTO/AcademicActivity/AcademicActivityDtos.cs≤
+using System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.AcademicActivity
+{
+    public class CreateAcademicActivityDto
+    {
+        [Required]
+        [MaxLength(200)]
+        public string Title { get; set; } = string.Empty;
+        public string? Organization { get; set; }
+        public string? Description { get; set; }
+        [Required]
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        [Required]
+        public Guid UserId { get; set; }
+    }
+
+    public class UpdateAcademicActivityDto
+    {
+        [Required]
+        [MaxLength(200)]
+        public string Title { get; set; } = string.Empty;
+        public string? Organization { get; set; }
+        public string? Description { get; set; }
+        [Required]
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+    }
+
+    public class AcademicActivityResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Organization { get; set; }
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json›
+
+D/app/src/user-content-service/DTO/Certification/CertificationDtos.csˇ	using System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Certification
+{
+    public class CreateCertificationDto
+    {
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [MaxLength(200)]
+        public string? IssuingOrganization { get; set; }
+
+        public DateTime? IssueDate { get; set; }
+
+        [MaxLength(300)]
+        public string? CredentialUrl { get; set; }
+
+        [Required]
+        public Guid UserId { get; set; }
+    }
+
+    public class UpdateCertificationDto
+    {
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [MaxLength(200)]
+        public string? IssuingOrganization { get; set; }
+
+        public DateTime? IssueDate { get; set; }
+
+        [MaxLength(300)]
+        public string? CredentialUrl { get; set; }
+    }
+
+    public class CertificationResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? IssuingOrganization { get; set; }
+        public DateTime? IssueDate { get; set; }
+        public string? CredentialUrl { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json◊
+</app/src/user-content-service/DTO/CVProfile/CVProfileDtos.csÅusing System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.CVProfile
+{
+    public class CreateCVProfileDto
+    {
+        [Required]
+        [MaxLength(150)]
+        public string Title { get; set; } = string.Empty;
+
+        [Required]
+        public string Summary { get; set; } = string.Empty;
+
+        [Required]
+        public Guid UserId { get; set; }
+    }
+
+    public class UpdateCVProfileDto
+    {
+        [Required]
+        [MaxLength(150)]
+        public string Title { get; set; } = string.Empty;
+
+        [Required]
+        public string Summary { get; set; } = string.Empty;
+    }
+
+    public class CVProfileResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Summary { get; set; } = string.Empty;
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonª
+A/app/src/user-content-service/DTO/Education/CreateEducationDto.cs‡using System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Education
+{
+    public class CreateEducationDto
+    {
+        [Required]
+        [MaxLength(150)]
+        public string InstitutionName { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(100)]
+        public string DegreeType { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(100)]
+        public string FieldOfStudy { get; set; } = string.Empty;
+
+        [MaxLength(100)]
+        public string? Specialization { get; set; }
+
+        [Required]
+        public DateTime StartDate { get; set; }
+
+        public DateTime? EndDate { get; set; }
+
+        [MaxLength(20)]
+        public string Status { get; set; } = "Ongoing";
+
+        [MaxLength(100)]
+        public string? City { get; set; }
+
+        [MaxLength(300)]
+        public string? DiplomaFileUrl { get; set; }
+
+        [Required]
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonä
+C/app/src/user-content-service/DTO/Education/EducationResponseDto.cs≠namespace UserContentService.dto.Education
+{
+    public class EducationResponseDto
+    {
+        public Guid Id { get; set; }
+        public string InstitutionName { get; set; } = string.Empty;
+        public string DegreeType { get; set; } = string.Empty;
+        public string FieldOfStudy { get; set; } = string.Empty;
+        public string? Specialization { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string Status { get; set; } = "Ongoing";
+        public string? City { get; set; }
+        public string? DiplomaFileUrl { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json˚
+A/app/src/user-content-service/DTO/Education/UpdateEducationDto.cs†using System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Education
+{
+    public class UpdateEducationDto
+    {
+        [Required]
+        [MaxLength(150)]
+        public string InstitutionName { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(100)]
+        public string DegreeType { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(100)]
+        public string FieldOfStudy { get; set; } = string.Empty;
+
+        [MaxLength(100)]
+        public string? Specialization { get; set; }
+
+        [Required]
+        public DateTime StartDate { get; set; }
+
+        public DateTime? EndDate { get; set; }
+
+        [MaxLength(20)]
+        public string Status { get; set; } = "Ongoing";
+
+        [MaxLength(100)]
+        public string? City { get; set; }
+
+        [MaxLength(300)]
+        public string? DiplomaFileUrl { get; set; }
+    }
+}
+ParseOptions.0.jsonù
+C/app/src/user-content-service/DTO/Experience/CreateExperienceDto.cs¿using System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Experience {
+
+    public class CreateExperienceDto{
+     
+     [Required]
+    [MaxLength(150)]
+    public required string Title { get; set; }
+
+    [MaxLength(150)]
+    public string? Company { get; set; }
+
+    [MaxLength(500)]
+    public string? Description { get; set; }
+
+    [Required]
+    public DateTime StartDate { get; set; }
+
+    public DateTime? EndDate { get; set; }
+
+    [MaxLength(300)]
+    public string? ReferenceUrl { get; set; }
+
+    [Required]
+    [MaxLength(20)]
+    public string Status { get; set; } = "Ongoing";
+
+    [Required]
+    public Guid UserId { get; set; }
+
+    }
+}ParseOptions.0.jsonÄ
+E/app/src/user-content-service/DTO/Experience/ExperienceResponseDto.cs°namespace UserContentService.dto.Experience
+{
+    public class ExperienceResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Company { get; set; }
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? ReferenceUrl { get; set; }
+        public string Status { get; set; } = "Ongoing";
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json§
+C/app/src/user-content-service/DTO/Experience/UpdateExperienceDto.cs«
+using System.ComponentModel.DataAnnotations;
+
+
+namespace UserContentService.dto.Experience {
+
+    public class UpdateExperienceDto{
+        [Required]
+        [MaxLength(150)]
+        public required string Title { get; set; }
+
+        [MaxLength(150)]
+        public string? Company { get; set; }
+
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        [Required]
+        public DateTime StartDate { get; set; }
+
+        public DateTime? EndDate { get; set; }
+
+        [MaxLength(300)]
+        public string? ReferenceUrl { get; set; }
+
+        [Required]
+        [MaxLength(20)]
+        public string Status { get; set; } = "Ongoing";
+    }
+     
+
+}ParseOptions.0.json≠
+</app/src/user-content-service/DTO/Hackathon/HackathonDtos.cs◊
+using System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Hackathon
+{
+    public class CreateHackathonDto
+    {
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+        public string? Organization { get; set; }
+        public DateTime? Date { get; set; }
+        public string? Description { get; set; }
+        public string? Role { get; set; }
+        public string? Result { get; set; }
+        [Required]
+        public Guid UserId { get; set; }
+    }
+
+    public class UpdateHackathonDto
+    {
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+        public string? Organization { get; set; }
+        public DateTime? Date { get; set; }
+        public string? Description { get; set; }
+        public string? Role { get; set; }
+        public string? Result { get; set; }
+    }
+
+    public class HackathonResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Organization { get; set; }
+        public DateTime? Date { get; set; }
+        public string? Description { get; set; }
+        public string? Role { get; set; }
+        public string? Result { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonÎ
+:/app/src/user-content-service/DTO/Interest/InterestDtos.csóusing System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Interest
+{
+    public class CreateInterestDto
+    {
+        [Required]
+        [MaxLength(100)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public Guid UserId { get; set; }
+    }
+
+    public class UpdateInterestDto
+    {
+        [Required]
+        [MaxLength(100)]
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class InterestResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json¯
+:/app/src/user-content-service/DTO/Language/LanguageDtos.cs§using System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Language
+{
+    public class CreateLanguageDto
+    {
+        [Required]
+        [MaxLength(50)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(20)]
+        public string Level { get; set; } = string.Empty;
+
+        [Required]
+        public Guid UserId { get; set; }
+    }
+
+    public class UpdateLanguageDto
+    {
+        [Required]
+        [MaxLength(50)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(20)]
+        public string Level { get; set; } = string.Empty;
+    }
+
+    public class LanguageResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Level { get; set; } = string.Empty;
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json≤
+=/app/src/user-content-service/DTO/Project/CreateProjectDto.cs€using System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Project{
+
+public class CreateProjectDto{
+ [Required]
+    [MaxLength(150)]
+    public required string Title { get; set; }
+
+    [MaxLength(1000)]
+    public string? Description { get; set; }
+
+    [MaxLength(50)]
+    public string? Role { get; set; }
+
+    [MaxLength(1000)]
+    public string? Achievements { get; set; }
+
+    [Required]
+    public DateTime StartDate { get; set; }
+
+    public DateTime? EndDate { get; set; }
+
+    [MaxLength(300)]
+    public string? RepositoryUrl { get; set; }
+
+    [MaxLength(300)]
+    public string? DemoUrl { get; set; }
+
+    [Required]
+    [MaxLength(20)]
+    public string Status { get; set; } = "Ongoing";
+
+    [Required]
+    public Guid UserId { get; set; }
+
+    public string? SkillsJson { get; set; }
+}
+}ParseOptions.0.jsoná
+?/app/src/user-content-service/DTO/Project/ProjectResponseDto.csÆnamespace UserContentService.dto.Project
+{
+    public class ProjectResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? Role { get; set; }
+        public string? Achievements { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? RepositoryUrl { get; set; }
+        public string? DemoUrl { get; set; }
+        public string Status { get; set; } = "Completed";
+        public Guid UserId { get; set; }
+        public string? SkillsJson { get; set; }
+    }
+}
+ParseOptions.0.json›
+=/app/src/user-content-service/DTO/Project/UpdateProjectDto.csÜusing System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Project
+{
+    public class UpdateProjectDto
+    {
+        [Required]
+        [MaxLength(150)]
+        public required string Title { get; set; }
+
+        [MaxLength(1000)]
+        public string? Description { get; set; }
+
+        [MaxLength(50)]
+        public string? Role { get; set; }
+
+        [MaxLength(1000)]
+        public string? Achievements { get; set; }
+
+        [Required]
+        public DateTime StartDate { get; set; }
+
+        public DateTime? EndDate { get; set; }
+
+        [MaxLength(300)]
+        public string? RepositoryUrl { get; set; }
+
+        [MaxLength(300)]
+        public string? DemoUrl { get; set; }
+
+        [Required]
+        [MaxLength(20)]
+        public string Status { get; set; } = "Ongoing";
+
+        public string? SkillsJson { get; set; }
+    }
+}
+ParseOptions.0.jsonü
+9/app/src/user-content-service/DTO/Skill/CreateSkillDto.csÃusing System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Skill{
+
+    public class CreateSkillDto {
+
+
+    [Required]
+    [MaxLength(100)]
+    public required string Name { get; set; }
+
+    [MaxLength(20)]
+    public string? Level { get; set; }
+
+    public int? YearsOfExperience { get; set; }
+
+    [Required]
+    public Guid? UserId { get; set; }
+
+    [MaxLength(50)]
+    public string? Category { get; set; }
+    }
+}ParseOptions.0.jsonœ
+;/app/src/user-content-service/DTO/Skill/SkillResponseDto.cs˙namespace UserContentService.dto.Skill
+{
+    public class SkillResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Level { get; set; }
+        public int? YearsOfExperience { get; set; }
+        public Guid? UserId { get; set; }
+        public string? Category { get; set; }
+    }
+}
+ParseOptions.0.jsonÁ
+9/app/src/user-content-service/DTO/Skill/UpdateSkillDto.csîusing System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.Skill{
+   
+   public class UpdateSkillDto{
+    
+    [Required]
+    [MaxLength(100)]
+    public required string Name { get; set; }
+
+    [MaxLength(20)]
+    public string? Level { get; set; }
+
+    public int? YearsOfExperience { get; set; }
+
+    [MaxLength(50)]
+    public string? Category { get; set; }
+}
+}
+ParseOptions.0.jsonå
+>/app/src/user-content-service/DTO/SocialLink/SocialLinkDtos.cs¥using System.ComponentModel.DataAnnotations;
+
+namespace UserContentService.dto.SocialLink
+{
+    public class CreateSocialLinkDto
+    {
+        [Required]
+        [MaxLength(50)]
+        public string Platform { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(300)]
+        public string Url { get; set; } = string.Empty;
+
+        [Required]
+        public Guid UserId { get; set; }
+    }
+
+    public class UpdateSocialLinkDto
+    {
+        [Required]
+        [MaxLength(50)]
+        public string Platform { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(300)]
+        public string Url { get; set; } = string.Empty;
+    }
+
+    public class SocialLinkResponseDto
+    {
+        public Guid Id { get; set; }
+        public string Platform { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json¥
+8/app/src/user-content-service/Entity/AcademicActivity.cs‚using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Pgvector;
+
+namespace UserContentService.Entity
+{
+    [Table("academic_activities")]
+    public class AcademicActivity
+    {
+        [Key]
+        public Guid Id { get; set; }
+        
+        [Required]
+        [MaxLength(200)]
+        public string Title { get; set; } = string.Empty; // e.g. "Club President", "Volunteer"
+        
+        public string? Organization { get; set; } // Club or school name
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        
+        [Required]
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json˝
+5/app/src/user-content-service/Entity/Certification.csÆusing System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+
+namespace UserContentService.Entity
+{
+    [Table("certifications")]
+    public class Certification
+    {
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [MaxLength(200)]
+        public string? IssuingOrganization { get; set; }
+
+        public DateTime? IssueDate { get; set; }
+
+        [MaxLength(300)]
+        public string? CredentialUrl { get; set; }
+
+        [Required]
+        public Guid UserId { get; set; }
+
+
+    }
+}
+ParseOptions.0.jsonú
+1/app/src/user-content-service/Entity/CVProfile.cs—using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+
+namespace UserContentService.Entity
+{
+    [Table("cv_profiles")]
+    public class CVProfile
+    {
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        [MaxLength(150)]
+        public string Title { get; set; } = string.Empty; // ex: Senior Web Developer
+
+        [Required]
+        public string Summary { get; set; } = string.Empty; // Professional Bio
+
+        [Required]
+        public Guid UserId { get; set; }
+
+
+    }
+}
+ParseOptions.0.jsonÃ	
+1/app/src/user-content-service/Entity/Education.csÅ	using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+
+namespace UserContentService.Entity
+{
+    [Table("educations")]
+    public class Education
+    {
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        [MaxLength(150)]
+        public string InstitutionName { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(100)]
+        public string DegreeType { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(100)]
+        public string FieldOfStudy { get; set; } = string.Empty;
+
+        [MaxLength(100)]
+        public string? Specialization { get; set; }
+
+        [Required]
+        public DateTime StartDate { get; set; }
+
+        public DateTime? EndDate { get; set; }
+
+        [Required]
+        [MaxLength(20)]
+        public string Status { get; set; } = "Ongoing";
+
+        [MaxLength(100)]
+        public string? City { get; set; }
+
+        [MaxLength(300)]
+        public string? DiplomaFileUrl { get; set; }
+
+        [Required]
+        public Guid UserId { get; set; }
+
+
+    }
+}ParseOptions.0.json˚
+2/app/src/user-content-service/Entity/Experience.csØusing System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
 
 namespace UserContentService.Entity;
 
@@ -407,18 +2534,82 @@ public class Experience
     [Required]
     public Guid UserId { get; set; }
 
-    [ForeignKey(nameof(UserId))]
-    public User? User { get; set; }
 
-    public string? AiSummaryJson { get; set; }
-
-    [Column(TypeName = "vector(384)")]
-    public Vector? DescriptionEmbedding { get; set; }
-}ParseOptions.0.jsoné
-
-//app/src/user-content-service/Entity/Project.cs≈	using System.ComponentModel.DataAnnotations;
+}ParseOptions.0.json†
+1/app/src/user-content-service/Entity/Hackathon.cs’using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Pgvector;
+
+namespace UserContentService.Entity
+{
+    [Table("hackathons")]
+    public class Hackathon
+    {
+        [Key]
+        public Guid Id { get; set; }
+        
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+        
+        public string? Organization { get; set; }
+        public DateTime? Date { get; set; }
+        public string? Description { get; set; }
+        public string? Role { get; set; }
+        public string? Result { get; set; } // e.g. "Winner", "Finalist"
+        
+        [Required]
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsoné
+0/app/src/user-content-service/Entity/Interest.csƒusing System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace UserContentService.Entity
+{
+    [Table("interests")]
+    public class Interest
+    {
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        [MaxLength(100)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonç
+0/app/src/user-content-service/Entity/Language.cs√using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace UserContentService.Entity
+{
+    [Table("languages")]
+    public class Language
+    {
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        [MaxLength(50)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(20)]
+        public string Level { get; set; } = string.Empty; // ex: Native, B2, C1
+
+        [Required]
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json–
+//app/src/user-content-service/Entity/Project.csáusing System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+
 
 namespace UserContentService.Entity;
 
@@ -459,19 +2650,12 @@ public class Project
     [Required]
     public Guid UserId { get; set; }
 
-    [ForeignKey(nameof(UserId))]
-    public User? User { get; set; }
-
     public string? SkillsJson { get; set; }
-    public string? AiSummaryJson { get; set; }
 
-    [Column(TypeName = "vector(384)")]
-    public Vector? DescriptionEmbedding { get; set; }
-}ParseOptions.0.jsonµ
--/app/src/user-content-service/Entity/Skill.csÓusing System.ComponentModel.DataAnnotations;
+
+}ParseOptions.0.jsonÑ
+-/app/src/user-content-service/Entity/Skill.csΩusing System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Pgvector;
-
 namespace UserContentService.Entity;
 
 [Table("skills")]
@@ -490,53 +2674,363 @@ public class Skill
     public int? YearsOfExperience { get; set; }
 
     [Required]
-    public Guid UserId { get; set; }
-
-    [ForeignKey(nameof(UserId))]
-    public User? User { get; set; }
+    public Guid? UserId { get; set; }
 
     [MaxLength(50)]
     public string? Category { get; set; }
 
-    [Column(TypeName = "vector(384)")]
-    public Vector? NameEmbedding { get; set; }
-}ParseOptions.0.jsonˇ
-,/app/src/user-content-service/Entity/User.csπusing System.ComponentModel.DataAnnotations;
+
+}ParseOptions.0.jsonô
+2/app/src/user-content-service/Entity/SocialLink.csÕusing System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace UserContentService.Entity;
-
-[Table("users")]
-public class User
+namespace UserContentService.Entity
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
+    [Table("social_links")]
+    public class SocialLink
+    {
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
 
-    [Required]
-    [MaxLength(50)]
-    public string KeycloakId { get; set; } = default!;
+        [Required]
+        [MaxLength(50)]
+        public string Platform { get; set; } = string.Empty; // ex: LinkedIn, GitHub
 
-    [Required]
-    [MaxLength(50)]
-    public required string FirstName { get; set; }
+        [Required]
+        [MaxLength(300)]
+        public string Url { get; set; } = string.Empty;
 
-    [Required]
-    [MaxLength(50)]
-    public required string LastName { get; set; }
+        [Required]
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonº
+T/app/src/user-content-service/Events/AcademicActivityEvent/AcademicActivityEvents.csŒnamespace UserContentService.Events.AcademicActivityEvent
+{
+    public class AcademicActivityCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Title { get; set; }
+        public string? Organization { get; set; }
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public Guid UserId { get; set; }
+    }
 
-    [Required]
-    [EmailAddress]
-    [MaxLength(100)]
-    public required string Email { get; set; }
+    public class AcademicActivityUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Title { get; set; }
+        public string? Organization { get; set; }
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class AcademicActivityDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json‹
+N/app/src/user-content-service/Events/CertificationEvent/CertificationEvents.csÙnamespace UserContentService.Events.CertificationEvent
+{
+    public class CertificationCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public string? IssuingOrganization { get; set; }
+        public DateTime? IssueDate { get; set; }
+        public string? CredentialUrl { get; set; }
+        public Guid UserId { get; set; }
+    }
 
-    [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public class CertificationUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public string? IssuingOrganization { get; set; }
+        public DateTime? IssueDate { get; set; }
+        public string? CredentialUrl { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class CertificationDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json‚
+F/app/src/user-content-service/Events/CVProfileEvent/CVProfileEvents.csÇnamespace UserContentService.Events.CVProfileEvent
+{
+    public class CVProfileCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Title { get; set; }
+        public string? Summary { get; set; }
+        public Guid UserId { get; set; }
+    }
 
-    public ICollection<Project> Projects { get; set; } = new List<Project>();
-    public ICollection<Skill> Skills { get; set; } = new List<Skill>();
-    public ICollection<Experience> Experiences { get; set; } = new List<Experience>();
-}ParseOptions.0.json›P
-8/app/src/user-content-service/Grpc/ContentServiceImpl.csãPusing CommonProtos.Content;
+    public class CVProfileUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Title { get; set; }
+        public string? Summary { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class CVProfileDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json®
+F/app/src/user-content-service/Events/EducationEvent/EducationEvents.cs»
+namespace UserContentService.Events.EducationEvent
+{
+    public class EducationCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? InstitutionName { get; set; }
+        public string? DegreeType { get; set; }
+        public string? FieldOfStudy { get; set; }
+        public string? Specialization { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? Status { get; set; }
+        public string? City { get; set; }
+        public string? DiplomaFileUrl { get; set; }
+        public Guid UserId { get; set; }
+    }
+
+    public class EducationUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? InstitutionName { get; set; }
+        public string? DegreeType { get; set; }
+        public string? FieldOfStudy { get; set; }
+        public string? Specialization { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? Status { get; set; }
+        public string? City { get; set; }
+        public string? DiplomaFileUrl { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class EducationDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonŒ	
+H/app/src/user-content-service/Events/ExperienceEvent/ExperienceEvents.csÏnamespace UserContentService.Events.ExperienceEvent
+{
+    public class ExperienceCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Title { get; set; }
+        public string? Company { get; set; }
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? ReferenceUrl { get; set; }
+        public string? Status { get; set; }
+        public Guid UserId { get; set; }
+    }
+
+    public class ExperienceUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Title { get; set; }
+        public string? Company { get; set; }
+        public string? Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? ReferenceUrl { get; set; }
+        public string? Status { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class ExperienceDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonÿ
+F/app/src/user-content-service/Events/HackathonEvent/HackathonEvents.cs¯namespace UserContentService.Events.HackathonEvent
+{
+    public class HackathonCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public string? Organization { get; set; }
+        public DateTime? Date { get; set; }
+        public string? Description { get; set; }
+        public string? Role { get; set; }
+        public string? Result { get; set; }
+        public Guid UserId { get; set; }
+    }
+
+    public class HackathonUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public string? Organization { get; set; }
+        public DateTime? Date { get; set; }
+        public string? Description { get; set; }
+        public string? Role { get; set; }
+        public string? Result { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class HackathonDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json˛
+D/app/src/user-content-service/Events/InterestEvent/InterestEvents.cs†namespace UserContentService.Events.InterestEvent
+{
+    public class InterestCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public Guid UserId { get; set; }
+    }
+
+    public class InterestUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class InterestDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json÷
+D/app/src/user-content-service/Events/LanguageEvent/LanguageEvents.cs¯namespace UserContentService.Events.LanguageEvent
+{
+    public class LanguageCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public string? Level { get; set; }
+        public Guid UserId { get; set; }
+    }
+
+    public class LanguageUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public string? Level { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class LanguageDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.json‹
+B/app/src/user-content-service/Events/ProjectEvent/ProjectEvents.csÄnamespace UserContentService.Events.ProjectEvent
+{
+    public class ProjectCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+        public string? Role { get; set; }
+        public string? Achievements { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? RepositoryUrl { get; set; }
+        public string? DemoUrl { get; set; }
+        public string? Status { get; set; }
+        public string? SkillsJson { get; set; }
+        public Guid UserId { get; set; }
+    }
+
+    public class ProjectUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+        public string? Role { get; set; }
+        public string? Achievements { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? RepositoryUrl { get; set; }
+        public string? DemoUrl { get; set; }
+        public string? Status { get; set; }
+        public string? SkillsJson { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class ProjectDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonè
+>/app/src/user-content-service/Events/SkillEvent/SkillEvents.cs∑namespace UserContentService.Events.SkillEvent
+{
+    public class SkillCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public string? Level { get; set; }
+        public int? YearsOfExperience { get; set; }
+        public Guid? UserId { get; set; }
+        public string? Category { get; set; }
+    }
+
+    public class SkillUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Name { get; set; }
+        public string? Level { get; set; }
+        public int? YearsOfExperience { get; set; }
+        public Guid? UserId { get; set; }
+        public string? Category { get; set; }
+    }
+    public class SkillDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid? UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonÊ
+H/app/src/user-content-service/Events/SocialLinkEvent/SocialLinkEvents.csÑnamespace UserContentService.Events.SocialLinkEvent
+{
+    public class SocialLinkCreatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Platform { get; set; }
+        public string? Url { get; set; }
+        public Guid UserId { get; set; }
+    }
+
+    public class SocialLinkUpdatedEvent
+    {
+        public Guid Id { get; set; }
+        public string? Platform { get; set; }
+        public string? Url { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class SocialLinkDeletedEvent
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+    }
+}
+ParseOptions.0.jsonÄP
+8/app/src/user-content-service/Grpc/ContentServiceImpl.csÆOusing CommonProtos.Content;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using UserContentService;
@@ -767,8 +3261,7 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         DemoUrl = p.DemoUrl ?? "",
         Status = p.Status,
         UserId = p.UserId.ToString(),
-        SkillsJson = p.SkillsJson ?? "",
-        AiSummaryJson = p.AiSummaryJson ?? ""
+        SkillsJson = p.SkillsJson ?? ""
     };
 
     private static SkillProto ToSkillProto(Skill s) => new()
@@ -792,26 +3285,1046 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         ReferenceUrl = e.ReferenceUrl ?? "",
         Status = e.Status,
         UserId = e.UserId.ToString(),
-        AiSummaryJson = e.AiSummaryJson ?? ""
+
     };
-}ParseOptions.0.json»
-(/app/src/user-content-service/Program.csÜusing Microsoft.EntityFrameworkCore;
+}ParseOptions.0.jsonê`
+E/app/src/user-content-service/Migrations/20260509231810_InitCreate.cs±_using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace UserContentService.Migrations
+{
+    /// <inheritdoc />
+    public partial class InitCreate : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.CreateTable(
+                name: "academic_activities",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Organization = table.Column<string>(type: "text", nullable: true),
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_academic_activities", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "certifications",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    IssuingOrganization = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    IssueDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CredentialUrl = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_certifications", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "cv_profiles",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Summary = table.Column<string>(type: "text", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_cv_profiles", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "educations",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    InstitutionName = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    DegreeType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    FieldOfStudy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Specialization = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    City = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    DiplomaFileUrl = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_educations", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "experiences",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Company = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: true),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ReferenceUrl = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_experiences", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "hackathons",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Organization = table.Column<string>(type: "text", nullable: true),
+                    Date = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    Role = table.Column<string>(type: "text", nullable: true),
+                    Result = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_hackathons", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "interests",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_interests", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "languages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Level = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_languages", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "projects",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    Role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    Achievements = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    RepositoryUrl = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    DemoUrl = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SkillsJson = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_projects", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "skills",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Level = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    YearsOfExperience = table.Column<int>(type: "integer", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Category = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_skills", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "social_links",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Platform = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Url = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_social_links", x => x.Id);
+                });
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "academic_activities");
+
+            migrationBuilder.DropTable(
+                name: "certifications");
+
+            migrationBuilder.DropTable(
+                name: "cv_profiles");
+
+            migrationBuilder.DropTable(
+                name: "educations");
+
+            migrationBuilder.DropTable(
+                name: "experiences");
+
+            migrationBuilder.DropTable(
+                name: "hackathons");
+
+            migrationBuilder.DropTable(
+                name: "interests");
+
+            migrationBuilder.DropTable(
+                name: "languages");
+
+            migrationBuilder.DropTable(
+                name: "projects");
+
+            migrationBuilder.DropTable(
+                name: "skills");
+
+            migrationBuilder.DropTable(
+                name: "social_links");
+        }
+    }
+}
+ParseOptions.0.jsonòp
+N/app/src/user-content-service/Migrations/20260509231810_InitCreate.Designer.cs∞o// <auto-generated />
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using UserContentService;
+
+#nullable disable
+
+namespace UserContentService.Migrations
+{
+    [DbContext(typeof(ContentDbContext))]
+    [Migration("20260509231810_InitCreate")]
+    partial class InitCreate
+    {
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "10.0.7")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("UserContentService.Entity.AcademicActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Organization")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("academic_activities");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.CVProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("cv_profiles");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Certification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CredentialUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("IssueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuingOrganization")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("certifications");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Education", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DegreeType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DiplomaFileUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FieldOfStudy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("InstitutionName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Specialization")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("educations");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Experience", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Company")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReferenceUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("experiences");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Hackathon", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Organization")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Result")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("hackathons");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Interest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("interests");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Language", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("languages");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Project", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Achievements")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("DemoUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RepositoryUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("SkillsJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("projects");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Skill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Level")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("YearsOfExperience")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("skills");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.SocialLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("social_links");
+                });
+#pragma warning restore 612, 618
+        }
+    }
+}
+ParseOptions.0.jsonµo
+I/app/src/user-content-service/Migrations/ContentDbContextModelSnapshot.cs“n// <auto-generated />
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using UserContentService;
+
+#nullable disable
+
+namespace UserContentService.Migrations
+{
+    [DbContext(typeof(ContentDbContext))]
+    partial class ContentDbContextModelSnapshot : ModelSnapshot
+    {
+        protected override void BuildModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "10.0.7")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("UserContentService.Entity.AcademicActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Organization")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("academic_activities");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.CVProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("cv_profiles");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Certification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CredentialUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("IssueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuingOrganization")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("certifications");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Education", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DegreeType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DiplomaFileUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FieldOfStudy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("InstitutionName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Specialization")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("educations");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Experience", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Company")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReferenceUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("experiences");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Hackathon", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Organization")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Result")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("hackathons");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Interest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("interests");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Language", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("languages");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Project", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Achievements")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("DemoUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RepositoryUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("SkillsJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("projects");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.Skill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Level")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("YearsOfExperience")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("skills");
+                });
+
+            modelBuilder.Entity("UserContentService.Entity.SocialLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("social_links");
+                });
+#pragma warning restore 612, 618
+        }
+    }
+}
+ParseOptions.0.jsonß
+(/app/src/user-content-service/Program.csÂusing Microsoft.EntityFrameworkCore;
 using Npgsql;
 using UserContentService;
+using UserContentService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ContentDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-    dataSourceBuilder.UseVector();
-    var dataSource = dataSourceBuilder.Build();
-    options.UseNpgsql(dataSource, o => o.UseVector());
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+
 });
 
 builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddGrpc();
+builder.Services.AddSingleton<KafkaProducerService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -839,13 +4352,44 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.UseSwagger();
-app.UseSwaggerUI();
 app.UseRouting();
 app.MapControllers();
 app.MapGrpcService<UserContentService.Grpc.ContentServiceImpl>();
 
-app.Run();ParseOptions.0.jsonﬂ
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.Run();ParseOptions.0.json’
+>/app/src/user-content-service/Services/KafKaProducerService.cs˝using Confluent.Kafka;
+using System.Text.Json;
+
+namespace UserContentService.Services
+{
+    public class KafkaProducerService
+    {
+        private readonly IProducer<string, string> _producer;
+
+        public KafkaProducerService(IConfiguration configuration)
+        {
+            var config = new ProducerConfig
+            {
+                BootstrapServers = configuration["Kafka:BootstrapServers"] ?? "localhost:9092"
+            };
+
+            _producer = new ProducerBuilder<string, string>(config).Build();
+        }
+
+        public async Task PublishAsync<T>(string topic, T message)
+        {
+            var json = JsonSerializer.Serialize(message);
+            await _producer.ProduceAsync(topic, new Message<string, string>
+            {
+                Key = Guid.NewGuid().ToString(),
+                Value = json
+            });
+        }
+    }
+}ParseOptions.0.jsonﬂ
 T/app/src/user-content-service/obj/Debug/net10.0/UserContentService.GlobalUsings.g.csÒ// <auto-generated/>
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.AspNetCore.Hosting;

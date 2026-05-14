@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ProjectInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.sonarsource.com/msbuild/integration/2015/1">
-  <ProjectName>CvService</ProjectName>
+  <ProjectName>job-offer-service</ProjectName>
   <ProjectLanguage>C#</ProjectLanguage>
   <ProjectType>Product</ProjectType>
-  <ProjectGuid>e341657e-7273-46a2-b0d1-33d04e9a521e</ProjectGuid>
-  <FullPath>/app/src/cv-service/CvService.csproj</FullPath>
+  <ProjectGuid>c7d2e1a4-fc74-4804-b4e9-51e99c0ab9e5</ProjectGuid>
+  <FullPath>/app/src/job-offer-service/job-offer-service.csproj</FullPath>
   <IsExcluded>false</IsExcluded>
   <AnalysisResultFiles>
     <AnalysisResultFile Id="FilesToAnalyze" Location="/app/.sonarqube/conf/5/FilesToAnalyze.txt" />

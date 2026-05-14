@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <SonarProjectConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.sonarsource.com/msbuild/analyzer/2021/1">
   <AnalysisConfigPath>/app/.sonarqube/conf/SonarQubeAnalysisConfig.xml</AnalysisConfigPath>
-  <ProjectPath>/app/src/job-offer-service/job-offer-service.csproj</ProjectPath>
+  <ProjectPath>/app/src/common-protos/common-protos.csproj</ProjectPath>
   <FilesToAnalyzePath>/app/.sonarqube/conf/2/FilesToAnalyze.txt</FilesToAnalyzePath>
   <OutPath>/app/.sonarqube/out/2</OutPath>
   <ProjectType>Product</ProjectType>

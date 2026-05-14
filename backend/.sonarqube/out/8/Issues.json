@@ -13,130 +13,19 @@
         {
           "ruleId": "CS8618",
           "level": "warning",
-          "message": "Non-nullable property 'Workflows' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
+          "message": "Non-nullable property 'Users' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
           "suppressionStates": [
             "suppressedInSource"
           ],
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
-                "region": {
-                  "startLine": 14,
-                  "startColumn": 12,
-                  "endLine": 14,
-                  "endColumn": 29
-                }
-              }
-            }
-          ],
-          "relatedLocations": [
-            {
-              "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
-                "region": {
-                  "startLine": 8,
-                  "startColumn": 28,
-                  "endLine": 8,
-                  "endColumn": 37
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CS8618",
-          "level": "warning",
-          "message": "Non-nullable property 'AgentDocumentChunks' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
-          "suppressionStates": [
-            "suppressedInSource"
-          ],
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
-                "region": {
-                  "startLine": 14,
-                  "startColumn": 12,
-                  "endLine": 14,
-                  "endColumn": 29
-                }
-              }
-            }
-          ],
-          "relatedLocations": [
-            {
-              "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
-                "region": {
-                  "startLine": 9,
-                  "startColumn": 38,
-                  "endLine": 9,
-                  "endColumn": 57
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CS8618",
-          "level": "warning",
-          "message": "Non-nullable property 'Experiences' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
-          "suppressionStates": [
-            "suppressedInSource"
-          ],
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
-                "region": {
-                  "startLine": 14,
-                  "startColumn": 12,
-                  "endLine": 14,
-                  "endColumn": 29
-                }
-              }
-            }
-          ],
-          "relatedLocations": [
-            {
-              "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
+                "uri": "file:///app/src/user-service/UserDbContext.cs",
                 "region": {
                   "startLine": 10,
-                  "startColumn": 30,
+                  "startColumn": 12,
                   "endLine": 10,
-                  "endColumn": 41
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CS8618",
-          "level": "warning",
-          "message": "Non-nullable property 'Projects' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
-          "suppressionStates": [
-            "suppressedInSource"
-          ],
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
-                "region": {
-                  "startLine": 14,
-                  "startColumn": 12,
-                  "endLine": 14,
-                  "endColumn": 29
+                  "endColumn": 25
                 }
               }
             }
@@ -144,70 +33,33 @@
           "relatedLocations": [
             {
               "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
+                "uri": "file:///app/src/user-service/UserDbContext.cs",
                 "region": {
-                  "startLine": 11,
-                  "startColumn": 27,
-                  "endLine": 11,
-                  "endColumn": 35
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CS8618",
-          "level": "warning",
-          "message": "Non-nullable property 'Skills' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
-          "suppressionStates": [
-            "suppressedInSource"
-          ],
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
-                "region": {
-                  "startLine": 14,
-                  "startColumn": 12,
-                  "endLine": 14,
+                  "startLine": 8,
+                  "startColumn": 24,
+                  "endLine": 8,
                   "endColumn": 29
                 }
               }
             }
           ],
-          "relatedLocations": [
-            {
-              "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
-                "region": {
-                  "startLine": 12,
-                  "startColumn": 25,
-                  "endLine": 12,
-                  "endColumn": 31
-                }
-              }
-            }
-          ],
           "properties": {
             "warningLevel": 1
           }
         },
         {
-          "ruleId": "CS8603",
-          "level": "warning",
-          "message": "Possible null reference return.",
+          "ruleId": "CA1050",
+          "level": "note",
+          "message": "Declare types in namespaces",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/workflow-service/WorkflowDbContext.cs",
+                "uri": "file:///app/src/user-service/Program.cs",
                 "region": {
-                  "startLine": 26,
-                  "startColumn": 22,
-                  "endLine": 26,
-                  "endColumn": 36
+                  "startLine": 65,
+                  "startColumn": 14,
+                  "endLine": 65,
+                  "endColumn": 33
                 }
               }
             }
@@ -223,558 +75,12 @@
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/workflow-service/Models/AgentModels.cs",
-                "region": {
-                  "startLine": 46,
-                  "startColumn": 14,
-                  "endLine": 46,
-                  "endColumn": 29
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/VectorSearchController.cs",
-                "region": {
-                  "startLine": 78,
-                  "startColumn": 39,
-                  "endLine": 78,
-                  "endColumn": 45
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S5332",
-          "level": "warning",
-          "message": "Using http protocol is insecure. Use https instead.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
-                "region": {
-                  "startLine": 22,
-                  "startColumn": 34,
-                  "endLine": 22,
-                  "endColumn": 72
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S5332",
-          "level": "warning",
-          "message": "Using http protocol is insecure. Use https instead.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
-                "region": {
-                  "startLine": 27,
-                  "startColumn": 34,
-                  "endLine": 27,
-                  "endColumn": 71
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S5332",
-          "level": "warning",
-          "message": "Using http protocol is insecure. Use https instead.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
-                "region": {
-                  "startLine": 32,
-                  "startColumn": 34,
-                  "endLine": 32,
-                  "endColumn": 73
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S5332",
-          "level": "warning",
-          "message": "Using http protocol is insecure. Use https instead.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
-                "region": {
-                  "startLine": 37,
-                  "startColumn": 34,
-                  "endLine": 37,
-                  "endColumn": 72
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CA1873",
-          "level": "note",
-          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Grpc/WorkflowServiceImpl.cs",
-                "region": {
-                  "startLine": 53,
-                  "startColumn": 9,
-                  "endLine": 53,
-                  "endColumn": 69
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/ExperiencesController.cs",
-                "region": {
-                  "startLine": 93,
-                  "startColumn": 18,
-                  "endLine": 93,
-                  "endColumn": 27
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/ExperiencesController.cs",
-                "region": {
-                  "startLine": 97,
-                  "startColumn": 14,
-                  "endLine": 97,
-                  "endColumn": 20
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CA1873",
-          "level": "note",
-          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/ExperiencesController.cs",
-                "region": {
-                  "startLine": 56,
-                  "startColumn": 9,
-                  "endLine": 56,
-                  "endColumn": 66
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/VectorSearchController.cs",
-                "region": {
-                  "startLine": 81,
-                  "startColumn": 40,
-                  "endLine": 81,
-                  "endColumn": 46
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/ProjectsController.cs",
-                "region": {
-                  "startLine": 100,
-                  "startColumn": 18,
-                  "endLine": 100,
-                  "endColumn": 27
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/ProjectsController.cs",
-                "region": {
-                  "startLine": 105,
-                  "startColumn": 14,
-                  "endLine": 105,
-                  "endColumn": 20
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CA1873",
-          "level": "note",
-          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/ProjectsController.cs",
-                "region": {
-                  "startLine": 59,
-                  "startColumn": 9,
-                  "endLine": 59,
-                  "endColumn": 67
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CA1873",
-          "level": "note",
-          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/WorkflowsController.cs",
-                "region": {
-                  "startLine": 52,
-                  "startColumn": 9,
-                  "endLine": 52,
-                  "endColumn": 69
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/ProjectsController.cs",
-                "region": {
-                  "startLine": 114,
-                  "startColumn": 18,
-                  "endLine": 114,
-                  "endColumn": 27
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/ExperiencesController.cs",
-                "region": {
-                  "startLine": 104,
-                  "startColumn": 18,
-                  "endLine": 104,
-                  "endColumn": 27
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1075",
-          "level": "warning",
-          "message": "Refactor your code not to use hardcoded absolute paths or URIs.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
-                "region": {
-                  "startLine": 22,
-                  "startColumn": 34,
-                  "endLine": 22,
-                  "endColumn": 72
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1075",
-          "level": "warning",
-          "message": "Refactor your code not to use hardcoded absolute paths or URIs.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
-                "region": {
-                  "startLine": 27,
-                  "startColumn": 34,
-                  "endLine": 27,
-                  "endColumn": 71
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1075",
-          "level": "warning",
-          "message": "Refactor your code not to use hardcoded absolute paths or URIs.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
-                "region": {
-                  "startLine": 32,
-                  "startColumn": 34,
-                  "endLine": 32,
-                  "endColumn": 73
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S1075",
-          "level": "warning",
-          "message": "Refactor your code not to use hardcoded absolute paths or URIs.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
-                "region": {
-                  "startLine": 37,
-                  "startColumn": 34,
-                  "endLine": 37,
-                  "endColumn": 72
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/SkillsController.cs",
-                "region": {
-                  "startLine": 83,
-                  "startColumn": 91,
-                  "endLine": 83,
-                  "endColumn": 97
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CA1873",
-          "level": "note",
-          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/SkillsController.cs",
-                "region": {
-                  "startLine": 53,
-                  "startColumn": 9,
-                  "endLine": 53,
-                  "endColumn": 63
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S112",
-          "level": "warning",
-          "message": "'System.Exception' should not be thrown by user code.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
-                "region": {
-                  "startLine": 39,
-                  "startColumn": 36,
-                  "endLine": 39,
-                  "endColumn": 74
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S112",
-          "level": "warning",
-          "message": "'System.Exception' should not be thrown by user code.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
-                "region": {
-                  "startLine": 44,
-                  "startColumn": 41,
-                  "endLine": 44,
-                  "endColumn": 79
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S112",
-          "level": "warning",
-          "message": "'System.Exception' should not be thrown by user code.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
-                "region": {
-                  "startLine": 55,
-                  "startColumn": 40,
-                  "endLine": 55,
-                  "endColumn": 79
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S112",
-          "level": "warning",
-          "message": "'System.Exception' should not be thrown by user code.",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
+                "uri": "file:///app/src/user-service/Program.cs",
                 "region": {
                   "startLine": 65,
-                  "startColumn": 38,
+                  "startColumn": 14,
                   "endLine": 65,
-                  "endColumn": 75
+                  "endColumn": 33
                 }
               }
             }
@@ -784,18 +90,102 @@
           }
         },
         {
-          "ruleId": "S6664",
-          "level": "warning",
-          "message": "Reduce the number of Information logging calls within this code block from 7 to the 2 allowed.",
+          "ruleId": "CA1050",
+          "level": "note",
+          "message": "Declare types in namespaces",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
+                "uri": "file:///app/src/user-service/Program.cs",
                 "region": {
-                  "startLine": 34,
-                  "startColumn": 9,
-                  "endLine": 34,
-                  "endColumn": 100
+                  "startLine": 67,
+                  "startColumn": 14,
+                  "endLine": 67,
+                  "endColumn": 33
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S3903",
+          "level": "warning",
+          "message": "Move 'TokenForwardOptions' into a named namespace.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/user-service/Program.cs",
+                "region": {
+                  "startLine": 65,
+                  "startColumn": 14,
+                  "endLine": 65,
+                  "endColumn": 33
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S3903",
+          "level": "warning",
+          "message": "Move 'TokenForwardHandler' into a named namespace.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/user-service/Program.cs",
+                "region": {
+                  "startLine": 67,
+                  "startColumn": 14,
+                  "endLine": 67,
+                  "endColumn": 33
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S2068",
+          "level": "warning",
+          "message": "\"password\" detected here, make sure this is not a hard-coded credential.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/user-service/appsettings.json",
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 27,
+                  "endLine": 9,
+                  "endColumn": 104
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S1192",
+          "level": "warning",
+          "message": "Define a constant instead of using this literal 'User not found' 5 times.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/user-service/Grpc/UserServiceImpl.cs",
+                "region": {
+                  "startLine": 24,
+                  "startColumn": 68,
+                  "endLine": 24,
+                  "endColumn": 84
                 }
               }
             }
@@ -803,67 +193,45 @@
           "relatedLocations": [
             {
               "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
+                "uri": "file:///app/src/user-service/Grpc/UserServiceImpl.cs",
                 "region": {
-                  "startLine": 37,
-                  "startColumn": 9,
-                  "endLine": 37,
-                  "endColumn": 73
+                  "startLine": 33,
+                  "startColumn": 68,
+                  "endLine": 33,
+                  "endColumn": 84
                 }
               }
             },
             {
               "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
+                "uri": "file:///app/src/user-service/Grpc/UserServiceImpl.cs",
                 "region": {
                   "startLine": 42,
-                  "startColumn": 9,
+                  "startColumn": 68,
                   "endLine": 42,
-                  "endColumn": 77
+                  "endColumn": 84
                 }
               }
             },
             {
               "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
+                "uri": "file:///app/src/user-service/Grpc/UserServiceImpl.cs",
                 "region": {
-                  "startLine": 47,
-                  "startColumn": 9,
-                  "endLine": 47,
-                  "endColumn": 67
+                  "startLine": 77,
+                  "startColumn": 68,
+                  "endLine": 77,
+                  "endColumn": 84
                 }
               }
             },
             {
               "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
+                "uri": "file:///app/src/user-service/Grpc/UserServiceImpl.cs",
                 "region": {
-                  "startLine": 58,
-                  "startColumn": 9,
-                  "endLine": 58,
-                  "endColumn": 68
-                }
-              }
-            },
-            {
-              "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
-                "region": {
-                  "startLine": 68,
-                  "startColumn": 9,
-                  "endLine": 68,
-                  "endColumn": 74
-                }
-              }
-            },
-            {
-              "physicalLocation": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
-                "region": {
-                  "startLine": 78,
-                  "startColumn": 9,
-                  "endLine": 78,
-                  "endColumn": 106
+                  "startLine": 93,
+                  "startColumn": 68,
+                  "endLine": 93,
+                  "endColumn": 84
                 }
               }
             }
@@ -871,28 +239,26 @@
           "properties": {
             "warningLevel": 1,
             "customProperties": {
-              "0": "Reduce the number of Information logging calls within this code block from 7 to the 2 allowed.",
-              "1": "Reduce the number of Information logging calls within this code block from 7 to the 2 allowed.",
-              "2": "Reduce the number of Information logging calls within this code block from 7 to the 2 allowed.",
-              "3": "Reduce the number of Information logging calls within this code block from 7 to the 2 allowed.",
-              "4": "Reduce the number of Information logging calls within this code block from 7 to the 2 allowed.",
-              "5": "Reduce the number of Information logging calls within this code block from 7 to the 2 allowed."
+              "0": null,
+              "1": null,
+              "2": null,
+              "3": null
             }
           }
         },
         {
-          "ruleId": "S6964",
-          "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/workflow-service/Controllers/WorkflowsController.cs",
+                "uri": "file:///app/src/user-service/Services/KafkaPublisher.cs",
                 "region": {
-                  "startLine": 101,
-                  "startColumn": 101,
-                  "endLine": 101,
-                  "endColumn": 109
+                  "startLine": 58,
+                  "startColumn": 13,
+                  "endLine": 59,
+                  "endColumn": 77
                 }
               }
             }
@@ -908,11 +274,53 @@
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
+                "uri": "file:///app/src/user-service/Grpc/UserServiceImpl.cs",
                 "region": {
-                  "startLine": 56,
+                  "startLine": 69,
+                  "startColumn": 9,
+                  "endLine": 69,
+                  "endColumn": 70
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/user-service/Controllers/UsersController.cs",
+                "region": {
+                  "startLine": 68,
                   "startColumn": 13,
-                  "endLine": 56,
+                  "endLine": 68,
+                  "endColumn": 105
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/user-service/Program.cs",
+                "region": {
+                  "startLine": 44,
+                  "startColumn": 13,
+                  "endLine": 44,
                   "endColumn": 85
                 }
               }
@@ -923,27 +331,24 @@
           }
         },
         {
-          "ruleId": "CA1861",
+          "ruleId": "CA1873",
           "level": "note",
-          "message": "Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/workflow-service/Migrations/20260506170039_AddAgentVectors.cs",
+                "uri": "file:///app/src/user-service/Controllers/UsersController.cs",
                 "region": {
-                  "startLine": 31,
-                  "startColumn": 66,
-                  "endLine": 31,
-                  "endColumn": 85
+                  "startLine": 109,
+                  "startColumn": 13,
+                  "endLine": 109,
+                  "endColumn": 74
                 }
               }
             }
           ],
           "properties": {
-            "warningLevel": 1,
-            "customProperties": {
-              "paramName": "value"
-            }
+            "warningLevel": 1
           }
         },
         {
@@ -953,11 +358,11 @@
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/workflow-service/Program.cs",
+                "uri": "file:///app/src/user-service/Program.cs",
                 "region": {
-                  "startLine": 72,
+                  "startLine": 63,
                   "startColumn": 1,
-                  "endLine": 72,
+                  "endLine": 63,
                   "endColumn": 10
                 }
               }
@@ -968,80 +373,146 @@
           }
         },
         {
-          "ruleId": "CA1873",
-          "level": "note",
-          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
-                "region": {
-                  "startLine": 34,
-                  "startColumn": 9,
-                  "endLine": 34,
-                  "endColumn": 100
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "CA1873",
-          "level": "note",
-          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
-          "locations": [
-            {
-              "resultFile": {
-                "uri": "file:///app/src/workflow-service/Services/WorkflowExecutionService.cs",
-                "region": {
-                  "startLine": 78,
-                  "startColumn": 9,
-                  "endLine": 78,
-                  "endColumn": 106
-                }
-              }
-            }
-          ],
-          "properties": {
-            "warningLevel": 1
-          }
-        },
-        {
-          "ruleId": "S6964",
+          "ruleId": "S6580",
           "level": "warning",
-          "message": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
+          "message": "Use a format provider when parsing date and time.",
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/workflow-service/Models/AgentModels.cs",
+                "uri": "file:///app/src/user-service/Controllers/UsersController.cs",
                 "region": {
-                  "startLine": 179,
-                  "startColumn": 17,
-                  "endLine": 179,
-                  "endColumn": 23
+                  "startLine": 177,
+                  "startColumn": 38,
+                  "endLine": 177,
+                  "endColumn": 148
                 }
               }
             }
           ],
           "properties": {
             "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1873",
+          "level": "note",
+          "message": "Evaluation of this argument may be expensive and unnecessary if logging is disabled",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/user-service/Controllers/UsersController.cs",
+                "region": {
+                  "startLine": 155,
+                  "startColumn": 9,
+                  "endLine": 155,
+                  "endColumn": 61
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "CA1816",
+          "level": "note",
+          "message": "Change KafkaPublisher.Dispose() to call GC.SuppressFinalize(object). This will prevent derived types that introduce a finalizer from needing to re-implement 'IDisposable' to call it.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/user-service/Services/KafkaPublisher.cs",
+                "region": {
+                  "startLine": 68,
+                  "startColumn": 17,
+                  "endLine": 68,
+                  "endColumn": 24
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S3881",
+          "level": "warning",
+          "message": "Fix this implementation of 'IDisposable' to conform to the dispose pattern.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/user-service/Services/KafkaPublisher.cs",
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 14,
+                  "endLine": 12,
+                  "endColumn": 28
+                }
+              }
+            }
+          ],
+          "relatedLocations": [
+            {
+              "physicalLocation": {
+                "uri": "file:///app/src/user-service/Services/KafkaPublisher.cs",
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 14,
+                  "endLine": 12,
+                  "endColumn": 28
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "uri": "file:///app/src/user-service/Services/KafkaPublisher.cs",
+                "region": {
+                  "startLine": 68,
+                  "startColumn": 17,
+                  "endLine": 68,
+                  "endColumn": 24
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1,
+            "customProperties": {
+              "0": "Provide 'protected' overridable implementation of 'Dispose(bool)' on 'KafkaPublisher' or mark the type as 'sealed'.",
+              "1": "'KafkaPublisher.Dispose()' should call 'Dispose(true)' and 'GC.SuppressFinalize(this)'."
+            }
           }
         }
       ],
       "rules": {
-        "CA1861": {
-          "id": "CA1861",
-          "shortDescription": "Avoid constant arrays as arguments",
-          "fullDescription": "Constant arrays passed as arguments are not reused when called repeatedly, which implies a new array is created each time. Consider extracting them to 'static readonly' fields to improve performance if the passed array is not mutated within the called method.",
+        "CA1050": {
+          "id": "CA1050",
+          "shortDescription": "Declare types in namespaces",
+          "fullDescription": "Types are declared in namespaces to prevent name collisions and as a way to organize related types in an object hierarchy.",
           "defaultLevel": "note",
-          "helpUri": "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1861",
+          "helpUri": "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1050",
           "properties": {
-            "category": "Performance",
+            "category": "Design",
             "isEnabledByDefault": true,
             "tags": [
+              "PortedFromFxCop",
+              "Telemetry",
+              "EnabledRuleInAggressiveMode"
+            ]
+          }
+        },
+        "CA1816": {
+          "id": "CA1816",
+          "shortDescription": "Dispose methods should call SuppressFinalize",
+          "fullDescription": "A method that is an implementation of Dispose does not call GC.SuppressFinalize; or a method that is not an implementation of Dispose calls GC.SuppressFinalize; or a method calls GC.SuppressFinalize and passes something other than this (Me in Visual Basic).",
+          "defaultLevel": "note",
+          "helpUri": "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1816",
+          "properties": {
+            "category": "Usage",
+            "isEnabledByDefault": true,
+            "tags": [
+              "PortedFromFxCop",
               "Telemetry",
               "EnabledRuleInAggressiveMode"
             ]
@@ -1062,20 +533,6 @@
             ]
           }
         },
-        "CS8603": {
-          "id": "CS8603",
-          "shortDescription": "Possible null reference return.",
-          "defaultLevel": "warning",
-          "helpUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn&k=k(CS8603)",
-          "properties": {
-            "category": "Compiler",
-            "isEnabledByDefault": true,
-            "tags": [
-              "Compiler",
-              "Telemetry"
-            ]
-          }
-        },
         "CS8618": {
           "id": "CS8618",
           "shortDescription": "Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.",
@@ -1090,14 +547,14 @@
             ]
           }
         },
-        "S1075": {
-          "id": "S1075",
-          "shortDescription": "URIs should not be hardcoded",
-          "fullDescription": "Hard-coding a URI makes it difficult to test a program for a variety of reasons:",
+        "S1192": {
+          "id": "S1192",
+          "shortDescription": "String literals should not be duplicated",
+          "fullDescription": "Duplicated string literals make the process of refactoring complex and error-prone, as any change would need to be propagated on all occurrences.",
           "defaultLevel": "warning",
           "properties": {
             "category": "Minor Code Smell",
-            "isEnabledByDefault": true,
+            "isEnabledByDefault": false,
             "tags": [
               "C#",
               "MainSourceScope",
@@ -1105,13 +562,13 @@
             ]
           }
         },
-        "S112": {
-          "id": "S112",
-          "shortDescription": "General or reserved exceptions should never be thrown",
-          "fullDescription": "This rule raises an issue when a general or reserved exception is thrown.",
+        "S2068": {
+          "id": "S2068",
+          "shortDescription": "Credentials should not be hard-coded",
+          "fullDescription": "Hard-coding credentials in source code or binaries makes it easy for attackers to extract sensitive information, especially in distributed or open-source applications. This practice exposes your application to significant security risks.",
           "defaultLevel": "warning",
           "properties": {
-            "category": "Major Code Smell",
+            "category": "Major Vulnerability",
             "isEnabledByDefault": true,
             "tags": [
               "C#",
@@ -1136,40 +593,10 @@
             ]
           }
         },
-        "S5332": {
-          "id": "S5332",
-          "shortDescription": "Using clear-text protocols is security-sensitive",
-          "fullDescription": "Clear-text protocols such as ftp, telnet, or http lack encryption of transported data, as well as the capability to build an authenticated connection. It means that an attacker able to sniff traffic from the network can read, modify, or corrupt the transported content. These protocols are not secure as they expose applications to an extensive range of risks:",
-          "defaultLevel": "warning",
-          "properties": {
-            "category": "Critical Security Hotspot",
-            "isEnabledByDefault": true,
-            "tags": [
-              "C#",
-              "MainSourceScope",
-              "SonarWay"
-            ]
-          }
-        },
-        "S6664": {
-          "id": "S6664",
-          "shortDescription": "The code block contains too many logging calls",
-          "fullDescription": "A code block should not contain too many logging statements of a specific level.",
-          "defaultLevel": "warning",
-          "properties": {
-            "category": "Minor Code Smell",
-            "isEnabledByDefault": false,
-            "tags": [
-              "C#",
-              "MainSourceScope",
-              "SonarWay"
-            ]
-          }
-        },
-        "S6964": {
-          "id": "S6964",
-          "shortDescription": "Value type property used as input in a controller action should be nullable, required or annotated with the JsonRequiredAttribute to avoid under-posting.",
-          "fullDescription": "\"Under-posting\" refers to a situation where a client sends less data than expected to the server during an HTTP request, for example when the client omits some properties from the request body that the server expects to receive.",
+        "S3881": {
+          "id": "S3881",
+          "shortDescription": "\"IDisposable\" should be implemented correctly",
+          "fullDescription": "The IDisposable interface is a mechanism to release unmanaged resources, if not implemented correctly this could result in resource leaks or more severe bugs.",
           "defaultLevel": "warning",
           "properties": {
             "category": "Major Code Smell",
@@ -1177,6 +604,39 @@
             "tags": [
               "C#",
               "MainSourceScope",
+              "TestSourceScope",
+              "SonarWay"
+            ]
+          }
+        },
+        "S3903": {
+          "id": "S3903",
+          "shortDescription": "Types should be defined in named namespaces",
+          "fullDescription": "Types are declared in namespaces in order to prevent name collisions and as a way to organize them into the object hierarchy. Types that are defined outside any named namespace are in a global namespace that cannot be referenced in code.",
+          "defaultLevel": "warning",
+          "properties": {
+            "category": "Major Bug",
+            "isEnabledByDefault": true,
+            "tags": [
+              "C#",
+              "MainSourceScope",
+              "TestSourceScope",
+              "SonarWay"
+            ]
+          }
+        },
+        "S6580": {
+          "id": "S6580",
+          "shortDescription": "Use a format provider when parsing date and time",
+          "fullDescription": "When converting a string representation of a date and time to a DateTime object or any other temporal type with one of the available system parsing methods, you should always provide an IFormatProvider parameter.",
+          "defaultLevel": "warning",
+          "properties": {
+            "category": "Major Code Smell",
+            "isEnabledByDefault": true,
+            "tags": [
+              "C#",
+              "MainSourceScope",
+              "TestSourceScope",
               "SonarWay"
             ]
           }

@@ -1,8 +1,8 @@
 {
   "documentationMode": "None",
   "features": [
-    { "key": "use-roslyn-tokenizer", "value": "true" },
-    { "key": "InterceptorsNamespaces", "value": ";Microsoft.AspNetCore.OpenApi.Generated;;Microsoft.Extensions.Validation.Generated" }
+    { "key": "InterceptorsNamespaces", "value": ";Microsoft.Extensions.Validation.Generated" },
+    { "key": "use-roslyn-tokenizer", "value": "true" }
   ],
   "kind": "Regular",
   "languageVersion": "CSharp14",

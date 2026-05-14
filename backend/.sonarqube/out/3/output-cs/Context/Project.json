@@ -1,7 +1,7 @@
 {
   "language": "C#",
   "targetFramework": "net10.0",
-  "assemblyName": "notification-service",
+  "assemblyName": "MonolithService",
   "projectType": "Product",
-  "projectPath": "/app/src/notification-service/notification-service.csproj"
+  "projectPath": "/app/src/monolith-service/MonolithService.csproj"
 }

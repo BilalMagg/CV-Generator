@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ProjectInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.sonarsource.com/msbuild/integration/2015/1">
-  <ProjectName>common-protos</ProjectName>
+  <ProjectName>notification-service</ProjectName>
   <ProjectLanguage>C#</ProjectLanguage>
   <ProjectType>Product</ProjectType>
-  <ProjectGuid>67b1373a-37ed-4a1a-a92c-b7cc18a1908c</ProjectGuid>
-  <FullPath>/app/src/common-protos/common-protos.csproj</FullPath>
+  <ProjectGuid>564aaca9-ba7c-4b22-bbc4-1006c5f02174</ProjectGuid>
+  <FullPath>/app/src/notification-service/notification-service.csproj</FullPath>
   <IsExcluded>false</IsExcluded>
   <AnalysisResultFiles>
     <AnalysisResultFile Id="FilesToAnalyze" Location="/app/.sonarqube/conf/1/FilesToAnalyze.txt" />

@@ -19,8 +19,11 @@ from typing import Optional
 
 import requests                           # pip install requests
 from app.core.config import settings
+
 from langchain_core.tools import tool
+
 from langchain_groq import ChatGroq
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -30,6 +33,7 @@ load_dotenv()
 _llm = ChatGroq(
     model=settings.TOOL_MODEL,
     temperature=0.3,
+    #temperature=settings.LLM_TEMPERATURE,
 )
 
 @tool
@@ -81,7 +85,6 @@ def generate_email_subject(job_title: str, company_name: str) -> str:
     response = _llm.invoke(prompt)
     return response.content.strip()
 
-
 @tool
 def generate_email_body(
     subject: str,
@@ -90,7 +93,7 @@ def generate_email_body(
     cover_letter_hint: str = "",
 ) -> str:
     """
-    Generate a short professional email body for a job application sent to HR.
+    Generate a professional email body for a job application sent to HR.
     Call this tool THIRD, after you have the subject and the CV text.
     """
     hint_block = (
@@ -105,21 +108,32 @@ def generate_email_body(
         f"{hint_block}"
         f"\nJob Description  :\n{job_description}\n\n"
         f"Candidate CV     :\n{cv_text}\n\n"
-        f"Write a SHORT professional email body (3-4 sentences) that:\n"
-        f"1. Opens by referencing the position (stay consistent with the subject line)\n"
-        f"2. Highlights 1-2 of the candidate's strongest skills that match the job description\n"
-        f"3. Mentions that the CV is attached to this email\n"
-        f"4. Closes politely and professionally\n\n"
+        f"CRITICAL: You MUST use real newline characters (\\n) between every section.\n"
+        f"Do NOT write everything in one paragraph. Each block must be separated by a blank line.\n\n"
+        f"Write the email body using this EXACT structure:\n\n"
+        f"Dear Hiring Manager,\n\n"
+        f"[1 sentence: who you are, your studies/role, and what position you are applying for]\n\n"
+        f"[1 sentence: express motivation to join and contribute]\n\n"
+        f"My key skills relevant to this role include:\n"
+        f"- [Skill category]: [tools/technologies]\n"
+        f"- [Skill category]: [tools/technologies]\n"
+        f"- [Skill category]: [tools/technologies]\n\n"
+        f"Please find my CV attached for a detailed overview of my background.\n\n"
+        f"[1 sentence: availability for interview + thank you]\n\n"
+        f"Sincerely,\n"
+        f"[Full Name]\n"
+        f"[Phone]\n"
+        f"[Email]\n\n"
         f"Rules:\n"
-        f"- Write in first person (the candidate is the author)\n"
-        f"- Plain text only — no bullet points, no markdown\n"
-        f"- Do NOT include subject line, greeting with a name, or signature\n"
-        f"- Return ONLY the body paragraph text\n"
+        f"- Extract candidate name, phone, email from the CV\n"
+        f"- Use ONLY plain text, real newlines between each block\n"
+        f"- Skills must be bullet lines starting with '-'\n"
+        f"- Do NOT put everything in one paragraph\n"
+        f"- Return ONLY the email body, nothing else\n"
     )
     response = _llm.invoke(prompt)
     return response.content.strip()
-
-
+    
 @tool
 def send_email_with_cv(
     recipient_email: str,

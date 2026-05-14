@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ProjectInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.sonarsource.com/msbuild/integration/2015/1">
-  <ProjectName>job-offer-service</ProjectName>
+  <ProjectName>common-protos</ProjectName>
   <ProjectLanguage>C#</ProjectLanguage>
   <ProjectType>Product</ProjectType>
-  <ProjectGuid>c7d2e1a4-fc74-4804-b4e9-51e99c0ab9e5</ProjectGuid>
-  <FullPath>/app/src/job-offer-service/job-offer-service.csproj</FullPath>
+  <ProjectGuid>67b1373a-37ed-4a1a-a92c-b7cc18a1908c</ProjectGuid>
+  <FullPath>/app/src/common-protos/common-protos.csproj</FullPath>
   <IsExcluded>false</IsExcluded>
   <AnalysisResultFiles>
     <AnalysisResultFile Id="FilesToAnalyze" Location="/app/.sonarqube/conf/2/FilesToAnalyze.txt" />

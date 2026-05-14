@@ -5,7 +5,7 @@
   "outputKind": "ConsoleApplication",
   "scriptClassName": "Script",
   "usings": [],
-  "moduleName": "UserService.dll",
+  "moduleName": "WorkflowService.dll",
   "optionCompareText": false,
   "optionExplicit": false,
   "optionInfer": false,

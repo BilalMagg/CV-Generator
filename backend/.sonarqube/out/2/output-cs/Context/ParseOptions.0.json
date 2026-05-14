@@ -1,7 +1,6 @@
 {
   "documentationMode": "None",
   "features": [
-    { "key": "use-roslyn-tokenizer", "value": "true" },
     { "key": "InterceptorsNamespaces", "value": ";Microsoft.Extensions.Validation.Generated" }
   ],
   "kind": "Regular",

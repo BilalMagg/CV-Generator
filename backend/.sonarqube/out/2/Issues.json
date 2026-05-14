@@ -11,41 +11,738 @@
       },
       "results": [
         {
-          "ruleId": "S6966",
+          "ruleId": "CS8981",
           "level": "warning",
-          "message": "Await RunAsync instead.",
+          "message": "The type name 'pb' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
           "locations": [
             {
               "resultFile": {
-                "uri": "file:///app/src/job-offer-service/Program.cs",
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/User.cs",
                 "region": {
-                  "startLine": 6,
-                  "startColumn": 1,
-                  "endLine": 6,
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 9
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/User.cs",
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 7,
+                  "endLine": 9,
                   "endColumn": 10
                 }
               }
             }
           ],
           "properties": {
-            "warningLevel": 1
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbr' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/User.cs",
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 7,
+                  "endLine": 10,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'scg' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/User.cs",
+                "region": {
+                  "startLine": 11,
+                  "startColumn": 7,
+                  "endLine": 11,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'grpc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/UserGrpc.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 11
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pb' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Content.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 9
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Content.cs",
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 7,
+                  "endLine": 9,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbr' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Content.cs",
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 7,
+                  "endLine": 10,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'scg' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Content.cs",
+                "region": {
+                  "startLine": 11,
+                  "startColumn": 7,
+                  "endLine": 11,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'grpc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/ContentGrpc.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 11
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pb' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Workflow.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 9
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Workflow.cs",
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 7,
+                  "endLine": 9,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbr' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Workflow.cs",
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 7,
+                  "endLine": 10,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'scg' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Workflow.cs",
+                "region": {
+                  "startLine": 11,
+                  "startColumn": 7,
+                  "endLine": 11,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'grpc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/WorkflowGrpc.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 11
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pb' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/User.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 9
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/User.cs",
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 7,
+                  "endLine": 9,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbr' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/User.cs",
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 7,
+                  "endLine": 10,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'scg' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/User.cs",
+                "region": {
+                  "startLine": 11,
+                  "startColumn": 7,
+                  "endLine": 11,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'grpc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/UserGrpc.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 11
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pb' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Content.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 9
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Content.cs",
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 7,
+                  "endLine": 9,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbr' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Content.cs",
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 7,
+                  "endLine": 10,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'scg' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Content.cs",
+                "region": {
+                  "startLine": 11,
+                  "startColumn": 7,
+                  "endLine": 11,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'grpc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/ContentGrpc.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 11
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pb' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Workflow.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 9
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Workflow.cs",
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 7,
+                  "endLine": 9,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'pbr' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Workflow.cs",
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 7,
+                  "endLine": 10,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'scg' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/Workflow.cs",
+                "region": {
+                  "startLine": 11,
+                  "startColumn": 7,
+                  "endLine": 11,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
+          }
+        },
+        {
+          "ruleId": "CS8981",
+          "level": "warning",
+          "message": "The type name 'grpc' only contains lower-cased ascii characters. Such names may become reserved for the language.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///app/src/common-protos/obj/Debug/net10.0/WorkflowGrpc.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 7,
+                  "endLine": 8,
+                  "endColumn": 11
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 7
           }
         }
       ],
       "rules": {
-        "S6966": {
-          "id": "S6966",
-          "shortDescription": "Awaitable method should be used",
-          "fullDescription": "In an async method, any blocking operations should be avoided.",
+        "CS8981": {
+          "id": "CS8981",
+          "shortDescription": "The type name only contains lower-cased ascii characters. Such names may become reserved for the language.",
           "defaultLevel": "warning",
+          "helpUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn&k=k(CS8981)",
           "properties": {
-            "category": "Major Code Smell",
+            "category": "Compiler",
             "isEnabledByDefault": true,
             "tags": [
-              "C#",
-              "MainSourceScope",
-              "TestSourceScope",
-              "SonarWay"
+              "Compiler",
+              "Telemetry"
             ]
           }
         }

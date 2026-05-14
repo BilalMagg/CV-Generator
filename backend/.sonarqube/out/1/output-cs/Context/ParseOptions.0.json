@@ -1,7 +1,8 @@
 {
   "documentationMode": "None",
   "features": [
-    { "key": "InterceptorsNamespaces", "value": ";Microsoft.Extensions.Validation.Generated" }
+    { "key": "InterceptorsNamespaces", "value": ";Microsoft.Extensions.Validation.Generated" },
+    { "key": "use-roslyn-tokenizer", "value": "true" }
   ],
   "kind": "Regular",
   "languageVersion": "CSharp14",

@@ -1,7 +1,7 @@
 {
   "language": "C#",
   "targetFramework": "net10.0",
-  "assemblyName": "common-protos",
+  "assemblyName": "notification-service",
   "projectType": "Product",
-  "projectPath": "/app/src/common-protos/common-protos.csproj"
+  "projectPath": "/app/src/notification-service/notification-service.csproj"
 }
