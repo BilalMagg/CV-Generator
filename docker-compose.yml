@@ -19,8 +19,3 @@ services:
     restart: unless-stopped
     networks:
       - cv-network
-
-networks:
-  cv-network:
-    name: cv-network
-    driver: bridge

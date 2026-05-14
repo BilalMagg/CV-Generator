@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Callable
 
-from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
+from confluent_kafka import Consumer, KafkaError, Producer
+from confluent_kafka.admin import AdminClient, NewTopic
 
 from app.core.config import settings
 
@@ -22,6 +22,32 @@ _producer: Producer | None = None
 _consumer: Consumer | None = None
 
 
+# ── Topic Provisioning ────────────────────────────────────────────────────────
+
+def ensure_topics_exist() -> None:
+    """
+    Pre-create all topics this service needs using the Admin API.
+    This is more reliable than relying on auto-creation from consumer poll(),
+    which can fail on the first attempt with UNKNOWN_TOPIC_OR_PART.
+    """
+    admin = AdminClient({"bootstrap.servers": settings.KAFKA_BOOTSTRAP_SERVERS})
+    topics_to_create = [
+        NewTopic(settings.CONSUME_TOPIC, num_partitions=1, replication_factor=1),
+        NewTopic(settings.PRODUCE_TOPIC, num_partitions=1, replication_factor=1),
+    ]
+    result = admin.create_topics(topics_to_create)
+    for topic, future in result.items():
+        try:
+            future.result()
+            logger.info("Topic '%s' created successfully.", topic)
+        except Exception as e:
+            # TOPIC_ALREADY_EXISTS is perfectly normal on restart
+            if "TOPIC_ALREADY_EXISTS" in str(e):
+                logger.info("Topic '%s' already exists — skipping.", topic)
+            else:
+                logger.error("Failed to create topic '%s': %s", topic, e)
+
+
 # ── Producer ─────────────────────────────────────────────────────────────────
 
 def create_producer() -> Producer:
@@ -29,7 +55,7 @@ def create_producer() -> Producer:
     _producer = Producer(
         {
             "bootstrap.servers": settings.KAFKA_BOOTSTRAP_SERVERS,
-            "acks": "all",               # Wait for full replication before ack
+            "acks": "all",
             "retries": 5,
             "retry.backoff.ms": 500,
         }
@@ -54,7 +80,7 @@ def produce_message(topic: str, payload: dict) -> None:
     producer = get_producer()
     raw = json.dumps(payload).encode("utf-8")
     producer.produce(topic, value=raw, callback=_delivery_report)
-    producer.poll(0)  # Trigger delivery callbacks without blocking
+    producer.poll(0)
 
 
 def _delivery_report(err, msg) -> None:
@@ -75,7 +101,10 @@ def create_consumer() -> Consumer:
             "bootstrap.servers": settings.KAFKA_BOOTSTRAP_SERVERS,
             "group.id": settings.KAFKA_GROUP_ID,
             "auto.offset.reset": "earliest",
-            "enable.auto.commit": False,  # Manual commit after successful processing
+            "enable.auto.commit": False,
+            # Explicitly allow this client to trigger topic auto-creation on poll.
+            # Newer confluent-kafka versions default this to False.
+            "allow.auto.create.topics": True,
         }
     )
     _consumer.subscribe([settings.CONSUME_TOPIC])

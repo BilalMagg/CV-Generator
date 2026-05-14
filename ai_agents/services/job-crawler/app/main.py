@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.kafka_client import close_kafka, create_consumer, create_producer
+from app.kafka_client import close_kafka, create_consumer, create_producer, ensure_topics_exist
 from app.consumer import consume_loop, _stop_consumer
 from app.routers import router
 
@@ -37,6 +37,9 @@ async def lifespan(app: FastAPI):
     global _consumer_task
 
     logger.info("Job Crawler service starting up")
+
+    # ── Pre-create Kafka topics via Admin API ─────────────────────────────────
+    ensure_topics_exist()
 
     # ── Kafka setup ───────────────────────────────────────────────────────────
     create_producer()
