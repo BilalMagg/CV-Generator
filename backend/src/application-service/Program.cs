@@ -1,3 +1,4 @@
+using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -103,6 +104,41 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "An error occurred while applying migrations.");
     }
 }
+
+// ── Kafka test endpoint ─────────────────────────────────────────────────────
+app.MapGet("/api/test/kafka", async (HttpContext ctx) =>
+{
+    var results = new List<string>();
+    var config = new ProducerConfig
+    {
+        BootstrapServers = "localhost:9092",
+        MessageTimeoutMs = 5000,
+        RequestTimeoutMs = 5000,
+    };
+    results.Add($"Using bootstrap.servers = '{config.BootstrapServers}'");
+
+    try
+    {
+        using var producer = new ProducerBuilder<string, string>(config).Build();
+        results.Add("Producer built successfully");
+
+        var msg = new Message<string, string>
+        {
+            Key = Guid.NewGuid().ToString(),
+            Value = "{\"test\":true,\"timestamp\":\"" + DateTime.UtcNow.ToString("O") + "\"}"
+        };
+
+        var dr = await producer.ProduceAsync("test-topic", msg);
+        results.Add($"Published to {dr.TopicPartitionOffset}");
+        return Results.Ok(results);
+    }
+    catch (Exception ex)
+    {
+        results.Add($"FAILED: {ex.GetType().Name}: {ex.Message}");
+        return Results.Ok(results);
+    }
+})
+.WithName("TestKafka");
 
 app.UseSwagger();
 app.UseSwaggerUI();

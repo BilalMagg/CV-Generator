@@ -63,10 +63,12 @@
       "secret": "change-me-in-production",
       "redirectUris": [
         "http://localhost:8080/api/auth/callback",
-        "http://localhost:8080/*"
+        "http://localhost:8080/*",
+        "http://localhost:4200/*"
       ],
       "webOrigins": [
-        "http://localhost:8080"
+        "http://localhost:8080",
+        "http://localhost:4200"
       ],
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
