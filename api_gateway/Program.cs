@@ -16,7 +16,7 @@ var keycloakRealm = Environment.GetEnvironmentVariable("KEYCLOAK_REALM") ?? "cv-
 var keycloakClientId = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID") ?? "cv-gateway";
 var keycloakClientSecret = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_SECRET") ?? "change-me-in-production";
 var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL") ?? "http://localhost:8080";
-var userServiceUrl = Environment.GetEnvironmentVariable("USER_SERVICE_URL") ?? "http://cv-user-service:8082";
+var userServiceUrl = Environment.GetEnvironmentVariable("USER_SERVICE_URL") ?? "http://localhost:5001";
 var keycloakAdminUsername = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_USERNAME") ?? "admin";
 var keycloakAdminPassword = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_PASSWORD") ?? "admin";
 

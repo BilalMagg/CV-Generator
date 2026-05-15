@@ -59,7 +59,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        var jwtAuthority = Environment.GetEnvironmentVariable("JWT_AUTHORITY") ?? "";
+        var jwtAuthority = builder.Configuration["JWT_AUTHORITY"] ?? "";
         options.Authority = jwtAuthority;
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters.ValidateAudience = false;

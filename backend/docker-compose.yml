@@ -218,6 +218,8 @@ services:
   user-db:
     image: pgvector/pgvector:pg16
     container_name: cv-user-db
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -235,6 +237,8 @@ services:
   content-db:
     image: pgvector/pgvector:pg16
     container_name: cv-content-db
+    ports:
+      - "5434:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -252,6 +256,8 @@ services:
   workflow-db:
     image: pgvector/pgvector:pg16
     container_name: cv-workflow-db
+    ports:
+      - "5435:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -269,6 +275,8 @@ services:
   application-db:
     image: pgvector/pgvector:pg16
     container_name: cv-application-db
+    ports:
+      - "5436:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -286,6 +294,8 @@ services:
   job-offer-db:
     image: pgvector/pgvector:pg16
     container_name: cv-job-offer-db
+    ports:
+      - "5437:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -303,6 +313,8 @@ services:
   notification-db:
     image: pgvector/pgvector:pg16
     container_name: cv-notification-db
+    ports:
+      - "5438:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -320,6 +332,8 @@ services:
   cv-db:
     image: pgvector/pgvector:pg16
     container_name: cv-cv-db
+    ports:
+      - "5439:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
