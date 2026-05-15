@@ -1,5 +1,49 @@
 <div class="calendar-page">
   <div class="content">
+    <div class="reminder-panel">
+      <div class="panel-header">
+        <div class="panel-title">Upcoming reminders</div>
+        <button class="add-btn" (click)="toggleForm()"><i class="ti ti-plus"></i></button>
+      </div>
+
+      <div class="reminder-list">
+        @if (loading()) {
+          <div class="loading-inline">Loading...</div>
+        }
+
+        @if (!loading() && remindersList().length === 0) {
+          <div class="empty-reminders">
+            <p>No reminders scheduled</p>
+          </div>
+        }
+
+        @for (rem of remindersList(); track rem.id) {
+          <div class="reminder-card-compact" [class.is-past]="rem.status !== 'Pending'">
+            <div class="rem-header">
+              <span class="rem-title">{{ rem.title }}</span>
+              <span class="status-dot" [ngClass]="getStatusClass(rem.status)" [title]="rem.status"></span>
+            </div>
+            
+            @if (rem.message) {
+              <p class="rem-msg">{{ rem.message }}</p>
+            }
+
+            <div class="rem-footer">
+              <div class="rem-meta">
+                <span><i class="ti ti-calendar"></i> {{ rem.eventDate | date:'MMM d' }}</span>
+                <span><i class="ti ti-bell"></i> {{ getOffsetLabel(rem.reminderOffset) }}</span>
+              </div>
+              @if (rem.status === 'Pending') {
+                <button class="btn-cancel-icon" (click)="cancelReminder(rem.id)" title="Cancel">
+                  <i class="ti ti-trash"></i>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
     <div class="cal-area">
       <div class="cal-header">
         <div>
@@ -14,7 +58,7 @@
         <div class="cal-actions">
           <button class="tb-btn" [class.active]="viewMode() === 'month'" (click)="toggleView('month')">Month</button>
           <button class="tb-btn" [class.active]="viewMode() === 'week'" (click)="toggleView('week')">Week</button>
-          <button class="tb-btn primary"><i class="ti ti-plus"></i>Add reminder</button>
+          <button class="tb-btn primary" (click)="toggleForm()"><i class="ti ti-plus"></i>Add reminder</button>
         </div>
       </div>
 
@@ -46,25 +90,58 @@
         <span class="legend-item"><span class="legend-swatch sw-deadline"></span>Deadline</span>
       </div>
     </div>
+  </div>
 
-    <div class="reminder-panel">
-      <div class="panel-header">
-        <div class="panel-title">Upcoming reminders</div>
-        <button class="add-btn"><i class="ti ti-plus"></i></button>
-      </div>
-      <div class="reminder-list">
-        @for (rem of reminders(); track rem.id) {
-          <div class="reminder" [class.done]="rem.done">
-            <div class="rem-check" [class.done]="rem.done" (click)="toggleReminder(rem.id)"></div>
-            <div>
-              <div class="rem-title">{{ rem.title }}</div>
-              <div class="rem-app" [routerLink]="['/applications/list']">{{ rem.company }} &middot; {{ rem.position }}</div>
-              <div class="rem-date">{{ rem.dateStr }} · {{ rem.timeStr }}</div>
-              <span class="rem-tag" [class]="'ev-' + (rem.type === 'Interview' ? 'interview' : rem.type === 'Follow-up' ? 'followup' : 'deadline')">{{ rem.type }}</span>
+  <!-- Popup Form / Modal -->
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="toggleForm()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Create Reminder</h3>
+          <button class="close-btn" (click)="toggleForm()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (error()) {
+            <div class="alert alert-error">{{ error() }}</div>
+          }
+          @if (successMsg()) {
+            <div class="alert alert-success">{{ successMsg() }}</div>
+          }
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="rem-title">Title *</label>
+              <input id="rem-title" type="text" [(ngModel)]="form.title"
+                     placeholder="e.g. Follow up with Google" />
+            </div>
+            <div class="form-group">
+              <label for="rem-event-date">Event Date *</label>
+              <input id="rem-event-date" type="datetime-local" [(ngModel)]="form.eventDate" />
+            </div>
+            <div class="form-group">
+              <label for="rem-offset">Remind Me</label>
+              <select id="rem-offset" [(ngModel)]="form.reminderOffset">
+                @for (opt of offsetOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <label for="rem-message">Note (optional)</label>
+              <textarea id="rem-message" [(ngModel)]="form.message" rows="3"
+                        placeholder="Any details you want in the reminder email..."></textarea>
             </div>
           </div>
-        }
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="toggleForm()">Cancel</button>
+          <button class="btn-submit" (click)="submit()" [disabled]="saving()">
+            {{ saving() ? 'Creating...' : 'Create Reminder' }}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  }
 </div>

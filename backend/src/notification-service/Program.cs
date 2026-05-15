@@ -25,7 +25,9 @@ builder.Services.AddDbContext<NotificationDbContext>(options =>
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITemplateRenderer, TemplateRenderer>();
 builder.Services.AddScoped<INotificationService, NotificationService.Application.Services.NotificationService>();
+builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<ReminderJob>();
+builder.Services.AddScoped<UserReminderJob>();
 
 // ── Kafka Consumer (Background Service) ────────────────────────────────────
 builder.Services.AddHostedService<KafkaConsumerService>();
@@ -63,6 +65,13 @@ RecurringJob.AddOrUpdate<ReminderJob>(
     "application-reminders",
     job => job.CheckAndSendRemindersAsync(),
     cronExpression
+);
+
+var userReminderCron = builder.Configuration["Hangfire:UserReminderCronExpression"] ?? "*/1 * * * *";
+RecurringJob.AddOrUpdate<UserReminderJob>(
+    "user-reminders",
+    job => job.ProcessAsync(),
+    userReminderCron
 );
 
 if (app.Environment.IsDevelopment())

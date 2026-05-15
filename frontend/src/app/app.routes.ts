@@ -16,6 +16,7 @@ import { CalendarComponent } from './pages/applications/calendar/calendar.compon
 import { ResumesComponent } from './pages/applications/resumes/resumes.component';
 import { ApplicationDetailComponent } from './pages/applications/detail/application-detail.component';
 import { ApplicationCreateComponent } from './pages/applications/create/application-create.component';
+// Reminders removed as they are now in Calendar
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
