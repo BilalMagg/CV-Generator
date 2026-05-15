@@ -94,7 +94,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
 // ── Kafka Producer ──────────────────────────────────────────────────────────
-var kafkaBootstrapServers = Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS") ?? "kafka:9092";
+var kafkaBootstrapServers = builder.Configuration.GetValue<string>("KAFKA_BOOTSTRAP_SERVERS")
+    ?? Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS")
+    ?? "kafka:9092";
 builder.Services.AddSingleton<IProducer<string, string>>(_ =>
 {
     var config = new ProducerConfig
