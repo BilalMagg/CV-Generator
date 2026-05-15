@@ -79,8 +79,10 @@ services:
       - ASPNETCORE_URLS=http://0.0.0.0:8082
       - ConnectionStrings__DefaultConnection=Host=user-db;Port=5432;Database=user_db;Username=postgres;Password=postgres
       - JWT_AUTHORITY=http://cv-keycloak:8080/realms/cv-realm
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       user-db: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     networks:
       - cv-network
 
@@ -132,6 +134,7 @@ services:
       - ConnectionStrings__DefaultConnection=Host=application-db;Port=5432;Database=application_db;Username=postgres;Password=postgres
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - JWT_AUTHORITY=http://cv-keycloak:8080/realms/cv-realm
+      - USER_SERVICE_GRPC_URL=http://cv-user-service:8082
     depends_on:
       application-db: { condition: service_healthy }
       kafka: { condition: service_healthy }
@@ -215,6 +218,8 @@ services:
   user-db:
     image: pgvector/pgvector:pg16
     container_name: cv-user-db
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -232,6 +237,8 @@ services:
   content-db:
     image: pgvector/pgvector:pg16
     container_name: cv-content-db
+    ports:
+      - "5434:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -249,6 +256,8 @@ services:
   workflow-db:
     image: pgvector/pgvector:pg16
     container_name: cv-workflow-db
+    ports:
+      - "5435:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -266,6 +275,8 @@ services:
   application-db:
     image: pgvector/pgvector:pg16
     container_name: cv-application-db
+    ports:
+      - "5436:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -283,6 +294,8 @@ services:
   job-offer-db:
     image: pgvector/pgvector:pg16
     container_name: cv-job-offer-db
+    ports:
+      - "5437:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -300,6 +313,8 @@ services:
   notification-db:
     image: pgvector/pgvector:pg16
     container_name: cv-notification-db
+    ports:
+      - "5438:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -317,6 +332,8 @@ services:
   cv-db:
     image: pgvector/pgvector:pg16
     container_name: cv-cv-db
+    ports:
+      - "5439:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

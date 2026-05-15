@@ -1,0 +1,1 @@
+=R0/app/src/monolith-service/MonolithService.csprojòCSharp14

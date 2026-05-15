@@ -1,0 +1,7 @@
+{
+  "language": "C#",
+  "targetFramework": "net10.0",
+  "assemblyName": "CVGenerator.Shared",
+  "projectType": "Product",
+  "projectPath": "/app/src/shared/CVGenerator.Shared.csproj"
+}

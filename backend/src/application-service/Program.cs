@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using FluentValidation;
+using CommonProtos.User;
 using ApplicationService;
 using ApplicationService.Services;
 using ApplicationService.Repositories;
@@ -21,7 +22,25 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IApplicationRepository, ApplicationRepository>();
 builder.Services.AddScoped<IApplicationStatusHistoryRepository, ApplicationStatusHistoryRepository>();
 builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>();
+builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
 builder.Services.AddScoped<ApplicationService.Services.IApplicationService, ApplicationServiceImpl>();
+
+// gRPC client — UserService
+builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
+{
+    var grpcUrl = builder.Configuration.GetValue<string>("USER_SERVICE_GRPC_URL")
+        ?? Environment.GetEnvironmentVariable("USER_SERVICE_GRPC_URL")
+        ?? "http://cv-user-service:8082";
+    o.Address = new Uri(grpcUrl);
+})
+.ConfigureChannel(o =>
+{
+    o.HttpHandler = new SocketsHttpHandler
+    {
+        EnableMultipleHttp2Connections = true,
+        ConnectTimeout = TimeSpan.FromSeconds(5),
+    };
+});
 
 // Validators
 builder.Services.AddScoped<IValidator<CreateApplicationDto>, CreateApplicationValidator>();
@@ -40,7 +59,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        var jwtAuthority = Environment.GetEnvironmentVariable("JWT_AUTHORITY") ?? "";
+        var jwtAuthority = builder.Configuration["JWT_AUTHORITY"] ?? "";
         options.Authority = jwtAuthority;
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters.ValidateAudience = false;

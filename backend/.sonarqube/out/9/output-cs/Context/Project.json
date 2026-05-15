@@ -1,0 +1,7 @@
+{
+  "language": "C#",
+  "targetFramework": "net10.0",
+  "assemblyName": "WorkflowService",
+  "projectType": "Product",
+  "projectPath": "/app/src/workflow-service/WorkflowService.csproj"
+}

@@ -1,0 +1,7 @@
+{
+  "language": "C#",
+  "targetFramework": "net10.0",
+  "assemblyName": "UserContentService",
+  "projectType": "Product",
+  "projectPath": "/app/src/user-content-service/UserContentService.csproj"
+}

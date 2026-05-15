@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UserService;
 using UserService.Entity;
+using UserService.Events;
+using UserService.Services;
 
 namespace UserService.Controllers;
 
@@ -14,11 +16,13 @@ namespace UserService.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly UserDbContext _db;
+    private readonly IKafkaPublisher _kafka;
     private readonly ILogger<UsersController> _logger;
 
-    public UsersController(UserDbContext db, ILogger<UsersController> logger)
+    public UsersController(UserDbContext db, IKafkaPublisher kafka, ILogger<UsersController> logger)
     {
         _db = db;
+        _kafka = kafka;
         _logger = logger;
     }
 
@@ -60,7 +64,16 @@ public class UsersController : ControllerBase
             };
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
+
             _logger.LogInformation("Created user {Id} from JWT (sub={KeycloakId})", user.Id, keycloakId);
+
+            await _kafka.PublishAsync(new UserCreatedEvent
+            {
+                UserId = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+            }, "user.created");
         }
 
         return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
@@ -100,9 +113,21 @@ public class UsersController : ControllerBase
             user.FirstName = firstName;
             user.LastName = lastName;
             user.Email = email;
+
+            await _db.SaveChangesAsync();
+            return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
         }
 
         await _db.SaveChangesAsync();
+
+        await _kafka.PublishAsync(new UserCreatedEvent
+        {
+            UserId = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+        }, "user.created");
+
         return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
     }
 
@@ -128,6 +153,15 @@ public class UsersController : ControllerBase
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("Created user {Id}", user.Id);
+
+        await _kafka.PublishAsync(new UserCreatedEvent
+        {
+            UserId = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+        }, "user.created");
+
         return Created($"/api/users/{user.Id}", ApiResponse<UserResponseDto>.Created(ToDto(user)));
     }
 
