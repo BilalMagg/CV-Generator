@@ -156,20 +156,28 @@ app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
 })
 .RequireCors("Default");
 
-app.MapGet("/api/auth/logout", async (HttpContext ctx) =>
+app.MapGet("/api/auth/logout", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
 {
-    // Retrieve id_token from server-side session before signing out
+    var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:4200";
+    var postLogoutRedirectUri = $"{frontendUrl}/login";
+
     var authResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     var idToken = authResult?.Properties?.Items?.TryGetValue("id_token", out var t) == true ? t ?? "" : "";
 
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-    var logoutUrl = $"{keycloakLogoutUrl}"
-        + $"?client_id={Uri.EscapeDataString(keycloakClientId)}"
-        + $"&id_token_hint={Uri.EscapeDataString(idToken)}"
-        + $"&post_logout_redirect_uri={Uri.EscapeDataString("http://localhost:4200/login")}";
+    // Invalidate Keycloak session server-side (fire-and-forget) — avoids browser redirect
+    // to Keycloak and the post_logout_redirect_uri validation issue entirely.
+    if (!string.IsNullOrEmpty(idToken))
+    {
+        var client = httpClientFactory.CreateClient();
+        var keycloakLogoutUrl = $"{keycloakInternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/logout"
+            + $"?id_token_hint={Uri.EscapeDataString(idToken)}"
+            + $"&client_id={Uri.EscapeDataString(keycloakClientId)}";
+        _ = client.GetAsync(keycloakLogoutUrl);
+    }
 
-    ctx.Response.Redirect(logoutUrl);
+    ctx.Response.Redirect(postLogoutRedirectUri);
 })
 .RequireCors("Default");
 
