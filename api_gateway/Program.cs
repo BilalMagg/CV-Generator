@@ -111,6 +111,8 @@ builder.Services.AddSingleton<IProducer<string, string>>(_ =>
 var app = builder.Build();
 
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -378,6 +380,16 @@ app.MapReverseProxy(proxyApp =>
             {
                 ctx.Request.Headers.Authorization = $"Bearer {token}";
             }
+
+            // ON COLLE LE POST-IT !
+            var internalUserId = authResult.Principal?.FindFirstValue("user_id") 
+                               ?? authResult.Principal?.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+                               ?? authResult.Principal?.FindFirstValue("sub");
+
+            if (!string.IsNullOrEmpty(internalUserId))
+            {
+                ctx.Request.Headers["X-User-Id"] = internalUserId;
+            }
         }
         await next();
     });
@@ -522,6 +534,7 @@ async Task PublishRegistrationEvent(IProducer<string, string> producer, string e
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Failed to publish registration event: {ex.Message}");
+
     }
 }
 

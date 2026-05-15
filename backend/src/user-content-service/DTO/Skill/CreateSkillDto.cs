@@ -14,8 +14,6 @@ namespace UserContentService.dto.Skill{
 
     public int? YearsOfExperience { get; set; }
 
-    [Required]
-    public Guid? UserId { get; set; }
 
     [MaxLength(50)]
     public string? Category { get; set; }

@@ -13,9 +13,6 @@ public class CreateProjectDto{
     [MaxLength(50)]
     public string? Role { get; set; }
 
-    [MaxLength(1000)]
-    public string? Achievements { get; set; }
-
     [Required]
     public DateTime StartDate { get; set; }
 
@@ -31,8 +28,6 @@ public class CreateProjectDto{
     [MaxLength(20)]
     public string Status { get; set; } = "Ongoing";
 
-    [Required]
-    public Guid UserId { get; set; }
 
     public string? SkillsJson { get; set; }
 }

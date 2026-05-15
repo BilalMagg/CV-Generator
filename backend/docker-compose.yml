@@ -20,6 +20,9 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
       interval: 10s
@@ -98,9 +101,12 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://0.0.0.0:8083
       - ConnectionStrings__DefaultConnection=Host=content-db;Port=5432;Database=content_db;Username=postgres;Password=postgres
+      - Kafka__BootstrapServers=kafka:9092
     depends_on:
       content-db: { condition: service_healthy }
+      kafka: { condition: service_started }
     networks:
+
       - cv-network
 
   # ── Workflow Service ─────────────────────────────────────────────────────────
@@ -248,10 +254,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    ports:
+      - "5433:5432"
     volumes:
       - content_db_data:/var/lib/postgresql/data
     networks:
       - cv-network
+
 
   workflow-db:
     image: pgvector/pgvector:pg16

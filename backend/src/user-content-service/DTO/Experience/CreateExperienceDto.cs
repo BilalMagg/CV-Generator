@@ -19,9 +19,6 @@ namespace UserContentService.dto.Experience {
 
     public DateTime? EndDate { get; set; }
 
-    [MaxLength(300)]
-    public string? ReferenceUrl { get; set; }
-
     [Required]
     [MaxLength(20)]
     public string Status { get; set; } = "Ongoing";
