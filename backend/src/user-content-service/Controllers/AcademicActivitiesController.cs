@@ -24,7 +24,7 @@ public class AcademicActivitiesController : ApiControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
-        userId ??= GetUserId();
+        userId ??= CurrentUserId;
 
         var activities = userId.HasValue
             ? await _db.AcademicActivities.Where(a => a.UserId == userId.Value).ToListAsync()
@@ -66,7 +66,6 @@ public class AcademicActivitiesController : ApiControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAcademicActivityDto dto)
     {
-        if (dto.UserId == Guid.Empty) dto.UserId = GetRequiredUserId();
 
         var a = new AcademicActivity
         {
@@ -75,7 +74,7 @@ public class AcademicActivitiesController : ApiControllerBase
             Description = dto.Description,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
-            UserId = dto.UserId
+            UserId = RequiredUserId
         };
 
         _db.AcademicActivities.Add(a);

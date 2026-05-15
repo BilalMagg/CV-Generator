@@ -116,6 +116,7 @@ import { CommonModule } from '@angular/common';
     .icon {
       width: 14px;
       height: 14px;
+      color: #ffffff;
     }
 
     .card-footer {

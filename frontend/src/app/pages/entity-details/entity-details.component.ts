@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
@@ -16,28 +16,44 @@ export class EntityDetailsComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
 
   entity: EntityType = 'projects';
   id = '';
   item: any;
   fields: any[] = [];
+  isLoading = true;
+  error: string | null = null;
+  showDeleteModal = false;
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
       this.entity = params.get('entity') as EntityType;
       this.id = params.get('id')!;
       this.fields = ENTITY_FIELDS[this.entity] || [];
+      this.isLoading = true;
+      this.error = null;
       this.loadData();
     });
   }
 
   loadData() {
-    const url = `${environment.apiUrl}/${this.entity}/${this.id}`;
-    this.http.get(url).subscribe({
-      next: (res) => {
-        this.item = res;
+    const baseUrl = environment.apiUrl || 'http://localhost:8080/api/user-content';
+    const url = `${baseUrl}/${this.entity}/${this.id}?t=${new Date().getTime()}`;
+    
+    this.http.get(url, { withCredentials: true }).subscribe({
+      next: (res: any) => {
+        this.item = res.data || res;
+        this.isLoading = false;
+        this.error = null;
+        this.cdr.detectChanges();
       },
-      error: (err) => console.error('Load failed', err)
+      error: (err) => {
+        console.error('Load failed', err);
+        this.isLoading = false;
+        this.error = 'Failed to load data';
+        this.cdr.detectChanges();
+      }
     });
   }
 
@@ -68,15 +84,25 @@ export class EntityDetailsComponent implements OnInit {
   }
 
   deleteItem() {
-    if (confirm(`Are you sure you want to delete this ${this.entity}?`)) {
-      const url = `${environment.apiUrl}/${this.entity}/${this.id}`;
-      this.http.delete(url).subscribe({
-        next: () => {
-          this.router.navigate(['/my-cv', this.entity]);
-        },
-        error: (err) => console.error('Delete failed', err)
-      });
-    }
+    this.showDeleteModal = true;
+  }
+
+  confirmDelete() {
+    const baseUrl = environment.apiUrl || 'http://localhost:8080/api/user-content';
+    const url = `${baseUrl}/${this.entity}/${this.id}`;
+    this.http.delete(url, { withCredentials: true }).subscribe({
+      next: () => {
+        this.router.navigate(['/my-cv', this.entity]);
+      },
+      error: (err) => {
+        console.error('Delete failed', err);
+        this.showDeleteModal = false;
+      }
+    });
+  }
+
+  cancelDelete() {
+    this.showDeleteModal = false;
   }
 
   goBack() {

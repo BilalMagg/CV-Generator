@@ -30,6 +30,9 @@ export class EntityFormComponent implements OnInit {
       this.fields = ENTITY_FIELDS[this.entity] || [];
       
       if (this.id) {
+        // initialise le formulaire avec des valeurs par défaut pour l'affichage rapide,
+        // puis récupère les données réelles en asynchrone et les applique.
+        this.initializeForm();
         this.loadData();
       } else {
         this.initializeForm();
@@ -51,17 +54,36 @@ export class EntityFormComponent implements OnInit {
   }
 
   loadData() {
-    const url = `${environment.apiUrl}/${this.entity}/${this.id}`;
-    this.http.get(url).subscribe(data => {
-      this.form = data;
+    const baseUrl = environment.apiUrl || 'http://localhost:8080/api/user-content';
+    const url = `${baseUrl}/${this.entity}/${this.id}`;
+    this.http.get<any>(url, { withCredentials: true }).subscribe(response => {
+      this.form = response.data || {};
     });
   }
 
   submit() {
-    const baseUrl = environment.apiUrl || 'http://localhost:8083/api';
+    const baseUrl = environment.apiUrl || 'http://localhost:8080/api/user-content';
+
+    // Clean up the form data before sending to the backend
+    const payload: any = {};
+    this.fields.forEach(field => {
+      const value = this.form[field.name];
+      if (field.type === 'date') {
+        // Convert empty date strings to null to avoid DateTime.MinValue in C#
+        payload[field.name] = value && value !== '' ? new Date(value).toISOString() : null;
+      } else if (field.type === 'number') {
+        payload[field.name] = value !== '' && value !== null ? Number(value) : null;
+      } else if (field.type === 'checkbox') {
+        payload[field.name] = Boolean(value);
+      } else {
+        // Send empty string as null for optional text fields
+        payload[field.name] = value !== '' ? value : null;
+      }
+    });
+
     if (this.id) {
       const url = `${baseUrl}/${this.entity}/${this.id}`;
-      this.http.put(url, this.form).subscribe({
+      this.http.put(url, payload, { withCredentials: true }).subscribe({
         next: () => {
           this.router.navigate(['/my-cv', this.entity]);
         },
@@ -69,7 +91,7 @@ export class EntityFormComponent implements OnInit {
       });
     } else {
       const url = `${baseUrl}/${this.entity}`;
-      this.http.post(url, this.form).subscribe({
+      this.http.post(url, payload, { withCredentials: true }).subscribe({
         next: () => {
           this.router.navigate(['/my-cv', this.entity]);
         },

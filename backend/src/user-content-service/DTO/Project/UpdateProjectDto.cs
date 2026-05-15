@@ -14,9 +14,6 @@ namespace UserContentService.dto.Project
         [MaxLength(50)]
         public string? Role { get; set; }
 
-        [MaxLength(1000)]
-        public string? Achievements { get; set; }
-
         [Required]
         public DateTime StartDate { get; set; }
 

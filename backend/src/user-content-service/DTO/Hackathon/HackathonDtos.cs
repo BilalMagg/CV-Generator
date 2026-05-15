@@ -12,8 +12,6 @@ namespace UserContentService.dto.Hackathon
         public string? Description { get; set; }
         public string? Role { get; set; }
         public string? Result { get; set; }
-        [Required]
-        public Guid UserId { get; set; }
     }
 
     public class UpdateHackathonDto

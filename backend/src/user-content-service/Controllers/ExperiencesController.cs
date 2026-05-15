@@ -26,7 +26,7 @@ public class ExperiencesController : ApiControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
-        userId ??= GetUserId();
+        userId ??= CurrentUserId;
 
         var experiences = userId.HasValue
             ? await _db.Experiences.Where(e => e.UserId == userId.Value).ToListAsync()
@@ -40,7 +40,6 @@ public class ExperiencesController : ApiControllerBase
             Description = e.Description,
             StartDate = e.StartDate,
             EndDate = e.EndDate,
-            ReferenceUrl = e.ReferenceUrl,
             Status = e.Status,
             UserId = e.UserId
         }).ToList();
@@ -62,7 +61,6 @@ public class ExperiencesController : ApiControllerBase
             Description = exp.Description,
             StartDate = exp.StartDate,
             EndDate = exp.EndDate,
-            ReferenceUrl = exp.ReferenceUrl,
             Status = exp.Status,
             UserId = exp.UserId
         };
@@ -73,8 +71,6 @@ public class ExperiencesController : ApiControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateExperienceDto dto)
     {
-        if (dto.UserId == Guid.Empty) dto.UserId = GetRequiredUserId();
-
         var exp = new Experience
         {
             Title = dto.Title,
@@ -82,9 +78,8 @@ public class ExperiencesController : ApiControllerBase
             Description = dto.Description,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
-            ReferenceUrl = dto.ReferenceUrl,
             Status = dto.Status,
-            UserId = dto.UserId
+            UserId = RequiredUserId
         };
 
         _db.Experiences.Add(exp);
@@ -98,7 +93,6 @@ public class ExperiencesController : ApiControllerBase
             Description = exp.Description,
             StartDate = exp.StartDate,
             EndDate = exp.EndDate,
-            ReferenceUrl = exp.ReferenceUrl,
             Status = exp.Status,
             UserId = exp.UserId
         });
@@ -113,7 +107,6 @@ public class ExperiencesController : ApiControllerBase
             Description = exp.Description,
             StartDate = exp.StartDate,
             EndDate = exp.EndDate,
-            ReferenceUrl = exp.ReferenceUrl,
             Status = exp.Status,
             UserId = exp.UserId
         };
@@ -132,7 +125,6 @@ public class ExperiencesController : ApiControllerBase
         exp.Description = dto.Description;
         exp.StartDate = dto.StartDate;
         exp.EndDate = dto.EndDate;
-        exp.ReferenceUrl = dto.ReferenceUrl;
         exp.Status = dto.Status;
 
         await _db.SaveChangesAsync();
@@ -145,7 +137,6 @@ public class ExperiencesController : ApiControllerBase
             Description = exp.Description,
             StartDate = exp.StartDate,
             EndDate = exp.EndDate,
-            ReferenceUrl = exp.ReferenceUrl,
             Status = exp.Status,
             UserId = exp.UserId
         });
@@ -158,7 +149,6 @@ public class ExperiencesController : ApiControllerBase
             Description = exp.Description,
             StartDate = exp.StartDate,
             EndDate = exp.EndDate,
-            ReferenceUrl = exp.ReferenceUrl,
             Status = exp.Status,
             UserId = exp.UserId
         };

@@ -12,8 +12,6 @@ namespace UserContentService.dto.SocialLink
         [MaxLength(300)]
         public string Url { get; set; } = string.Empty;
 
-        [Required]
-        public Guid UserId { get; set; }
     }
 
     public class UpdateSocialLinkDto

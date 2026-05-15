@@ -9,8 +9,8 @@ using UserContentService.dto.CVProfile;
 namespace UserContentService.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-public class CVProfilesController : ControllerBase
+[Route("api/cvprofiles")]
+public class CVProfilesController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly KafkaProducerService _kafkaProducer;
@@ -58,7 +58,7 @@ public class CVProfilesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCVProfileDto dto)
     {
-        var profile = new CVProfile { Title = dto.Title, Summary = dto.Summary, UserId = dto.UserId };
+        var profile = new CVProfile { Title = dto.Title, Summary = dto.Summary, UserId = RequiredUserId };
         
         _db.CVProfiles.Add(profile);
         await _db.SaveChangesAsync();

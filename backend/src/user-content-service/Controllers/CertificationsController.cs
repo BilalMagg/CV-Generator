@@ -24,7 +24,7 @@ public class CertificationsController : ApiControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
-        userId ??= GetUserId();
+        userId ??= CurrentUserId;
 
         var certs = userId.HasValue
             ? await _db.Certifications.Where(c => c.UserId == userId.Value).ToListAsync()
@@ -64,7 +64,6 @@ public class CertificationsController : ApiControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCertificationDto dto)
     {
-        if (dto.UserId == Guid.Empty) dto.UserId = GetRequiredUserId();
 
         var cert = new Certification
         {
@@ -72,7 +71,7 @@ public class CertificationsController : ApiControllerBase
             IssuingOrganization = dto.IssuingOrganization,
             IssueDate = dto.IssueDate,
             CredentialUrl = dto.CredentialUrl,
-            UserId = dto.UserId
+            UserId = RequiredUserId
         };
 
         _db.Certifications.Add(cert);

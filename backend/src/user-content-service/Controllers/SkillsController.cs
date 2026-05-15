@@ -26,7 +26,7 @@ public class SkillsController : ApiControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
-        userId ??= GetUserId();
+        userId ??= CurrentUserId;
 
         var skills = userId.HasValue
             ? await _db.Skills.Where(s => s.UserId == userId.Value).ToListAsync()
@@ -67,14 +67,13 @@ public class SkillsController : ApiControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSkillDto dto)
     {
-        if (dto.UserId == Guid.Empty) dto.UserId = GetRequiredUserId();
 
         var skill = new Skill
         {
             Name = dto.Name,
             Level = dto.Level,
             YearsOfExperience = dto.YearsOfExperience,
-            UserId = dto.UserId,
+            UserId = RequiredUserId,
             Category = dto.Category
         };
 

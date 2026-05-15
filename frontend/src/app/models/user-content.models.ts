@@ -1,12 +1,7 @@
 export interface CVProfile {
   id?: string;
-  fullName: string;
-  title?: string;
-  summary?: string;
-  location?: string;
-  phoneNumber?: string;
-  email?: string;
-  website?: string;
+  title: string; // Job title (ex: Senior Web Developer)
+  summary: string; // Professional Bio
   userId?: string;
 }
 
@@ -15,7 +10,6 @@ export interface Project {
   title: string;
   description?: string;
   role?: string;
-  achievements?: string;
   startDate: string;
   endDate?: string;
   repositoryUrl?: string;
@@ -37,34 +31,37 @@ export interface Skill {
 export interface Experience {
   id?: string;
   company: string;
-  position: string;
-  location?: string;
+  title: string;
   description?: string;
   startDate: string;
   endDate?: string;
-  isCurrent: boolean;
+  status: string;
   userId?: string;
 }
 
 export interface Education {
   id?: string;
-  institution: string;
-  degree: string;
+  institution?: string;
+  institutionName?: string;
+  degree?: string;
+  degreeType?: string;
   fieldOfStudy?: string;
+  specialization?: string;
   startDate: string;
   endDate?: string;
   grade?: string;
   description?: string;
+  status?: string;
+  city?: string;
   userId?: string;
+  DiplomaFileUrl?: string;
 }
 
 export interface Certification {
   id?: string;
   name: string;
-  issuer: string;
-  issueDate: string;
-  expirationDate?: string;
-  credentialId?: string;
+  issuingOrganization?: string; // Backend field name
+  issueDate?: string;
   credentialUrl?: string;
   userId?: string;
 }
@@ -72,14 +69,13 @@ export interface Certification {
 export interface Language {
   id?: string;
   name: string;
-  proficiency: string;
+  level: string;
   userId?: string;
 }
 
 export interface Interest {
   id?: string;
   name: string;
-  category?: string;
   userId?: string;
 }
 
@@ -103,20 +99,20 @@ export interface AcademicActivity {
 export interface Hackathon {
   id?: string;
   name: string;
-  role?: string;
+  organization?: string; // Backend field name
+  date?: string;
   description?: string;
-  date: string;
-  location?: string;
-  achievement?: string;
+  role?: string;
+  result?: string; // Backend field name (e.g. "Winner", "Finalist")
   userId?: string;
 }
 
 export type EntityType = 
-  | 'cvprofile' 
+  | 'cvprofiles' 
   | 'projects' 
   | 'skills' 
   | 'experiences' 
-  | 'education' 
+  | 'educations' 
   | 'certifications' 
   | 'languages' 
   | 'interests' 
@@ -134,14 +130,9 @@ export interface FieldConfig {
 }
 
 export const ENTITY_FIELDS: Record<EntityType, FieldConfig[]> = {
-  cvprofile: [
-    { name: 'fullName', label: 'Full Name', type: 'text', required: true },
-    { name: 'title', label: 'Job Title', type: 'text' },
-    { name: 'summary', label: 'Summary', type: 'textarea' },
-    { name: 'location', label: 'Location', type: 'text' },
-    { name: 'email', label: 'Email', type: 'text' },
-    { name: 'phoneNumber', label: 'Phone Number', type: 'text' },
-    { name: 'website', label: 'Website', type: 'text' },
+  cvprofiles: [
+    { name: 'title', label: 'Job Title', type: 'text', required: true, placeholder: 'e.g. Senior Web Developer' },
+    { name: 'summary', label: 'Professional Summary', type: 'textarea', required: true },
   ],
   projects: [
     { name: 'title', label: 'Project Title', type: 'text', required: true },
@@ -152,6 +143,7 @@ export const ENTITY_FIELDS: Record<EntityType, FieldConfig[]> = {
     { name: 'endDate', label: 'End Date', type: 'date' },
     { name: 'repositoryUrl', label: 'Repository URL', type: 'text' },
     { name: 'demoUrl', label: 'Demo URL', type: 'text' },
+    { name: 'skillsJson', label: 'Skills ', type: 'textarea' },
   ],
   skills: [
     { name: 'name', label: 'Skill Name', type: 'text', required: true },
@@ -161,37 +153,35 @@ export const ENTITY_FIELDS: Record<EntityType, FieldConfig[]> = {
   ],
   experiences: [
     { name: 'company', label: 'Company', type: 'text', required: true },
-    { name: 'position', label: 'Position', type: 'text', required: true },
-    { name: 'location', label: 'Location', type: 'text' },
+    { name: 'title', label: 'title', type: 'text', required: true },
+    { name: 'status', label: 'Status', type: 'select', options: ['Ongoing', 'Completed'] },
     { name: 'startDate', label: 'Start Date', type: 'date', required: true },
     { name: 'endDate', label: 'End Date', type: 'date' },
-    { name: 'isCurrent', label: 'Currently working here', type: 'checkbox' },
     { name: 'description', label: 'Description', type: 'textarea' },
   ],
-  education: [
-    { name: 'institution', label: 'Institution', type: 'text', required: true },
-    { name: 'degree', label: 'Degree', type: 'text', required: true },
-    { name: 'fieldOfStudy', label: 'Field of Study', type: 'text' },
+  educations: [
+    { name: 'institutionName', label: 'Institution', type: 'text', required: true },
+    { name: 'degreeType', label: 'Degree Type', type: 'text', required: true },
+    { name: 'fieldOfStudy', label: 'Field of Study', type: 'text', required: true },
+    { name: 'specialization', label: 'Specialization', type: 'text' },
     { name: 'startDate', label: 'Start Date', type: 'date', required: true },
     { name: 'endDate', label: 'End Date', type: 'date' },
-    { name: 'grade', label: 'Grade / GPA', type: 'text' },
-    { name: 'description', label: 'Description', type: 'textarea' },
+    { name: 'status', label: 'Status', type: 'select', options: ['Ongoing', 'Completed'] },
+    { name: 'city', label: 'City', type: 'text' },
+    { name: 'DiplomaFileUrl', label: 'Diploma File URL', type: 'text' },
   ],
   certifications: [
     { name: 'name', label: 'Certification Name', type: 'text', required: true },
-    { name: 'issuer', label: 'Issuer', type: 'text', required: true },
-    { name: 'issueDate', label: 'Issue Date', type: 'date', required: true },
-    { name: 'expirationDate', label: 'Expiration Date', type: 'date' },
-    { name: 'credentialId', label: 'Credential ID', type: 'text' },
+    { name: 'issuingOrganization', label: 'Issuing Organization', type: 'text' },
+    { name: 'issueDate', label: 'Issue Date', type: 'date' },
     { name: 'credentialUrl', label: 'Credential URL', type: 'text' },
   ],
   languages: [
     { name: 'name', label: 'Language', type: 'text', required: true },
-    { name: 'proficiency', label: 'Proficiency', type: 'select', options: ['Native', 'Fluent', 'Professional', 'Intermediate', 'Elementary'] },
+    { name: 'level', label: 'Level', type: 'select', options: ['Native', 'Fluent', 'Professional', 'Intermediate', 'Elementary'] },
   ],
   interests: [
     { name: 'name', label: 'Interest', type: 'text', required: true },
-    { name: 'category', label: 'Category', type: 'text' },
   ],
   sociallinks: [
     { name: 'platform', label: 'Platform', type: 'text', required: true, placeholder: 'e.g. LinkedIn, GitHub' },
@@ -206,10 +196,10 @@ export const ENTITY_FIELDS: Record<EntityType, FieldConfig[]> = {
   ],
   hackathons: [
     { name: 'name', label: 'Hackathon Name', type: 'text', required: true },
-    { name: 'role', label: 'Your Role', type: 'text' },
-    { name: 'date', label: 'Date', type: 'date', required: true },
-    { name: 'location', label: 'Location', type: 'text' },
-    { name: 'achievement', label: 'Achievement', type: 'text' },
+    { name: 'organization', label: 'Organization', type: 'text' },
+    { name: 'date', label: 'Date', type: 'date' },
     { name: 'description', label: 'Description', type: 'textarea' },
+    { name: 'role', label: 'Your Role', type: 'text' },
+    { name: 'result', label: 'Result', type: 'text', placeholder: 'e.g. Winner, Finalist' },
   ],
 };

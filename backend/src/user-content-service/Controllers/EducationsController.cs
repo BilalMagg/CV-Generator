@@ -26,7 +26,7 @@ public class EducationsController : ApiControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
-        userId ??= GetUserId();
+        userId ??= CurrentUserId;
 
         var educations = userId.HasValue
             ? await _db.Educations.Where(e => e.UserId == userId.Value).ToListAsync()
@@ -77,7 +77,6 @@ public class EducationsController : ApiControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEducationDto dto)
     {
-        if (dto.UserId == Guid.Empty) dto.UserId = GetRequiredUserId();
 
         var edu = new Education
         {
@@ -90,7 +89,7 @@ public class EducationsController : ApiControllerBase
             Status = dto.Status,
             City = dto.City,
             DiplomaFileUrl = dto.DiplomaFileUrl,
-            UserId = dto.UserId
+            UserId = RequiredUserId
         };
 
         _db.Educations.Add(edu);

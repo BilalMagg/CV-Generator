@@ -44,7 +44,7 @@ export const routes: Routes = [
     component: MyCvComponent,
     canActivate: [authGuard],
     children: [
-      { path: '', redirectTo: 'cvprofile', pathMatch: 'full' },
+      { path: '', redirectTo: 'cvprofiles', pathMatch: 'full' },
       { path: ':entity', component: EntityListComponent },
       { path: ':entity/add', component: EntityFormComponent },
       { path: ':entity/:id', component: EntityDetailsComponent },

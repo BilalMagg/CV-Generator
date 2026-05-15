@@ -11,8 +11,6 @@ namespace UserContentService.dto.CVProfile
         [Required]
         public string Summary { get; set; } = string.Empty;
 
-        [Required]
-        public Guid UserId { get; set; }
     }
 
     public class UpdateCVProfileDto
