@@ -1,7 +1,0 @@
-{
-  "language": "C#",
-  "targetFramework": "net10.0",
-  "assemblyName": "job-offer-service",
-  "projectType": "Product",
-  "projectPath": "/app/src/job-offer-service/job-offer-service.csproj"
-}

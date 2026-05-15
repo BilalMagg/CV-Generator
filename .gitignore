@@ -29,6 +29,9 @@ packages/
 # Entity Framework
 Migrations/*.Designer.cs
 
+# SonarQube
+.sonarqube/
+
 # Secrets
 # appsettings.Development.json
 secrets.json

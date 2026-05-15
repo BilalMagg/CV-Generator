@@ -1,7 +1,0 @@
-{
-  "language": "C#",
-  "targetFramework": "net10.0",
-  "assemblyName": "MonolithService",
-  "projectType": "Product",
-  "projectPath": "/app/src/monolith-service/MonolithService.csproj"
-}

@@ -1,1 +1,0 @@
-CR6/app/src/application-service/ApplicationService.csprojòCSharp14
