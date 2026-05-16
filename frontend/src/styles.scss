@@ -1,49 +1,136 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+/* ═══════════════════════════════════════
+   GLOBAL STYLES — CV Generator
+═══════════════════════════════════════ */
 
-:root {
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-  --color-background-primary: #1c1c1c;
-  --color-background-secondary: #141414;
-  --color-background-tertiary: #0e0e0e;
-
-  --color-text-primary: #ededed;
-  --color-text-secondary: #a0a0a0;
-  --color-text-tertiary: #666;
-
-  --color-border-primary: rgba(255, 255, 255, 0.12);
-  --color-border-secondary: rgba(255, 255, 255, 0.15);
-  --color-border-tertiary: rgba(255, 255, 255, 0.07);
-
-  --color-accent: #7F77DD;
-  --color-accent-light: #EEEDFE;
-  --color-accent-text: #534AB7;
-
-  --color-success: #639922;
-  --color-success-bg: #EAF3DE;
-  --color-success-text: #3B6D11;
-
-  --color-warning: #EF9F27;
-  --color-warning-bg: #FAEEDA;
-  --color-warning-text: #854F0B;
-
-  --color-danger: #E24B4A;
-  --color-danger-bg: #FCEBEB;
-  --color-danger-text: #A32D2D;
-
-  --color-info: #378ADD;
-  --color-info-bg: #E6F1FB;
-  --color-info-text: #185FA5;
-
-  --border-radius-sm: 4px;
-  --border-radius-md: 6px;
-  --border-radius-lg: 10px;
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Design tokens ── */
+:root {
+  --purple-light: #A47DAB;
+  --purple-dark:  #692475;
+  --green:        #82AB7D;
+  --olive:        #6A6B4E;
+  --bg:           #F7F4F2;
+  --surface:      #FFFFFF;
+  --text-dark:    #1a1218;
+  --text-mid:     #4a3d4d;
+  --text-muted:   #8a7a8d;
+  --border:       rgba(105,36,117,0.08);
+  --font-hand:    'Caveat', cursive;
+  --font-body:    'Plus Jakarta Sans', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  font-family: var(--font-sans);
-  background: var(--color-background-tertiary);
-  color: var(--color-text-primary);
-  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-dark);
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--purple-light); border-radius: 3px; }
+
+/* ── Reveal overlay global states ── */
+body.is-revealing {
+  overflow: hidden;
+}
+
+/* ── Page content slide-up on reveal ── */
+#page-content,
+app-home {
+  transform: translateY(40px);
+  opacity: 0;
+  transition: transform 1s 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.8s 0.6s ease;
+  display: block;
+}
+
+body.page-revealed #page-content,
+body.page-revealed app-home {
+  transform: translateY(0) !important;
+  opacity: 1 !important;
+}
+
+/* ── Reveal animation classes (used by overlay component) ── */
+body.is-revealing app-reveal-overlay {
+  pointer-events: all;
+}
+
+@keyframes progress-bar {
+  from { width: 45%; }
+  to   { width: 75%; }
+}
+
+/* ── Shared section styles ── */
+section {
+  padding: 100px 48px;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.section-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 14px;
+}
+
+.section-title {
+  font-family: var(--font-hand);
+  font-size: clamp(34px, 4.5vw, 56px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-dark);
+  margin-bottom: 16px;
+  letter-spacing: -0.5px;
+
+  .purple { color: var(--purple-dark); }
+}
+
+.section-sub {
+  font-size: 16px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  max-width: 520px;
+}
+
+/* ── Scroll reveal ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+
+  &.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive tweaks for sections ── */
+@media (max-width: 900px) {
+  section { padding: 64px 24px; }
 }

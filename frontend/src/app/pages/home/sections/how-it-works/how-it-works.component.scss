@@ -1,0 +1,65 @@
+.how-header {
+  text-align: center;
+}
+
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 56px;
+}
+
+.how-card {
+  background: white;
+  border-radius: 22px;
+  padding: 36px 28px;
+  border: 1.5px solid rgba(105, 36, 117, 0.06);
+  transition: all 0.25s;
+  cursor: default;
+  position: relative;
+
+  &:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 48px rgba(105, 36, 117, 0.1);
+    border-color: rgba(105, 36, 117, 0.12);
+  }
+
+  &:nth-child(1) .how-icon { background: rgba(105, 36, 117, 0.08); }
+  &:nth-child(2) .how-icon { background: rgba(130, 171, 125, 0.15); }
+  &:nth-child(3) .how-icon { background: rgba(106, 107, 78, 0.1); }
+}
+
+.how-num {
+  font-family: var(--font-hand);
+  font-size: 80px;
+  font-weight: 700;
+  color: rgba(105, 36, 117, 0.06);
+  position: absolute;
+  top: 12px; right: 22px;
+  line-height: 1;
+}
+
+.how-icon {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.how-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 10px;
+}
+
+.how-card p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .how-grid { grid-template-columns: 1fr; }
+}
