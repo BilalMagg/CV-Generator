@@ -20,8 +20,8 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="GRPC.AspNetCore" Version="2.67.0">
-    <PackageReference Include="..\common-protos\commong-protos.csproj">
+    <PackageReference Include="Grpc.AspNetCore" Version="2.67.0" />
+    <ProjectReference Include="..\common-protos\common-protos.csproj" />
   </ItemGroup>
 
 </Project>
