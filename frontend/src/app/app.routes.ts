@@ -18,12 +18,16 @@ import { ApplicationDetailComponent } from './pages/applications/detail/applicat
 import { ApplicationCreateComponent } from './pages/applications/create/application-create.component';
 import { SettingsLayoutComponent } from './pages/settings/settings-layout.component';
 import { NotificationsComponent } from './pages/settings/notifications.component';
+import { AboutComponent } from './pages/about/about.component';
+import { ContactPageComponent } from './pages/contact/contact-page.component';
 // Reminders removed as they are now in Calendar
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'about', component: AboutComponent },
+  { path: 'contact', component: ContactPageComponent },
   { path: 'experience', component: ExperienceComponent, canActivate: [authGuard] },
   { path: 'personal-info', component: PersonalInfoComponent, canActivate: [authGuard] },
   { path: 'education', component: EducationComponent, canActivate: [authGuard] },

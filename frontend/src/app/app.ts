@@ -20,10 +20,11 @@ export class App {
   ngOnInit(): void {
     this.router.events.subscribe(() => {
       const url = this.router.url;
-      this.isAuthPage = url === '/' || url === '/login' || url === '/register';
+      this.isAuthPage = url === '/' || url === '/login' || url === '/register' || url.startsWith('/about') || url.startsWith('/contact');
       this.showHeader = !this.isAuthPage;
     });
-    this.isAuthPage = this.router.url === '/' || this.router.url === '/login' || this.router.url === '/register';
+    const initialUrl = this.router.url;
+    this.isAuthPage = initialUrl === '/' || initialUrl === '/login' || initialUrl === '/register' || initialUrl.startsWith('/about') || initialUrl.startsWith('/contact');
     this.showHeader = !this.isAuthPage;
   }
 }
