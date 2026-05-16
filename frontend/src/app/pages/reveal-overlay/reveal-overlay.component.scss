@@ -9,7 +9,7 @@
   z-index: 9999;
   pointer-events: all;
   display: flex;
-  flex-direction: column;
+  flex-direction: row; // Horizontal split
 }
 
 /* The two curtain panels */
@@ -21,8 +21,8 @@
   transition: transform 1.1s cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-.curtain-top    { transform: translateY(0); }
-.curtain-bottom { transform: translateY(0); }
+.curtain-left   { transform: translateX(0); }
+.curtain-right  { transform: translateX(0); }
 
 /* Noise texture overlay on curtains */
 .curtain::before {
@@ -48,8 +48,9 @@
 
 /* ── Split state ── */
 #reveal-overlay.splitting {
-  .curtain-top    { transform: translateY(-100%); }
-  .curtain-bottom { transform: translateY(100%); }
+  pointer-events: none; // Fix "stuck" feeling by allowing clicks to pass through once splitting starts
+  .curtain-left   { transform: translateX(-100%); }
+  .curtain-right  { transform: translateX(100%); }
 }
 
 /* ══ Center stage — logo + text ══ */
