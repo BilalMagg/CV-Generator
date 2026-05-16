@@ -16,7 +16,7 @@ var keycloakRealm = Environment.GetEnvironmentVariable("KEYCLOAK_REALM") ?? "cv-
 var keycloakClientId = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID") ?? "cv-gateway";
 var keycloakClientSecret = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_SECRET") ?? "change-me-in-production";
 var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL") ?? "http://localhost:8080";
-var userServiceUrl = Environment.GetEnvironmentVariable("USER_SERVICE_URL") ?? "http://cv-user-service:8082";
+var userServiceUrl = Environment.GetEnvironmentVariable("USER_SERVICE_URL") ?? "http://localhost:5001";
 var keycloakAdminUsername = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_USERNAME") ?? "admin";
 var keycloakAdminPassword = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_PASSWORD") ?? "admin";
 
@@ -94,7 +94,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
 // ── Kafka Producer ──────────────────────────────────────────────────────────
-var kafkaBootstrapServers = Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS") ?? "kafka:9092";
+var kafkaBootstrapServers = builder.Configuration.GetValue<string>("KAFKA_BOOTSTRAP_SERVERS")
+    ?? Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS")
+    ?? "kafka:9092";
 builder.Services.AddSingleton<IProducer<string, string>>(_ =>
 {
     var config = new ProducerConfig
@@ -111,6 +113,8 @@ builder.Services.AddSingleton<IProducer<string, string>>(_ =>
 var app = builder.Build();
 
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -154,20 +158,28 @@ app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
 })
 .RequireCors("Default");
 
-app.MapGet("/api/auth/logout", async (HttpContext ctx) =>
+app.MapGet("/api/auth/logout", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
 {
-    // Retrieve id_token from server-side session before signing out
+    var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:4200";
+    var postLogoutRedirectUri = $"{frontendUrl}/login";
+
     var authResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     var idToken = authResult?.Properties?.Items?.TryGetValue("id_token", out var t) == true ? t ?? "" : "";
 
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-    var logoutUrl = $"{keycloakLogoutUrl}"
-        + $"?client_id={Uri.EscapeDataString(keycloakClientId)}"
-        + $"&id_token_hint={Uri.EscapeDataString(idToken)}"
-        + $"&post_logout_redirect_uri={Uri.EscapeDataString("http://localhost:4200/login")}";
+    // Invalidate Keycloak session server-side (fire-and-forget) — avoids browser redirect
+    // to Keycloak and the post_logout_redirect_uri validation issue entirely.
+    if (!string.IsNullOrEmpty(idToken))
+    {
+        var client = httpClientFactory.CreateClient();
+        var keycloakLogoutUrl = $"{keycloakInternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/logout"
+            + $"?id_token_hint={Uri.EscapeDataString(idToken)}"
+            + $"&client_id={Uri.EscapeDataString(keycloakClientId)}";
+        _ = client.GetAsync(keycloakLogoutUrl);
+    }
 
-    ctx.Response.Redirect(logoutUrl);
+    ctx.Response.Redirect(postLogoutRedirectUri);
 })
 .RequireCors("Default");
 
@@ -378,6 +390,16 @@ app.MapReverseProxy(proxyApp =>
             {
                 ctx.Request.Headers.Authorization = $"Bearer {token}";
             }
+
+            // ON COLLE LE POST-IT !
+            var internalUserId = authResult.Principal?.FindFirstValue("user_id") 
+                               ?? authResult.Principal?.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+                               ?? authResult.Principal?.FindFirstValue("sub");
+
+            if (!string.IsNullOrEmpty(internalUserId))
+            {
+                ctx.Request.Headers["X-User-Id"] = internalUserId;
+            }
         }
         await next();
     });
@@ -522,6 +544,7 @@ async Task PublishRegistrationEvent(IProducer<string, string> producer, string e
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Failed to publish registration event: {ex.Message}");
+
     }
 }
 

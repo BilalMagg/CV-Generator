@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class SkillsController : ControllerBase
+public class SkillsController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly ILogger<SkillsController> _logger;
@@ -26,6 +26,8 @@ public class SkillsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= CurrentUserId;
+
         var skills = userId.HasValue
             ? await _db.Skills.Where(s => s.UserId == userId.Value).ToListAsync()
             : await _db.Skills.ToListAsync();
@@ -65,12 +67,13 @@ public class SkillsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSkillDto dto)
     {
+
         var skill = new Skill
         {
             Name = dto.Name,
             Level = dto.Level,
             YearsOfExperience = dto.YearsOfExperience,
-            UserId = dto.UserId,
+            UserId = RequiredUserId,
             Category = dto.Category
         };
 

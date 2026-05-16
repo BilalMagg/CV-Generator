@@ -41,7 +41,6 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
             Title = request.Title,
             Description = request.Description,
             Role = request.Role,
-            Achievements = request.Achievements,
             StartDate = DateTime.Parse(request.StartDate),
             EndDate = string.IsNullOrEmpty(request.EndDate) ? null : DateTime.Parse(request.EndDate),
             RepositoryUrl = request.RepositoryUrl,
@@ -67,7 +66,6 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         project.Title = request.Title;
         project.Description = request.Description;
         project.Role = request.Role;
-        project.Achievements = request.Achievements;
         project.StartDate = DateTime.Parse(request.StartDate);
         project.EndDate = string.IsNullOrEmpty(request.EndDate) ? null : DateTime.Parse(request.EndDate);
         project.RepositoryUrl = request.RepositoryUrl;
@@ -176,7 +174,6 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
             Description = request.Description,
             StartDate = DateTime.Parse(request.StartDate),
             EndDate = string.IsNullOrEmpty(request.EndDate) ? null : DateTime.Parse(request.EndDate),
-            ReferenceUrl = request.ReferenceUrl,
             Status = request.Status,
             UserId = Guid.Parse(request.UserId)
         };
@@ -198,7 +195,6 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         exp.Description = request.Description;
         exp.StartDate = DateTime.Parse(request.StartDate);
         exp.EndDate = string.IsNullOrEmpty(request.EndDate) ? null : DateTime.Parse(request.EndDate);
-        exp.ReferenceUrl = request.ReferenceUrl;
         exp.Status = request.Status;
 
         await _db.SaveChangesAsync();
@@ -222,7 +218,6 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         Title = p.Title,
         Description = p.Description ?? "",
         Role = p.Role ?? "",
-        Achievements = p.Achievements ?? "",
         StartDate = p.StartDate.ToString("O"),
         EndDate = p.EndDate?.ToString("O") ?? "",
         RepositoryUrl = p.RepositoryUrl ?? "",
@@ -250,7 +245,6 @@ public class ContentServiceImpl : CommonProtos.Content.ContentServiceGrpc.Conten
         Description = e.Description ?? "",
         StartDate = e.StartDate.ToString("O"),
         EndDate = e.EndDate?.ToString("O") ?? "",
-        ReferenceUrl = e.ReferenceUrl ?? "",
         Status = e.Status,
         UserId = e.UserId.ToString(),
 

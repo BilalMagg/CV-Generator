@@ -21,9 +21,6 @@ export class SidebarComponent {
 
   navItems: NavItem[] = [
     { label: 'Applications',  route: '/applications/dashboard',  icon: 'applications', exact: false },
-    { label: 'Experience',    route: '/experience',              icon: 'experience',   exact: true },
-    { label: 'Personal Info', route: '/personal-info',           icon: 'personal',     exact: true },
-    { label: 'Education',     route: '/education',               icon: 'education',    exact: true },
-    { label: 'Skills',        route: '/skills',                  icon: 'skills',       exact: true },
+    { label: 'My CV',         route: '/my-cv',                   icon: 'my-cv',        exact: false },
   ];
 }

@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class SocialLinksController : ControllerBase
+public class SocialLinksController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly KafkaProducerService _kafkaProducer;
@@ -24,6 +24,8 @@ public class SocialLinksController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= CurrentUserId;
+
         var links = userId.HasValue
             ? await _db.SocialLinks.Where(s => s.UserId == userId.Value).ToListAsync()
             : await _db.SocialLinks.ToListAsync();
@@ -58,7 +60,7 @@ public class SocialLinksController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSocialLinkDto dto)
     {
-        var link = new SocialLink { Platform = dto.Platform, Url = dto.Url, UserId = dto.UserId };
+        var link = new SocialLink { Platform = dto.Platform, Url = dto.Url, UserId = RequiredUserId };
         _db.SocialLinks.Add(link);
         await _db.SaveChangesAsync();
 

@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class EducationsController : ControllerBase
+public class EducationsController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly ILogger<EducationsController> _logger;
@@ -26,6 +26,8 @@ public class EducationsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= CurrentUserId;
+
         var educations = userId.HasValue
             ? await _db.Educations.Where(e => e.UserId == userId.Value).ToListAsync()
             : await _db.Educations.ToListAsync();
@@ -75,6 +77,7 @@ public class EducationsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEducationDto dto)
     {
+
         var edu = new Education
         {
             InstitutionName = dto.InstitutionName,
@@ -86,7 +89,7 @@ public class EducationsController : ControllerBase
             Status = dto.Status,
             City = dto.City,
             DiplomaFileUrl = dto.DiplomaFileUrl,
-            UserId = dto.UserId
+            UserId = RequiredUserId
         };
 
         _db.Educations.Add(edu);

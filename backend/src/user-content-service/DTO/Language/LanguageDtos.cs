@@ -12,8 +12,6 @@ namespace UserContentService.dto.Language
         [MaxLength(20)]
         public string Level { get; set; } = string.Empty;
 
-        [Required]
-        public Guid UserId { get; set; }
     }
 
     public class UpdateLanguageDto

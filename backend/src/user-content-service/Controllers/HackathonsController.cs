@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class HackathonsController : ControllerBase
+public class HackathonsController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly KafkaProducerService _kafkaProducer;
@@ -24,6 +24,8 @@ public class HackathonsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= CurrentUserId;
+
         var hackathons = userId.HasValue
             ? await _db.Hackathons.Where(h => h.UserId == userId.Value).ToListAsync()
             : await _db.Hackathons.ToListAsync();
@@ -74,7 +76,7 @@ public class HackathonsController : ControllerBase
             Description = dto.Description,
             Role = dto.Role,
             Result = dto.Result,
-            UserId = dto.UserId
+            UserId = RequiredUserId
         };
 
         _db.Hackathons.Add(h);

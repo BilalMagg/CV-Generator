@@ -8,8 +8,6 @@ namespace UserContentService.dto.Interest
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
 
-        [Required]
-        public Guid UserId { get; set; }
     }
 
     public class UpdateInterestDto

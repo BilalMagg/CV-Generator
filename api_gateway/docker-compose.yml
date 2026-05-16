@@ -69,6 +69,7 @@ services:
       - KEYCLOAK_ADMIN_USERNAME=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - FRONTEND_URL=http://localhost:4200
     networks:
       - cv-network
 
