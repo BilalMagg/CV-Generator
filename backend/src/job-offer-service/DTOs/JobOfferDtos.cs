@@ -100,7 +100,9 @@ public record SubmitJobOfferDto(
     string? SourceUrl
 );
 
-// 2. What the AI Agent sends back after parsing the text
+// 2. What the AI Agent sends back after parsing the text.
+//    The 3 optional fields at the bottom are only populated by the crawler pipeline.
+//    The existing /{id}/extracted HTTP endpoint ignores them (they default to null).
 public record ExtractedJobDto(
     string EnterpriseName,
     string? EnterpriseDescription,
@@ -116,12 +118,16 @@ public record ExtractedJobDto(
     string? LocationType,
     string? EducationRequirements,
     List<string> Benefits,
-    string? SourceUrl
+    string? SourceUrl,
+    // ── Crawler-only fields (null when posted from the manual flow) ──────────────
+    Guid? SearchId = null,
+    string? Source = null,
+    double? OverallConfidence = null
 );
 
 
 
-// 3. For partial updates by the user (if they want to manually edit a typo)
+// 4. For partial updates by the user (if they want to manually edit a typo)
 public record UpdateJobOfferDto(
     string? EnterpriseName,
     string? JobRole,
@@ -133,4 +139,42 @@ public record UpdateJobOfferDto(
 // 4. For updating the state of the job offer
 public record UpdateJobStatusDto(
     string Status
+);
+
+// ─── CRAWLER PIPELINE DTOs ────────────────────────────────────────────────
+
+/// <summary>SignalR push payload — one per job as it arrives.</summary>
+public record JobArrivedDto(
+    Guid JobId,
+    string? Title,
+    string? Company,
+    string? Location,
+    string? Source,
+    string? JobUrl,
+    double? Confidence
+);
+
+/// <summary>SignalR event fired when ProcessedCount >= ExpectedCount.</summary>
+public record SearchFinishedDto(
+    Guid SearchId,
+    int TotalProcessed
+);
+
+/// <summary>Trigger payload from the frontend to start a live crawl.</summary>
+public record TriggerCrawlDto(
+    Guid UserId,
+    string Keyword,
+    string Location,
+    int ResultLimit = 20
+);
+
+/// <summary>
+/// Returned immediately to the frontend after a crawl is triggered.
+/// The frontend uses SearchId to join the SignalR group and receive real-time updates.
+/// </summary>
+public record TriggerCrawlResponseDto(
+    Guid SearchId,
+    string Keyword,
+    string Location,
+    int ResultLimit
 );

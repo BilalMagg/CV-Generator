@@ -34,6 +34,7 @@ def ensure_topics_exist() -> None:
     topics_to_create = [
         NewTopic(settings.CONSUME_TOPIC, num_partitions=1, replication_factor=1),
         NewTopic(settings.PRODUCE_TOPIC, num_partitions=1, replication_factor=1),
+        NewTopic(settings.SUMMARY_TOPIC, num_partitions=1, replication_factor=1),
     ]
     result = admin.create_topics(topics_to_create)
     for topic, future in result.items():
