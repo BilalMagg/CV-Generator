@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
     CONSUME_TOPIC: str = "trigger-live-crawl"
     PRODUCE_TOPIC: str = "raw-job-urls"
+    SUMMARY_TOPIC: str = "crawl-summary"
     KAFKA_GROUP_ID: str = "job-crawler-group"
 
     # Scraping limits
