@@ -63,3 +63,5 @@ terraform.tfstate*
 venv/
 
 cv-generator.sln
+
+*.lscache
