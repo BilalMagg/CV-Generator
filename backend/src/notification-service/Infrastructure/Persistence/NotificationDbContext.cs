@@ -9,6 +9,7 @@ public class NotificationDbContext : DbContext
 
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Reminder> Reminders => Set<Reminder>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +29,12 @@ public class NotificationDbContext : DbContext
             entity.Property(e => e.ReminderOffset).HasConversion<string>();
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => new { e.ReminderAt, e.Status });
+        });
+
+        modelBuilder.Entity<NotificationPreference>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
         });
     }
 }

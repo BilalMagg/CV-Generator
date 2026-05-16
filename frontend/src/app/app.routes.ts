@@ -16,6 +16,8 @@ import { CalendarComponent } from './pages/applications/calendar/calendar.compon
 import { ResumesComponent } from './pages/applications/resumes/resumes.component';
 import { ApplicationDetailComponent } from './pages/applications/detail/application-detail.component';
 import { ApplicationCreateComponent } from './pages/applications/create/application-create.component';
+import { SettingsLayoutComponent } from './pages/settings/settings-layout.component';
+import { NotificationsComponent } from './pages/settings/notifications.component';
 // Reminders removed as they are now in Calendar
 
 export const routes: Routes = [
@@ -42,5 +44,14 @@ export const routes: Routes = [
   },
   { path: 'applications/new', component: ApplicationCreateComponent, canActivate: [authGuard] },
   { path: 'applications/:id', component: ApplicationDetailComponent, canActivate: [authGuard] },
+  {
+    path: 'settings',
+    component: SettingsLayoutComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: '', redirectTo: 'notifications', pathMatch: 'full' },
+      { path: 'notifications', component: NotificationsComponent },
+    ],
+  },
   { path: '**', redirectTo: '' },
 ];

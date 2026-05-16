@@ -12,4 +12,6 @@ public interface INotificationService
     Task SendWeeklyDigestAsync(Guid userId, string email, string firstName, int totalApplications, int responses, int cvsGenerated);
     Task<List<NotificationResultDto>> GetUserNotificationsAsync(Guid userId);
     Task MarkAsReadAsync(Guid notificationId);
+    Task<NotificationPreferenceDto> GetUserPreferencesAsync(Guid userId);
+    Task<NotificationPreferenceDto> UpdateUserPreferencesAsync(Guid userId, UpdateNotificationPreferenceDto dto);
 }
