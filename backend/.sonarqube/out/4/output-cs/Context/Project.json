@@ -1,7 +1,0 @@
-{
-  "language": "C#",
-  "targetFramework": "net10.0",
-  "assemblyName": "CvService",
-  "projectType": "Product",
-  "projectPath": "/app/src/cv-service/CvService.csproj"
-}

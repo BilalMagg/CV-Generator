@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class InterestsController : ControllerBase
+public class InterestsController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly KafkaProducerService _kafkaProducer;
@@ -24,6 +24,8 @@ public class InterestsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= CurrentUserId;
+
         var interests = userId.HasValue
             ? await _db.Interests.Where(i => i.UserId == userId.Value).ToListAsync()
             : await _db.Interests.ToListAsync();
@@ -51,7 +53,7 @@ public class InterestsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateInterestDto dto)
     {
-        var interest = new Interest { Name = dto.Name, UserId = dto.UserId };
+        var interest = new Interest { Name = dto.Name, UserId = RequiredUserId };
         _db.Interests.Add(interest);
         await _db.SaveChangesAsync();
 

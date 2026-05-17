@@ -4,6 +4,13 @@ consumer.py — Background Kafka consumer loop.
 Runs as an asyncio Task started in the FastAPI lifespan.
 Blocking confluent-kafka calls (poll, commit) are dispatched via
 asyncio.to_thread so they never block the event loop.
+
+Batch Counting Pattern
+──────────────────────
+After fan-out, publishes ONE summary message to 'crawl-summary':
+  { "search_id": str, "total_found": int }
+This lets the .NET SearchCache know the expected count so it can
+mark a search as Completed once ProcessedCount >= ExpectedCount.
 """
 from __future__ import annotations
 
@@ -45,7 +52,8 @@ async def consume_loop() -> None:
       1. Polls Kafka for a CrawlTriggerEvent.
       2. Dispatches the blocking JobSpy scrape to a thread.
       3. Fan-outs each scraped job as a RawJobPackageEvent to Kafka.
-      4. Commits the offset only after all messages are produced.
+      4. Publishes a crawl-summary message (Batch Counting Pattern).
+      5. Commits the offset only after all messages are produced.
     """
     logger.info("Consumer loop started — listening on topic '%s'", settings.CONSUME_TOPIC)
 
@@ -54,7 +62,6 @@ async def consume_loop() -> None:
         msg = await asyncio.to_thread(_poll_once)
 
         if msg is None:
-            # Timeout — no new message, keep looping
             continue
 
         if msg.error():
@@ -70,7 +77,6 @@ async def consume_loop() -> None:
             trigger = CrawlTriggerEvent.model_validate(raw)
         except Exception as exc:
             logger.error("Failed to parse trigger message: %s | raw=%s", exc, msg.value())
-            # Commit to skip malformed messages — they'd poison the queue
             await asyncio.to_thread(_commit)
             continue
 
@@ -83,7 +89,7 @@ async def consume_loop() -> None:
         )
 
         # ── 3. Scrape (blocking call dispatched to thread pool) ───────────────
-        results_per_site = max(1, trigger.result_limit // 2)  # Split between 2 sites
+        results_per_site = max(1, trigger.result_limit // 2)
         rows = await asyncio.to_thread(
             scrape_jobs_sync,
             trigger.keyword,
@@ -121,13 +127,27 @@ async def consume_loop() -> None:
 
         flush_producer()
         logger.info(
-            "Pushed %d jobs to Kafka topic '%s' | search_id=%s",
+            "Pushed %d jobs to topic '%s' | search_id=%s",
             published,
             settings.PRODUCE_TOPIC,
             trigger.search_id,
         )
 
-        # ── 5. Commit offset — only after all messages are produced ───────────
+        # ── 5. Batch Counting Pattern — publish crawl-summary ─────────────────
+        # The .NET SearchCache Kafka consumer reads this to set ExpectedCount
+        # and transition the search status from Pending → Extracting.
+        produce_message(settings.SUMMARY_TOPIC, {
+            "search_id": str(trigger.search_id),
+            "total_found": published,
+        })
+        flush_producer()
+        logger.info(
+            "Published crawl-summary | search_id=%s total_found=%d",
+            trigger.search_id,
+            published,
+        )
+
+        # ── 6. Commit offset — only after ALL messages are produced ───────────
         await asyncio.to_thread(_commit)
         logger.info("Offset committed | search_id=%s", trigger.search_id)
 

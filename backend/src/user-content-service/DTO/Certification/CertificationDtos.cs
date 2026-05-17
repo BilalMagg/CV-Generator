@@ -16,8 +16,6 @@ namespace UserContentService.dto.Certification
         [MaxLength(300)]
         public string? CredentialUrl { get; set; }
 
-        [Required]
-        public Guid UserId { get; set; }
     }
 
     public class UpdateCertificationDto

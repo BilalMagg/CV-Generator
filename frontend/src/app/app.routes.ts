@@ -3,10 +3,7 @@ import { authGuard } from './guards/auth.guard';
 import { HomeComponent } from './pages/home/home.component';
 import { LoginComponent } from './pages/login/login.component';
 import { RegisterComponent } from './pages/register/register.component';
-import { ExperienceComponent } from './pages/experience/experience.component';
-import { PersonalInfoComponent } from './pages/personal-info/personal-info.component';
-import { EducationComponent } from './pages/education/education.component';
-import { SkillsComponent } from './pages/skills/skills.component';
+
 import { ApplicationsLayoutComponent } from './pages/applications/applications-layout.component';
 import { DashboardComponent } from './pages/applications/dashboard/dashboard.component';
 import { ApplicationsListComponent } from './pages/applications/list/applications-list.component';
@@ -21,6 +18,11 @@ import { NotificationsComponent } from './pages/settings/notifications.component
 import { AboutComponent } from './pages/about/about.component';
 import { ContactPageComponent } from './pages/contact/contact-page.component';
 // Reminders removed as they are now in Calendar
+
+import { MyCvComponent } from './pages/my-cv/my-cv.component';
+import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
+import { EntityListComponent } from './pages/entity-list/entity-list.component';
+import { EntityFormComponent } from './shared/entity-form/entity-form.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -58,4 +60,17 @@ export const routes: Routes = [
     ],
   },
   { path: '**', redirectTo: '' },
+];
+    path: 'my-cv',
+    component: MyCvComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: '', redirectTo: 'cvprofiles', pathMatch: 'full' },
+      { path: ':entity', component: EntityListComponent },
+      { path: ':entity/add', component: EntityFormComponent },
+      { path: ':entity/:id', component: EntityDetailsComponent },
+      { path: ':entity/:id/edit', component: EntityFormComponent },
+    ],
+  },
+  { path: '**', redirectTo: '' }
 ];

@@ -20,7 +20,18 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy => policy.SetIsOriginAllowed(_ => true)
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials());
+});
+
 var app = builder.Build();
+
+app.UseCors("AllowAll");
 
 using (var scope = app.Services.CreateScope())
 {
@@ -43,6 +54,19 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseRouting();
+
+// Middleware to handle X-User-Id from Gateway
+app.Use(async (context, next) =>
+{
+    if (context.Request.Headers.TryGetValue("X-User-Id", out var userId))
+    {
+        // Store it in Items for easy access in controllers
+        context.Items["UserId"] = userId.ToString();
+    }
+    await next();
+});
+
+app.UseCors("AllowAll");
 app.MapControllers();
 app.MapGrpcService<UserContentService.Grpc.ContentServiceImpl>();
 

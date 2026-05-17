@@ -1,7 +1,14 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using JobOfferService.DTOs;
+using JobOfferService.Entities;
+using JobOfferService.Hubs;
+using JobOfferService.Repositories;
 using JobOfferService.Services;
 using JobOfferService.Validators;
 using CVGenerator.Shared;
@@ -18,6 +25,11 @@ public class JobOffersController : ControllerBase
     private readonly IValidator<SubmitJobOfferDto> _submitValidator;
     private readonly IValidator<ExtractedJobDto> _extractedValidator;
     private readonly IValidator<UpdateJobStatusDto> _statusValidator;
+    private readonly IHubContext<JobHub> _hub;
+    private readonly ISearchCacheRepository _searchCacheRepo;
+    private readonly IUserQuotaRepository _userQuotaRepo;
+    private readonly JobOfferDbContext _db;
+    private readonly IKafkaPublisher _kafka;
     private readonly ILogger<JobOffersController> _logger;
 
     public JobOffersController(
@@ -25,20 +37,23 @@ public class JobOffersController : ControllerBase
         IValidator<SubmitJobOfferDto> submitValidator,
         IValidator<ExtractedJobDto> extractedValidator,
         IValidator<UpdateJobStatusDto> statusValidator,
+        IHubContext<JobHub> hub,
+        ISearchCacheRepository searchCacheRepo,
+        IUserQuotaRepository userQuotaRepo,
+        JobOfferDbContext db,
+        IKafkaPublisher kafka,
         ILogger<JobOffersController> logger)
     {
         _service = service;
         _submitValidator = submitValidator;
         _extractedValidator = extractedValidator;
         _statusValidator = statusValidator;
+        _hub = hub;
+        _searchCacheRepo = searchCacheRepo;
+        _userQuotaRepo = userQuotaRepo;
+        _db = db;
+        _kafka = kafka;
         _logger = logger;
-    }
-
-    private string? GetUserId()
-    {
-        // Extracts the User ID from the JWT Token
-        return User.FindFirst("sub")?.Value 
-            ?? User.FindFirst("local_user_id")?.Value;
     }
 
     /// <summary>
@@ -187,5 +202,219 @@ public class JobOffersController : ControllerBase
 
         var stats = await _service.GetStatisticsAsync(userId);
         return Ok(ApiResponse<JobOfferStatisticsDto>.Ok(stats));
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // CRAWLER PIPELINE — POST /api/v1/job-offers/from-crawler
+    // Called by the Python job-extractor using ExtractedJobDto (same DTO, same validator).
+    // The 3 optional crawler fields (SearchId, Source, OverallConfidence) drive the
+    // upsert logic and SignalR push; they are ignored by the normal /{id}/extracted flow.
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Crawler ingestion endpoint: upsert-by-hash + SignalR push.
+    /// Normal ingestion (SearchId == null) saves the job silently.
+    /// </summary>
+    [HttpPost("from-crawler")]
+    [ProducesResponseType(typeof(ApiResponse<Guid>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<Guid>), 201)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    public async Task<IActionResult> IngestFromCrawler([FromBody] ExtractedJobDto dto)
+    {
+        var validation = await _extractedValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(ApiResponse<Guid>.Error(validation.Errors.First().ErrorMessage));
+
+        // ── 1. Deduplication hash ───────────────────────────────────────────────
+        var hash = ComputeJobHash(dto.JobRole, dto.EnterpriseName, dto.Location);
+
+        // ── 2. Upsert ───────────────────────────────────────────────────────────
+        var existing = await _db.JobOffers.FirstOrDefaultAsync(j => j.JobHash == hash);
+
+        Guid jobId;
+        JobOffer jobOffer;
+
+        if (existing is not null)
+        {
+            existing.LastSeenAt = DateTime.UtcNow;
+            existing.IsActive = true;
+            await _db.SaveChangesAsync();
+            jobId = existing.Id;
+            jobOffer = existing;
+            _logger.LogInformation("Upsert: refreshed job {Id} (hash={Hash})", jobId, hash);
+        }
+        else
+        {
+            jobOffer = new JobOffer
+            {
+                UserId = Guid.Empty,
+                JobHash = hash,
+                LastSeenAt = DateTime.UtcNow,
+                IsActive = true,
+                SourceUrl = dto.SourceUrl,
+                RawDescription = dto.RawDescription,
+                EnterpriseName = dto.EnterpriseName,
+                EnterpriseDescription = dto.EnterpriseDescription,
+                JobRole = dto.JobRole,
+                Location = dto.Location,
+                LocationType = dto.LocationType,
+                EmploymentType = dto.EmploymentType,
+                SeniorityLevel = dto.SeniorityLevel,
+                RequiredExperienceYears = dto.RequiredExperienceYears,
+                EducationRequirements = dto.EducationRequirements,
+                Status = JobOfferStatus.OPEN,
+            };
+
+            foreach (var s in dto.RequiredSkills)
+                jobOffer.Skills.Add(new JobSkill { Name = s, Type = SkillType.HARD_SKILL, IsMandatory = true });
+            foreach (var s in dto.SoftSkills)
+                jobOffer.Skills.Add(new JobSkill { Name = s, Type = SkillType.SOFT_SKILL, IsMandatory = false });
+            foreach (var r in dto.Responsibilities)
+                jobOffer.Responsibilities.Add(new JobResponsibility { Description = r });
+            foreach (var b in dto.Benefits)
+                jobOffer.Benefits.Add(new JobBenefit { Description = b });
+
+            _db.JobOffers.Add(jobOffer);
+            await _db.SaveChangesAsync();
+            jobId = jobOffer.Id;
+            _logger.LogInformation("Upsert: inserted new job {Id} (hash={Hash})", jobId, hash);
+        }
+
+        // ── 3. Batch Counting + SignalR (crawler pipeline only) ─────────────────
+        if (dto.SearchId.HasValue)
+        {
+            var searchId = dto.SearchId.Value;
+
+            await _searchCacheRepo.IncrementProcessedCountAsync(searchId);
+
+            await _hub.Clients.Group(searchId.ToString()).SendAsync("JobArrived", new JobArrivedDto(
+                JobId: jobId,
+                Title: jobOffer.JobRole,
+                Company: jobOffer.EnterpriseName,
+                Location: jobOffer.Location,
+                Source: dto.Source,
+                JobUrl: jobOffer.SourceUrl,
+                Confidence: dto.OverallConfidence
+            ));
+
+            var cache = await _searchCacheRepo.GetBySearchIdAsync(searchId);
+            if (cache is not null && cache.ExpectedCount > 0 && cache.ProcessedCount >= cache.ExpectedCount)
+            {
+                cache.Status = SearchStatus.Completed;
+                await _searchCacheRepo.UpdateAsync(cache);
+
+                await _hub.Clients.Group(searchId.ToString()).SendAsync("SearchFinished",
+                    new SearchFinishedDto(SearchId: searchId, TotalProcessed: cache.ProcessedCount));
+
+                _logger.LogInformation(
+                    "Search {SearchId} completed — {N} jobs processed.", searchId, cache.ProcessedCount);
+            }
+
+            return Ok(ApiResponse<Guid>.Ok(jobId));
+        }
+
+        return Created($"/api/v1/job-offers/{jobId}", ApiResponse<Guid>.Created(jobId));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TRIGGER CRAWL  —  POST /api/v1/job-offers/crawl
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Starts a live job crawl for the given keyword/location.
+    ///
+    /// Guards (in order):
+    ///   1. Input validation — keyword and location required.
+    ///   2. User quota      — one crawl per user per day (UTC).
+    ///   3. Cache hit       — same keyword + location already crawled today:
+    ///                        returns the existing SearchId (no new crawl).
+    /// If all guards pass:
+    ///   4. Creates a SearchCache row (Status=Pending).
+    ///   5. Publishes trigger to 'trigger-live-crawl' Kafka topic.
+    ///   6. Marks quota used for the user.
+    ///   7. Returns SearchId — frontend joins the SignalR group with this.
+    /// </summary>
+    [HttpPost("crawl")]
+    [ProducesResponseType(typeof(ApiResponse<TriggerCrawlResponseDto>), 200)]   // cache hit
+    [ProducesResponseType(typeof(ApiResponse<TriggerCrawlResponseDto>), 202)]   // new crawl
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 429)]
+    public async Task<IActionResult> TriggerCrawl([FromBody] TriggerCrawlDto dto)
+    {
+        // ── Guard 1: Input validation ────────────────────────────────────────────────
+        if (string.IsNullOrWhiteSpace(dto.Keyword))
+            return BadRequest(ApiResponse<object>.Error("Keyword is required."));
+        if (string.IsNullOrWhiteSpace(dto.Location))
+            return BadRequest(ApiResponse<object>.Error("Location is required."));
+
+        // ── Guard 2: Daily user quota ───────────────────────────────────────────────
+        if (await _userQuotaRepo.HasCrawledTodayAsync(dto.UserId))
+        {
+            _logger.LogWarning("Quota exceeded | UserId={UserId}", dto.UserId);
+            return StatusCode(429, ApiResponse<object>.Error(
+                "Daily crawl limit reached. You can trigger one crawl per day."));
+        }
+
+        // ── Guard 3: Cache hit — same search already done today ────────────────
+        var existing = await _searchCacheRepo.GetTodayCacheAsync(dto.Keyword, dto.Location);
+        if (existing is not null)
+        {
+            _logger.LogInformation(
+                "Cache hit | SearchId={SearchId} Keyword={Keyword} Location={Location} Status={Status}",
+                existing.SearchId, existing.Keyword, existing.Location, existing.Status);
+
+            return Ok(ApiResponse<TriggerCrawlResponseDto>.Ok(new TriggerCrawlResponseDto(
+                SearchId: existing.SearchId,
+                Keyword: existing.Keyword,
+                Location: existing.Location ?? dto.Location,
+                ResultLimit: dto.ResultLimit
+            )));
+        }
+
+        // ── All guards passed — start a new crawl ────────────────────────────────
+        var searchId = Guid.NewGuid();
+
+        // 4. Pre-create SearchCache so the Kafka summary consumer can update it
+        await _searchCacheRepo.CreateAsync(new JobOfferService.Entities.SearchCache
+        {
+            SearchId = searchId,
+            Keyword  = dto.Keyword,
+            Location = dto.Location,
+            Status   = JobOfferService.Entities.SearchStatus.Pending,
+        });
+
+        // 5. Fire the Kafka trigger
+        await _kafka.PublishAsync("trigger-live-crawl", new
+        {
+            search_id    = searchId,
+            keyword      = dto.Keyword,
+            location     = dto.Location,
+            result_limit = dto.ResultLimit,
+        });
+
+        // 6. Mark quota used for today
+        await _userQuotaRepo.UpsertAsync(dto.UserId);
+
+        _logger.LogInformation(
+            "Crawl triggered | SearchId={SearchId} Keyword={Keyword} Location={Location} Limit={Limit}",
+            searchId, dto.Keyword, dto.Location, dto.ResultLimit);
+
+        // 7. Return SearchId — frontend joins the SignalR group with this
+        return Accepted(ApiResponse<TriggerCrawlResponseDto>.Ok(new TriggerCrawlResponseDto(
+            SearchId: searchId,
+            Keyword: dto.Keyword,
+            Location: dto.Location,
+            ResultLimit: dto.ResultLimit
+        )));
+    }
+
+    // ── Job Hash Generator ────────────────────────────────────────────────────
+    private static string ComputeJobHash(string? role, string? company, string? location)
+    {
+        var raw = $"{role}_{company}_{location}"
+            .ToLowerInvariant()
+            .Replace(" ", "");
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
+        return Convert.ToHexString(bytes)[..32];
     }
 }

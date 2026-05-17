@@ -175,10 +175,6 @@ namespace UserContentService.Migrations
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("ReferenceUrl")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -282,10 +278,6 @@ namespace UserContentService.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Achievements")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("DemoUrl")
                         .HasMaxLength(300)

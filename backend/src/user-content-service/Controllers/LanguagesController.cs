@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class LanguagesController : ControllerBase
+public class LanguagesController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly KafkaProducerService _kafkaProducer;
@@ -24,6 +24,8 @@ public class LanguagesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= CurrentUserId;
+
         var languages = userId.HasValue
             ? await _db.Languages.Where(l => l.UserId == userId.Value).ToListAsync()
             : await _db.Languages.ToListAsync();
@@ -58,7 +60,7 @@ public class LanguagesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateLanguageDto dto)
     {
-        var language = new Language { Name = dto.Name, Level = dto.Level, UserId = dto.UserId };
+        var language = new Language { Name = dto.Name, Level = dto.Level, UserId = RequiredUserId };
         _db.Languages.Add(language);
         await _db.SaveChangesAsync();
 
