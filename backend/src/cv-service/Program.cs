@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using CvService;
 using CvService.DTOs;
+using CvService.Grpc;
 using CvService.Services;
 using CvService.Validators;
 
@@ -35,6 +36,9 @@ builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+//gRPC
+builder.Services.AddGrpc();
 
 // Auth (JWT from gateway/keycloak)
 builder.Services.AddAuthentication("Bearer")

@@ -1,105 +1,120 @@
+using System.Text.Json;
 using CommonProtos.CV;
-using Grpc.Core;
-using CvService.DTOs;
-using CvService.Services;
-using Microsoft.EntityFrameworkCore;
 using CvService.Entities;
+using Grpc.Core;
+using Microsoft.EntityFrameworkCore;
 
 namespace CvService.Grpc;
 
-public class CvServieImp : CVServiceGrpc.CVServiceGrpcBase
+public class CvServiceImp : CVServiceGrpc.CVServiceGrpcBase
 {
-  private readonly CvDbContext _db;
-  private readonly ILogger<CvServiceImp> _logger;
-  public CvServieImp(CvDbContext db, ILogger<CvServiceImp> logger)
-  {
-    _db = db;
-    _logger = logger;
-  }
+    private readonly CvDbContext _db;
+    private readonly ILogger<CvServiceImp> _logger;
 
-  public override async Task<CVProto> GetCVById(GetCVByIdRequest request, ServerCallContext context)
-  {
-    var cv = await _db.Cvs.FindAsync(Guid.Parse(request.Id));
-    if(cv == null)
+    public CvServiceImp(CvDbContext db, ILogger<CvServiceImp> logger)
     {
-      throw new RpcException(new Status(StatusCode.NotFound, "CV not found"));
+        _db = db;
+        _logger = logger;
     }
-    return ToProto(cv);
-   }
-   public override async Task<List<CVProto>> GetCVsByUserId(GetCVsByUserIdRequest request, ServerCallContext context)
-  {
-    var cvs = await _db.Cvs
-                  .Where(target => target.UserId == request.userId)
-                  .ToListAsync();
-    
-    if (cvs == null)
-    {
-      throw new RpcException(new Status(StatusCode.NotFound, $"No CV found for this user with id: {request.userId}"));
-    }
-    return TOProto(cvs);
-  }
-  public override async Task<List<CVProto>> GetCvsByTemplateId(GetCVsByTemplateIdRequest request, ServerCallContext context)
-  {
-    var cvs = await _db.Cvs
-                  .Where(target => target.TemplateId ==request.TemplateId)
-                  .ToListAsync();
-    if (cvs == null)
-    {
-      throw new RpcException(new Status(StatusCode.NotFound, $"No CV found for this template with id: {request.TemplateId}"));
-    }
-    return ToProto(cvs);
-  }
-  public override async Task<CVProto> CreateCV(CreateCVRequest request, ServerCallContext context)
-  {
-    var cv = new Cv(
-      Title = request.Title,
-      TemplateId = request.TemplateId,
-      UserId =  request.UserId,
-      Projects = request.Projects,
-      Skills = request.Skills,
-      Experiences = request.Experiences
-    );
-    _db.Cvs.Add(cv);
-    await _db.SaveChangesAsync();
 
-    _logger.LogInformation($"Created CV with id: {cv.Id} via gRPC");
-    return ToProto(cv);
-  }
-  public override async Task<CVProto> UpdateCV(UpdateCVRequest request, ServerCallContext context)
-  {
-    var cv = await _db.Cvs.FindAsync(target => target.Id ==request.Id);
-    if (cv == null)
+    public override async Task<CVProto> GetCVById(GetCVByIdRequest request, ServerCallContext context)
     {
-      throw new RpcException(new Status(StatusCode.NotFound, $"CV with id {request.Id} is not found"));
+        var cv = await _db.Cvs.FindAsync(Guid.Parse(request.Id));
+        if (cv == null)
+            throw new RpcException(new Status(StatusCode.NotFound, "CV not found"));
+
+        return ToProto(cv);
     }
-    cv.Title = request.Title;
-    cv.TemplateId =request.TemplateId;
-    cv.userId = request.UserId;
-    cv.Projects = request.Projects;
-    cv.Skills = request.Skills;
-    cv.Experiences =request.Experiences;
-    
-    await _db.SaveChangesAsync();
-    return ToProto(cv);
-  }
-  public override async Task<CVProto> DeleteCV(DeleteCVRequest request, ServerCallContext context)
-  {
-    var cv = await _db.Cvs.FindAsync(target => target.Id ==request.Id);
-    if (cv == null)
+
+    public override async Task GetCVByUserId(GetCVByUserIdRequest request, IServerStreamWriter<CVProto> responseStream, ServerCallContext context)
     {
-      throw new RpcException(new Status(StatusCode.NotFound, $"CV with id {request.Id} is not found"));
+        var cvs = await _db.Cvs
+            .Where(c => c.UserId == Guid.Parse(request.UserId))
+            .ToListAsync();
+
+        foreach (var cv in cvs)
+            await responseStream.WriteAsync(ToProto(cv));
     }
-    _db.Cvs.Remove(cv);
-    await _db.SaveChangesAsync();
-    return new DeleteCVResponse(cv);
-  }
 
-  public static CVProto ToProto(Cv cv)=>new(
+    public override async Task GetCVByTemplateID(GetCVByTemplateIdRequest request, IServerStreamWriter<CVProto> responseStream, ServerCallContext context)
+    {
+        var cvs = await _db.Cvs
+            .Where(c => c.TemplateId == request.Id)
+            .ToListAsync();
 
-    
-  );
-  
+        foreach (var cv in cvs)
+            await responseStream.WriteAsync(ToProto(cv));
+    }
+
+    public override async Task<CVProto> CreateCV(CreateCVRequest request, ServerCallContext context)
+    {
+        var cv = new Cv
+        {
+            Id = Guid.NewGuid(),
+            Title = request.Title,
+            TemplateId = request.TemplateId,
+            UserId = Guid.Parse(request.UserId),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+
+        var initialVersion = new CvVersion
+        {
+            Id = Guid.NewGuid(),
+            CvId = cv.Id,
+            VersionNumber = 1,
+            Label = "v1",
+            CreatedAt = DateTime.UtcNow,
+            ContentJson = JsonSerializer.Serialize(new
+            {
+                projects = request.Projects,
+                skills = request.Skills,
+                experiences = request.Experiences
+            })
+        };
+
+        _db.Cvs.Add(cv);
+        _db.CvVersions.Add(initialVersion);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Created CV {Id} via gRPC", cv.Id);
+        return ToProto(cv);
+    }
+
+    public override async Task<CVProto> UpdateCV(UpdateCVRequest request, ServerCallContext context)
+    {
+        var cv = await _db.Cvs.FindAsync(Guid.Parse(request.Id));
+        if (cv == null)
+            throw new RpcException(new Status(StatusCode.NotFound, $"CV with id {request.Id} not found"));
+
+        cv.Title = request.Title;
+        cv.TemplateId = request.TemplateId;
+        cv.UserId = Guid.Parse(request.UserId);
+        cv.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return ToProto(cv);
+    }
+
+    public override async Task<DeleteCVResponse> DeleteCV(DeleteCVRequest request, ServerCallContext context)
+    {
+        var cv = await _db.Cvs.FindAsync(Guid.Parse(request.Id));
+        if (cv == null)
+            throw new RpcException(new Status(StatusCode.NotFound, $"CV with id {request.Id} not found"));
+
+        _db.Cvs.Remove(cv);
+        await _db.SaveChangesAsync();
+        return new DeleteCVResponse { Success = true };
+    }
+
+    private static CVProto ToProto(Cv cv) => new()
+    {
+        Id = cv.Id.ToString(),
+        Title = cv.Title,
+        TemplateId = cv.TemplateId,
+        UserId = cv.UserId.ToString(),
+        CreatedAt = cv.CreatedAt.ToString("O"),
+        ModifiedAt = cv.UpdatedAt.ToString("O")
+    };
 }
-
-
-
