@@ -15,11 +15,17 @@ public class CvDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // TODO: Configure entity relationships, indexes, and constraints
-        // modelBuilder.Entity<Cv>(entity =>
-        // {
-        //     entity.HasIndex(e => e.UserId);
-        //     entity.HasMany(e => e.Versions).WithOne(e => e.Cv).HasForeignKey(e => e.CvId);
-        // });
+        // Configuration of entity relationships, indexes, and constraints
+        modelBuilder.Entity<Cv>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasMany(e => e.Versions).WithOne(e => e.Cv).HasForeignKey(e => e.CvId);
+        });
+
+        modelBuilder.Entity<CvVersion>(entity =>
+        {
+            entity.HasIndex(e => e.CvId);
+            entity.HasMany(e => e.Sections).WithOne(e => e.Version).HasForeignKey(e => e.VersionId);
+        });
     }
 }
