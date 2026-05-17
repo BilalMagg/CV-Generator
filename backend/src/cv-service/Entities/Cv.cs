@@ -10,7 +10,8 @@ public class Cv
     public string TemplateId { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    public bool IsActive { get; set; }
+    
+    // public bool IsActive { get; set; }
 
     public List<CvVersion> Versions { get; set; } = new();
 }
