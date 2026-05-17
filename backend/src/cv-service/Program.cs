@@ -5,6 +5,7 @@ using CvService.DTOs;
 using CvService.Grpc;
 using CvService.Services;
 using CvService.Validators;
+using CommonProtos.CV;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,5 +85,6 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGrpcService<CvServiceImp>();
 
 app.Run();

@@ -26,7 +26,7 @@ public class CvServiceImp : CVServiceGrpc.CVServiceGrpcBase
         return ToProto(cv);
     }
 
-    public override async Task GetCVByUserId(GetCVByUserIdRequest request, IServerStreamWriter<CVProto> responseStream, ServerCallContext context)
+    public override async Task GetCVsByUserId(GetCVsByUserIdRequest request, IServerStreamWriter<CVProto> responseStream, ServerCallContext context)
     {
         var cvs = await _db.Cvs
             .Where(c => c.UserId == Guid.Parse(request.UserId))
@@ -36,7 +36,7 @@ public class CvServiceImp : CVServiceGrpc.CVServiceGrpcBase
             await responseStream.WriteAsync(ToProto(cv));
     }
 
-    public override async Task GetCVByTemplateID(GetCVByTemplateIdRequest request, IServerStreamWriter<CVProto> responseStream, ServerCallContext context)
+    public override async Task GetCVsByTemplateID(GetCVsByTemplateIdRequest request, IServerStreamWriter<CVProto> responseStream, ServerCallContext context)
     {
         var cvs = await _db.Cvs
             .Where(c => c.TemplateId == request.Id)
