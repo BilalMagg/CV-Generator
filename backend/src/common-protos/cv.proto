@@ -13,9 +13,9 @@ message CVProto{
 
 message GetCVByIdRequest{string id = 1;}
 
-message GetCVByUserIdRequest {string user_id = 1;}
+message GetCVsByUserIdRequest {string user_id = 1;}
 
-message GetCVByTemplateIdRequest {string id = 1;} // used in the analytics to get what templates are most used
+message GetCVsByTemplateIdRequest {string id = 1;} // used in the analytics to get what templates are most used
 
 message CreateCVRequest {
   string title = 1;
@@ -40,8 +40,8 @@ message DeleteCVResponse {bool success = 1;}
 
 service CVServiceGrpc{
   rpc GetCVById(GetCVByIdRequest) returns (CVProto);
-  rpc GetCVByUserId(GetCVByUserIdRequest) returns (stream CVProto);
-  rpc GetCVByTemplateID(GetCVByTemplateIdRequest) returns (stream CVProto);
+  rpc GetCVsByUserId(GetCVsByUserIdRequest) returns (stream CVProto);
+  rpc GetCVsByTemplateID(GetCVsByTemplateIdRequest) returns (stream CVProto);
   rpc CreateCV(CreateCVRequest) returns (CVProto);
   rpc UpdateCV(UpdateCVRequest) returns (CVProto);
   rpc DeleteCV(DeleteCVRequest) returns (DeleteCVResponse);

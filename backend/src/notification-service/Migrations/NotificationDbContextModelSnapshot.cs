@@ -74,6 +74,100 @@ namespace notification_service.Migrations
 
                     b.ToTable("Notifications");
                 });
+
+            modelBuilder.Entity("NotificationService.Domain.Entities.NotificationPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ApplicationUpdates")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CvUpdates")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("DefaultReminderDaysBefore")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("EnableEmail")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("EnableInApp")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Reminders")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("WeeklyDigest")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("NotificationPreferences");
+                });
+
+            modelBuilder.Entity("NotificationService.Domain.Entities.Reminder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EventDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ReminderAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReminderOffset")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserEmail")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserFirstName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ReminderAt", "Status");
+
+                    b.ToTable("Reminders");
+                });
 #pragma warning restore 612, 618
         }
     }

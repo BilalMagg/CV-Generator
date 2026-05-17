@@ -74,45 +74,57 @@ public class KafkaConsumerService : BackgroundService
         {
             case KafkaTopics.UserCreated:
                 await notificationSvc.SendWelcomeAsync(
-                    Guid.Parse(doc.GetProperty("userId").GetString()!),
-                    doc.GetProperty("email").GetString()!,
-                    doc.GetProperty("firstName").GetString()!
+                    Guid.Parse(GetStringPropertyCaseInsensitive(doc, "userId")),
+                    GetStringPropertyCaseInsensitive(doc, "email"),
+                    GetStringPropertyCaseInsensitive(doc, "firstName")
                 );
                 break;
 
             case KafkaTopics.CvGenerated:
                 await notificationSvc.SendCvGeneratedAsync(
-                    Guid.Parse(doc.GetProperty("userId").GetString()!),
-                    doc.GetProperty("email").GetString()!,
-                    doc.GetProperty("firstName").GetString()!,
-                    doc.GetProperty("downloadUrl").GetString()!
+                    Guid.Parse(GetStringPropertyCaseInsensitive(doc, "userId")),
+                    GetStringPropertyCaseInsensitive(doc, "email"),
+                    GetStringPropertyCaseInsensitive(doc, "firstName"),
+                    GetStringPropertyCaseInsensitive(doc, "downloadUrl")
                 );
                 break;
 
             case KafkaTopics.ApplicationCreated:
                 await notificationSvc.SendApplicationCreatedAsync(
-                    Guid.Parse(doc.GetProperty("userId").GetString()!),
-                    doc.GetProperty("email").GetString()!,
-                    doc.GetProperty("firstName").GetString()!,
-                    doc.GetProperty("company").GetString()!,
-                    doc.GetProperty("position").GetString()!
+                    Guid.Parse(GetStringPropertyCaseInsensitive(doc, "userId")),
+                    GetStringPropertyCaseInsensitive(doc, "email"),
+                    GetStringPropertyCaseInsensitive(doc, "firstName"),
+                    GetStringPropertyCaseInsensitive(doc, "company"),
+                    GetStringPropertyCaseInsensitive(doc, "position")
                 );
                 break;
 
             case KafkaTopics.ApplicationStatusChanged:
                 await notificationSvc.SendApplicationStatusChangedAsync(
-                    Guid.Parse(doc.GetProperty("userId").GetString()!),
-                    doc.GetProperty("email").GetString()!,
-                    doc.GetProperty("firstName").GetString()!,
-                    doc.GetProperty("company").GetString()!,
-                    doc.GetProperty("position").GetString()!,
-                    doc.GetProperty("newStatus").GetString()!
+                    Guid.Parse(GetStringPropertyCaseInsensitive(doc, "userId")),
+                    GetStringPropertyCaseInsensitive(doc, "email"),
+                    GetStringPropertyCaseInsensitive(doc, "firstName"),
+                    GetStringPropertyCaseInsensitive(doc, "company"),
+                    GetStringPropertyCaseInsensitive(doc, "position"),
+                    GetStringPropertyCaseInsensitive(doc, "newStatus")
                 );
                 break;
 
             default:
-                _logger.LogWarning("Unhandled Kafka topic: {Topic}", topic);
+                _logger.LogWarning("Unhandled topic: {Topic}", topic);
                 break;
         }
+    }
+
+    private static string GetStringPropertyCaseInsensitive(JsonElement element, string propertyName)
+    {
+        foreach (var prop in element.EnumerateObject())
+        {
+            if (string.Equals(prop.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                return prop.Value.GetString() ?? string.Empty;
+            }
+        }
+        throw new KeyNotFoundException($"Property '{propertyName}' not found in JSON (case-insensitive search).");
     }
 }

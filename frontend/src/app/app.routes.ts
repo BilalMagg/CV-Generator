@@ -13,6 +13,11 @@ import { CalendarComponent } from './pages/applications/calendar/calendar.compon
 import { ResumesComponent } from './pages/applications/resumes/resumes.component';
 import { ApplicationDetailComponent } from './pages/applications/detail/application-detail.component';
 import { ApplicationCreateComponent } from './pages/applications/create/application-create.component';
+import { SettingsLayoutComponent } from './pages/settings/settings-layout.component';
+import { NotificationsComponent } from './pages/settings/notifications.component';
+import { AboutComponent } from './pages/about/about.component';
+import { ContactPageComponent } from './pages/contact/contact-page.component';
+// Reminders removed as they are now in Calendar
 
 import { MyCvComponent } from './pages/my-cv/my-cv.component';
 import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
@@ -23,6 +28,12 @@ export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'about', component: AboutComponent },
+  { path: 'contact', component: ContactPageComponent },
+  { path: 'experience', component: ExperienceComponent, canActivate: [authGuard] },
+  { path: 'personal-info', component: PersonalInfoComponent, canActivate: [authGuard] },
+  { path: 'education', component: EducationComponent, canActivate: [authGuard] },
+  { path: 'skills', component: SkillsComponent, canActivate: [authGuard] },
   {
     path: 'applications',
     component: ApplicationsLayoutComponent,
@@ -40,6 +51,16 @@ export const routes: Routes = [
   { path: 'applications/new', component: ApplicationCreateComponent, canActivate: [authGuard] },
   { path: 'applications/:id', component: ApplicationDetailComponent, canActivate: [authGuard] },
   {
+    path: 'settings',
+    component: SettingsLayoutComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: '', redirectTo: 'notifications', pathMatch: 'full' },
+      { path: 'notifications', component: NotificationsComponent },
+    ],
+  },
+  { path: '**', redirectTo: '' },
+];
     path: 'my-cv',
     component: MyCvComponent,
     canActivate: [authGuard],

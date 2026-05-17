@@ -1,0 +1,20 @@
+<nav id="navbar" [class.scrolled]="navScrolled" [class.mobile-open]="mobileOpen">
+  <a routerLink="/" class="nav-logo">
+    <div class="nav-logo-icon">CV</div>
+    CV Generator
+  </a>
+
+  <button class="hamburger" (click)="toggleMobile()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+
+  <ul class="nav-links">
+    <li><a routerLink="/about" (click)="mobileOpen = false">About Us</a></li>
+    <li><a routerLink="/contact" (click)="mobileOpen = false">Contact</a></li>
+  </ul>
+
+  <div class="nav-right">
+    <button class="btn-signin" routerLink="/login">Sign in</button>
+    <button class="btn-cta" routerLink="/register">Register</button>
+  </div>
+</nav>
