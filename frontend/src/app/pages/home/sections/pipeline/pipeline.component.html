@@ -1,0 +1,58 @@
+<div class="pipeline-outer" id="pipeline">
+  <div class="pipeline-section reveal">
+    <div class="pipeline-header">
+      <div>
+        <p class="section-kicker">Under the hood</p>
+        <h2 class="section-title" style="color:white;">
+          The AI agent<br><span style="color:#A47DAB;">pipeline.</span>
+        </h2>
+        <p class="section-sub" style="color:rgba(255,255,255,0.6);">
+          Five specialized agents work in sequence — each responsible for one
+          stage of the CV generation workflow.
+        </p>
+      </div>
+      <div class="pipeline-cards">
+        <div class="pipeline-status-card">
+          <div class="pipeline-status-label">Currently processing</div>
+          <div class="pipeline-status-title">Senior Frontend Engineer &#64; Stripe</div>
+          <div class="pipeline-status-sub">Agent 3/5 — Filling template...</div>
+          <div class="pipeline-progress-track">
+            <div class="pipeline-progress-fill"></div>
+          </div>
+        </div>
+        <div class="pipeline-delivered-card">
+          <div class="pipeline-delivered-label">Last delivered</div>
+          <div class="pipeline-delivered-title">CV sent to adam&#64;email.com ✓</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-steps">
+      <div class="p-step" [class.active]="isPipelineStepActive(0)">
+        <div class="p-step-num">1</div>
+        <div class="p-step-name">Extract</div>
+        <div class="p-step-desc">Parse job requirements</div>
+      </div>
+      <div class="p-step" [class.active]="isPipelineStepActive(1)">
+        <div class="p-step-num">2</div>
+        <div class="p-step-name">Search</div>
+        <div class="p-step-desc">RAG profile match</div>
+      </div>
+      <div class="p-step" [class.active]="isPipelineStepActive(2)">
+        <div class="p-step-num">3</div>
+        <div class="p-step-name">Template</div>
+        <div class="p-step-desc">Fill CV sections</div>
+      </div>
+      <div class="p-step" [class.active]="isPipelineStepActive(3)">
+        <div class="p-step-num">4</div>
+        <div class="p-step-name">Optimize</div>
+        <div class="p-step-desc">ATS formatting</div>
+      </div>
+      <div class="p-step" [class.active]="isPipelineStepActive(4)">
+        <div class="p-step-num">5</div>
+        <div class="p-step-name">Deliver</div>
+        <div class="p-step-desc">Email + storage</div>
+      </div>
+    </div>
+  </div>
+</div>

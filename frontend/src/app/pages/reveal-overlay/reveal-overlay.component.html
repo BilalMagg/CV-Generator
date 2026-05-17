@@ -1,0 +1,23 @@
+@if (visible) {
+  <div id="reveal-overlay" [class.splitting]="splitting">
+    <div class="curtain curtain-left" #curtainLeft></div>
+    <div class="curtain curtain-right" #curtainRight></div>
+  </div>
+
+  <div id="reveal-center" [class.fading]="fading">
+    <div class="reveal-corner tl"></div>
+    <div class="reveal-corner tr"></div>
+    <div class="reveal-corner bl"></div>
+    <div class="reveal-corner br"></div>
+
+    <div class="reveal-logo-wrap">
+      <div class="reveal-icon">CV</div>
+      <div class="reveal-brand-name">CV Generator</div>
+      <div class="reveal-tagline">{{ tagline }}</div>
+    </div>
+
+    <div class="reveal-loader">
+      <div class="reveal-loader-fill"></div>
+    </div>
+  </div>
+}
