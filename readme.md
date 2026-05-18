@@ -14,58 +14,77 @@ A full-stack, AI-powered platform for generating tailored CVs, tracking job appl
 
 ## Architecture
 
-```
-┌──────────────┐     ┌───────────────────────────────────────────────────┐
-│   Browser    │────▶│              Nginx (Angular SPA)                  │
-│  :4200       │     │           serves static + proxies /api            │
-└──────────────┘     └───────────────────────┬───────────────────────────┘
-                                             │
-                                             │ /api/*
-                                             ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                     API Gateway (YARP Reverse Proxy)                    │
-│                     :8080 · Keycloak Auth · Kafka Publisher            │
-│   Routes: /api/users/* → user-service                                  │
-│           /api/user-content/* → user-content-service                   │
-│           /api/applications/* → application-service                    │
-│           /api/workflows/* → workflow-service                          │
-│           /api/job-offers/* → job-offer-service                        │
-│           /api/notifications/* → notification-service                  │
-│           /api/reminders/* → notification-service                      │
-│           /api/cv/* → cv-service                                       │
-└───────┬───────────────────┬──────────────┬──────────────────┬──────────┘
-        │                   │              │                  │
-        ▼                   ▼              ▼                  ▼
-┌──────────────┐  ┌────────────────┐  ┌──────────┐  ┌───────────────┐
-│  user-service │  │user-content-svc│  │ cv-service│  │ workflow-svc  │
-│  :8082        │  │:8083           │  │ :8088     │  │ :8084         │
-│  gRPC :50001  │  │gRPC            │  │ gRPC      │  │ gRPC          │
-│  PostgreSQL   │  │PostgreSQL      │  │PostgreSQL │  │PostgreSQL     │
-└──────┬───────┘  └────────────────┘  └──────────┘  └───────┬───────┘
-       │                                                     │
-       │ gRPC                                                │ HTTP to AI agents
-       ▼                                                     ▼
-┌──────────────────┐                          ┌───────────────────────────┐
-│application-service│                          │   AI Agent Pipeline       │
-│ :8085             │                          │                           │
-│ PostgreSQL        │                          │  JobExtractor   :8001    │
-│ gRPC client → user│                          │  SearchAgent    :8002    │
-└──────────────────┘                          │  TemplateAgent  :8003    │
-                                              │  CvOptimizer    :8004    │
-┌──────────────────┐                          │  ContactAgent   :8005    │
-│  job-offer-svc   │◀─── Kafka ──────────────▶│  JobCrawler     :8006    │
-│  :8086            │                          └───────────────────────────┘
-│  PostgreSQL       │
-│  SignalR Hub      │     ┌──────────────────────────────────────────┐
-└──────────────────┘     │              Infrastructure               │
-                         │  Kafka :9092 · Schema Registry :8081      │
-┌──────────────────┐     │  MinIO :9000/9001 · Keycloak :9090        │
-│ notification-svc  │     │  PostgreSQL × 8 (5433–5439)              │
-│  :8087            │     └──────────────────────────────────────────┘
-│  PostgreSQL       │
-│  Hangfire Scheduler│
-│  MailKit · Scriban │
-└──────────────────┘
+```mermaid
+flowchart TB
+    subgraph Frontend["Frontend"]
+        Browser["Browser :4200"]
+        Nginx["Nginx (Angular SPA)
+              serves static + proxies /api"]
+    end
+
+    subgraph Gateway["API Gateway"]
+        APIGateway["YARP Reverse Proxy :8080
+                    Keycloak Auth · Kafka Publisher
+                    Routes:
+                    /api/users/* → user-service
+                    /api/user-content/* → user-content-service
+                    /api/applications/* → application-service
+                    /api/workflows/* → workflow-service
+                    /api/job-offers/* → job-offer-service
+                    /api/notifications/* → notification-service
+                    /api/reminders/* → notification-service
+                    /api/cv/* → cv-service"]
+    end
+
+    subgraph Services["Backend Services"]
+        direction TB
+        US["user-service :8082
+            gRPC :50001 · PostgreSQL"]
+        UCS["user-content-service :8083
+             gRPC · PostgreSQL"]
+        CVS["cv-service :8088
+             gRPC · PostgreSQL"]
+        WFS["workflow-service :8084
+             gRPC · PostgreSQL"]
+        APS["application-service :8085
+             PostgreSQL
+             gRPC client → user-service"]
+        JOS["job-offer-service :8086
+             PostgreSQL · SignalR Hub"]
+        NS["notification-service :8087
+             PostgreSQL · Hangfire · MailKit"]
+    end
+
+    subgraph AI["AI Agent Pipeline"]
+        JE["JobExtractor :8001"]
+        SA["SearchAgent :8002"]
+        TA["TemplateAgent :8003"]
+        CO["CvOptimizer :8004"]
+        CA["ContactAgent :8005"]
+        JC["JobCrawler :8006"]
+    end
+
+    subgraph Infra["Infrastructure"]
+        Kafka["Kafka :9092"]
+        SR["Schema Registry :8081"]
+        MinIO["MinIO :9000/9001"]
+        Keycloak["Keycloak :9090"]
+        PG["PostgreSQL × 8 (5433‑5439)"]
+    end
+
+    Browser --> Nginx -->|/api/*| APIGateway
+    APIGateway --> US & UCS & CVS & WFS & APS & JOS & NS
+    US <-->|gRPC| APS
+    WFS -->|HTTP| JE & SA & TA & CO & CA
+    JOS <-->|Kafka| JC
+    Kafka --- JOS & NS & APIGateway
+    US --- PG
+    UCS --- PG
+    CVS --- PG
+    WFS --- PG
+    APS --- PG
+    JOS --- PG
+    NS --- PG
 ```
 
 ## Tech Stack
@@ -231,41 +250,28 @@ docker compose up -d job-extractor search-agent template-agent \
 
 ## Authentication Flow
 
-```
-Browser                         API Gateway                      Keycloak
-   │                                │                                │
-   │  GET /api/auth/login           │                                │
-   │───────────────────────────────▶│                                │
-   │  302 Redirect to Keycloak      │                                │
-   │◀───────────────────────────────│                                │
-   │                                │                                │
-   │  Authenticate                  │                                │
-   │───────────────────────────────────────────────────────────────▶│
-   │  Auth Code                     │                                │
-   │◀───────────────────────────────────────────────────────────────│
-   │                                │                                │
-   │  GET /api/auth/callback?code=  │                                │
-   │───────────────────────────────▶│                                │
-   │                                │  Exchange code for tokens      │
-   │                                │───────────────────────────────▶│
-   │                                │  Access + ID + Refresh tokens  │
-   │                                │◀───────────────────────────────│
-   │                                │                                │
-   │                                │  POST /api/users/sync          │
-   │                                │────────── user-service ───────▶│
-   │                                │  X-User-Id returned            │
-   │                                │◀───────────────────────────────│
-   │                                │                                │
-   │  Set cv_session cookie         │                                │
-   │◀───────────────────────────────│                                │
-   │                                │                                │
-   │  GET /api/applications         │                                │
-   │  (cv_session cookie)           │                                │
-   │───────────────────────────────▶│                                │
-   │                                │  Validate session,             │
-   │                                │  attach Authorization header   │
-   │                                │  + X-User-Id to downstream     │
-   │                                │────────── backend ────────────▶│
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant G as API Gateway
+    participant K as Keycloak
+    participant US as user-service
+
+    B->>G: GET /api/auth/login
+    G-->>B: 302 Redirect to Keycloak
+    B->>K: Authenticate
+    K-->>B: Auth Code
+    B->>G: GET /api/auth/callback?code=
+    G->>K: Exchange code for tokens
+    K-->>G: Access + ID + Refresh tokens
+    G->>US: POST /api/users/sync
+    US-->>G: X-User-Id returned
+    G-->>B: Set cv_session cookie
+
+    B->>G: GET /api/applications (cv_session)
+    G->>G: Validate session, attach
+         Authorization header + X-User-Id
+    G->>Backend: Proxied request with JWT + X-User-Id
 ```
 
 - The gateway uses **cookie-based sessions** (cv_session) backed by in-memory auth state
@@ -277,32 +283,22 @@ Browser                         API Gateway                      Keycloak
 
 The core workflow transforms a job description into a tailored CV:
 
-```
-1. User submits job description (URL or text)
-          │
-          ▼
-2. Workflow Service creates workflow record
-          │
-          ▼
-3. Job Extractor extracts structured requirements
-   (role, required skills, experience level, keywords)
-          │
-          ▼
-4. Search Agent matches user profile against requirements
-   (RAG vector search on skills, projects, experience)
-   → returns matched items + gap analysis + match score
-          │
-          ▼
-5. Template Agent selects and fills CV template
-   (Jinja2/LaTeX rendering)
-          │
-          ▼
-6. CV Optimizer validates ATS compliance
-   (keyword placement, formatting, section scoring)
-          │
-          ▼
-7. Contact Agent delivers CV via email
-   (SMTP/Gmail API with cover letter)
+```mermaid
+flowchart LR
+    A["1. User submits job description"] --> B["2. Workflow Service
+        creates workflow record"]
+    B --> C["3. Job Extractor
+        extracts requirements
+        (role, skills, keywords)"]
+    C --> D["4. Search Agent
+        RAG matching vs profile
+        → matched items + gap score"]
+    D --> E["5. Template Agent
+        renders CV (Jinja2/LaTeX)"]
+    E --> F["6. CV Optimizer
+        ATS validation + keyword optimization"]
+    F --> G["7. Contact Agent
+        emails CV + cover letter"]
 ```
 
 Endpoints:
