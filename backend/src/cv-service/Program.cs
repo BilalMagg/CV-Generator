@@ -9,6 +9,20 @@ using CommonProtos.CV;
 
 var builder = WebApplication.CreateBuilder(args);
 
+//configure the app to accept http/2 request for gRPC, now it accept both http/1.1 and http/2
+// each one of them works on a different port to avoide confusing, big brain moment
+builder.WebHost.ConfigureKestrel(options =>
+  {
+      options.ListenAnyIP(8088, listenOptions =>
+      {
+          listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
+      });
+      options.ListenAnyIP(18088, listenOption =>
+      {
+          listenOption.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+      });
+  });
+
 // Database
 builder.Services.AddDbContext<CvDbContext>(options =>
 {

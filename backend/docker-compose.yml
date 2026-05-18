@@ -188,10 +188,10 @@ services:
       dockerfile: ./src/cv-service/Dockerfile
     container_name: cv-cv-service
     ports:
-      - "8088:8088"
+      - "8088:8088" # REST
+      - "18088:18088" # gRPC
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:8088
       - ConnectionStrings__DefaultConnection=Host=cv-db;Port=5432;Database=cv_db;Username=postgres;Password=postgres
       - JWT_AUTHORITY=http://cv-keycloak:8080/realms/cv-realm
     depends_on:

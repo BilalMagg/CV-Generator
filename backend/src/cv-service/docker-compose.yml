@@ -5,7 +5,8 @@ services:
       dockerfile: src/cv-service/Dockerfile
     container_name: cv-service
     ports:
-      - "8088:8088"
+      - "8088:8088" #Rest
+      - "18088:18088" #gRPC
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://0.0.0.0:8088
