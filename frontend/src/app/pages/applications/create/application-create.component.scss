@@ -50,8 +50,9 @@ textarea { resize: vertical; min-height: 80px; }
 }
 .create-btn {
   padding: 8px 22px; border: none; border-radius: var(--border-radius-md);
-  background: var(--color-accent); color: #fff; font-size: 13px; font-weight: 500;
-  cursor: pointer; font-family: var(--font-sans);
+  background: var(--color-accent); color: #fff; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: var(--font-sans); transition: all 0.2s;
+  &:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(105,36,117,0.25); }
 }
 .create-btn:disabled { background: var(--color-background-secondary); color: var(--color-text-tertiary); cursor: not-allowed; }
 

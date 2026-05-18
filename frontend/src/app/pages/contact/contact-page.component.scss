@@ -6,7 +6,7 @@
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 0 24px;
 }
@@ -82,9 +82,11 @@
   input, select, textarea {
     padding: 14px 18px;
     border-radius: 12px;
-    border: 1.5px solid #eee;
-    font-family: inherit;
+    border: 1.5px solid rgba(105,36,117,0.15);
+    font-family: var(--font-body);
     font-size: 15px;
+    color: var(--text-dark);
+    background: var(--surface);
     transition: all 0.2s;
 
     &:focus {
@@ -92,6 +94,8 @@
       border-color: var(--purple-light);
       background: rgba(164, 125, 171, 0.03);
     }
+
+    &::placeholder { color: var(--text-muted); }
   }
 }
 

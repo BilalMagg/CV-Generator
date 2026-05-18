@@ -81,7 +81,7 @@
 
   &.active {
     background: var(--color-accent-light);
-    border-color: #AFA9EC;
+    border-color: rgba(105,36,117,0.3);
     color: var(--color-accent-text);
   }
 
@@ -91,7 +91,8 @@
     color: #fff;
 
     &:hover {
-      background: #6B63D0;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(105,36,117,0.3);
     }
   }
 }
@@ -450,7 +451,7 @@
   transition: opacity 0.2s;
 
   &:disabled { opacity: 0.5; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: #6B63D0; }
+  &:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(105,36,117,0.3); }
 }
 
 .btn-cancel {

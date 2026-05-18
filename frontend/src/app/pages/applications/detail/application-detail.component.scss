@@ -17,8 +17,8 @@
   background: var(--color-background-primary); font-size: 12.5px; color: var(--color-text-secondary); cursor: pointer;
 }
 .det-btn i { font-size: 14px; }
-.det-btn.primary { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
-.det-btn.primary:hover { opacity: .9; }
+.det-btn.primary { background: var(--color-accent); border-color: var(--color-accent); color: #fff; transition: all 0.2s; }
+.det-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(105,36,117,0.25); }
 .det-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .info-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 1rem; }

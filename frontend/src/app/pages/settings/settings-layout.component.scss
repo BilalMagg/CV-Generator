@@ -6,15 +6,15 @@
 
 .settings-header {
   flex-shrink: 0;
-  padding: 1.5rem 2rem 1rem;
-  background: var(--color-background-primary);
-  border-bottom: 0.5px solid var(--color-border-tertiary);
+  padding: 24px 32px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 16px;
 }
 
 .header-icon {
@@ -24,7 +24,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(127, 119, 221, 0.15), rgba(127, 119, 221, 0.05));
+  background: var(--color-accent-light);
   color: var(--color-accent);
 
   svg {
@@ -34,20 +34,22 @@
 }
 
 h1 {
-  font-size: 1.35rem;
-  font-weight: 600;
+  font-family: var(--font-hand);
+  font-size: 28px;
+  font-weight: 700;
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-dark);
 }
 
 .subtitle {
-  margin: 0.2rem 0 0;
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem 2rem;
+  padding: 24px 32px;
 }
