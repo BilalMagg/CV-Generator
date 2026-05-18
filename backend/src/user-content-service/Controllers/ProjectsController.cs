@@ -10,7 +10,7 @@ namespace UserContentService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ProjectsController : ControllerBase
+public class ProjectsController : ApiControllerBase
 {
     private readonly ContentDbContext _db;
     private readonly ILogger<ProjectsController> _logger;
@@ -26,6 +26,8 @@ public class ProjectsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? userId)
     {
+        userId ??= CurrentUserId;
+
         var projects = userId.HasValue
             ? await _db.Projects.Where(p => p.UserId == userId.Value).ToListAsync()
             : await _db.Projects.ToListAsync();
@@ -36,7 +38,6 @@ public class ProjectsController : ControllerBase
             Title = p.Title,
             Description = p.Description,
             Role = p.Role,
-            Achievements = p.Achievements,
             StartDate = p.StartDate,
             EndDate = p.EndDate,
             RepositoryUrl = p.RepositoryUrl,
@@ -61,7 +62,6 @@ public class ProjectsController : ControllerBase
             Title = p.Title,
             Description = p.Description,
             Role = p.Role,
-            Achievements = p.Achievements,
             StartDate = p.StartDate,
             EndDate = p.EndDate,
             RepositoryUrl = p.RepositoryUrl,
@@ -82,13 +82,12 @@ public class ProjectsController : ControllerBase
             Title = dto.Title,
             Description = dto.Description,
             Role = dto.Role,
-            Achievements = dto.Achievements,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
             RepositoryUrl = dto.RepositoryUrl,
             DemoUrl = dto.DemoUrl,
             Status = dto.Status,
-            UserId = dto.UserId,
+            UserId = RequiredUserId,
             SkillsJson = dto.SkillsJson
         };
         
@@ -101,7 +100,6 @@ public class ProjectsController : ControllerBase
             Title = project.Title,
             Description = project.Description,
             Role = project.Role,
-            Achievements = project.Achievements,
             StartDate = project.StartDate,
             EndDate = project.EndDate,
             RepositoryUrl = project.RepositoryUrl,
@@ -119,7 +117,6 @@ public class ProjectsController : ControllerBase
             Title = project.Title,
             Description = project.Description,
             Role = project.Role,
-            Achievements = project.Achievements,
             StartDate = project.StartDate,
             EndDate = project.EndDate,
             RepositoryUrl = project.RepositoryUrl,
@@ -141,7 +138,6 @@ public class ProjectsController : ControllerBase
         project.Title = dto.Title;
         project.Description = dto.Description;
         project.Role = dto.Role;
-        project.Achievements = dto.Achievements;
         project.StartDate = dto.StartDate;
         project.EndDate = dto.EndDate;
         project.RepositoryUrl = dto.RepositoryUrl;
@@ -157,7 +153,6 @@ public class ProjectsController : ControllerBase
             Title = project.Title,
             Description = project.Description,
             Role = project.Role,
-            Achievements = project.Achievements,
             StartDate = project.StartDate,
             EndDate = project.EndDate,
             RepositoryUrl = project.RepositoryUrl,
@@ -173,14 +168,13 @@ public class ProjectsController : ControllerBase
             Title = project.Title,
             Description = project.Description,
             Role = project.Role,
-            Achievements = project.Achievements,
             StartDate = project.StartDate,
             EndDate = project.EndDate,
             RepositoryUrl = project.RepositoryUrl,
             DemoUrl = project.DemoUrl,
             Status = project.Status,
-            UserId = project.UserId,
-            SkillsJson = project.SkillsJson
+            SkillsJson = project.SkillsJson,
+            UserId = project.UserId
         };
 
         return Ok(ApiResponse<ProjectResponseDto>.Ok(response));

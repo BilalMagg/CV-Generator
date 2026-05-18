@@ -12,6 +12,7 @@ obj/
 *.suo
 *.userosscache
 *.sln.docstates
+*.lscache
 
 # Logs
 *.log
@@ -28,6 +29,9 @@ packages/
 
 # Entity Framework
 Migrations/*.Designer.cs
+
+# SonarQube
+.sonarqube/
 
 # Secrets
 # appsettings.Development.json
@@ -59,3 +63,5 @@ terraform.tfstate*
 venv/
 
 cv-generator.sln
+
+*.lscache

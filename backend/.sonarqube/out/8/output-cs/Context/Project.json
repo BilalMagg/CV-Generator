@@ -1,7 +1,0 @@
-{
-  "language": "C#",
-  "targetFramework": "net10.0",
-  "assemblyName": "UserService",
-  "projectType": "Product",
-  "projectPath": "/app/src/user-service/UserService.csproj"
-}

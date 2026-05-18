@@ -1,3 +1,4 @@
+using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -8,6 +9,8 @@ using ApplicationService.Services;
 using ApplicationService.Repositories;
 using ApplicationService.DTOs;
 using ApplicationService.Validators;
+
+AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,13 +36,10 @@ builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
         ?? "http://cv-user-service:8082";
     o.Address = new Uri(grpcUrl);
 })
-.ConfigureChannel(o =>
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
 {
-    o.HttpHandler = new SocketsHttpHandler
-    {
-        EnableMultipleHttp2Connections = true,
-        ConnectTimeout = TimeSpan.FromSeconds(5),
-    };
+    EnableMultipleHttp2Connections = true,
+    ConnectTimeout = TimeSpan.FromSeconds(5),
 });
 
 // Validators
@@ -103,6 +103,81 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "An error occurred while applying migrations.");
     }
 }
+
+// ── Kafka test endpoint ─────────────────────────────────────────────────────
+app.MapGet("/api/test/kafka", async (HttpContext ctx, IConfiguration config) =>
+{
+    var results = new List<string>();
+    var kafkaConfig = new ProducerConfig
+    {
+        BootstrapServers = config.GetValue<string>("KAFKA_BOOTSTRAP_SERVERS") ?? "kafka:9092",
+        MessageTimeoutMs = 5000,
+        RequestTimeoutMs = 5000,
+    };
+    results.Add($"Using KAFKA_BOOTSTRAP_SERVERS = '{kafkaConfig.BootstrapServers}'");
+
+    try
+    {
+        using var producer = new ProducerBuilder<string, string>(kafkaConfig).Build();
+        results.Add("Producer built successfully");
+
+        var msg = new Message<string, string>
+        {
+            Key = Guid.NewGuid().ToString(),
+            Value = "{\"test\":true,\"timestamp\":\"" + DateTime.UtcNow.ToString("O") + "\"}"
+        };
+
+        var dr = await producer.ProduceAsync("test-topic", msg);
+        results.Add($"Published to {dr.TopicPartitionOffset}");
+        return Results.Ok(results);
+    }
+    catch (Exception ex)
+    {
+        results.Add($"FAILED: {ex.GetType().Name}: {ex.Message}");
+        return Results.Ok(results);
+    }
+})
+.WithName("TestKafka");
+
+// ── gRPC test endpoint ──────────────────────────────────────────────────────
+app.MapGet("/api/test/grpc", async (string? userId, IUserGrpcClientService userGrpc) =>
+{
+    var results = new List<string>();
+
+    if (string.IsNullOrEmpty(userId))
+    {
+        results.Add("Provide ?userId={guid} query parameter");
+        return Results.Ok(results);
+    }
+
+    if (!Guid.TryParse(userId, out var parsed))
+    {
+        results.Add($"Invalid userId format: '{userId}'");
+        return Results.Ok(results);
+    }
+
+    results.Add($"Looking up userId={parsed} via gRPC...");
+
+    try
+    {
+        var exists = await userGrpc.UserExistsAsync(parsed);
+        results.Add($"UserExistsAsync => {exists}");
+
+        var user = await userGrpc.GetUserAsync(parsed);
+        if (user != null)
+            results.Add($"GetUserAsync => Id={user.Id}, Email={user.Email}, Name={user.FirstName} {user.LastName}");
+        else
+            results.Add("GetUserAsync => null (not found)");
+
+        return Results.Ok(results);
+    }
+    catch (Exception ex)
+    {
+        results.Add($"FAILED: {ex.GetType().Name}: {ex.Message}");
+        return Results.Ok(results);
+    }
+})
+.WithName("TestGrpc");
 
 app.UseSwagger();
 app.UseSwaggerUI();

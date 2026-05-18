@@ -33,7 +33,5 @@ namespace UserContentService.dto.Education
         [MaxLength(300)]
         public string? DiplomaFileUrl { get; set; }
 
-        [Required]
-        public Guid UserId { get; set; }
     }
 }
