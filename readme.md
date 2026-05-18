@@ -263,15 +263,14 @@ sequenceDiagram
     K-->>B: Auth Code
     B->>G: GET /api/auth/callback?code=
     G->>K: Exchange code for tokens
-    K-->>G: Access + ID + Refresh tokens
+    K-->>G: Access, ID, and Refresh tokens
     G->>US: POST /api/users/sync
     US-->>G: X-User-Id returned
     G-->>B: Set cv_session cookie
 
     B->>G: GET /api/applications (cv_session)
-    G->>G: Validate session, attach
-         Authorization header + X-User-Id
-    G->>Backend: Proxied request with JWT + X-User-Id
+    G->>G: Validate session, attach auth header
+    G->>Backend: Proxied request with JWT and X-User-Id
 ```
 
 - The gateway uses **cookie-based sessions** (cv_session) backed by in-memory auth state
