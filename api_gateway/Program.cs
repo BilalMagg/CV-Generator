@@ -350,16 +350,19 @@ app.MapPost("/api/auth/register", async (HttpContext ctx, IHttpClientFactory htt
             return;
         }
 
-        var userCreated = await CreateKeycloakUserAsync(httpClientFactory, adminToken, email, password, firstName, lastName);
-        if (!userCreated)
+        var keycloakUserId = await CreateKeycloakUserAsync(httpClientFactory, adminToken, email, password, firstName, lastName);
+        if (string.IsNullOrEmpty(keycloakUserId))
         {
             ctx.Response.StatusCode = 409;
             await ctx.Response.WriteAsJsonAsync(new { success = false, message = "User with this email already exists" });
             return;
         }
 
+        // Create user record in user-service DB immediately (not deferred to first login)
+        var internalUserId = await CreateUserInServiceAsync(httpClientFactory, userServiceUrl, keycloakUserId, email, firstName, lastName);
+
         // Emit registration event to Kafka (fire-and-forget)
-        _ = PublishRegistrationEvent(kafkaProducer, email, firstName, lastName);
+        _ = PublishRegistrationEvent(kafkaProducer, internalUserId ?? "", email, firstName, lastName);
 
         await ctx.Response.WriteAsJsonAsync(new { success = true, message = "Account created successfully. You can now login." });
     }
@@ -459,7 +462,7 @@ async Task<string?> GetKeycloakAdminTokenAsync(IHttpClientFactory factory)
     }
 }
 
-async Task<bool> CreateKeycloakUserAsync(IHttpClientFactory factory, string adminToken, string email, string password, string firstName, string lastName)
+async Task<string?> CreateKeycloakUserAsync(IHttpClientFactory factory, string adminToken, string email, string password, string firstName, string lastName)
 {
     try
     {
@@ -487,22 +490,22 @@ async Task<bool> CreateKeycloakUserAsync(IHttpClientFactory factory, string admi
         };
 
         var response = await client.PostAsJsonAsync($"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/users", userData);
-        if (!response.IsSuccessStatusCode) return false;
+        if (!response.IsSuccessStatusCode) return null;
 
         var location = response.Headers.Location?.ToString();
-        if (string.IsNullOrEmpty(location)) return true;
+        if (string.IsNullOrEmpty(location)) return null;
 
         var userId = location.Split('/').Last();
 
         var availableRolesResponse = await client.GetAsync($"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/roles");
-        if (!availableRolesResponse.IsSuccessStatusCode) return true;
+        if (!availableRolesResponse.IsSuccessStatusCode) return userId;
         var roles = await availableRolesResponse.Content.ReadFromJsonAsync<List<JsonElement>>();
-        if (roles == null) return true;
+        if (roles == null) return userId;
 
         var userRole = roles.FirstOrDefault(r =>
             r.GetProperty("name").GetString() == "user");
 
-        if (userRole.ValueKind == JsonValueKind.Undefined) return true;
+        if (userRole.ValueKind == JsonValueKind.Undefined) return userId;
 
         var roleMapping = new[] { new
         {
@@ -514,15 +517,15 @@ async Task<bool> CreateKeycloakUserAsync(IHttpClientFactory factory, string admi
             $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/users/{userId}/role-mappings/realm",
             roleMapping);
 
-        return true;
+        return userId;
     }
     catch
     {
-        return false;
+        return null;
     }
 }
 
-async Task PublishRegistrationEvent(IProducer<string, string> producer, string email, string firstName, string lastName)
+async Task PublishRegistrationEvent(IProducer<string, string> producer, string internalUserId, string email, string firstName, string lastName)
 {
     try
     {
@@ -530,6 +533,7 @@ async Task PublishRegistrationEvent(IProducer<string, string> producer, string e
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTime.UtcNow,
+            InternalUserId = string.IsNullOrEmpty(internalUserId) ? null : internalUserId,
             Email = email,
             FirstName = firstName,
             LastName = lastName,
@@ -545,6 +549,38 @@ async Task PublishRegistrationEvent(IProducer<string, string> producer, string e
     {
         Console.Error.WriteLine($"Failed to publish registration event: {ex.Message}");
 
+    }
+}
+
+async Task<string?> CreateUserInServiceAsync(IHttpClientFactory factory, string baseUrl, string keycloakId, string email, string firstName, string lastName)
+{
+    try
+    {
+        using var client = factory.CreateClient();
+        var payload = new
+        {
+            keycloakId,
+            firstName,
+            lastName,
+            email,
+            role = "USER",
+        };
+        var response = await client.PostAsJsonAsync($"{baseUrl}/api/users", payload);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            Console.Error.WriteLine($"User creation in user-service failed ({response.StatusCode}): {body}");
+            return null;
+        }
+        var bodyJson = await response.Content.ReadFromJsonAsync<JsonElement>();
+        if (bodyJson.TryGetProperty("data", out var data) && data.TryGetProperty("id", out var id))
+            return id.GetString();
+        return null;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"User creation error: {ex.Message}");
+        return null;
     }
 }
 
