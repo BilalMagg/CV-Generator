@@ -5,7 +5,7 @@
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 0 24px;
 }
@@ -224,17 +224,21 @@
     .btn-primary {
       background: white;
       color: var(--purple-dark);
-      padding: 16px 40px;
+      padding: 14px 32px;
       border-radius: 12px;
+      font-family: var(--font-body);
+      font-size: 15px;
       font-weight: 700;
       border: none;
       cursor: pointer;
       transition: all 0.2s;
 
       &:hover {
-        transform: scale(1.05);
-        box-shadow: 0 10px 30px rgba(255,255,255,0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(255,255,255,0.25);
       }
+
+      &:active { transform: scale(0.98); }
     }
   }
 }

@@ -261,6 +261,7 @@ h1 {
   color: #fff;
 
   &:hover:not(:disabled) {
-    background: #6B63D0;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(105,36,117,0.25);
   }
 }

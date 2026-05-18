@@ -12,18 +12,56 @@
 
 /* ── Design tokens ── */
 :root {
+  /* Brand palette */
   --purple-light: #A47DAB;
   --purple-dark:  #692475;
   --green:        #82AB7D;
   --olive:        #6A6B4E;
+
+  /* Surfaces */
   --bg:           #F7F4F2;
   --surface:      #FFFFFF;
+
+  /* Text */
   --text-dark:    #1a1218;
   --text-mid:     #4a3d4d;
   --text-muted:   #8a7a8d;
+
+  /* Borders */
   --border:       rgba(105,36,117,0.08);
+
+  /* Typography */
   --font-hand:    'Caveat', cursive;
   --font-body:    'Plus Jakarta Sans', sans-serif;
+
+  /* ── App shell aliases (map to landing page system) ── */
+  --color-background-primary:   #FFFFFF;
+  --color-background-secondary: #F7F4F2;
+  --color-text-primary:         #1a1218;
+  --color-text-secondary:       #4a3d4d;
+  --color-text-tertiary:        #8a7a8d;
+  --color-accent:               #692475;
+  --color-accent-light:         rgba(105,36,117,0.1);
+  --color-accent-text:          #692475;
+  --color-border-secondary:     rgba(105,36,117,0.14);
+  --color-border-tertiary:      rgba(105,36,117,0.08);
+  --border-radius-md:           8px;
+  --border-radius-lg:           12px;
+  --font-sans:                  'Plus Jakarta Sans', sans-serif;
+
+  /* State colors */
+  --color-success:      #82AB7D;
+  --color-success-bg:   rgba(130,171,125,0.12);
+  --color-success-text: #3a6b37;
+  --color-danger:       #c0392b;
+  --color-danger-bg:    rgba(192,57,43,0.1);
+  --color-danger-text:  #c0392b;
+  --color-warning:      #b45309;
+  --color-warning-bg:   rgba(180,83,9,0.12);
+  --color-warning-text: #b45309;
+  --color-info:         #1a6fb5;
+  --color-info-bg:      rgba(26,111,181,0.08);
+  --color-info-text:    #1a6fb5;
 }
 
 html {

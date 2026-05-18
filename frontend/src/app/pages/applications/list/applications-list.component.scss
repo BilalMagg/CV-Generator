@@ -95,6 +95,6 @@ tr:hover td { background: var(--color-background-secondary); }
   border-radius: var(--border-radius-md); background: transparent;
   font-size: 12px; cursor: pointer; color: var(--color-text-secondary);
 }
-.pag-btn.active { background: #EEEDFE; border-color: #AFA9EC; color: #534AB7; font-weight: 500; }
+.pag-btn.active { background: var(--color-accent-light); border-color: rgba(105,36,117,0.3); color: var(--color-accent); font-weight: 600; }
 
 :host { display: flex; flex-direction: column; height: 100%; }
