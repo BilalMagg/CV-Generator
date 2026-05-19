@@ -1,7 +1,7 @@
 .entity-list-container {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 20px;
 }
 
 .header-actions {
@@ -11,68 +11,67 @@
 }
 
 .title-group h2 {
-  font-size: 1.5rem;
+  font-size: 18px;
   font-weight: 700;
-  color: #fff;
-  margin-bottom: 0.25rem;
+  color: var(--text);
+  margin-bottom: 3px;
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 .title-group .count {
-  font-size: 0.875rem;
-  color: #666;
+  font-size: 13px;
+  color: var(--text-3);
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+  gap: 6px;
+  padding: 8px 16px;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 13px;
   cursor: pointer;
   border: none;
-  transition: all 0.2s;
+  transition: opacity 0.15s;
   text-decoration: none;
+  font-family: var(--font-body);
 }
 
 .btn-primary {
-  background: #2563eb;
+  background: oklch(0.18 0.01 80);
   color: white;
 }
 
-.btn-primary:hover {
-  background: #1d4ed8;
-  transform: translateY(-1px);
-}
+.btn-primary:hover { opacity: 0.85; }
 
 .grid-layout {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
+  gap: 14px;
 }
 
 .empty-state {
   text-align: center;
-  padding: 4rem 2rem;
-  background: #111;
-  border-radius: 12px;
-  border: 2px dashed #333;
+  padding: 48px 24px;
+  background: white;
+  border-radius: 14px;
+  border: 1.5px dashed oklch(0.88 0.006 80);
 }
 
 .empty-icon {
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 1rem;
-  color: #444;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 14px;
+  color: var(--text-3);
 }
 
 .empty-state h3 {
-  font-size: 1.25rem;
-  color: #fff;
-  margin-bottom: 0.5rem;
+  font-size: 16px;
+  color: var(--text);
+  margin-bottom: 6px;
+  font-weight: 600;
 }
 
-.empty-state p {
-  color: #666;
-}
+.empty-state p { color: var(--text-3); font-size: 14px; }

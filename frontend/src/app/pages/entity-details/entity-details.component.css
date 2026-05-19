@@ -1,35 +1,28 @@
 .detail-container {
-  max-width: 900px;
+  max-width: 860px;
   margin: 0 auto;
 }
 
-.detail-header {
-  margin-bottom: 2rem;
-}
+.detail-header { margin-bottom: 20px; }
 
 .back-link {
   background: none;
   border: none;
-  color: #64748b;
-  font-size: 0.9rem;
+  color: var(--text-3);
+  font-size: 13px;
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 5px;
   cursor: pointer;
   padding: 0;
-  margin-bottom: 1rem;
-  transition: color 0.2s;
+  margin-bottom: 14px;
+  transition: color 0.12s;
+  font-family: var(--font-body);
 }
 
-.back-link:hover {
-  color: #2563eb;
-}
-
-.back-link .icon {
-  width: 16px;
-  height: 16px;
-}
+.back-link:hover { color: var(--text-2); }
+.back-link .icon { width: 14px; height: 14px; }
 
 .header-main {
   display: flex;
@@ -38,67 +31,62 @@
 }
 
 .header-main h2 {
-  font-size: 1.75rem;
+  font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text);
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
-.actions {
-  display: flex;
-  gap: 1rem;
-}
+.actions { display: flex; gap: 8px; }
 
 .detail-card {
-  background: #1a1a1a;
-  border-radius: 12px;
-  border: 1px solid #333;
-  padding: 2rem;
+  background: white;
+  border-radius: 14px;
+  border: 1px solid oklch(0.92 0.004 80);
+  padding: 24px;
+  box-shadow: 0 1px 0 oklch(0.95 0.004 80);
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  gap: 20px;
 }
 
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 5px;
 }
 
-.info-item.full-width {
-  grid-column: span 2;
-}
+.info-item.full-width { grid-column: span 2; }
 
 .info-item label {
-  font-size: 0.8rem;
+  font-size: 11px;
   font-weight: 600;
-  color: #666;
+  color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .info-item .value {
-  font-size: 1.1rem;
-  color: #fff;
+  font-size: 14px;
+  color: var(--text);
   font-weight: 500;
 }
 
 .description-text {
-  font-size: 1rem;
+  font-size: 14px;
   line-height: 1.6;
-  color: #ccc;
+  color: var(--text-2);
   white-space: pre-wrap;
 }
 
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  inset: 0;
+  background: oklch(0.1 0.01 80 / 0.45);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -106,131 +94,112 @@
 }
 
 .modal-content {
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 12px;
-  padding: 2rem;
-  max-width: 400px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-  animation: slideUp 0.3s ease-out;
+  background: white;
+  border: 1px solid oklch(0.9 0.004 80);
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 380px;
+  box-shadow: 0 20px 40px oklch(0.2 0.01 80 / 0.12);
+  animation: slideUp 0.2s ease-out;
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .modal-icon {
-  width: 50px;
-  height: 50px;
-  background: #fee2e2;
+  width: 46px;
+  height: 46px;
+  background: oklch(0.96 0.04 25);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 1rem;
+  margin: 0 auto 14px;
 }
 
-.modal-icon svg {
-  width: 28px;
-  height: 28px;
-  color: #ef4444;
-}
+.modal-icon svg { width: 24px; height: 24px; color: oklch(0.5 0.16 25); }
 
 .modal-content h3 {
-  font-size: 1.25rem;
-  color: #fff;
-  margin-bottom: 0.5rem;
+  font-size: 16px;
+  color: var(--text);
+  margin-bottom: 6px;
   text-align: center;
+  font-weight: 700;
 }
 
 .modal-content p {
-  color: #999;
+  color: var(--text-3);
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 20px;
+  font-size: 14px;
 }
 
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-}
+.modal-actions { display: flex; gap: 10px; }
 
 .modal-actions button {
   flex: 1;
-  padding: 0.75rem;
+  padding: 10px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all 0.2s;
+  font-family: var(--font-body);
+  font-size: 13px;
+  transition: opacity 0.15s;
 }
 
 .modal-actions .btn-cancel {
-  background: #333;
-  color: #999;
+  background: var(--bg);
+  color: var(--text-2);
+  border: 1px solid oklch(0.9 0.004 80);
 }
-
-.modal-actions .btn-cancel:hover {
-  background: #444;
-}
+.modal-actions .btn-cancel:hover { background: oklch(0.96 0.004 80); }
 
 .modal-actions .btn-delete {
-  background: #ef4444;
+  background: oklch(0.55 0.18 25);
   color: white;
 }
-
-.modal-actions .btn-delete:hover {
-  background: #dc2626;
-}
+.modal-actions .btn-delete:hover { opacity: 0.85; }
 
 .btn {
-  padding: 0.6rem 1.25rem;
+  padding: 8px 16px;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 13px;
   cursor: pointer;
   border: none;
-  transition: all 0.2s;
+  font-family: var(--font-body);
+  transition: opacity 0.15s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
 .btn-secondary {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--bg);
+  color: var(--text-2);
+  border: 1px solid oklch(0.9 0.004 80);
 }
-
-.btn-secondary:hover {
-  background: #e2e8f0;
-}
+.btn-secondary:hover { background: oklch(0.96 0.004 80); }
 
 .btn-danger {
-  background: #fee2e2;
-  color: #ef4444;
+  background: oklch(0.96 0.04 25);
+  color: oklch(0.5 0.16 25);
 }
-
-.btn-danger:hover {
-  background: #fecaca;
-}
+.btn-danger:hover { background: oklch(0.92 0.06 25); }
 
 .loading-state {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 300px;
-  color: #64748b;
-  font-size: 1rem;
+  color: var(--text-3);
+  font-size: 14px;
 }
 
 @media (max-width: 640px) {
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
-  .info-item.full-width {
-    grid-column: span 1;
-  }
+  .info-grid { grid-template-columns: 1fr; }
+  .info-item.full-width { grid-column: span 1; }
 }

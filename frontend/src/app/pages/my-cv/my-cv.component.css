@@ -1,56 +1,50 @@
 .my-cv-container {
-  min-height: 100vh;
-  background-color: #000000;
-  padding: 2rem;
-  color: #e0e0e0;
-  max-width: 1200px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
 }
 
 .tabs-wrapper {
-  margin-bottom: 2rem;
-  border-bottom: 1px solid #333;
+  background: white;
+  border-bottom: 1px solid oklch(0.92 0.004 80);
   overflow-x: auto;
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
+  flex-shrink: 0;
 }
 
-.tabs-wrapper::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
-}
+.tabs-wrapper::-webkit-scrollbar { display: none; }
 
 .tabs {
   display: flex;
-  gap: 1rem;
-  padding-bottom: 0.5rem;
+  gap: 0;
+  padding: 0 20px;
   white-space: nowrap;
 }
 
 .tabs a {
-  padding: 0.75rem 1.25rem;
+  padding: 10px 14px;
   text-decoration: none;
-  color: #888;
+  color: var(--text-3);
   font-weight: 500;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.12s, border-color 0.12s;
   display: inline-block;
+  font-family: var(--font-body);
 }
 
-.tabs a:hover {
-  background-color: #222;
-  color: #fff;
-}
+.tabs a:hover { color: var(--text-2); }
 
 .tabs a.active {
-  background-color: #3b82f6;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  color: var(--text);
+  border-bottom-color: oklch(0.18 0.01 80);
+  font-weight: 600;
 }
 
 .content-area {
-  background-color: #121212;
-  border-radius: 16px;
-  padding: 2rem;
-  border: 1px solid #222;
-  min-height: 400px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  background: var(--bg);
 }
