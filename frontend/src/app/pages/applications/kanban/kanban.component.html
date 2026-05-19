@@ -1,34 +1,82 @@
-<div class="topbar">
-  <div class="topbar-title">Kanban board</div>
-  <div class="topbar-hint"><i class="ti ti-drag-drop"></i> Drag cards to update status</div>
-</div>
-
-@if (loading()) {
-  <div class="loading-state">Loading...</div>
-} @else {
-  <div class="board">
-    @for (col of columns(); track col.status) {
-      <div class="col" (dragover)="onDragOver($event)" (drop)="onDrop($event, col.status)">
-        <div class="col-header">
-          <span class="col-title">{{ col.label }}</span>
-          <span class="col-count">{{ col.items.length }}</span>
-        </div>
-        <div class="col-body">
-          @for (item of col.items; track item.id) {
-            <div class="card" draggable="true" (dragstart)="onDragStart($event, item)">
-              <div class="card-top">
-                <div class="co-init" [style.background]="logoBg(item.companyName)">{{ item.companyName[0] }}</div>
-              </div>
-              <div class="card-pos">{{ item.positionTitle }}</div>
-              <div class="card-meta">
-                <span class="card-date">{{ item.companyName }} · {{ formatDate(item.appliedAt) }}</span>
-              </div>
-            </div>
-          } @empty {
-            <div class="empty-col"><i class="ti ti-inbox"></i> Drop here</div>
-          }
-        </div>
-      </div>
-    }
+<div class="kb-shell">
+  <!-- View toolbar -->
+  <div class="kb-toolbar">
+    <div class="kb-toolbar-left">
+      <span class="kb-total">{{ totalApps() }} applications</span>
+    </div>
+    <div class="kb-view-switch">
+      <button class="kb-view-btn" [class.kb-view-btn--active]="view() === 'board'" (click)="view.set('board')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <rect x="1" y="1" width="4" height="12" rx="1"/><rect x="6" y="1" width="4" height="8" rx="1"/><rect x="11" y="1" width="2" height="10" rx="1" class="sr-only"/>
+        </svg>
+        Board
+      </button>
+      <button class="kb-view-btn" [class.kb-view-btn--active]="view() === 'list'" (click)="view.set('list')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <line x1="2" y1="4" x2="12" y2="4"/><line x1="2" y1="7" x2="12" y2="7"/><line x1="2" y1="10" x2="12" y2="10"/>
+        </svg>
+        List
+      </button>
+    </div>
+    <button class="kb-add-btn">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/>
+      </svg>
+      Add application
+    </button>
   </div>
-}
+
+  @if (loading()) {
+    <div class="kb-loading">Loading your applications…</div>
+  } @else if (view() === 'board') {
+    <!-- Board view -->
+    <div class="board">
+      @for (col of columns(); track col.status) {
+        <div class="col" (dragover)="onDragOver($event)" (drop)="onDrop($event, col.status)">
+          <div class="col-header">
+            <div class="col-dot" [attr.data-col]="col.colorVar"></div>
+            <span class="col-label">{{ col.label }}</span>
+            <span class="col-count">{{ col.items.length }}</span>
+          </div>
+          <div class="col-body">
+            @for (item of col.items; track item.id) {
+              <div class="kb-card" draggable="true" (dragstart)="onDragStart($event, item)" (dragend)="onDragEnd($event)">
+                <div class="kb-card-head">
+                  <div class="kb-logo" [style.background]="logoBg(item.companyName)">{{ logoText(item.companyName) }}</div>
+                  <span class="kb-company">{{ item.companyName }}</span>
+                </div>
+                <div class="kb-role">{{ item.positionTitle }}</div>
+                <div class="kb-date">{{ formatDate(item.appliedAt) }}</div>
+              </div>
+            } @empty {
+              <div class="col-empty">Drop here</div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- List view -->
+    <div class="list-view">
+      <div class="list-head-row">
+        <span>Company</span>
+        <span>Role</span>
+        <span>Status</span>
+        <span>Date</span>
+      </div>
+      @for (item of allItems(); track item.id) {
+        <div class="list-row">
+          <div class="list-company">
+            <div class="kb-logo sm" [style.background]="logoBg(item.companyName)">{{ logoText(item.companyName) }}</div>
+            {{ item.companyName }}
+          </div>
+          <span class="list-role">{{ item.positionTitle }}</span>
+          <span class="status-pill" [attr.data-status]="item.status">{{ item.status }}</span>
+          <span class="list-date">{{ formatDate(item.appliedAt) }}</span>
+        </div>
+      } @empty {
+        <div class="list-empty">No applications yet.</div>
+      }
+    </div>
+  }
+</div>

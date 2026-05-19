@@ -1,60 +1,25 @@
 <section class="testi-section">
-  <p class="section-kicker reveal">User feedback</p>
-  <h2 class="section-title reveal">What users <span class="purple">are saying.</span></h2>
-  <p class="section-sub reveal" style="text-align:center;margin:0 auto;">
-    Here is how CV Generator has helped professionals streamline their job search.
-  </p>
+  <div class="testi-inner">
+    <div class="testi-card">
+      <blockquote class="testi-quote">
+        "I sent 14 tailored CVs in a week. Got 9 callbacks and 4 interviews.
+        CV Generator turned my job search from a part-time job back into a side quest."
+      </blockquote>
+      <div class="testi-author">
+        <div class="testi-avatar">MA</div>
+        <div>
+          <div class="testi-name">Maya Arce</div>
+          <div class="testi-role">Senior Product Designer · placed at Linear</div>
+        </div>
+      </div>
 
-  <div class="testi-grid">
-    <div class="testi-card reveal reveal-delay-1">
-      <div class="testi-stars">
-        <span class="star">★</span><span class="star">★</span><span class="star">★</span>
-        <span class="star">★</span><span class="star">★</span>
-      </div>
-      <p class="testi-quote">
-        "The AI agents saved me hours of manual CV tweaking. I submitted 12 applications
-        in a single afternoon, each one tailored to the role."
-      </p>
-      <div class="testi-author">
-        <div class="testi-avatar" style="background:var(--purple-dark);">AM</div>
-        <div>
-          <div class="testi-name">Adam Mekki</div>
-          <div class="testi-role">Software Engineer</div>
-        </div>
-      </div>
-    </div>
-    <div class="testi-card reveal reveal-delay-2">
-      <div class="testi-stars">
-        <span class="star">★</span><span class="star">★</span><span class="star">★</span>
-        <span class="star">★</span><span class="star">★</span>
-      </div>
-      <p class="testi-quote">
-        "The semantic matching picks the right experience for each job description.
-        My CV actually highlights what matters instead of being a generic document."
-      </p>
-      <div class="testi-author">
-        <div class="testi-avatar" style="background:var(--green);">SR</div>
-        <div>
-          <div class="testi-name">Sara Raoui</div>
-          <div class="testi-role">Product Designer</div>
-        </div>
-      </div>
-    </div>
-    <div class="testi-card reveal reveal-delay-3">
-      <div class="testi-stars">
-        <span class="star">★</span><span class="star">★</span><span class="star">★</span>
-        <span class="star">★</span><span class="star">★</span>
-      </div>
-      <p class="testi-quote">
-        "Set up my profile in 20 minutes. After that, the platform handles everything —
-        from matching to delivery. Clean architecture, solid automation."
-      </p>
-      <div class="testi-author">
-        <div class="testi-avatar" style="background:var(--olive);">KB</div>
-        <div>
-          <div class="testi-name">Karim Benali</div>
-          <div class="testi-role">Backend Developer</div>
-        </div>
+      <div class="testi-stats">
+        @for (s of stats; track s.num) {
+          <div class="testi-stat">
+            <div class="testi-stat-num">{{ s.num }}</div>
+            <div class="testi-stat-label">{{ s.label }}</div>
+          </div>
+        }
       </div>
     </div>
   </div>

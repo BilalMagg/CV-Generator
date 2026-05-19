@@ -1,20 +1,39 @@
-<div class="stats-outer">
-  <div class="stats-section reveal">
-    <div class="stat-box">
-      <span class="stat-num" id="stat-1">0</span>
-      <span class="stat-label">CVs generated</span>
+<section class="pricing-section" id="pricing">
+  <div class="pricing-inner">
+    <div class="section-head">
+      <span class="section-eyebrow-pill">Pricing</span>
+      <h2 class="section-display-title">Simple, honest pricing</h2>
     </div>
-    <div class="stat-box">
-      <span class="stat-num" id="stat-2">0%</span>
-      <span class="stat-label">ATS pass rate</span>
-    </div>
-    <div class="stat-box">
-      <span class="stat-num" id="stat-3">0s</span>
-      <span class="stat-label">Avg generation time</span>
-    </div>
-    <div class="stat-box">
-      <span class="stat-num" id="stat-4">0</span>
-      <span class="stat-label">Active users</span>
+
+    <div class="pricing-grid">
+      @for (plan of plans; track plan.name) {
+        <div class="pricing-card" [class.pricing-card--featured]="plan.featured">
+          @if (plan.featured) {
+            <div class="pricing-badge">Most popular</div>
+          }
+          <div class="pricing-name">{{ plan.name }}</div>
+          <div class="pricing-price">
+            <span class="pricing-amount">{{ plan.price }}</span>
+            <span class="pricing-period">{{ plan.period }}</span>
+          </div>
+          <p class="pricing-desc">{{ plan.desc }}</p>
+
+          <a [routerLink]="plan.ctaLink" class="pricing-cta" [class.pricing-cta--dark]="plan.featured">
+            {{ plan.cta }}
+          </a>
+
+          <ul class="pricing-features">
+            @for (f of plan.features; track f) {
+              <li class="pricing-feature">
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                  <path d="M12 4L6 11L3 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                {{ f }}
+              </li>
+            }
+          </ul>
+        </div>
+      }
     </div>
   </div>
-</div>
+</section>

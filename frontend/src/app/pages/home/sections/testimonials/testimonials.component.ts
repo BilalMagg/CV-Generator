@@ -1,4 +1,4 @@
-import { Component, AfterViewInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -8,19 +8,10 @@ import { CommonModule } from '@angular/common';
   templateUrl: './testimonials.component.html',
   styleUrl: './testimonials.component.scss',
 })
-export class TestimonialsSectionComponent implements AfterViewInit {
-  ngAfterViewInit(): void {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12 }
-    );
-    document.querySelectorAll('app-testimonials-section .reveal').forEach((el) => observer.observe(el));
-  }
+export class TestimonialsSectionComponent {
+  stats = [
+    { num: '3.2x', label: 'more callbacks' },
+    { num: '11s',  label: 'avg. CV generation' },
+    { num: '6w',   label: 'average time to offer' },
+  ];
 }

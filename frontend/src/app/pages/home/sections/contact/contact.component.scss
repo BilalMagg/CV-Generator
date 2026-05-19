@@ -1,52 +1,64 @@
 .contact-section {
-  text-align: center;
-  padding-bottom: 60px;
+  padding: 60px 28px 80px;
+  background: var(--bg);
+  max-width: unset;
 }
 
 .contact-inner {
-  text-align: center;
-  max-width: 560px;
+  max-width: 480px;
   margin: 0 auto;
+  text-align: center;
+}
 
-  .section-title,
-  .section-sub {
-    text-align: center;
-    margin-left: auto;
-    margin-right: auto;
-  }
+.contact-kicker {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin: 0 0 10px;
+}
+
+.contact-title {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.contact-sub {
+  font-size: 15px;
+  color: var(--text-3);
+  margin: 0 0 28px;
 }
 
 .contact-links {
   display: flex;
   justify-content: center;
-  gap: 24px;
-  margin-top: 36px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .contact-item {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 24px;
-  border-radius: 14px;
+  gap: 9px;
+  padding: 10px 20px;
+  border-radius: 10px;
   background: white;
-  border: 1.5px solid rgba(105, 36, 117, 0.06);
-  color: var(--text-mid);
+  border: 1px solid oklch(0.92 0.004 80);
+  color: var(--text-2);
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  svg { flex-shrink: 0; color: var(--text-3); }
 
   &:hover {
-    border-color: rgba(105, 36, 117, 0.15);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(105, 36, 117, 0.06);
-    color: var(--purple-dark);
-  }
-
-  svg {
-    flex-shrink: 0;
-    color: var(--purple-dark);
+    border-color: oklch(0.85 0.004 80);
+    box-shadow: 0 2px 8px oklch(0.5 0.01 80 / 0.08);
   }
 }

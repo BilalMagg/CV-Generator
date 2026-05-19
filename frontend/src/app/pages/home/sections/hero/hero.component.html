@@ -1,54 +1,127 @@
-<div class="hero">
-  <div class="blob blob-1"></div>
-  <div class="blob blob-2"></div>
-  <div class="blob blob-3"></div>
-  <div class="hero-badge">
-    <div class="badge-pulse"></div>
-    Now powered by LangChain + Groq AI
-  </div>
-  <div class="hero-headline">
-    <span class="line-normal">Your entire job search,</span>
-    <span class="line-normal">on <span class="highlight-wrap"><span style="color:var(--purple-dark)">one platform.</span></span></span>
-    <span class="line-italic">
-      Smart, fast, and
-      <span class="squiggle-wrap">
-        effortless!
-        <svg height="14" viewBox="0 0 200 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M2 10 Q30 2 60 10 Q90 18 120 10 Q150 2 180 10 Q195 14 200 12"
-                stroke="#82AB7D" stroke-width="3" stroke-linecap="round" fill="none"/>
-        </svg>
+<section class="hero">
+
+  <!-- Decorative background shapes -->
+  <div class="deco-top-right"></div>
+  <div class="deco-bottom-left"></div>
+
+  <div class="hero-inner">
+
+    <!-- Eyebrow pill -->
+    <div class="eyebrow-pill">Used by 2,000+ job seekers worldwide</div>
+
+    <!-- Headline -->
+    <h1 class="hero-title">
+      Tailored CVs<br>
+      that get you hired faster
+    </h1>
+
+    <!-- Sub copy -->
+    <p class="hero-sub">
+      Paste a job description, get a CV in seconds.<br>
+      Track every application in one calm workspace — and never miss a follow-up.
+    </p>
+
+    <!-- CTA -->
+    <div class="hero-ctas">
+      <a routerLink="/register" class="cta-primary">Start your job search</a>
+    </div>
+
+    <!-- Feature check row -->
+    <div class="hero-checks">
+      <span class="check-item" style="color: oklch(0.55 0.16 145)">
+        <span class="check-dot" style="background: oklch(0.55 0.16 145)">
+          <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M5 12l5 5L20 7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        95% ATS score
       </span>
-    </span>
+      <span class="check-item" style="color: oklch(0.55 0.16 250)">
+        <span class="check-dot" style="background: oklch(0.55 0.16 250)">
+          <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M5 12l5 5L20 7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Free forever plan
+      </span>
+      <span class="check-item" style="color: oklch(0.6 0.16 30)">
+        <span class="check-dot" style="background: oklch(0.6 0.16 30)">
+          <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M5 12l5 5L20 7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        No credit card
+      </span>
+    </div>
+
+    <!-- Mockup window -->
+    <div class="mockup-wrap">
+      <div class="mockup-window">
+        <!-- Mini app mockup -->
+        <div class="faux-app">
+          <!-- Sidebar -->
+          <div class="faux-sidebar">
+            <div class="faux-brand">
+              <div class="faux-logo"></div>
+              <span>CV Generator</span>
+            </div>
+            @for (item of fauxNavItems; track item.label) {
+              <div class="faux-nav-item" [class.active]="item.active">
+                <div class="faux-dot" [style.background]="item.active ? 'oklch(0.55 0.18 250)' : 'oklch(0.75 0.004 80)'"></div>
+                {{ item.label }}
+              </div>
+            }
+          </div>
+          <!-- Content -->
+          <div class="faux-content">
+            <div class="faux-greeting">
+              Good afternoon, <span class="faux-name">Maya</span>
+            </div>
+            <div class="faux-sub">3 follow-ups this week · 2 active offers</div>
+            <div class="faux-generate-btn">
+              <span class="faux-sparkle">✦</span> Generate CV
+            </div>
+            <!-- KPI row -->
+            <div class="faux-kpis">
+              @for (kpi of fauxKpis; track kpi.label) {
+                <div class="faux-kpi">
+                  <div class="faux-kpi-label">{{ kpi.label }}</div>
+                  <div class="faux-kpi-value" [style.color]="kpi.color">{{ kpi.value }}</div>
+                  <div class="faux-kpi-bar">
+                    <div class="faux-kpi-fill" [style.width]="kpi.pct" [style.background]="kpi.color"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating badges -->
+      <div class="doodad doodad-1">
+        <div class="doodad-icon" style="background: oklch(0.55 0.18 250)">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12l5 5L20 7" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="doodad-title">Stripe · 94% match</div>
+          <div class="doodad-sub">Recommended for you</div>
+        </div>
+      </div>
+
+      <div class="doodad doodad-2">
+        <div class="doodad-icon" style="background: oklch(0.6 0.16 30)">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <div class="doodad-title">Interview tomorrow</div>
+          <div class="doodad-sub">Linear · 10:00 AM</div>
+        </div>
+      </div>
+
+      <div class="doodad doodad-3">
+        <div class="doodad-icon" style="background: oklch(0.55 0.16 145)">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="doodad-title">CV generated</div>
+          <div class="doodad-sub">ATS 98% · 11s</div>
+        </div>
+      </div>
+    </div>
+
   </div>
-  <div class="hero-annotation">
-    AI does<br>all the work
-    <svg class="arrow-svg" width="40" height="40" viewBox="0 0 40 40" fill="none">
-      <path d="M8 8 Q20 30 34 34" stroke="#692475" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-      <path d="M28 28 L34 34 L26 35" stroke="#692475" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    </svg>
-  </div>
-  <p class="hero-sub">
-    Create tailored CVs, track applications, and let AI agents deliver
-    the right CV to the right job — automatically.
-  </p>
-  <div class="hero-ctas">
-    <button class="hero-cta-primary" routerLink="/register">
-      Launch for free
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M3 8h10M9 4l4 4-4 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
-    <button class="hero-cta-secondary">Watch the demo</button>
-  </div>
-  <p class="hero-price-note">No credit card required · Free forever plan available</p>
-  <div class="hero-wave-bg">
-    <svg viewBox="0 0 1440 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-      <path d="M0,160 Q180,80 360,130 Q540,180 720,110 Q900,40 1080,120 Q1260,200 1440,140 L1440,200 L0,200 Z"
-            fill="rgba(247,244,242,0)" stroke="rgba(105,36,117,0.06)" stroke-width="1"/>
-    </svg>
-  </div>
-  <div class="scroll-hint">
-    <div class="scroll-mouse"><div class="scroll-wheel"></div></div>
-    <span>Scroll</span>
-  </div>
-</div>
+</section>

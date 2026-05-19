@@ -1,85 +1,80 @@
-<div class="content">
-  <div class="stat-row">
-    <div class="stat-card" (click)="goToApplications()">
-      <div class="stat-label">Applications sent</div>
-      <div class="stat-val">{{ stats().total }}</div>
-      <div class="stat-sub stat-up">Total tracked</div>
-    </div>
-    <div class="stat-card" (click)="goToApplications()">
-      <div class="stat-label">Response rate</div>
-      <div class="stat-val">{{ stats().total ? getConversion(stats().total, stats().interview + stats().accepted + stats().rejected) : '0%' }}</div>
-      <div class="stat-sub stat-neu">including screening</div>
-    </div>
-    <div class="stat-card" (click)="goToApplications()">
-      <div class="stat-label">Interview rate</div>
-      <div class="stat-val">{{ getConversion(stats().total, stats().interview) }}</div>
-      <div class="stat-sub stat-neu">— steady</div>
-    </div>
-    <div class="stat-card" (click)="goToApplications()">
-      <div class="stat-label">Offers received</div>
-      <div class="stat-val">{{ stats().accepted }}</div>
-      <div class="stat-sub stat-up">accepted</div>
-    </div>
-    <div class="stat-card" (click)="goToApplications()">
-      <div class="stat-label">Rejected</div>
-      <div class="stat-val">{{ stats().rejected }}</div>
-      <div class="stat-sub stat-dn">keep going</div>
-    </div>
-    <div class="stat-card" (click)="goToApplications()">
-      <div class="stat-label">Pending</div>
-      <div class="stat-val">{{ stats().pending }}</div>
-      <div class="stat-sub stat-neu">awaiting response</div>
-    </div>
+<div class="dash">
+  <!-- KPI row -->
+  <div class="kpi-row">
+    @for (k of kpis(); track k.label) {
+      <div class="kpi-card" (click)="goToApplications()">
+        <div class="kpi-label">{{ k.label }}</div>
+        <div class="kpi-value">{{ k.value }}</div>
+        <div class="kpi-sub">{{ k.sub }}</div>
+      </div>
+    }
   </div>
 
-  <div class="section-row">
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Application pipeline</div>
-        <div class="card-sub">Overview · hover for details</div>
-      </div>
-      <svg viewBox="0 0 540 220" width="100%" height="220" [innerHTML]="sankeySvg()"></svg>
+  <!-- AI banner -->
+  <div class="ai-banner">
+    <div class="ai-banner-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 15l-4.9 3.2 1.9-5.8L4 8.8h6.1L12 3z"/>
+      </svg>
     </div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">Recent activity</div></div>
-      <div class="activity">
-        <div class="act-item">
-          <div class="act-icon teal"><i class="ti ti-check"></i></div>
-          <div class="act-body">
-            <div class="act-title">Applications being tracked</div>
-            <div class="act-meta">{{ stats().total }} total applications</div>
+    <div class="ai-banner-body">
+      <div class="ai-banner-title">Generate a tailored CV in 11 seconds</div>
+      <div class="ai-banner-sub">Paste a job description and we'll match it to your portfolio instantly.</div>
+    </div>
+    <button class="ai-banner-cta">Generate CV</button>
+  </div>
+
+  <!-- Main grid -->
+  <div class="main-grid">
+    <!-- Pipeline chart -->
+    <div class="soft-card pipeline-card">
+      <div class="card-head">
+        <span class="card-title">Application pipeline</span>
+        <span class="card-meta">Hover for details</span>
+      </div>
+      <div [innerHTML]="pipelineSvg()"></div>
+    </div>
+
+    <!-- Recent activity -->
+    <div class="soft-card activity-card">
+      <div class="card-head">
+        <span class="card-title">Recent activity</span>
+      </div>
+      <div class="activity-list">
+        @for (item of activityItems(); track item.title) {
+          <div class="act-row">
+            <div class="act-dot" [attr.data-color]="item.color">
+              @switch (item.icon) {
+                @case ('check') {
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 3L5 9L2 6"/></svg>
+                }
+                @case ('video') {
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                }
+                @case ('mail') {
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4l-10 8L2 4"/></svg>
+                }
+                @case ('x') {
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 3L3 9M3 3l6 6"/></svg>
+                }
+              }
+            </div>
+            <div class="act-body">
+              <div class="act-title">{{ item.title }}</div>
+              <div class="act-meta">{{ item.meta }}</div>
+            </div>
           </div>
-        </div>
-        <div class="act-item">
-          <div class="act-icon purple"><i class="ti ti-video"></i></div>
-          <div class="act-body">
-            <div class="act-title">{{ stats().interview }} in interview stage</div>
-            <div class="act-meta">Move forward!</div>
-          </div>
-        </div>
-        <div class="act-item">
-          <div class="act-icon amber"><i class="ti ti-mail"></i></div>
-          <div class="act-body">
-            <div class="act-title">{{ stats().pending }} pending responses</div>
-            <div class="act-meta">Consider follow-ups</div>
-          </div>
-        </div>
-        <div class="act-item">
-          <div class="act-icon coral"><i class="ti ti-x"></i></div>
-          <div class="act-body">
-            <div class="act-title">{{ stats().rejected }} rejected</div>
-            <div class="act-meta">Keep applying!</div>
-          </div>
-        </div>
+        }
       </div>
     </div>
   </div>
 
-  <div class="timeline-card">
-    <div class="card-header">
-      <div class="card-title">Applications over time</div>
-      <div class="card-sub">Daily count — last 30 days</div>
+  <!-- Timeline -->
+  <div class="soft-card timeline-card">
+    <div class="card-head">
+      <span class="card-title">Applications over time</span>
+      <span class="card-meta">Daily count · last 30 days</span>
     </div>
-    <svg viewBox="0 0 620 96" width="100%" height="96" [innerHTML]="timelineSvg()"></svg>
+    <div [innerHTML]="timelineSvg()"></div>
   </div>
 </div>

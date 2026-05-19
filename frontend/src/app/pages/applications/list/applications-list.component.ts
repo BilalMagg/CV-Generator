@@ -8,23 +8,7 @@ import {
   ApplicationStatisticsDto,
   ApplicationStatus,
   STATUS_LABELS,
-  STATUS_ORDER,
 } from '../../../models/application.model';
-
-interface StatsCard {
-  status: ApplicationStatus;
-  label: string;
-  count: number;
-}
-
-const STATUS_BG: Record<string, string> = {
-  pending: '#F1EFE8', reviewed: '#E6F1FB', interview: '#EEEDFE',
-  accepted: '#EAF3DE', rejected: '#FCEBEB', cancelled: '#F1EFE8',
-};
-const STATUS_TEXT: Record<string, string> = {
-  pending: '#5F5E5A', reviewed: '#185FA5', interview: '#534AB7',
-  accepted: '#3B6D11', rejected: '#A32D2D', cancelled: '#888780',
-};
 
 @Component({
   selector: 'app-applications-list',
@@ -48,18 +32,14 @@ export class ApplicationsListComponent implements OnInit {
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.totalItems() / this.pageSize())));
   visiblePages = computed(() => {
-    const current = this.page();
-    const total = this.totalPages();
+    const cur = this.page(), total = this.totalPages();
     const pages: number[] = [];
-    const start = Math.max(1, current - 2);
-    const end = Math.min(total, current + 2);
+    const start = Math.max(1, cur - 2), end = Math.min(total, cur + 2);
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   });
 
   protected readonly STATUS_LABELS = STATUS_LABELS;
-  protected readonly STATUS_BG = STATUS_BG;
-  protected readonly STATUS_TEXT = STATUS_TEXT;
   protected Math = Math;
 
   ngOnInit() { this.loadData(); }
@@ -90,8 +70,7 @@ export class ApplicationsListComponent implements OnInit {
 
   async onDelete(id: string) {
     if (!confirm('Delete this application?')) return;
-    try { await this.appService.delete(id); this.loadData(); }
-    catch { }
+    try { await this.appService.delete(id); this.loadData(); } catch { }
   }
 
   async onInlineStatusChange(app: ApplicationResponseDto, event: Event) {
@@ -103,19 +82,18 @@ export class ApplicationsListComponent implements OnInit {
   }
 
   getStatusLabel(s: string) { return STATUS_LABELS[s as ApplicationStatus] || s; }
+
   formatDate(d: string) {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
+
   logoBg(name: string): string {
-    const colors = ['#E6F1FB', '#EEEDFE', '#FAEEDA', '#E1F5EE', '#F1EFE8', '#FCEBEB', '#FAECE7'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return colors[Math.abs(hash) % colors.length];
-  }
-  logoColor(name: string): string {
-    const colors = ['#185FA5', '#534AB7', '#854F0B', '#0F6E56', '#5F5E5A', '#A32D2D', '#993C1D'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return colors[Math.abs(hash) % colors.length];
+    const palette = [
+      'oklch(0.93 0.04 250)', 'oklch(0.93 0.04 160)', 'oklch(0.93 0.04 65)',
+      'oklch(0.93 0.04 300)', 'oklch(0.93 0.04 25)',  'oklch(0.94 0.02 80)',
+    ];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return palette[Math.abs(h) % palette.length];
   }
 }

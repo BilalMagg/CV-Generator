@@ -1,79 +1,62 @@
-import { Component, AfterViewInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-stats-section',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './stats.component.html',
   styleUrl: './stats.component.scss',
 })
-export class StatsSectionComponent implements AfterViewInit {
-  private statsObserver: IntersectionObserver | null = null;
-
-  ngAfterViewInit(): void {
-    this.initScrollReveal();
-    this.initCounterAnimation();
-  }
-
-  private initScrollReveal(): void {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12 }
-    );
-    document.querySelectorAll('app-stats-section .reveal').forEach((el) => observer.observe(el));
-  }
-
-  private initCounterAnimation(): void {
-    const statsSection = document.querySelector('.stats-section');
-    if (!statsSection) return;
-
-    this.statsObserver = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          this.animCounter('stat-1', 12847, '',  1600, 0);
-          this.animCounter('stat-2', 92,    '%', 1200, 150);
-          this.animCounter('stat-3', 8,     's', 900,  300);
-          this.animCounter('stat-4', 2341,  '',  1600, 200);
-          this.statsObserver?.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    this.statsObserver.observe(statsSection);
-  }
-
-  private animCounter(
-    id: string,
-    target: number,
-    suffix: string,
-    duration: number,
-    delay: number
-  ): void {
-    setTimeout(() => {
-      const el = document.getElementById(id);
-      if (!el) return;
-
-      let start: number | null = null;
-
-      const step = (timestamp: number) => {
-        if (!start) start = timestamp;
-        const progress = Math.min((timestamp - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        el.textContent =
-          Math.round(target * eased).toLocaleString() + suffix;
-        if (progress < 1) requestAnimationFrame(step);
-      };
-
-      requestAnimationFrame(step);
-    }, delay);
-  }
+export class StatsSectionComponent {
+  plans = [
+    {
+      name: 'Free',
+      price: '$0',
+      period: '/mo',
+      desc: 'Perfect for getting started.',
+      cta: 'Get started free',
+      ctaLink: '/register',
+      featured: false,
+      features: [
+        '5 AI-tailored CVs/mo',
+        '20 tracked applications',
+        '5 job search views',
+        'Email reminders',
+      ],
+    },
+    {
+      name: 'Pro',
+      price: '$12',
+      period: '/mo',
+      desc: 'For serious job seekers.',
+      cta: 'Start Pro',
+      ctaLink: '/register',
+      featured: true,
+      features: [
+        'Unlimited CVs & applications',
+        'Live job recommendations',
+        'AI cover letters',
+        'ATS score & gap analysis',
+        'Priority support',
+      ],
+    },
+    {
+      name: 'Career',
+      price: '$28',
+      period: '/mo',
+      desc: 'For those who want every edge.',
+      cta: 'Start Career',
+      ctaLink: '/register',
+      featured: false,
+      features: [
+        'Everything in Pro',
+        'Monthly 1-on-1 coaching',
+        'Interview prep kit',
+        'Salary benchmarks',
+        'LinkedIn profile review',
+      ],
+    },
+  ];
 }
