@@ -40,8 +40,6 @@ const TEMP_USER: User = {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly TOKEN_KEY = 'access_token';
-
   currentUser = signal<User | null>(null);
   isAuthenticated = computed(() => this.currentUser() !== null);
 
@@ -85,7 +83,6 @@ export class AuthService {
       this.currentUser.set(TEMP_USER);
       return;
     }
-    // Redirect to backend OIDC login endpoint
     window.location.href = `${environment.gatewayUrl}/api/auth/login`;
   }
 
@@ -94,10 +91,7 @@ export class AuthService {
       this.currentUser.set(null);
       return;
     }
-    // Clear local state
     this.currentUser.set(null);
-    localStorage.removeItem(this.TOKEN_KEY);
-    // Redirect to backend logout endpoint
     window.location.href = `${environment.gatewayUrl}/api/auth/logout`;
   }
 
@@ -121,12 +115,4 @@ export class AuthService {
     }
   }
 
-  getAccessToken(): string | null {
-    if (environment.useTempAuth) return null;
-    return localStorage.getItem(this.TOKEN_KEY);
-  }
-
-  setAccessToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
-  }
 }

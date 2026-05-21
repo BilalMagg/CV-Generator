@@ -30,10 +30,6 @@ export const routes: Routes = [
   { path: 'register', component: RegisterComponent },
   { path: 'about', component: AboutComponent },
   { path: 'contact', component: ContactPageComponent },
-  // { path: 'experience', component: ExperienceComponent, canActivate: [authGuard] },
-  // { path: 'personal-info', component: PersonalInfoComponent, canActivate: [authGuard] },
-  // { path: 'education', component: EducationComponent, canActivate: [authGuard] },
-  // { path: 'skills', component: SkillsComponent, canActivate: [authGuard] },
   {
     path: 'applications',
     component: ApplicationsLayoutComponent,
