@@ -1,0 +1,143 @@
+.arc-cta {
+  padding: 120px 28px 0;
+  background: var(--bg);
+  text-align: center;
+  overflow: hidden;
+}
+
+.arc-cta-inner {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+
+.arc-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.arc-heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: var(--text);
+}
+
+.arc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: oklch(0.18 0.01 80);
+  color: oklch(0.98 0 0);
+  border-radius: 999px;
+  padding: 14px 30px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  text-decoration: none;
+  box-shadow: 0 6px 20px oklch(0 0 0 / 0.18), inset 0 1px 0 oklch(1 0 0 / 0.12);
+  transition: background 0.12s, transform 0.12s;
+
+  &:hover {
+    background: oklch(0.12 0.01 80);
+    transform: translateY(-1px);
+  }
+}
+
+.arc-arrow {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Arc row */
+.arc-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  /* negative margin pulls avatars together for the overlapping effect */
+  gap: 0;
+  padding-top: 8px;
+  padding-bottom: 80px; /* room for the downward arc */
+  width: 100%;
+  max-width: 700px;
+}
+
+.arc-avatar {
+  flex-shrink: 0;
+  margin-left: -14px;
+  transform-origin: bottom center;
+  transition: transform 0.2s ease;
+
+  &:first-child { margin-left: 0; }
+
+  &:hover {
+    z-index: 20 !important;
+    transform: translateY(-8px) scale(1.05) !important;
+  }
+}
+
+.arc-avatar-inner {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.01em;
+  /* White ring + outer border for the stacked-cards look */
+  box-shadow:
+    0 0 0 3px white,
+    0 0 0 4px oklch(0.9 0.005 80),
+    0 4px 12px oklch(0.4 0.02 80 / 0.18);
+}
+
+/* Center avatar is larger */
+.arc-avatar--center .arc-avatar-inner {
+  width: 76px;
+  height: 76px;
+  font-size: 16px;
+  box-shadow:
+    0 0 0 3px white,
+    0 0 0 4px oklch(0.9 0.005 80),
+    0 8px 24px oklch(0.4 0.02 80 / 0.22);
+}
+
+@media (max-width: 600px) {
+  .arc-row {
+    padding-bottom: 48px;
+  }
+
+  /* On mobile show only center 3 avatars */
+  .arc-avatar:nth-child(-n+2),
+  .arc-avatar:nth-child(n+8) {
+    display: none;
+  }
+
+  .arc-avatar-inner {
+    width: 52px;
+    height: 52px;
+    font-size: 12px;
+  }
+
+  .arc-avatar--center .arc-avatar-inner {
+    width: 64px;
+    height: 64px;
+    font-size: 14px;
+  }
+}

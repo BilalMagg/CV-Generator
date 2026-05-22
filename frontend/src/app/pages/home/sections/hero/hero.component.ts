@@ -1,15 +1,20 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { DotFieldComponent } from './dot-field/dot-field.component';
 
 @Component({
   selector: 'app-hero-section',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DotFieldComponent],
   templateUrl: './hero.component.html',
   styleUrl: './hero.component.scss',
 })
 export class HeroSectionComponent {
+  @ViewChild(DotFieldComponent) dotField?: DotFieldComponent;
+
+  onMouseMove(e: MouseEvent) { this.dotField?.onMouseMove(e); }
+  onMouseLeave()             { this.dotField?.onMouseLeave(); }
   fauxNavItems = [
     { label: 'Dashboard',    active: true },
     { label: 'Generate CV',  active: false },

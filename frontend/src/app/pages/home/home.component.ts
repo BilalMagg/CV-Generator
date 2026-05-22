@@ -9,6 +9,7 @@ import { PipelineSectionComponent } from './sections/pipeline/pipeline.component
 import { HowItWorksSectionComponent } from './sections/how-it-works/how-it-works.component';
 import { StatsSectionComponent } from './sections/stats/stats.component';
 import { TestimonialsSectionComponent } from './sections/testimonials/testimonials.component';
+import { ArcCtaSectionComponent } from './sections/arc-cta/arc-cta.component';
 import { CtaBannerSectionComponent } from './sections/cta-banner/cta-banner.component';
 import { ContactSectionComponent } from './sections/contact/contact.component';
 
@@ -26,6 +27,7 @@ import { ContactSectionComponent } from './sections/contact/contact.component';
     HowItWorksSectionComponent,
     StatsSectionComponent,
     TestimonialsSectionComponent,
+    ArcCtaSectionComponent,
     CtaBannerSectionComponent,
     ContactSectionComponent,
   ],

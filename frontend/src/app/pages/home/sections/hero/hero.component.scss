@@ -2,32 +2,56 @@
   position: relative;
   padding: 60px 28px 0;
   text-align: center;
-  overflow: hidden;
+  overflow: visible;
   background: var(--bg);
 }
 
-.deco-top-right {
+/* Clips only the background decos so they don't bleed outside the section */
+.hero-bg-clip {
   position: absolute;
-  top: 0; right: 0;
-  width: 280px; height: 220px;
-  background: oklch(0.92 0.004 80);
-  border-bottom-left-radius: 24px;
-  transform: rotate(8deg) translate(40px, -40px);
-  opacity: 0.4;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.deco-bottom-left {
+@keyframes float-3d {
+  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50%       { transform: translateY(-12px) rotate(var(--rot, 0deg)); }
+}
+
+.deco-3d {
   position: absolute;
-  bottom: 140px; left: -80px;
-  width: 240px; height: 170px;
-  background: oklch(0.94 0.004 80);
-  border: 1px solid oklch(0.88 0.005 80);
-  border-radius: 10px;
-  transform: rotate(-12deg);
-  background-image:
-    repeating-linear-gradient(0deg, transparent, transparent 22px, oklch(0.88 0.005 80) 22px, oklch(0.88 0.005 80) 23px),
-    repeating-linear-gradient(90deg, transparent, transparent 22px, oklch(0.88 0.005 80) 22px, oklch(0.88 0.005 80) 23px);
-  opacity: 0.5;
+  user-select: none;
+  pointer-events: none;
+  animation: float-3d 5s ease-in-out infinite;
+}
+
+.deco-3d--laptop {
+  width: 260px;
+  bottom: 8%;
+  left: -30px;
+  --rot: -8deg;
+  animation-delay: 0s;
+  opacity: 0.88;
+}
+
+.deco-3d--keyboard {
+  width: 220px;
+  top: 10%;
+  right: -20px;
+  --rot: 10deg;
+  animation-delay: 1.6s;
+  opacity: 0.88;
+}
+
+.deco-3d--pencil {
+  width: 100px;
+  top: 62%;
+  right: 6%;
+  --rot: -20deg;
+  animation-delay: 0.8s;
+  opacity: 0.75;
 }
 
 .hero-inner {
@@ -295,6 +319,7 @@
 /* Floating doodads */
 .doodad {
   position: absolute;
+  z-index: 10;
   background: white;
   border: 1px solid oklch(0.92 0.004 80);
   border-radius: 14px;
@@ -350,6 +375,7 @@
 
 @media (max-width: 900px) {
   .doodad { display: none; }
+  .deco-3d { display: none; }
   .faux-app { grid-template-columns: 1fr; }
   .faux-sidebar { display: none; }
   .mockup-window { margin: 0 12px; }

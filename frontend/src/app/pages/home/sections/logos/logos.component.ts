@@ -10,12 +10,17 @@ import { CommonModule } from '@angular/common';
 })
 export class LogosSectionComponent {
   companies = [
-    { name: 'Linear',    mark: 'L', color: 'oklch(0.5 0.15 265)' },
-    { name: 'Stripe',    mark: 'S', color: 'oklch(0.5 0.15 250)' },
-    { name: 'Vercel',    mark: 'V', color: 'oklch(0.22 0.01 80)'  },
-    { name: 'Notion',    mark: 'N', color: 'oklch(0.35 0.01 80)'  },
-    { name: 'Figma',     mark: 'F', color: 'oklch(0.6 0.18 25)'   },
-    { name: 'Ramp',      mark: 'R', color: 'oklch(0.5 0.15 145)'  },
-    { name: 'Anthropic', mark: 'A', color: 'oklch(0.55 0.16 30)'  },
+    { name: 'Linear',    slug: 'linear',    color: '5E6AD2' },
+    { name: 'Stripe',    slug: 'stripe',    color: '635BFF' },
+    { name: 'Vercel',    slug: 'vercel',    color: '000000' },
+    { name: 'Notion',    slug: 'notion',    color: '000000' },
+    { name: 'Figma',     slug: 'figma',     color: 'F24E1E' },
+    { name: 'Ramp',      slug: 'ramp',      color: '00B090' },
+    { name: 'Anthropic', slug: 'anthropic', color: '191919' },
   ];
+
+  // Duplicated for seamless infinite marquee
+  get marqueeItems() {
+    return [...this.companies, ...this.companies];
+  }
 }
