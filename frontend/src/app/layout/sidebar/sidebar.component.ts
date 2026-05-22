@@ -2,15 +2,7 @@ import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-
-interface NavItem {
-  label: string;
-  route: string;
-  icon: string;
-  exact?: boolean;
-  accent?: boolean;
-  group: 'main' | 'library';
-}
+import { APP_NAME } from '../../app-name';
 
 @Component({
   selector: 'app-sidebar',
@@ -20,6 +12,7 @@ interface NavItem {
   styleUrl: './sidebar.component.scss'
 })
 export class SidebarComponent {
+  appName = APP_NAME;
   private router = inject(Router);
   private authService = inject(AuthService);
 

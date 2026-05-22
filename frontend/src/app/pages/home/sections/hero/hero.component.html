@@ -84,7 +84,7 @@
           <div class="faux-sidebar">
             <div class="faux-brand">
               <div class="faux-logo"></div>
-              <span>CV Generator</span>
+              <span>{{ appName }}</span>
             </div>
             @for (item of fauxNavItems; track item.label) {
               <div class="faux-nav-item" [class.active]="item.active">

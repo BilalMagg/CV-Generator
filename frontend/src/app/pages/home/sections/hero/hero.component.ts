@@ -2,6 +2,7 @@ import { Component, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DotFieldComponent } from './dot-field/dot-field.component';
+import { APP_NAME } from '../../../../../app-name';
 
 @Component({
   selector: 'app-hero-section',
@@ -11,6 +12,7 @@ import { DotFieldComponent } from './dot-field/dot-field.component';
   styleUrl: './hero.component.scss',
 })
 export class HeroSectionComponent {
+  appName = APP_NAME;
   @ViewChild(DotFieldComponent) dotField?: DotFieldComponent;
 
   onMouseMove(e: MouseEvent) { this.dotField?.onMouseMove(e); }

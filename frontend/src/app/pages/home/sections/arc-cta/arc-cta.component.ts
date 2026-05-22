@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { APP_NAME } from '../../../../../app-name';
 
 interface ArcAvatar {
   initials: string;
@@ -21,6 +22,7 @@ interface ArcAvatar {
   styleUrl: './arc-cta.component.scss',
 })
 export class ArcCtaSectionComponent {
+  appName = APP_NAME;
   private readonly SOURCE = [
     { initials: 'SL', hue: 250 },
     { initials: 'MR', hue: 145 },

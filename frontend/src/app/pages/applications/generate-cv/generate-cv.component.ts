@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpService } from '../../../services/http.service';
+import { APP_NAME } from '../../../app-name';
 
 type Tone = 'Confident' | 'Warm' | 'Technical' | 'Concise';
 
@@ -14,6 +15,7 @@ type Tone = 'Confident' | 'Warm' | 'Technical' | 'Concise';
   styleUrl: './generate-cv.component.scss',
 })
 export class GenerateCvComponent {
+  appName = APP_NAME;
   private http = inject(HttpService);
   private router = inject(Router);
 
