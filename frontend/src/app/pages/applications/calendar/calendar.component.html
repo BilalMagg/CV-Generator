@@ -1,98 +1,104 @@
 <div class="calendar-page">
-  <div class="content">
-    <div class="reminder-panel">
-      <div class="panel-header">
-        <div class="panel-title">Upcoming reminders</div>
-        <button class="add-btn" (click)="toggleForm()"><i class="ti ti-plus"></i></button>
+
+  <!-- Page header -->
+  <div class="cal-page-header">
+    <div class="header-left">
+      <span class="badge-pill">Schedule</span>
+      <h1 class="page-title">{{ monthYear() }}</h1>
+      <p class="page-sub">Interviews, follow-ups, and offer deadlines — never miss a beat.</p>
+    </div>
+    <div class="header-right">
+      <div class="view-group">
+        <button class="vbtn">Board</button>
+        <button class="vbtn">List</button>
+        <button class="vbtn active">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <rect x="1" y="2" width="12" height="11" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="4" y1="1" x2="4" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/>
+          </svg>
+          Calendar
+        </button>
+        <button class="vbtn" (click)="goToToday()">Today</button>
       </div>
-
-      <div class="reminder-list">
-        @if (loading()) {
-          <div class="loading-inline">Loading...</div>
-        }
-
-        @if (!loading() && remindersList().length === 0) {
-          <div class="empty-reminders">
-            <p>No reminders scheduled</p>
-          </div>
-        }
-
-        @for (rem of remindersList(); track rem.id) {
-          <div class="reminder-card-compact" [class.is-past]="rem.status !== 'Pending'">
-            <div class="rem-header">
-              <span class="rem-title">{{ rem.title }}</span>
-              <span class="status-dot" [ngClass]="getStatusClass(rem.status)" [title]="rem.status"></span>
-            </div>
-            
-            @if (rem.message) {
-              <p class="rem-msg">{{ rem.message }}</p>
-            }
-
-            <div class="rem-footer">
-              <div class="rem-meta">
-                <span><i class="ti ti-calendar"></i> {{ rem.eventDate | date:'MMM d' }}</span>
-                <span><i class="ti ti-bell"></i> {{ getOffsetLabel(rem.reminderOffset) }}</span>
-              </div>
-              @if (rem.status === 'Pending') {
-                <button class="btn-cancel-icon" (click)="cancelReminder(rem.id)" title="Cancel">
-                  <i class="ti ti-trash"></i>
-                </button>
-              }
-            </div>
-          </div>
-        }
+      <div class="nav-btns">
+        <button class="nav-arrow" (click)="prevMonth()">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="nav-arrow" (click)="nextMonth()">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
       </div>
     </div>
+  </div>
 
-    <div class="cal-area">
-      <div class="cal-header">
-        <div>
-          <button class="nav-arrow" (click)="prevMonth()">
-            <i class="ti ti-chevron-left"></i>
-          </button>
-          <span class="cal-month">{{ monthYear() }}</span>
-          <button class="nav-arrow" (click)="nextMonth()">
-            <i class="ti ti-chevron-right"></i>
-          </button>
-        </div>
-        <div class="cal-actions">
-          <button class="tb-btn" [class.active]="viewMode() === 'month'" (click)="toggleView('month')">Month</button>
-          <button class="tb-btn" [class.active]="viewMode() === 'week'" (click)="toggleView('week')">Week</button>
-          <button class="tb-btn primary" (click)="toggleForm()"><i class="ti ti-plus"></i>Add reminder</button>
-        </div>
-      </div>
-
+  <!-- Main area -->
+  <div class="cal-main">
+    <!-- Calendar grid -->
+    <div class="cal-grid-wrap">
       <div class="cal-grid">
-        <div class="cal-day-name">Mon</div>
-        <div class="cal-day-name">Tue</div>
-        <div class="cal-day-name">Wed</div>
-        <div class="cal-day-name">Thu</div>
-        <div class="cal-day-name">Fri</div>
-        <div class="cal-day-name">Sat</div>
-        <div class="cal-day-name">Sun</div>
+        <div class="cal-day-name">MON</div>
+        <div class="cal-day-name">TUE</div>
+        <div class="cal-day-name">WED</div>
+        <div class="cal-day-name">THU</div>
+        <div class="cal-day-name">FRI</div>
+        <div class="cal-day-name">SAT</div>
+        <div class="cal-day-name">SUN</div>
 
         @for (cell of calendarDays(); track cell.year + '-' + cell.month + '-' + cell.day) {
           <div class="cal-day"
             [class.other-month]="!cell.isCurrentMonth"
             [class.today]="cell.isToday"
           >
-            <div class="day-num">{{ cell.day }}</div>
-            @for (ev of eventsForDay(cell.day); track ev.type + ev.title) {
-              <div class="event-dot" [class]="'ev-' + ev.type">{{ ev.title }}</div>
+            <div class="day-num" [class.today-num]="cell.isToday">{{ cell.day }}</div>
+            @for (ev of eventsForDay(cell.day, cell.month, cell.year); track ev.title) {
+              <div class="event-pill" [ngClass]="'ev-' + ev.type">{{ ev.title }}</div>
             }
           </div>
         }
       </div>
+    </div>
 
-      <div class="cal-legend">
-        <span class="legend-item"><span class="legend-swatch sw-interview"></span>Interview</span>
-        <span class="legend-item"><span class="legend-swatch sw-followup"></span>Follow-up</span>
-        <span class="legend-item"><span class="legend-swatch sw-deadline"></span>Deadline</span>
+    <!-- Upcoming panel -->
+    <div class="upcoming-panel">
+      <div class="upcoming-header">
+        <h3 class="upcoming-title">Upcoming</h3>
+        <button class="add-reminder-btn" (click)="toggleForm()">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add
+        </button>
+      </div>
+      <div class="upcoming-list">
+        @if (loading()) {
+          <div class="loading-msg">Loading…</div>
+        }
+        @for (rem of remindersList(); track rem.id) {
+          <div class="upcoming-item" [class.is-past]="rem.status !== 'Pending'">
+            <div class="date-chip">
+              <span class="chip-month">{{ rem.eventDate | date:'MMM' | uppercase }}</span>
+              <span class="chip-day">{{ rem.eventDate | date:'d' }}</span>
+            </div>
+            <div class="item-body">
+              <div class="item-type">{{ rem.title }}</div>
+              @if (rem.message) {
+                <div class="item-meta">{{ rem.message }}</div>
+              }
+            </div>
+            <svg class="item-chevron" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        } @empty {
+          @if (!loading()) {
+            <div class="empty-upcoming">
+              <p>No upcoming reminders.</p>
+              <button class="add-first-btn" (click)="toggleForm()">Add your first reminder</button>
+            </div>
+          }
+        }
       </div>
     </div>
   </div>
 
-  <!-- Popup Form / Modal -->
+  <!-- Create reminder modal -->
   @if (showForm()) {
     <div class="modal-overlay" (click)="toggleForm()">
       <div class="modal-content" (click)="$event.stopPropagation()">
@@ -102,35 +108,29 @@
         </div>
 
         <div class="modal-body">
-          @if (error()) {
-            <div class="alert alert-error">{{ error() }}</div>
-          }
-          @if (successMsg()) {
-            <div class="alert alert-success">{{ successMsg() }}</div>
-          }
+          @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+          @if (successMsg()) { <div class="alert alert-success">{{ successMsg() }}</div> }
 
           <div class="form-grid">
             <div class="form-group">
-              <label for="rem-title">Title *</label>
-              <input id="rem-title" type="text" [(ngModel)]="form.title"
-                     placeholder="e.g. Follow up with Google" />
+              <label>Title *</label>
+              <input type="text" [(ngModel)]="form.title" placeholder="e.g. Follow up with Google" />
             </div>
             <div class="form-group">
-              <label for="rem-event-date">Event Date *</label>
-              <input id="rem-event-date" type="datetime-local" [(ngModel)]="form.eventDate" />
+              <label>Event Date *</label>
+              <input type="datetime-local" [(ngModel)]="form.eventDate" />
             </div>
             <div class="form-group">
-              <label for="rem-offset">Remind Me</label>
-              <select id="rem-offset" [(ngModel)]="form.reminderOffset">
+              <label>Remind Me</label>
+              <select [(ngModel)]="form.reminderOffset">
                 @for (opt of offsetOptions; track opt.value) {
                   <option [value]="opt.value">{{ opt.label }}</option>
                 }
               </select>
             </div>
             <div class="form-group full-width">
-              <label for="rem-message">Note (optional)</label>
-              <textarea id="rem-message" [(ngModel)]="form.message" rows="3"
-                        placeholder="Any details you want in the reminder email..."></textarea>
+              <label>Note (optional)</label>
+              <textarea [(ngModel)]="form.message" rows="3" placeholder="Any details…"></textarea>
             </div>
           </div>
         </div>
@@ -138,10 +138,11 @@
         <div class="modal-footer">
           <button class="btn-cancel" (click)="toggleForm()">Cancel</button>
           <button class="btn-submit" (click)="submit()" [disabled]="saving()">
-            {{ saving() ? 'Creating...' : 'Create Reminder' }}
+            {{ saving() ? 'Creating…' : 'Create Reminder' }}
           </button>
         </div>
       </div>
     </div>
   }
+
 </div>

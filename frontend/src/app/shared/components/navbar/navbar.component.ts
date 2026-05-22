@@ -21,4 +21,9 @@ export class NavbarComponent {
   toggleMobile(): void {
     this.mobileOpen = !this.mobileOpen;
   }
+
+  scrollTo(event: Event, sectionId: string): void {
+    event.preventDefault();
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+  }
 }

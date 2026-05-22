@@ -1,32 +1,18 @@
-<section class="how-section">
-  <div class="how-header">
-    <p class="section-kicker reveal">How it works</p>
-    <h2 class="section-title reveal" style="text-align:center;">
-      From profile to CV <span class="purple">in three steps.</span>
-    </h2>
-    <p class="section-sub reveal" style="margin:0 auto;">
-      Set up your profile once, then let the AI pipeline handle the rest —
-      from parsing job descriptions to delivering optimized CVs.
-    </p>
-  </div>
-  <div class="how-grid">
-    <div class="how-card reveal reveal-delay-1">
-      <div class="how-num">1</div>
-      <div class="how-icon">👤</div>
-      <h3>Build your profile</h3>
-      <p>Add your experience, skills, education, and projects once. The platform stores everything and keeps it ready for any application.</p>
+<section id="how-it-works" class="hiw-section">
+  <div class="hiw-inner">
+    <div class="section-head">
+      <div class="section-eyebrow-pill">How it works</div>
+      <h2 class="section-display-title">Four steps to your next offer</h2>
     </div>
-    <div class="how-card reveal reveal-delay-2">
-      <div class="how-num">2</div>
-      <div class="how-icon">📋</div>
-      <h3>Paste a job description</h3>
-      <p>Drop any job posting URL or paste the description. The extraction agent identifies key requirements and qualifications automatically.</p>
-    </div>
-    <div class="how-card reveal reveal-delay-3">
-      <div class="how-num">3</div>
-      <div class="how-icon">🚀</div>
-      <h3>Get your tailored CV</h3>
-      <p>An ATS-optimized CV is generated and delivered to your inbox — tailored specifically for the role you applied to.</p>
+
+    <div class="hiw-grid">
+      @for (step of steps; track step.num) {
+        <div class="hiw-card">
+          <div class="hiw-num">{{ step.num }}</div>
+          <div class="hiw-title">{{ step.title }}</div>
+          <div class="hiw-desc">{{ step.desc }}</div>
+        </div>
+      }
     </div>
   </div>
 </section>
