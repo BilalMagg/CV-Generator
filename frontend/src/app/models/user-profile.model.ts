@@ -1,3 +1,9 @@
+export interface ProfessionalTitle {
+  id?: string;
+  title: string;
+  isDefault: boolean;
+}
+
 export interface UserProfile {
   id: string;
   keycloakId: string;
@@ -13,6 +19,25 @@ export interface UserProfile {
   isActive: boolean;
   aiProfileDataJson?: string;
   preferencesJson?: string;
+
+  headline?: string;
+  city?: string;
+  country?: string;
+  authorizedCountry?: string;
+  requiresVisaSponsorship?: boolean;
+  noticePeriod?: string;
+  employmentTypes?: string[];
+  remotePreference?: string;
+  willingToRelocate?: string;
+  desiredJobTitle?: string;
+  desiredSalaryMin?: number;
+  desiredSalaryMax?: number;
+  linkedInUrl?: string;
+  githubUrl?: string;
+  portfolioUrl?: string;
+  personalWebsite?: string;
+  bio?: string;
+  professionalTitles?: ProfessionalTitle[];
 }
 
 export interface UpdateUserProfileDto {
@@ -21,5 +46,23 @@ export interface UpdateUserProfileDto {
   phoneNumber?: string;
   birthDate?: string;
   avatarUrl?: string;
+  headline?: string;
+  city?: string;
+  country?: string;
+  authorizedCountry?: string;
+  requiresVisaSponsorship?: boolean;
+  noticePeriod?: string;
+  employmentTypes?: string[];
+  remotePreference?: string;
+  willingToRelocate?: string;
+  desiredJobTitle?: string;
+  desiredSalaryMin?: number;
+  desiredSalaryMax?: number;
+  linkedInUrl?: string;
+  githubUrl?: string;
+  portfolioUrl?: string;
+  personalWebsite?: string;
+  bio?: string;
+  professionalTitles?: ProfessionalTitle[];
   preferencesJson?: string;
 }

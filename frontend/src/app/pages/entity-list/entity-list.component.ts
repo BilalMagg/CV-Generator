@@ -2,8 +2,8 @@ import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { environment } from '../../../environments/environment';
-import { EntityCardComponent } from '../../shared/components/entity-card/entity-card.component';
+import { environment } from '@env/environment';
+import { EntityCardComponent } from '@app/shared/components/entity-card/entity-card.component';
 
 @Component({
   selector: 'app-entity-list',
@@ -22,7 +22,7 @@ export class EntityListComponent implements OnInit {
     data: any[]=[];
     
     goToDetail(id: string){
-      this.router.navigate(['/my-cv', this.entity, id]);
+      this.router.navigate(['/my-career', this.entity, id]);
     }
 
     ngOnInit() {
@@ -33,8 +33,7 @@ export class EntityListComponent implements OnInit {
   }
 
   loadData(){
-    const baseUrl = environment.apiUrl;
-    const url = `${baseUrl}/${this.entity}?t=${new Date().getTime()}`;
+    const url = `${environment.apiUrl}/api/user-content/${this.entity}?t=${new Date().getTime()}`;
     
     this.http.get<any>(url, { withCredentials: true }).subscribe({
       next: (response) => {

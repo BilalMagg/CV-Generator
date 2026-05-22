@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { HttpService } from '../../services/http.service';
+import { AuthService } from '@app/services/auth.service';
+import { APP_NAME } from '@app/app-name';
 
 @Component({
   selector: 'app-register',
@@ -11,6 +12,7 @@ import { HttpService } from '../../services/http.service';
   styleUrl: './register.component.scss',
 })
 export class RegisterComponent {
+  appName = APP_NAME;
   firstName = '';
   lastName = '';
   email = '';
@@ -20,10 +22,8 @@ export class RegisterComponent {
   error = signal('');
   success = signal('');
 
-  constructor(
-    private http: HttpService,
-    private router: Router
-  ) {}
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
   async onSubmit(): Promise<void> {
     this.error.set('');
@@ -47,18 +47,18 @@ export class RegisterComponent {
     this.success.set('');
 
     try {
-      const response = await this.http.post<{success: boolean; message?: string}>('/api/auth/register', {
+      const result = await this.authService.register({
         firstName: this.firstName,
         lastName: this.lastName,
         email: this.email,
         password: this.password,
       });
 
-      if (response.success) {
+      if (result.success) {
         this.success.set('Account created successfully! Redirecting to login...');
         setTimeout(() => this.router.navigate(['/login']), 2000);
       } else {
-        this.error.set(response.message || 'Registration failed');
+        this.error.set(result.message || 'Registration failed');
       }
     } catch (err: any) {
       if (err?.status === 409) {

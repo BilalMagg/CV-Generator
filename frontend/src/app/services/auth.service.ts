@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpService } from './http.service';
-import { environment } from '../../environments/environment';
+import { environment } from '@env/environment';
 
 export interface User {
   userId: string;

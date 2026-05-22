@@ -7,6 +7,7 @@ import {
   ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { APP_NAME } from '@app/app-name';
 
 @Component({
   selector: 'app-reveal-overlay',
@@ -16,6 +17,7 @@ import { CommonModule } from '@angular/common';
   styleUrl: './reveal-overlay.component.scss',
 })
 export class RevealOverlayComponent implements OnInit, AfterViewInit {
+  appName = APP_NAME;
   @ViewChild('curtainLeft') curtainLeft!: ElementRef<HTMLElement>;
   @ViewChild('curtainRight') curtainRight!: ElementRef<HTMLElement>;
 

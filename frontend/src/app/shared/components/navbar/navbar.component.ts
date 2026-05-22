@@ -1,6 +1,7 @@
 import { Component, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { APP_NAME } from '@app/app-name';
 
 @Component({
   selector: 'app-navbar',
@@ -10,6 +11,7 @@ import { RouterLink } from '@angular/router';
   styleUrl: './navbar.component.scss',
 })
 export class NavbarComponent {
+  appName = APP_NAME;
   navScrolled = false;
   mobileOpen = false;
 
@@ -20,5 +22,10 @@ export class NavbarComponent {
 
   toggleMobile(): void {
     this.mobileOpen = !this.mobileOpen;
+  }
+
+  scrollTo(event: Event, sectionId: string): void {
+    event.preventDefault();
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
   }
 }

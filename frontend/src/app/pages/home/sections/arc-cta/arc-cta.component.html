@@ -1,0 +1,37 @@
+<section class="arc-cta">
+
+  <!-- Text content — constrained width -->
+  <div class="arc-cta-inner">
+    <div class="arc-badge">✦ {{ appName }}</div>
+
+    <h2 class="arc-heading">
+      Ready to land your<br>next role faster?
+    </h2>
+
+    <a routerLink="/register" class="arc-btn">
+      Get started <span class="arc-arrow">→</span>
+    </a>
+  </div>
+
+  <!-- Avatar arc — full viewport width, breaks out of parent -->
+  <div class="arc-row" [style.height.px]="rowHeight">
+    @for (av of avatars; track av.initials) {
+      <div
+        class="arc-avatar"
+        [style.left.%]="av.xPct"
+        [style.top.px]="av.yPx"
+        [style.width.px]="av.size"
+        [style.height.px]="av.size"
+        [style.z-index]="av.zIndex"
+        [style.opacity]="av.opacity"
+      >
+        <div class="arc-avatar-inner"
+          [style.background]="gradientFor(av.hue)"
+          [style.font-size.px]="av.fontSize">
+          {{ av.initials }}
+        </div>
+      </div>
+    }
+  </div>
+
+</section>

@@ -1,7 +1,7 @@
 <div class="container">
   <div class="card">
     <h1>Login</h1>
-    <p>Sign in to access your CV Generator account.</p>
+    <p>Sign in to access your {{ appName }} account.</p>
 
     @if (!isTempAuth()) {
       <a [href]="loginUrl()" class="btn btn-primary">Continue with Keycloak</a>

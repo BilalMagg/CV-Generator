@@ -1,45 +1,17 @@
-<section id="features">
-  <div class="features-layout">
-    <div class="features-intro reveal">
-      <p class="section-kicker">About the platform</p>
-      <h2 class="section-title">What is <span class="purple">CV Generator?</span></h2>
-      <p class="section-sub">
-        CV Generator is a microservices-based platform developed by a team of
-        full-stack engineers. It leverages AI agents, vector search, and event-driven
-        architecture to simplify the job application process.
-      </p>
+<section class="challenges-section">
+  <div class="challenges-inner">
+    <div class="section-head">
+      <div class="section-eyebrow-pill">Solutions</div>
+      <h2 class="section-display-title">Solve your job search's biggest challenges</h2>
     </div>
-    <div class="features-grid">
-      <div class="f-card reveal reveal-delay-1">
-        <div class="f-icon">🤖</div>
-        <h3>AI Pipeline</h3>
-        <p>A 5-agent LangGraph workflow extracts, matches, fills, optimizes, and delivers CVs automatically.</p>
-      </div>
-      <div class="f-card accent reveal reveal-delay-2">
-        <div class="f-icon">🔍</div>
-        <h3>Semantic Matching</h3>
-        <p>pgvector embeddings compare your profile against job descriptions to find the best fit.</p>
-      </div>
-      <div class="f-card green-card reveal reveal-delay-3">
-        <div class="f-icon">📊</div>
-        <h3>Application Tracking</h3>
-        <p>Track every application through a full Kanban pipeline with Kafka-powered event updates.</p>
-      </div>
-      <div class="f-card reveal reveal-delay-4">
-        <div class="f-icon">⚡</div>
-        <h3>ATS Optimization</h3>
-        <p>Groq LLM rewrites CV content to maximize compatibility with applicant tracking systems.</p>
-      </div>
-      <div class="f-card reveal reveal-delay-1">
-        <div class="f-icon">📦</div>
-        <h3>Auto Delivery</h3>
-        <p>Completed CVs are stored in MinIO and delivered via email — no manual export needed.</p>
-      </div>
-      <div class="f-card reveal reveal-delay-2">
-        <div class="f-icon">🔐</div>
-        <h3>Secure Architecture</h3>
-        <p>Keycloak OIDC authentication with an API Gateway securing every microservice endpoint.</p>
-      </div>
+
+    <div class="challenges-grid">
+      @for (item of challenges; track item.title) {
+        <div class="challenge-item">
+          <div class="challenge-icon" [innerHTML]="item.icon"></div>
+          <p class="challenge-body">{{ item.body }}</p>
+        </div>
+      }
     </div>
   </div>
 </section>

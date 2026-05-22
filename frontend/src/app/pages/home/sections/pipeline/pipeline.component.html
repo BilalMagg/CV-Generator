@@ -1,58 +1,123 @@
-<div class="pipeline-outer" id="pipeline">
-  <div class="pipeline-section reveal">
-    <div class="pipeline-header">
-      <div>
-        <p class="section-kicker">Under the hood</p>
-        <h2 class="section-title" style="color:white;">
-          The AI agent<br><span style="color:#A47DAB;">pipeline.</span>
-        </h2>
-        <p class="section-sub" style="color:rgba(255,255,255,0.6);">
-          Five specialized agents work in sequence — each responsible for one
-          stage of the CV generation workflow.
-        </p>
-      </div>
-      <div class="pipeline-cards">
-        <div class="pipeline-status-card">
-          <div class="pipeline-status-label">Currently processing</div>
-          <div class="pipeline-status-title">Senior Frontend Engineer &#64; Stripe</div>
-          <div class="pipeline-status-sub">Agent 3/5 — Filling template...</div>
-          <div class="pipeline-progress-track">
-            <div class="pipeline-progress-fill"></div>
+<section id="features" class="feature-grid-section">
+  <div class="fg-inner">
+    <div class="section-head">
+      <div class="section-eyebrow-pill">Features</div>
+      <h2 class="section-display-title">Everything you need, in one place.</h2>
+      <p class="section-sub-copy">Forget chasing job applications across email, spreadsheets, and Notion.</p>
+    </div>
+
+    <div class="fg-row fg-row-1">
+      <div class="fg-card">
+        <h3 class="fg-title">AI CV Generation</h3>
+        <p class="fg-body">Paste a job description, get a tailored CV — and a cover letter — in eleven seconds.</p>
+        <div class="fg-mock fg-mock-gen">
+          <div class="mock-cv-stack">
+            <div class="mock-cv mock-cv-back-2"></div>
+            <div class="mock-cv mock-cv-back-1"></div>
+            <div class="mock-cv mock-cv-front">
+              <div class="mock-cv-name"></div>
+              <div class="mock-cv-sub"></div>
+              <div class="mock-cv-section-label"></div>
+              <div class="mock-cv-line w-88"></div>
+              <div class="mock-cv-line w-70"></div>
+              <div class="mock-cv-line w-92"></div>
+              <div class="mock-cv-line w-60"></div>
+              <div class="mock-cv-ats">ATS 98%</div>
+            </div>
           </div>
         </div>
-        <div class="pipeline-delivered-card">
-          <div class="pipeline-delivered-label">Last delivered</div>
-          <div class="pipeline-delivered-title">CV sent to adam&#64;email.com ✓</div>
+      </div>
+
+      <div class="fg-card fg-card-wide">
+        <h3 class="fg-title">Application Tracking</h3>
+        <p class="fg-body">Drag applications across stages. Filter, sort, search. Status colors that mean the same thing everywhere.</p>
+        <div class="fg-mock fg-mock-kanban">
+          @for (col of kanbanCols; track col.label) {
+            <div class="mini-col">
+              <div class="mini-col-header">
+                <span class="mini-col-dot" [style.background]="col.color"></span>
+                <span class="mini-col-label">{{ col.label }}</span>
+                <span class="mini-col-count">{{ col.items.length }}</span>
+              </div>
+              @for (item of col.items; track item) {
+                <div class="mini-card">
+                  <div class="mini-card-company" [style.background]="col.itemColor">{{ item[0] }}</div>
+                  <div class="mini-card-name">{{ item }}</div>
+                </div>
+              }
+            </div>
+          }
         </div>
       </div>
     </div>
 
-    <div class="pipeline-steps">
-      <div class="p-step" [class.active]="isPipelineStepActive(0)">
-        <div class="p-step-num">1</div>
-        <div class="p-step-name">Extract</div>
-        <div class="p-step-desc">Parse job requirements</div>
+    <div class="fg-row fg-row-2">
+      <div class="fg-card fg-card-wide">
+        <h3 class="fg-title">Advanced analytics</h3>
+        <p class="fg-body">See your funnel, response rate, and which sources convert. A birds-eye view of your job search.</p>
+        <div class="fg-mock fg-mock-analytics">
+          <div class="mock-donut-wrap">
+            <svg width="120" height="120" viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="52" fill="none" stroke="oklch(0.7 0.015 250)" stroke-width="20"
+                stroke-dasharray="99 228" stroke-dashoffset="0" transform="rotate(-90 70 70)"/>
+              <circle cx="70" cy="70" r="52" fill="none" stroke="oklch(0.6 0.16 250)" stroke-width="20"
+                stroke-dasharray="74 228" stroke-dashoffset="-99" transform="rotate(-90 70 70)"/>
+              <circle cx="70" cy="70" r="52" fill="none" stroke="oklch(0.55 0.16 145)" stroke-width="20"
+                stroke-dasharray="37 228" stroke-dashoffset="-173" transform="rotate(-90 70 70)"/>
+              <circle cx="70" cy="70" r="52" fill="none" stroke="oklch(0.65 0.18 25)" stroke-width="20"
+                stroke-dasharray="49 228" stroke-dashoffset="-210" transform="rotate(-90 70 70)"/>
+              <text x="70" y="65" text-anchor="middle" font-size="20" font-weight="800" fill="oklch(0.22 0.01 80)" font-family="Plus Jakarta Sans">21</text>
+              <text x="70" y="80" text-anchor="middle" font-size="9" fill="oklch(0.58 0.008 80)" font-family="Geist">total apps</text>
+            </svg>
+          </div>
+          <div class="mock-analytics-legend">
+            @for (s of analyticsSeries; track s.label) {
+              <div class="mock-legend-row">
+                <span class="mock-legend-dot" [style.background]="s.color"></span>
+                <span class="mock-legend-label">{{ s.label }}</span>
+                <span class="mock-legend-bar-wrap">
+                  <span class="mock-legend-bar" [style.width]="s.pct" [style.background]="s.color"></span>
+                </span>
+                <span class="mock-legend-val">{{ s.val }}</span>
+              </div>
+            }
+          </div>
+        </div>
       </div>
-      <div class="p-step" [class.active]="isPipelineStepActive(1)">
-        <div class="p-step-num">2</div>
-        <div class="p-step-name">Search</div>
-        <div class="p-step-desc">RAG profile match</div>
-      </div>
-      <div class="p-step" [class.active]="isPipelineStepActive(2)">
-        <div class="p-step-num">3</div>
-        <div class="p-step-name">Template</div>
-        <div class="p-step-desc">Fill CV sections</div>
-      </div>
-      <div class="p-step" [class.active]="isPipelineStepActive(3)">
-        <div class="p-step-num">4</div>
-        <div class="p-step-name">Optimize</div>
-        <div class="p-step-desc">ATS formatting</div>
-      </div>
-      <div class="p-step" [class.active]="isPipelineStepActive(4)">
-        <div class="p-step-num">5</div>
-        <div class="p-step-name">Deliver</div>
-        <div class="p-step-desc">Email + storage</div>
+
+      <div class="fg-card">
+        <h3 class="fg-title">Calendar & reminders</h3>
+        <p class="fg-body">Every follow-up, interview, and offer deadline. Email reminders so you never drop a thread.</p>
+        <div class="fg-mock fg-mock-calendar">
+          <div class="mini-cal-header">
+            @for (d of dayLabels; track d) {
+              <div class="mini-cal-day-label">{{ d }}</div>
+            }
+          </div>
+          <div class="mini-cal-grid">
+            @for (day of calDays; track day.num) {
+              <div class="mini-cal-cell" [class.today]="day.today">
+                <div class="mini-cal-num">{{ day.num }}</div>
+                @if (day.event) {
+                  <div class="mini-cal-dot" [style.background]="day.today ? 'white' : day.event"></div>
+                }
+              </div>
+            }
+          </div>
+          <div class="mini-event-card">
+            <div class="mini-event-date">
+              <div class="mini-event-month">MAY</div>
+              <div class="mini-event-day">19</div>
+            </div>
+            <div>
+              <div class="mini-event-title">Interview · Linear</div>
+              <div class="mini-event-sub">10:00 AM · Tomorrow</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
+
+    <div class="fg-more">and a lot more features…</div>
   </div>
-</div>
+</section>

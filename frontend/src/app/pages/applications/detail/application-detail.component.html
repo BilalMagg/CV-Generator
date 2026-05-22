@@ -52,7 +52,7 @@
               </div>
             }
           } @else {
-            <div style="color:var(--color-text-tertiary);font-size:13px">No status changes yet.</div>
+            <div style="color:var(--text-3);font-size:13px">No status changes yet.</div>
           }
         </div>
       </div>
@@ -60,6 +60,7 @@
       <div class="card">
         <div class="card-title">Notes</div>
         <textarea class="note-area" placeholder="Add a note…" [(ngModel)]="editNotes"></textarea>
+        <button class="det-btn primary" style="margin-top:8px" (click)="saveEdit()">Save notes</button>
       </div>
     </div>
 

@@ -1,12 +1,12 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../services/auth.service';
-import { NotificationService } from '../../services/notification.service';
+import { AuthService } from '@app/services/auth.service';
+import { NotificationService } from '@app/services/notification.service';
 import {
   NotificationPreference,
   UpdateNotificationPreferenceDto,
-} from '../../models/notification-preference.model';
+} from '@app/models/notification-preference.model';
 
 @Component({
   selector: 'app-notifications',
@@ -36,8 +36,8 @@ export class NotificationsComponent implements OnInit {
     const user = this.auth.currentUser();
     if (!user) return;
     try {
-      const prefs = await this.notifSvc.getPreferences(user.userId);
-      this.preferences.set(prefs);
+      const res = await this.notifSvc.getPreferences(user.userId);
+      if (res.success && res.data) this.preferences.set(res.data);
     } catch {
       /* will show empty state */
     } finally {
@@ -74,7 +74,7 @@ export class NotificationsComponent implements OnInit {
         defaultReminderDaysBefore: prefs.defaultReminderDaysBefore,
       };
       const saved = await this.notifSvc.updatePreferences(user.userId, dto);
-      this.preferences.set(saved);
+      if (saved.success && saved.data) this.preferences.set(saved.data);
       this.showSuccessToast();
     } catch {
       if (this.backup) this.preferences.set(this.backup);
