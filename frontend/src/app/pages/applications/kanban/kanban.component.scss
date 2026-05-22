@@ -8,7 +8,111 @@
   background: var(--bg);
 }
 
-/* Toolbar */
+/* Page header */
+.kb-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 28px 0;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.kb-header-left { display: flex; flex-direction: column; gap: 4px; }
+
+.kb-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.025em;
+}
+
+.kb-subtitle {
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+.kb-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-bottom: 2px;
+}
+
+.kb-view-group {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 1px;
+}
+
+.kb-vbtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background 0.1s, color 0.1s;
+
+  &.active {
+    background: var(--dark);
+    color: white;
+  }
+  &:not(.active):hover { background: var(--bg-2); color: var(--text-2); }
+}
+
+.kb-action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kb-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background 0.1s;
+  &:hover { background: var(--bg-2); }
+}
+
+.col-add {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-3);
+  transition: background 0.1s;
+  margin-left: auto;
+  &:hover { background: var(--bg-2); }
+}
+
+/* Toolbar — keep for backward compat but no longer used in template */
 .kb-toolbar {
   display: flex;
   align-items: center;

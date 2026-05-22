@@ -25,7 +25,7 @@ export class SidebarComponent {
 
   navMain: NavItem[] = [
     { label: 'Dashboard',    route: '/applications/dashboard', icon: 'dashboard', exact: false, group: 'main' },
-    { label: 'Generate CV',  route: '/applications/dashboard', icon: 'sparkle',   exact: false, accent: true, group: 'main' },
+    { label: 'Generate CV',  route: '/applications/generate',  icon: 'sparkle',   exact: false, accent: true, group: 'main' },
     { label: 'Applications', route: '/applications/kanban',    icon: 'kanban',    exact: false, group: 'main' },
     { label: 'Analytics',    route: '/applications/analytics', icon: 'analytics', exact: false, group: 'main' },
     { label: 'Calendar',     route: '/applications/calendar',  icon: 'calendar',  exact: false, group: 'main' },

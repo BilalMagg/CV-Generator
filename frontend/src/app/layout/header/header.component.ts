@@ -19,10 +19,11 @@ export class HeaderComponent {
 
   private readonly ROUTE_NAMES: Record<string, string> = {
     '/applications/dashboard': 'Dashboard',
+    '/applications/generate':  'Generate CV',
     '/applications/kanban':    'Applications',
     '/applications/list':      'Applications',
     '/applications/analytics': 'Analytics',
-    '/applications/calendar':  'Applications',
+    '/applications/calendar':  'Calendar',
     '/my-cv':                  'My CV',
     '/settings':               'Settings',
   };

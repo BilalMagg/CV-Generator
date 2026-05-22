@@ -1,5 +1,6 @@
 import { Component, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../services/application.service';
 import { ApplicationResponseDto, ApplicationStatus } from '../../../models/application.model';
 
@@ -22,7 +23,7 @@ const COLUMNS: { status: ApplicationStatus; label: string; colorVar: string }[] 
 @Component({
   selector: 'app-kanban',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './kanban.component.html',
   styleUrl: './kanban.component.scss',
 })

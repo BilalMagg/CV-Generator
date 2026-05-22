@@ -185,9 +185,13 @@ export class CalendarComponent implements OnInit {
     return cells;
   });
 
-  eventsForDay(day: number): CalendarEvent[] {
+  goToToday() {
+    this.currentMonth.set(new Date());
+  }
+
+  eventsForDay(day: number, month?: number, year?: number): CalendarEvent[] {
     const d = this.currentMonth();
-    const targetDate = new Date(d.getFullYear(), d.getMonth(), day);
+    const targetDate = new Date(year ?? d.getFullYear(), month ?? d.getMonth(), day);
     
     return this.remindersList()
       .filter(r => {
