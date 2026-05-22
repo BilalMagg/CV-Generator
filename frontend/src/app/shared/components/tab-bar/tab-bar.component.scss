@@ -1,9 +1,9 @@
 .tab-bar {
   display: flex;
   gap: 0;
-  padding: 0 1.5rem;
-  background: var(--color-background-primary);
-  border-bottom: 0.5px solid var(--color-border-tertiary);
+  padding: 0 20px;
+  background: white;
+  border-bottom: 1px solid oklch(0.92 0.004 80);
   overflow-x: auto;
   flex-shrink: 0;
 }
@@ -11,24 +11,23 @@
 .tab {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 16px;
+  gap: 6px;
+  padding: 10px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--text-3);
   text-decoration: none;
   border-bottom: 2px solid transparent;
-  transition: color .15s, border-color .15s;
+  transition: color 0.12s, border-color 0.12s;
   white-space: nowrap;
 
-  i { font-size: 16px; }
+  i { font-size: 15px; }
 
-  &:hover {
-    color: var(--color-text-primary);
-  }
+  &:hover { color: var(--text-2); }
 
   &.active {
-    color: var(--color-accent);
-    border-bottom-color: var(--color-accent);
+    color: var(--text);
+    border-bottom-color: oklch(0.18 0.01 80);
+    font-weight: 600;
   }
 }

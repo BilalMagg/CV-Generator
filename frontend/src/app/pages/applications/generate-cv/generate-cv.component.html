@@ -1,0 +1,126 @@
+<div class="gen-page">
+
+  <!-- Page header -->
+  <div class="gen-header">
+    <div class="gen-header-main">
+      <span class="ai-badge">
+        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+          <path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"/>
+        </svg>
+        AI CV Generator
+      </span>
+      <h1 class="gen-title">Tailor a CV in eleven seconds.</h1>
+      <p class="gen-sub">Paste any job description. We'll match it against your portfolio and write a CV that scores 95%+ on ATS parsers.</p>
+    </div>
+    <button class="history-btn" (click)="goToHistory()">History</button>
+  </div>
+
+  <!-- Two-column layout -->
+  <div class="gen-layout">
+
+    <!-- Left: Job description input -->
+    <div class="left-panel">
+      <div class="card">
+        <div class="card-top">
+          <div class="card-top-left">
+            <h2 class="card-title">Paste the job description</h2>
+            <p class="card-sub">From any company. We'll handle the rest.</p>
+          </div>
+          <div class="card-top-btns">
+            <button class="helper-btn" (click)="useSample()">Use sample</button>
+            <button class="helper-btn">
+              <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+              </svg>
+              Paste URL
+            </button>
+          </div>
+        </div>
+        <textarea
+          class="jd-textarea"
+          placeholder="Paste a job description here…"
+          [value]="jobDescription()"
+          (input)="jobDescription.set($any($event.target).value)"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Right: Settings -->
+    <div class="right-panel">
+
+      <!-- Generation settings -->
+      <div class="card settings-card">
+        <h3 class="settings-title">Generation settings</h3>
+
+        <div class="field">
+          <label class="field-label">CV profile</label>
+          <select class="field-select">
+            <option>Senior Product Designer · Product · Web</option>
+            <option>Software Engineer · Backend · Python</option>
+            <option>Product Manager · B2B SaaS</option>
+          </select>
+          <p class="field-caption">The base we'll tailor to this role.</p>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Tone</label>
+          <div class="tone-group">
+            @for (tone of tones; track tone) {
+              <button
+                class="tone-btn"
+                [class.active]="selectedTone() === tone"
+                (click)="setTone(tone)"
+              >{{ tone }}</button>
+            }
+          </div>
+        </div>
+
+        <div class="checkbox-row">
+          <label class="checkbox-label">
+            <input type="checkbox" [checked]="emailResult()" (change)="emailResult.set($any($event.target).checked)" />
+            <span class="checkbox-text">
+              <strong>Email me the finished CV &amp; cover letter</strong>
+              <span class="checkbox-caption">Sent as PDF + DOCX.</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <!-- You'll get -->
+      <div class="card">
+        <h3 class="settings-title">You'll get</h3>
+        <ul class="get-list">
+          <li>
+            <span class="check-icon"></span>
+            Tailored CV (PDF + DOCX)
+          </li>
+          <li>
+            <span class="check-icon"></span>
+            Personalized cover letter
+          </li>
+          <li>
+            <span class="check-icon"></span>
+            ATS compatibility score
+          </li>
+          <li>
+            <span class="check-icon"></span>
+            Keyword gap analysis
+          </li>
+        </ul>
+      </div>
+
+      <button class="generate-btn" [disabled]="!jobDescription().trim() || generating()" (click)="generate()">
+        @if (generating()) {
+          Generating…
+        } @else {
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+            <path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"/>
+          </svg>
+          Generate CV
+        }
+      </button>
+    </div>
+
+  </div>
+</div>

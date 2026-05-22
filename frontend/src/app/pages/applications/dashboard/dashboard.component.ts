@@ -3,11 +3,24 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { ApplicationService } from '../../../services/application.service';
+import { AuthService } from '../../../services/auth.service';
 import { ApplicationStatisticsDto } from '../../../models/application.model';
 
-interface SankeyNode {
-  id: string; label: string; count: number; x: number; y: number; h: number;
-  color: string;
+interface StatCard {
+  label: string;
+  displayValue: string;
+  sub: string;
+  change: number;
+  dotColor: string;
+  valueColor: string;
+  bars: number[];
+}
+
+interface FollowUpItem {
+  id: string;
+  company: string;
+  role: string;
+  timeAgo: string;
 }
 
 @Component({
@@ -19,6 +32,7 @@ interface SankeyNode {
 })
 export class DashboardComponent implements OnInit {
   private appService = inject(ApplicationService);
+  private authService = inject(AuthService);
   private sanitizer = inject(DomSanitizer);
   private router = inject(Router);
 
@@ -36,102 +50,125 @@ export class DashboardComponent implements OnInit {
     } catch { } finally { this.loading.set(false); }
   }
 
-  sankeySvg = computed<SafeHtml>(() => {
+  firstName = computed(() => this.authService.currentUser()?.firstName ?? 'there');
+
+  timeOfDay = computed(() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'morning';
+    if (h < 17) return 'afternoon';
+    return 'evening';
+  });
+
+  todayLabel = computed(() => {
+    const d = new Date();
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${days[d.getDay()]} · ${months[d.getMonth()]} ${d.getDate()}`;
+  });
+
+  pendingFollowUps = computed(() => this.stats().pending);
+  activeOffers = computed(() => this.stats().accepted);
+
+  statCards = computed<StatCard[]>(() => {
     const s = this.stats();
-    const total = s.total || 34;
-    const screening = s.pending + s.reviewed || 9;
-    const interviewed = s.interview || 3;
-    const offered = s.accepted || 1;
+    const pct = (a: number, b: number) => a > 0 ? Math.round((b / a) * 100) : 0;
+    return [
+      {
+        label: 'Total applications',
+        displayValue: String(s.total),
+        sub: 'vs last month',
+        change: 12,
+        dotColor: 'oklch(0.22 0.01 80)',
+        valueColor: 'var(--text)',
+        bars: [6, 9, 7, 11, 8, 14, 12, 10, 16, 18, s.total || 24],
+      },
+      {
+        label: 'Interviewing',
+        displayValue: String(s.interview),
+        sub: `${s.interview} active`,
+        change: 50,
+        dotColor: 'oklch(0.6 0.16 250)',
+        valueColor: 'oklch(0.5 0.16 250)',
+        bars: [2, 3, 1, 4, 2, 5, 3, 2, 4, 5, s.interview || 6],
+      },
+      {
+        label: 'Offers',
+        displayValue: String(s.accepted),
+        sub: `${s.pending} pending`,
+        change: 1,
+        dotColor: 'oklch(0.62 0.15 155)',
+        valueColor: 'oklch(0.45 0.14 155)',
+        bars: [0, 1, 0, 1, 2, 1, 0, 2, 1, 2, s.accepted || 3],
+      },
+      {
+        label: 'Response rate',
+        displayValue: pct(s.total, s.interview + s.accepted + s.rejected) + '%',
+        sub: 'industry avg 23%',
+        change: 8,
+        dotColor: 'oklch(0.62 0.18 25)',
+        valueColor: 'oklch(0.55 0.18 25)',
+        bars: [30, 35, 28, 40, 38, 36, 42, 40, 44, 41, 43],
+      },
+    ];
+  });
 
-    const nodes: SankeyNode[] = [
-      { id: 'applied',   label: 'Applied',   count: total,      x: 30, y: 20, h: 160, color: '#7F77DD' },
-      { id: 'screen',    label: 'Screening', count: screening,  x: 150, y: 20, h: Math.max(10, (screening/total)*160), color: '#378ADD' },
-      { id: 'interview', label: 'Interview', count: interviewed,x: 270, y: 20, h: Math.max(10, (interviewed/total)*160), color: '#1D9E75' },
-      { id: 'offer',     label: 'Offer',     count: offered,    x: 390, y: 20, h: Math.max(10, (offered/total)*160), color: '#EF9F27' },
-      { id: 'accepted',  label: 'Accepted',  count: offered,    x: 490, y: 14, h: Math.max(5, (offered/total)*160), color: '#639922' },
-      { id: 'rejected',  label: 'Rejected',  count: s.rejected, x: 150, y: 118, h: Math.max(10, (s.rejected/total)*160), color: '#E24B4A' },
+  followUpItems = computed<FollowUpItem[]>(() => {
+    const s = this.stats();
+    if (s.total === 0) return [];
+    return [
+      { id: '1', company: 'Webflow', role: 'Senior Product Designer', timeAgo: '3d ago' },
+      { id: '2', company: 'Linear', role: 'Design Engineer', timeAgo: '5d ago' },
+      { id: '3', company: 'Figma', role: 'Product Designer', timeAgo: '6d ago' },
+    ];
+  });
+
+  pipelineSvg = computed<SafeHtml>(() => {
+    const s = this.stats();
+    const total = s.total || 24;
+    const interview = s.interview || 6;
+    const offered = s.accepted || 3;
+    const rejected = s.rejected || 4;
+    const applied = total - interview - offered - rejected;
+
+    const W = 480, H = 120;
+    const statuses = [
+      { label: 'Applied', count: Math.max(1, applied), color: 'oklch(0.68 0.015 250)' },
+      { label: 'Interview', count: Math.max(0, interview), color: 'oklch(0.6 0.16 250)' },
+      { label: 'Offer', count: Math.max(0, offered), color: 'oklch(0.62 0.15 155)' },
+      { label: 'Rejected', count: Math.max(0, rejected), color: 'oklch(0.62 0.18 25)' },
     ];
 
-    const NW = 16;
-    const flows = [
-      { from: 'applied', to: 'screen', val: screening },
-      { from: 'applied', to: 'rejected', val: nodes.find(n => n.id === 'rejected')!.count },
-      { from: 'screen', to: 'interview', val: interviewed },
-      { from: 'interview', to: 'offer', val: offered },
-    ];
+    const maxCount = Math.max(...statuses.map(s => s.count), 1);
+    const barW = 48, gap = (W - statuses.length * barW) / (statuses.length + 1);
+    let svg = '';
 
-    const nodeMap = new Map<string, SankeyNode & { _usedH?: number }>();
-    nodes.forEach(n => nodeMap.set(n.id, { ...n, _usedH: 0 }));
-
-    let svgStr = '';
-
-    flows.forEach(f => {
-      const fn = nodeMap.get(f.from)!;
-      const tn = nodeMap.get(f.to)!;
-      const ratio = f.val / fn.count;
-      const flowH = Math.max(3, Math.round(fn.h * ratio));
-      const x1 = fn.x + NW;
-      const x2 = tn.x;
-      const y1 = fn.y + (fn._usedH || 0) + flowH / 2;
-      const y2 = tn.y + (tn._usedH || 0) + flowH / 2;
-      fn._usedH = (fn._usedH || 0) + flowH;
-      tn._usedH = (tn._usedH || 0) + flowH;
-      const mx = (x1 + x2) / 2;
-      const pct = Math.round((f.val / fn.count) * 100);
-      svgStr += `<path d="M${x1},${y1 - flowH / 2} C${mx},${y1 - flowH / 2} ${mx},${y2 - flowH / 2} ${x2},${y2 - flowH / 2} L${x2},${y2 + flowH / 2} C${mx},${y2 + flowH / 2} ${mx},${y1 + flowH / 2} ${x1},${y1 + flowH / 2} Z" fill="${fn.color}" opacity="0.18"/>`;
-    });
-
-    nodes.forEach(n => {
-      const x = n.x;
-      svgStr += `<rect x="${x}" y="${n.y}" width="${NW}" height="${n.h}" rx="3" fill="${n.color}"/>`;
-      const lx = x > 400 ? x + NW + 4 : x + NW + 6;
-      svgStr += `<text x="${lx}" y="${n.y + Math.min(16, n.h / 2 + 6)}" font-size="11" fill="var(--color-text-primary)" font-weight="500">${n.label}</text>`;
-      svgStr += `<text x="${lx}" y="${n.y + Math.min(28, n.h / 2 + 18)}" font-size="10" fill="var(--color-text-tertiary)">${n.count}</text>`;
+    statuses.forEach((st, i) => {
+      const x = gap + i * (barW + gap);
+      const barH = Math.max(8, (st.count / maxCount) * 80);
+      const y = H - 24 - barH;
+      svg += `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="5" fill="${st.color}" opacity="0.9"/>`;
+      svg += `<text x="${x + barW / 2}" y="${H - 8}" text-anchor="middle" font-size="10" fill="oklch(0.6 0.005 80)" font-family="inherit">${st.label}</text>`;
+      svg += `<text x="${x + barW / 2}" y="${y - 4}" text-anchor="middle" font-size="11" fill="${st.color}" font-weight="600" font-family="inherit">${st.count}</text>`;
     });
 
     return this.sanitizer.bypassSecurityTrustHtml(
-      `<svg viewBox="0 0 540 220" width="100%" height="220" xmlns="http://www.w3.org/2000/svg">${svgStr}</svg>`
+      `<svg viewBox="0 0 ${W} ${H}" width="100%" height="130" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`
     );
   });
 
-  timelineSvg = computed<SafeHtml>(() => {
-    const TW = 620, TH = 80, pad = 10;
-    const days = 30;
-    const vals = Array.from({ length: days }, (_, i) =>
-      Math.max(0, Math.round(Math.sin(i / 4) * 2 + Math.random() * 3 + 0.5))
-    );
-    vals[3] = 4; vals[7] = 5; vals[12] = 3; vals[18] = 4; vals[22] = 5; vals[27] = 2;
-    const maxV = Math.max(...vals, 1);
-
-    const pts = vals.map((v, i) => {
-      const x = pad + (i / (days - 1)) * (TW - 2 * pad);
-      const y = TH - pad - (v / maxV) * (TH - 2 * pad);
-      return [x, y];
-    });
-
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const now = new Date();
-    const month = monthNames[now.getMonth()];
-
-    let out = `<defs><linearGradient id="tlg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7F77DD" stop-opacity="0.18"/><stop offset="100%" stop-color="#7F77DD" stop-opacity="0"/></linearGradient></defs>`;
-    const areaPath = `M${pts[0][0]},${TH} ` + pts.map(p => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + ` L${pts[pts.length - 1][0]},${TH} Z`;
-    out += `<path d="${areaPath}" fill="url(#tlg)"/>`;
-    const linePath = `M${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' L')}`;
-    out += `<path d="${linePath}" fill="none" stroke="#7F77DD" stroke-width="1.5" stroke-linejoin="round"/>`;
-    pts.forEach((p, i) => { if (vals[i] >= 3) out += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="#7F77DD"/>`; });
-    out += `<text x="${pad}" y="${TH + 14}" font-size="10" fill="var(--color-text-tertiary)">1 ${month}</text>`;
-    out += `<text x="${TW / 2}" y="${TH + 14}" font-size="10" fill="var(--color-text-tertiary)" text-anchor="middle">15 ${month}</text>`;
-    out += `<text x="${TW - pad}" y="${TH + 14}" font-size="10" fill="var(--color-text-tertiary)" text-anchor="end">${now.getDate()} ${month}</text>`;
-
-    return this.sanitizer.bypassSecurityTrustHtml(
-      `<svg viewBox="0 0 ${TW} ${TH + 18}" width="100%" height="98" xmlns="http://www.w3.org/2000/svg">${out}</svg>`
-    );
-  });
-
-  getConversion(a: number, b: number): string {
-    if (a === 0) return '0%';
-    return Math.round((b / a) * 100) + '%';
+  logoBg(name: string): string {
+    const palette = [
+      'oklch(0.93 0.04 250)', 'oklch(0.93 0.04 160)', 'oklch(0.93 0.04 65)',
+      'oklch(0.93 0.04 300)', 'oklch(0.93 0.04 25)',  'oklch(0.94 0.02 80)',
+    ];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return palette[Math.abs(h) % palette.length];
   }
 
-  goToApplications() { this.router.navigate(['/applications/list']); }
+  logoText(name: string): string { return name.slice(0, 2).toUpperCase(); }
+
+  goToGenerate() { this.router.navigate(['/applications/generate']); }
+  addApplication() { this.router.navigate(['/applications/new']); }
+  goToCalendar() { this.router.navigate(['/applications/calendar']); }
 }

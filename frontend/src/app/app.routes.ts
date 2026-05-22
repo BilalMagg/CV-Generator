@@ -6,6 +6,7 @@ import { RegisterComponent } from './pages/register/register.component';
 
 import { ApplicationsLayoutComponent } from './pages/applications/applications-layout.component';
 import { DashboardComponent } from './pages/applications/dashboard/dashboard.component';
+import { GenerateCvComponent } from './pages/applications/generate-cv/generate-cv.component';
 import { ApplicationsListComponent } from './pages/applications/list/applications-list.component';
 import { KanbanComponent } from './pages/applications/kanban/kanban.component';
 import { AnalyticsComponent } from './pages/applications/analytics/analytics.component';
@@ -37,6 +38,7 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: DashboardComponent },
+      { path: 'generate', component: GenerateCvComponent },
       { path: 'list', component: ApplicationsListComponent },
       { path: 'kanban', component: KanbanComponent },
       { path: 'analytics', component: AnalyticsComponent },

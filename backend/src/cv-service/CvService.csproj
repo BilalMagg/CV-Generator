@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\shared\CVGenerator.Shared.csproj" />
+    <PackageReference Include="Confluent.Kafka" Version="2.8.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
     <PackageReference Include="AutoMapper" Version="16.1.1" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
