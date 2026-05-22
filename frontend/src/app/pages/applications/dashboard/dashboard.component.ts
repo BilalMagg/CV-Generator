@@ -4,7 +4,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { ApplicationService } from '../../../services/application.service';
 import { AuthService } from '../../../services/auth.service';
-import { ApplicationStatisticsDto } from '../../../models/application.model';
+import { ApplicationStatisticsDto, ApplicationResponseDto } from '../../../models/application.model';
 
 interface StatCard {
   label: string;
@@ -39,14 +39,19 @@ export class DashboardComponent implements OnInit {
   stats = signal<ApplicationStatisticsDto>({
     total: 0, pending: 0, reviewed: 0, interview: 0, accepted: 0, rejected: 0, cancelled: 0,
   });
+  applications = signal<ApplicationResponseDto[]>([]);
   loading = signal(true);
 
   ngOnInit() { this.loadStats(); }
 
   async loadStats() {
     try {
-      const res = await this.appService.getStatistics();
-      if (res.success && res.data) this.stats.set(res.data);
+      const [statsRes, appsRes] = await Promise.all([
+        this.appService.getStatistics(),
+        this.appService.getAll({ page: 1, pageSize: 50 }),
+      ]);
+      if (statsRes.success && statsRes.data) this.stats.set(statsRes.data);
+      if (appsRes.success && appsRes.data) this.applications.set(appsRes.data.items);
     } catch { } finally { this.loading.set(false); }
   }
 
@@ -113,14 +118,27 @@ export class DashboardComponent implements OnInit {
   });
 
   followUpItems = computed<FollowUpItem[]>(() => {
-    const s = this.stats();
-    if (s.total === 0) return [];
-    return [
-      { id: '1', company: 'Webflow', role: 'Senior Product Designer', timeAgo: '3d ago' },
-      { id: '2', company: 'Linear', role: 'Design Engineer', timeAgo: '5d ago' },
-      { id: '3', company: 'Figma', role: 'Product Designer', timeAgo: '6d ago' },
-    ];
+    const apps = this.applications();
+    if (apps.length === 0) return [];
+
+    const pending = apps.filter(a => a.status === 'PENDING' || a.status === 'REVIEWED');
+    if (pending.length === 0) return [];
+
+    return pending.slice(0, 5).map(a => ({
+      id: a.id,
+      company: a.companyName,
+      role: a.positionTitle,
+      timeAgo: this.relativeTime(a.updatedAt),
+    }));
   });
+
+  private relativeTime(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return 'today';
+    if (days === 1) return '1d ago';
+    return `${days}d ago`;
+  }
 
   pipelineSvg = computed<SafeHtml>(() => {
     const s = this.stats();

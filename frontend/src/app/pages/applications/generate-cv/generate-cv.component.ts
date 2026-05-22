@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpService } from '../../../services/http.service';
 
 type Tone = 'Confident' | 'Warm' | 'Technical' | 'Concise';
 
@@ -13,14 +14,16 @@ type Tone = 'Confident' | 'Warm' | 'Technical' | 'Concise';
   styleUrl: './generate-cv.component.scss',
 })
 export class GenerateCvComponent {
+  private http = inject(HttpService);
+  private router = inject(Router);
+
   jobDescription = signal('');
   selectedTone = signal<Tone>('Confident');
   emailResult = signal(true);
   generating = signal(false);
+  error = signal('');
 
   tones: Tone[] = ['Confident', 'Warm', 'Technical', 'Concise'];
-
-  constructor(private router: Router) {}
 
   setTone(t: Tone) { this.selectedTone.set(t); }
 
@@ -36,12 +39,20 @@ Requirements:
 - Strong portfolio demonstrating systems thinking`);
   }
 
-  generate() {
+  async generate() {
     if (!this.jobDescription().trim()) return;
     this.generating.set(true);
-    setTimeout(() => {
+    this.error.set('');
+    try {
+      await this.http.post('/api/workflows/generate-cv', {
+        jobDescription: this.jobDescription(),
+        tone: this.selectedTone(),
+      });
+    } catch (e: any) {
+      this.error.set(e?.error?.message || 'Generation failed. Please try again.');
+    } finally {
       this.generating.set(false);
-    }, 2000);
+    }
   }
 
   goToHistory() { this.router.navigate(['/applications/resumes']); }

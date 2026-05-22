@@ -33,8 +33,7 @@ export class EntityListComponent implements OnInit {
   }
 
   loadData(){
-    const baseUrl = environment.apiUrl;
-    const url = `${baseUrl}/${this.entity}?t=${new Date().getTime()}`;
+    const url = `${environment.apiUrl}/api/user-content/${this.entity}?t=${new Date().getTime()}`;
     
     this.http.get<any>(url, { withCredentials: true }).subscribe({
       next: (response) => {

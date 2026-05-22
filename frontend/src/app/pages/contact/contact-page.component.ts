@@ -19,7 +19,6 @@ export class ContactPageComponent {
   submitted = false;
 
   onSubmit() {
-    console.log('Form submitted:', { name: this.name, email: this.email, subject: this.subject, message: this.message });
     this.submitted = true;
     setTimeout(() => this.submitted = false, 5000);
   }

@@ -4,6 +4,7 @@ import {
   NotificationPreference,
   UpdateNotificationPreferenceDto,
 } from '../models/notification-preference.model';
+import { ApiResponse } from '../models/application.model';
 
 @Injectable({
   providedIn: 'root',
@@ -11,8 +12,8 @@ import {
 export class NotificationService {
   private readonly http = inject(HttpService);
 
-  getPreferences(userId: string): Promise<NotificationPreference> {
-    return this.http.get<NotificationPreference>(
+  getPreferences(userId: string): Promise<ApiResponse<NotificationPreference>> {
+    return this.http.get<ApiResponse<NotificationPreference>>(
       `/api/notifications/${userId}/preferences`,
     );
   }
@@ -20,8 +21,8 @@ export class NotificationService {
   updatePreferences(
     userId: string,
     dto: UpdateNotificationPreferenceDto,
-  ): Promise<NotificationPreference> {
-    return this.http.put<NotificationPreference>(
+  ): Promise<ApiResponse<NotificationPreference>> {
+    return this.http.put<ApiResponse<NotificationPreference>>(
       `/api/notifications/${userId}/preferences`,
       dto,
     );

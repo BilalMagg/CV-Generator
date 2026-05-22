@@ -54,16 +54,13 @@ export class EntityFormComponent implements OnInit {
   }
 
   loadData() {
-    const baseUrl = environment.apiUrl || 'http://localhost:8080/api/user-content';
-    const url = `${baseUrl}/${this.entity}/${this.id}`;
+    const url = `${environment.apiUrl}/api/user-content/${this.entity}/${this.id}`;
     this.http.get<any>(url, { withCredentials: true }).subscribe(response => {
       this.form = response.data || {};
     });
   }
 
   submit() {
-    const baseUrl = environment.apiUrl || 'http://localhost:8080/api/user-content';
-
     // Clean up the form data before sending to the backend
     const payload: any = {};
     this.fields.forEach(field => {
@@ -82,7 +79,7 @@ export class EntityFormComponent implements OnInit {
     });
 
     if (this.id) {
-      const url = `${baseUrl}/${this.entity}/${this.id}`;
+      const url = `${environment.apiUrl}/api/user-content/${this.entity}/${this.id}`;
       this.http.put(url, payload, { withCredentials: true }).subscribe({
         next: () => {
           this.router.navigate(['/my-cv', this.entity]);
@@ -90,7 +87,7 @@ export class EntityFormComponent implements OnInit {
         error: (err) => console.error('Update failed', err)
       });
     } else {
-      const url = `${baseUrl}/${this.entity}`;
+      const url = `${environment.apiUrl}/api/user-content/${this.entity}`;
       this.http.post(url, payload, { withCredentials: true }).subscribe({
         next: () => {
           this.router.navigate(['/my-cv', this.entity]);
