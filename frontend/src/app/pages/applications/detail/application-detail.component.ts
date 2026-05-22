@@ -2,12 +2,12 @@ import { Component, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ApplicationService } from '../../../services/application.service';
+import { ApplicationService } from '@app/services/application.service';
 import {
   ApplicationResponseDto,
   ApplicationStatus,
   STATUS_LABELS,
-} from '../../../models/application.model';
+} from '@app/models/application.model';
 
 const NEXT_STATUSES: Record<ApplicationStatus, ApplicationStatus[]> = {
   PENDING: ['REVIEWED', 'CANCELLED'],

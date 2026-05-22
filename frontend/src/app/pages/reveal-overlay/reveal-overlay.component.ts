@@ -7,7 +7,7 @@ import {
   ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { APP_NAME } from '../../app-name';
+import { APP_NAME } from '@app/app-name';
 
 @Component({
   selector: 'app-reveal-overlay',

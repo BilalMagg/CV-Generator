@@ -1,8 +1,8 @@
 import { Component, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ApplicationService } from '../../../services/application.service';
-import { ApplicationResponseDto, ApplicationStatus } from '../../../models/application.model';
+import { ApplicationService } from '@app/services/application.service';
+import { ApplicationResponseDto, ApplicationStatus } from '@app/models/application.model';
 
 interface Column {
   status: ApplicationStatus;

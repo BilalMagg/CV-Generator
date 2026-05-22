@@ -2,8 +2,8 @@ import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { environment } from '../../../environments/environment';
-import { EntityCardComponent } from '../../shared/components/entity-card/entity-card.component';
+import { environment } from '@env/environment';
+import { EntityCardComponent } from '@app/shared/components/entity-card/entity-card.component';
 
 @Component({
   selector: 'app-entity-list',

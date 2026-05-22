@@ -2,8 +2,8 @@ import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { HttpService } from '../../../services/http.service';
-import { APP_NAME } from '../../../app-name';
+import { HttpService } from '@app/services/http.service';
+import { APP_NAME } from '@app/app-name';
 
 type Tone = 'Confident' | 'Warm' | 'Technical' | 'Concise';
 

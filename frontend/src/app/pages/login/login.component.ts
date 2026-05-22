@@ -1,8 +1,8 @@
 import { Component, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { environment } from '../../../environments/environment';
-import { AuthService } from '../../services/auth.service';
-import { APP_NAME } from '../../app-name';
+import { environment } from '@env/environment';
+import { AuthService } from '@app/services/auth.service';
+import { APP_NAME } from '@app/app-name';
 
 @Component({
   selector: 'app-login',

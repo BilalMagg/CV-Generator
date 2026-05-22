@@ -2,13 +2,13 @@ import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
-import { ApplicationService } from '../../../services/application.service';
+import { ApplicationService } from '@app/services/application.service';
 import {
   ApplicationResponseDto,
   ApplicationStatisticsDto,
   ApplicationStatus,
   STATUS_LABELS,
-} from '../../../models/application.model';
+} from '@app/models/application.model';
 
 @Component({
   selector: 'app-applications-list',

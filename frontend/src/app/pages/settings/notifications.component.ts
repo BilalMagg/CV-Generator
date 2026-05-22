@@ -1,12 +1,12 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../services/auth.service';
-import { NotificationService } from '../../services/notification.service';
+import { AuthService } from '@app/services/auth.service';
+import { NotificationService } from '@app/services/notification.service';
 import {
   NotificationPreference,
   UpdateNotificationPreferenceDto,
-} from '../../models/notification-preference.model';
+} from '@app/models/notification-preference.model';
 
 @Component({
   selector: 'app-notifications',

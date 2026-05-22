@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { TabBarComponent, TabItem } from '../../shared/components/tab-bar/tab-bar.component';
+import { TabBarComponent, TabItem } from '@app/shared/components/tab-bar/tab-bar.component';
 
 @Component({
   selector: 'app-settings-layout',

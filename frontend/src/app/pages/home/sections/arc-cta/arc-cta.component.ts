@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { APP_NAME } from '../../../../../app-name';
+import { APP_NAME } from '@app/app-name';
 
 interface ArcAvatar {
   initials: string;

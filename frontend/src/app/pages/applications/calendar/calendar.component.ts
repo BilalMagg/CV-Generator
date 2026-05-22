@@ -1,15 +1,14 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { ReminderService } from '../../../services/reminder.service';
-import { AuthService } from '../../../services/auth.service';
+import { ReminderService } from '@app/services/reminder.service';
+import { AuthService } from '@app/services/auth.service';
 import {
   CreateReminderDto,
   ReminderResultDto,
   ReminderOffsetType,
   REMINDER_OFFSET_OPTIONS,
-} from '../../../models/reminder.model';
+} from '@app/models/reminder.model';
 
 interface CalendarEvent {
   type: 'interview' | 'follow-up' | 'deadline';
@@ -29,7 +28,7 @@ interface CalendarDay {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './calendar.component.html',
   styleUrl: './calendar.component.scss',
 })

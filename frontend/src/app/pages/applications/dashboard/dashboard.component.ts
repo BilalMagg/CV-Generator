@@ -2,9 +2,9 @@ import { Component, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Router } from '@angular/router';
-import { ApplicationService } from '../../../services/application.service';
-import { AuthService } from '../../../services/auth.service';
-import { ApplicationStatisticsDto, ApplicationResponseDto } from '../../../models/application.model';
+import { ApplicationService } from '@app/services/application.service';
+import { AuthService } from '@app/services/auth.service';
+import { ApplicationStatisticsDto, ApplicationResponseDto } from '@app/models/application.model';
 
 interface StatCard {
   label: string;

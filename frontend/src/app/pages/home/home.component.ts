@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
-import { FooterComponent } from '../../shared/components/footer/footer.component';
+import { NavbarComponent } from '@app/shared/components/navbar/navbar.component';
+import { FooterComponent } from '@app/shared/components/footer/footer.component';
 import { HeroSectionComponent } from './sections/hero/hero.component';
 import { LogosSectionComponent } from './sections/logos/logos.component';
 import { FeaturesSectionComponent } from './sections/features/features.component';

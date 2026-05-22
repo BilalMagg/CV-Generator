@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { APP_NAME } from '../../../../../app-name';
+import { APP_NAME } from '@app/app-name';
 
 @Component({
   selector: 'app-cta-banner-section',

@@ -1,8 +1,8 @@
 import { Component, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { ApplicationService } from '../../../services/application.service';
-import { ApplicationStatisticsDto } from '../../../models/application.model';
+import { ApplicationService } from '@app/services/application.service';
+import { ApplicationStatisticsDto } from '@app/models/application.model';
 
 interface StatCard {
   label: string;

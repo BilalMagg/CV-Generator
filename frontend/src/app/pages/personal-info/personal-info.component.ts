@@ -1,9 +1,9 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { UserProfileService } from '../../services/user-profile.service';
-import { AuthService } from '../../services/auth.service';
-import { UserProfile, UpdateUserProfileDto } from '../../models/user-profile.model';
+import { UserProfileService } from '@app/services/user-profile.service';
+import { AuthService } from '@app/services/auth.service';
+import { UserProfile, UpdateUserProfileDto } from '@app/models/user-profile.model';
 
 @Component({
   selector: 'app-personal-info',

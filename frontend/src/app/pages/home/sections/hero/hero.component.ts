@@ -2,7 +2,7 @@ import { Component, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DotFieldComponent } from './dot-field/dot-field.component';
-import { APP_NAME } from '../../../../../app-name';
+import { APP_NAME } from '@app/app-name';
 
 @Component({
   selector: 'app-hero-section',

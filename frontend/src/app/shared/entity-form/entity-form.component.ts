@@ -3,8 +3,8 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { environment } from '../../../environments/environment';
-import { ENTITY_FIELDS, EntityType } from '../../models/user-content.models';
+import { environment } from '@env/environment';
+import { ENTITY_FIELDS, EntityType } from '@app/models/user-content.models';
 
 @Component({
   selector: 'app-entity-form',
