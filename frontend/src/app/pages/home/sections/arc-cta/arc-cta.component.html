@@ -1,34 +1,37 @@
 <section class="arc-cta">
-  <div class="arc-cta-inner">
 
-    <!-- Badge -->
+  <!-- Text content — constrained width -->
+  <div class="arc-cta-inner">
     <div class="arc-badge">✦ Driftly</div>
 
-    <!-- Heading -->
     <h2 class="arc-heading">
       Ready to land your<br>next role faster?
     </h2>
 
-    <!-- CTA -->
     <a routerLink="/register" class="arc-btn">
       Get started <span class="arc-arrow">→</span>
     </a>
-
-    <!-- Avatar arc -->
-    <div class="arc-row">
-      @for (avatar of avatars; track avatar.initials) {
-        <div
-          class="arc-avatar"
-          [class.arc-avatar--center]="avatar.zIndex === avatars.length"
-          [style.transform]="'translateY(' + avatar.arcY + 'px) scale(' + avatar.scale + ')'"
-          [style.z-index]="avatar.zIndex"
-        >
-          <div class="arc-avatar-inner" [style.background]="gradientFor(avatar.hue)">
-            {{ avatar.initials }}
-          </div>
-        </div>
-      }
-    </div>
-
   </div>
+
+  <!-- Avatar arc — full viewport width, breaks out of parent -->
+  <div class="arc-row" [style.height.px]="rowHeight">
+    @for (av of avatars; track av.initials) {
+      <div
+        class="arc-avatar"
+        [style.left.%]="av.xPct"
+        [style.top.px]="av.yPx"
+        [style.width.px]="av.size"
+        [style.height.px]="av.size"
+        [style.z-index]="av.zIndex"
+        [style.opacity]="av.opacity"
+      >
+        <div class="arc-avatar-inner"
+          [style.background]="gradientFor(av.hue)"
+          [style.font-size.px]="av.fontSize">
+          {{ av.initials }}
+        </div>
+      </div>
+    }
+  </div>
+
 </section>

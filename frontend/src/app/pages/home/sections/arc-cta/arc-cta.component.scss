@@ -5,9 +5,10 @@
   overflow: hidden;
 }
 
+/* ── Text block ─────────────────────────────────────────── */
 .arc-cta-inner {
   max-width: 640px;
-  margin: 0 auto;
+  margin: 0 auto 56px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -61,83 +62,54 @@
   line-height: 1;
 }
 
-/* Arc row */
+/* ── Avatar arc ─────────────────────────────────────────── */
+
+/* Breaks out of the 640px inner constraint to span full width */
 .arc-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  /* negative margin pulls avatars together for the overlapping effect */
-  gap: 0;
-  padding-top: 8px;
-  padding-bottom: 80px; /* room for the downward arc */
-  width: 100%;
-  max-width: 700px;
+  position: relative;
+  /* full-width breakout from a centered parent */
+  width: 100vw;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .arc-avatar {
-  flex-shrink: 0;
-  margin-left: -14px;
-  transform-origin: bottom center;
-  transition: transform 0.2s ease;
-
-  &:first-child { margin-left: 0; }
+  position: absolute;
+  /* center the circle on its computed left % */
+  transform: translateX(-50%);
+  transition: opacity 0.2s, transform 0.2s;
+  cursor: default;
 
   &:hover {
+    opacity: 1 !important;
     z-index: 20 !important;
-    transform: translateY(-8px) scale(1.05) !important;
+    transform: translateX(-50%) translateY(-10px) !important;
   }
 }
 
 .arc-avatar-inner {
-  width: 62px;
-  height: 62px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-size: 14px;
   font-weight: 700;
   color: white;
   letter-spacing: -0.01em;
-  /* White ring + outer border for the stacked-cards look */
+  /* font-size set per-avatar via inline style */
+  /* white ring + subtle outer border */
   box-shadow:
     0 0 0 3px white,
-    0 0 0 4px oklch(0.9 0.005 80),
-    0 4px 12px oklch(0.4 0.02 80 / 0.18);
+    0 0 0 4.5px oklch(0.88 0.006 80),
+    0 6px 18px oklch(0.3 0.01 80 / 0.2);
 }
 
-/* Center avatar is larger */
-.arc-avatar--center .arc-avatar-inner {
-  width: 76px;
-  height: 76px;
-  font-size: 16px;
-  box-shadow:
-    0 0 0 3px white,
-    0 0 0 4px oklch(0.9 0.005 80),
-    0 8px 24px oklch(0.4 0.02 80 / 0.22);
-}
-
-@media (max-width: 600px) {
-  .arc-row {
-    padding-bottom: 48px;
-  }
-
-  /* On mobile show only center 3 avatars */
-  .arc-avatar:nth-child(-n+2),
-  .arc-avatar:nth-child(n+8) {
+/* Mobile: show only center 5 avatars */
+@media (max-width: 640px) {
+  .arc-avatar:nth-child(-n+3),
+  .arc-avatar:nth-child(n+9) {
     display: none;
-  }
-
-  .arc-avatar-inner {
-    width: 52px;
-    height: 52px;
-    font-size: 12px;
-  }
-
-  .arc-avatar--center .arc-avatar-inner {
-    width: 64px;
-    height: 64px;
-    font-size: 14px;
   }
 }
