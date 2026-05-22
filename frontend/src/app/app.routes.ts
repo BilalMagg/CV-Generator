@@ -21,6 +21,7 @@ import { ContactPageComponent } from './pages/contact/contact-page.component';
 // Reminders removed as they are now in Calendar
 
 import { MyCvComponent } from './pages/my-cv/my-cv.component';
+import { PersonalInfoComponent } from './pages/personal-info/personal-info.component';
 import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
 import { EntityListComponent } from './pages/entity-list/entity-list.component';
 import { EntityFormComponent } from './shared/entity-form/entity-form.component';
@@ -62,6 +63,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', redirectTo: 'cvprofiles', pathMatch: 'full' },
+      { path: 'personal-info', component: PersonalInfoComponent },
       { path: ':entity', component: EntityListComponent },
       { path: ':entity/add', component: EntityFormComponent },
       { path: ':entity/:id', component: EntityDetailsComponent },
