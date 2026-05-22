@@ -57,7 +57,7 @@ export const routes: Routes = [
       { path: 'notifications', component: NotificationsComponent },
     ],
   },{
-    path: 'my-cv',
+    path: 'my-career',
     component: MyCvComponent,
     canActivate: [authGuard],
     children: [

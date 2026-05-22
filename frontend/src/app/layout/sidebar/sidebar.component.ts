@@ -32,7 +32,7 @@ export class SidebarComponent {
   ];
 
   navLibrary: NavItem[] = [
-    { label: 'My CV', route: '/my-cv', icon: 'user', exact: false, group: 'library' },
+    { label: 'My Career', route: '/my-career', icon: 'user', exact: false, group: 'library' },
   ];
 
   initials = computed(() => {

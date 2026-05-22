@@ -24,7 +24,7 @@ export class HeaderComponent {
     '/applications/list':      'Applications',
     '/applications/analytics': 'Analytics',
     '/applications/calendar':  'Calendar',
-    '/my-cv':                  'My CV',
+    '/my-career':              'My Career',
     '/settings':               'Settings',
   };
 

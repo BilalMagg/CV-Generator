@@ -22,7 +22,7 @@ export class EntityListComponent implements OnInit {
     data: any[]=[];
     
     goToDetail(id: string){
-      this.router.navigate(['/my-cv', this.entity, id]);
+      this.router.navigate(['/my-career', this.entity, id]);
     }
 
     ngOnInit() {

@@ -82,7 +82,7 @@ export class EntityFormComponent implements OnInit {
       const url = `${environment.apiUrl}/api/user-content/${this.entity}/${this.id}`;
       this.http.put(url, payload, { withCredentials: true }).subscribe({
         next: () => {
-          this.router.navigate(['/my-cv', this.entity]);
+          this.router.navigate(['/my-career', this.entity]);
         },
         error: (err) => console.error('Update failed', err)
       });
@@ -90,7 +90,7 @@ export class EntityFormComponent implements OnInit {
       const url = `${environment.apiUrl}/api/user-content/${this.entity}`;
       this.http.post(url, payload, { withCredentials: true }).subscribe({
         next: () => {
-          this.router.navigate(['/my-cv', this.entity]);
+          this.router.navigate(['/my-career', this.entity]);
         },
         error: (err) => console.error('Create failed', err)
       });
@@ -99,9 +99,9 @@ export class EntityFormComponent implements OnInit {
 
   cancel() {
     if (this.id) {
-      this.router.navigate(['/my-cv', this.entity, this.id]);
+      this.router.navigate(['/my-career', this.entity, this.id]);
     } else {
-      this.router.navigate(['/my-cv', this.entity]);
+      this.router.navigate(['/my-career', this.entity]);
     }
   }
 }

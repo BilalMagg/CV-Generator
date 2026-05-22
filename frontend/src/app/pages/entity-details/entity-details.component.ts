@@ -79,7 +79,7 @@ export class EntityDetailsComponent implements OnInit {
   }
 
   goToEdit() {
-    this.router.navigate(['/my-cv', this.entity, this.id, 'edit']);
+    this.router.navigate(['/my-career', this.entity, this.id, 'edit']);
   }
 
   deleteItem() {
@@ -90,7 +90,7 @@ export class EntityDetailsComponent implements OnInit {
     const url = `${environment.apiUrl}/api/user-content/${this.entity}/${this.id}`;
     this.http.delete(url, { withCredentials: true }).subscribe({
       next: () => {
-        this.router.navigate(['/my-cv', this.entity]);
+        this.router.navigate(['/my-career', this.entity]);
       },
       error: (err) => {
         console.error('Delete failed', err);
@@ -104,6 +104,6 @@ export class EntityDetailsComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/my-cv', this.entity]);
+    this.router.navigate(['/my-career', this.entity]);
   }
 }

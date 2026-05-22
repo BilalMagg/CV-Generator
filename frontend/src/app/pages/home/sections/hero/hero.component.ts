@@ -21,7 +21,7 @@ export class HeroSectionComponent {
     { label: 'Applications', active: false },
     { label: 'Analytics',    active: false },
     { label: 'Calendar',     active: false },
-    { label: 'My CV',        active: false },
+    { label: 'My Career',    active: false },
   ];
 
   fauxKpis = [
