@@ -9,7 +9,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "KAFKA_BOOTSTRAP_SERVERS": "localhost:29092",
-        "USER_SERVICE_GRPC_URL": "http://localhost:50001"
+        "USER_SERVICE_GRPC_URL": "http://localhost:18082"
       }
     }
   }

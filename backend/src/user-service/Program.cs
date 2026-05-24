@@ -12,10 +12,10 @@ AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport
 
 var builder = WebApplication.CreateBuilder(args);
 
-var grpcPort = builder.Configuration.GetValue<int>("GRPC_PORT", 50001);
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenLocalhost(grpcPort, o => o.Protocols = HttpProtocols.Http2);
+    options.ListenAnyIP(8082, o => o.Protocols = HttpProtocols.Http1);
+    options.ListenAnyIP(18082, o => o.Protocols = HttpProtocols.Http2);
 });
 
 builder.Services.AddDbContext<UserDbContext>(options =>
