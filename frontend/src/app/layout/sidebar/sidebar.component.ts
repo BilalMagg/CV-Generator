@@ -10,7 +10,7 @@ interface NavItem {
   icon: string;
   exact?: boolean;
   accent?: boolean;
-  group: 'main' | 'library';
+  group: 'main' | 'library' | 'agents';
 }
 
 @Component({
@@ -31,6 +31,10 @@ export class SidebarComponent {
     { label: 'Applications', route: '/applications/kanban',    icon: 'kanban',    exact: false, group: 'main' },
     { label: 'Analytics',    route: '/applications/analytics', icon: 'analytics', exact: false, group: 'main' },
     { label: 'Calendar',     route: '/applications/calendar',  icon: 'calendar',  exact: false, group: 'main' },
+  ];
+
+  navAgents: NavItem[] = [
+    { label: 'Agents Hub', route: '/agents-hub', icon: 'grid', exact: false, group: 'agents' },
   ];
 
   navLibrary: NavItem[] = [

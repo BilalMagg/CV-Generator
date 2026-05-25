@@ -21,6 +21,8 @@ import { ContactPageComponent } from './pages/contact/contact-page.component';
 // Reminders removed as they are now in Calendar
 
 import { MyCvComponent } from './pages/my-cv/my-cv.component';
+import { AgentsHubComponent } from './pages/agents-hub/agents-hub.component';
+import { AgentGuideComponent } from './pages/agents-hub/agent-guide/agent-guide.component';
 import { PersonalInfoComponent } from './pages/personal-info/personal-info.component';
 import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
 import { EntityListComponent } from './pages/entity-list/entity-list.component';
@@ -57,7 +59,9 @@ export const routes: Routes = [
       { path: '', redirectTo: 'notifications', pathMatch: 'full' },
       { path: 'notifications', component: NotificationsComponent },
     ],
-  },{
+  },  { path: 'agents-hub', component: AgentsHubComponent, canActivate: [authGuard] },
+  { path: 'agents-hub/guide/:id', component: AgentGuideComponent, canActivate: [authGuard] },
+  {
     path: 'my-career',
     component: MyCvComponent,
     canActivate: [authGuard],
