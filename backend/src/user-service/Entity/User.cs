@@ -50,6 +50,42 @@ public class User
 
     public string? AiProfileDataJson { get; set; }
     public string? PreferencesJson { get; set; }
+
+    [MaxLength(200)]
+    public string? Headline { get; set; }
+
+    public string? Bio { get; set; }
+
+    [MaxLength(100)]
+    public string? City { get; set; }
+
+    [MaxLength(100)]
+    public string? Country { get; set; }
+
+    [MaxLength(100)]
+    public string? AuthorizedCountry { get; set; }
+
+    public bool? RequiresVisaSponsorship { get; set; }
+
+    [MaxLength(50)]
+    public string? NoticePeriod { get; set; }
+
+    public string? EmploymentTypes { get; set; }
+
+    [MaxLength(20)]
+    public string? RemotePreference { get; set; }
+
+    [MaxLength(20)]
+    public string? WillingToRelocate { get; set; }
+
+    [MaxLength(200)]
+    public string? DesiredJobTitle { get; set; }
+
+    public decimal? DesiredSalaryMin { get; set; }
+
+    public decimal? DesiredSalaryMax { get; set; }
+
+    public string? ProfessionalTitles { get; set; }
 }
 
 public enum Role
