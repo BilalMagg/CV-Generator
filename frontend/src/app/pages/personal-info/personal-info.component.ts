@@ -52,6 +52,10 @@ export class PersonalInfoComponent implements OnInit {
     this.loading.set(true);
     try {
       const profile = await this.profileSvc.getMyProfile();
+      if (profile) {
+        profile.employmentTypes = this.parseJsonArray(profile.employmentTypes);
+        profile.professionalTitles = this.parseJsonArray(profile.professionalTitles);
+      }
       this.profile.set(profile);
       if (profile) {
         this.authSvc.currentUser.set({
@@ -92,22 +96,20 @@ export class PersonalInfoComponent implements OnInit {
         authorizedCountry: p.authorizedCountry,
         requiresVisaSponsorship: p.requiresVisaSponsorship,
         noticePeriod: p.noticePeriod,
-        employmentTypes: p.employmentTypes,
+        employmentTypes: JSON.stringify(p.employmentTypes),
         remotePreference: p.remotePreference,
         willingToRelocate: p.willingToRelocate,
         desiredJobTitle: p.desiredJobTitle,
         desiredSalaryMin: p.desiredSalaryMin,
         desiredSalaryMax: p.desiredSalaryMax,
-        linkedInUrl: p.linkedInUrl,
-        githubUrl: p.githubUrl,
-        portfolioUrl: p.portfolioUrl,
-        personalWebsite: p.personalWebsite,
         bio: p.bio,
-        professionalTitles: p.professionalTitles,
+        professionalTitles: JSON.stringify(p.professionalTitles),
       };
 
       const updated = await this.profileSvc.updateProfile(p.id, dto);
       if (updated) {
+        updated.employmentTypes = this.parseJsonArray(updated.employmentTypes);
+        updated.professionalTitles = this.parseJsonArray(updated.professionalTitles);
         this.profile.set(updated);
         this.saved.set(true);
         setTimeout(() => this.saved.set(false), 2500);
@@ -194,6 +196,14 @@ export class PersonalInfoComponent implements OnInit {
       ...t,
       isDefault: t === title,
     }));
+  }
+
+  private parseJsonArray(val: unknown): any {
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+      try { return JSON.parse(val); } catch { return undefined; }
+    }
+    return undefined;
   }
 
   formatDate(iso: string | undefined): string {

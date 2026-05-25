@@ -52,17 +52,13 @@ export interface UpdateUserProfileDto {
   authorizedCountry?: string;
   requiresVisaSponsorship?: boolean;
   noticePeriod?: string;
-  employmentTypes?: string[];
+  employmentTypes?: string;
   remotePreference?: string;
   willingToRelocate?: string;
   desiredJobTitle?: string;
   desiredSalaryMin?: number;
   desiredSalaryMax?: number;
-  linkedInUrl?: string;
-  githubUrl?: string;
-  portfolioUrl?: string;
-  personalWebsite?: string;
   bio?: string;
-  professionalTitles?: ProfessionalTitle[];
+  professionalTitles?: string;
   preferencesJson?: string;
 }

@@ -178,6 +178,20 @@ public class UsersController : ControllerBase
             user.BirthDate = DateTime.SpecifyKind(birthDate, DateTimeKind.Utc);
         user.AvatarUrl = dto.AvatarUrl;
         user.PreferencesJson = dto.PreferencesJson;
+        user.Headline = dto.Headline;
+        user.Bio = dto.Bio;
+        user.City = dto.City;
+        user.Country = dto.Country;
+        user.AuthorizedCountry = dto.AuthorizedCountry;
+        user.RequiresVisaSponsorship = dto.RequiresVisaSponsorship;
+        user.NoticePeriod = dto.NoticePeriod;
+        user.EmploymentTypes = dto.EmploymentTypes;
+        user.RemotePreference = dto.RemotePreference;
+        user.WillingToRelocate = dto.WillingToRelocate;
+        user.DesiredJobTitle = dto.DesiredJobTitle;
+        user.DesiredSalaryMin = dto.DesiredSalaryMin;
+        user.DesiredSalaryMax = dto.DesiredSalaryMax;
+        user.ProfessionalTitles = dto.ProfessionalTitles;
 
         await _db.SaveChangesAsync();
         return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
@@ -208,7 +222,21 @@ public class UsersController : ControllerBase
         string? PhoneNumber,
         string? BirthDate,
         string? AvatarUrl,
-        string? PreferencesJson
+        string? PreferencesJson,
+        string? Headline,
+        string? Bio,
+        string? City,
+        string? Country,
+        string? AuthorizedCountry,
+        bool? RequiresVisaSponsorship,
+        string? NoticePeriod,
+        string? EmploymentTypes,
+        string? RemotePreference,
+        string? WillingToRelocate,
+        string? DesiredJobTitle,
+        decimal? DesiredSalaryMin,
+        decimal? DesiredSalaryMax,
+        string? ProfessionalTitles
     );
 
     public record UserResponseDto(
@@ -225,13 +253,31 @@ public class UsersController : ControllerBase
         DateTime? LastLogin,
         bool IsActive,
         string? AiProfileDataJson,
-        string? PreferencesJson
+        string? PreferencesJson,
+        string? Headline,
+        string? Bio,
+        string? City,
+        string? Country,
+        string? AuthorizedCountry,
+        bool? RequiresVisaSponsorship,
+        string? NoticePeriod,
+        string? EmploymentTypes,
+        string? RemotePreference,
+        string? WillingToRelocate,
+        string? DesiredJobTitle,
+        decimal? DesiredSalaryMin,
+        decimal? DesiredSalaryMax,
+        string? ProfessionalTitles
     );
 
     private static UserResponseDto ToDto(User u) => new(
         u.Id, u.KeycloakId, u.FirstName, u.LastName, u.Email,
         u.PhoneNumber, u.BirthDate?.ToString("O"), u.Role.ToString(),
         u.AvatarUrl, u.CreatedAt, u.LastLogin, u.IsActive,
-        u.AiProfileDataJson, u.PreferencesJson
+        u.AiProfileDataJson, u.PreferencesJson,
+        u.Headline, u.Bio, u.City, u.Country, u.AuthorizedCountry,
+        u.RequiresVisaSponsorship, u.NoticePeriod, u.EmploymentTypes,
+        u.RemotePreference, u.WillingToRelocate, u.DesiredJobTitle,
+        u.DesiredSalaryMin, u.DesiredSalaryMax, u.ProfessionalTitles
     );
 }
