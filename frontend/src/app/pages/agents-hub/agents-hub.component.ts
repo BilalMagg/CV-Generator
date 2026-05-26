@@ -1,9 +1,9 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { AgentCardComponent, Agent } from './agent-card/agent-card.component';
-import { AgentHealthService } from './agent-health.service';
-import { AgentService } from './agent.service';
+import { AgentCardComponent, Agent } from '@app/components/agents-hub/agent-card/agent-card.component';
+import { AgentHealthService } from '@app/services/agent-health.service';
+import { AgentService } from '@app/services/agent.service';
 
 @Component({
   selector: 'app-agents-hub',

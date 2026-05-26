@@ -18,6 +18,6 @@
   </div>
 
   <div class="card-footer">
-    <button class="agent-btn">Open</button>
+    <button class="agent-btn" [class.disabled]="!workspaceRoute" [routerLink]="workspaceRoute" [disabled]="!workspaceRoute">Open</button>
   </div>
 </div>

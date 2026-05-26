@@ -1,0 +1,168 @@
+<div class="workspace-page">
+  <div class="page-header">
+    <div class="header-left">
+      <div class="breadcrumb">
+        <a routerLink="/agents-hub">Agents Hub</a>
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" class="chevron"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <a routerLink="/agents-hub/job-extractor">Job Extractor</a>
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" class="chevron"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Configuration</span>
+      </div>
+      <h1 class="header-title">Configuration</h1>
+      <p class="header-sub">Manage how the Job Extractor processes job postings</p>
+    </div>
+  </div>
+
+  <div class="sub-tabs">
+    <a routerLink="/agents-hub/job-extractor" class="sub-tab">Workspace</a>
+    <a routerLink="/agents-hub/job-extractor/config" class="sub-tab active">Configuration</a>
+  </div>
+
+  @if (loading) {
+    <div class="loading-container">
+      <div class="skeleton-card" *ngFor="let _ of [1,2,3]">
+        <div class="skeleton-line w-40"></div>
+        <div class="skeleton-line w-60"></div>
+        <div class="skeleton-line w-80"></div>
+      </div>
+    </div>
+  } @else {
+    <div class="config-content">
+      <!-- LLM Model -->
+      <div class="config-card">
+        <h3 class="config-card-title">LLM Model</h3>
+        <div class="config-field">
+          <label class="config-label">Model</label>
+          <select class="select" [(ngModel)]="config.model">
+            @for (m of models; track m.value) {
+              <option [value]="m.value">{{ m.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="config-field">
+          <label class="config-label">Temperature</label>
+          <div class="slider-row">
+            <input type="range" min="0" max="1" step="0.1" class="range" [(ngModel)]="config.temperature" />
+            <span class="slider-value">{{ config.temperature }}</span>
+          </div>
+        </div>
+        <div class="config-field">
+          <label class="config-label">API Key</label>
+          <div class="api-key-row">
+            <input type="password" class="input" placeholder="Enter your Groq API key" [(ngModel)]="config.apiKey" />
+            <button class="test-btn" [class.testing]="testStatus === 'testing'" (click)="testConnection()" [disabled]="testStatus === 'testing'">
+              @if (testStatus === 'testing') {
+                <span class="spinner-sm"></span>
+              } @else if (testStatus === 'success') {
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              } @else if (testStatus === 'fail') {
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              } @else {
+                Test
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Extraction Defaults -->
+      <div class="config-card">
+        <h3 class="config-card-title">Extraction Defaults</h3>
+        <div class="config-field">
+          <label class="config-label">Default Language</label>
+          <select class="select" [(ngModel)]="config.defaultLanguage">
+            @for (l of languages; track l.value) {
+              <option [value]="l.value">{{ l.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="config-field">
+          <label class="config-label">Confidence Threshold</label>
+          <div class="slider-row">
+            <input type="range" min="0" max="1" step="0.05" class="range" [(ngModel)]="config.confidenceThreshold" />
+            <span class="slider-value">{{ config.confidenceThreshold }}</span>
+          </div>
+          <p class="config-hint">Fields below this threshold will be highlighted as low-confidence</p>
+        </div>
+        <div class="config-field">
+          <label class="config-label">Max File Size</label>
+          <span class="config-static">10 MB <span class="config-hint">(server-enforced)</span></span>
+        </div>
+      </div>
+
+      <!-- Integration Status -->
+      <div class="config-card">
+        <h3 class="config-card-title">Integration Status</h3>
+        <div class="status-list">
+          <div class="status-item">
+            <span class="status-indicator is-active"></span>
+            <span class="status-name">Backend Connection</span>
+            <span class="status-badge-text">Connected</span>
+          </div>
+          <div class="status-item">
+            <span class="status-indicator is-active"></span>
+            <span class="status-name">Job Offer Service</span>
+            <span class="status-badge-text">Available</span>
+          </div>
+          <div class="status-item">
+            <span class="status-indicator" [class.is-active]="config.apiKey.length > 0"></span>
+            <span class="status-name">Groq API</span>
+            <span class="status-badge-text">{{ config.apiKey.length > 0 ? 'Configured' : 'Missing API Key' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Defaults -->
+      <div class="config-card">
+        <h3 class="config-card-title">Export Defaults</h3>
+        <div class="config-field">
+          <label class="config-label">Default Format</label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="format" value="json" [(ngModel)]="config.defaultExportFormat" />
+              <span>JSON</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="format" value="csv" [(ngModel)]="config.defaultExportFormat" />
+              <span>CSV</span>
+            </label>
+          </div>
+        </div>
+        <div class="config-field">
+          <label class="config-label">Auto-Save Results</label>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="config.autoSave" />
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Error -->
+      @if (error) {
+        <div class="error-banner">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          {{ error }}
+        </div>
+      }
+
+      <!-- Action bar -->
+      <div class="config-actions">
+        <button class="save-btn" [class.loading]="saving" (click)="save()" [disabled]="saving">
+          @if (saving) {
+            <span class="spinner"></span>
+            Saving...
+          } @else if (saved) {
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Saved
+          } @else {
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="1.6"/></svg>
+            Save
+          }
+        </button>
+        <button class="reset-btn" (click)="resetDefaults()" [disabled]="saving">Reset to Defaults</button>
+      </div>
+    </div>
+  }
+</div>

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpService } from '../../services/http.service';
-import { Agent } from './agent-card/agent-card.component';
+import { HttpService } from './http.service';
+import { Agent } from '@app/components/agents-hub/agent-card/agent-card.component';
 
 interface AgentDto {
   id: string;

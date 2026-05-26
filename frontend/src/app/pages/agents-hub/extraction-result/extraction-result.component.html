@@ -1,0 +1,256 @@
+<div class="workspace-page">
+  <div class="page-header">
+    <div class="header-left">
+      <div class="breadcrumb">
+        <a routerLink="/agents-hub">Agents Hub</a>
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" class="chevron"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <a routerLink="/agents-hub/job-extractor">Job Extractor</a>
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" class="chevron"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Result</span>
+      </div>
+      <h1 class="header-title">Extraction Result</h1>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="loading-container">
+      <div class="skeleton-card" *ngFor="let _ of [1,2,3]">
+        <div class="skeleton-line w-40"></div>
+        <div class="skeleton-line w-80"></div>
+        <div class="skeleton-line w-60"></div>
+      </div>
+    </div>
+  } @else if (error) {
+    <div class="error-state">
+      <svg viewBox="0 0 24 24" fill="none" width="48" height="48"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.3"/><path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <h2>Failed to load extraction</h2>
+      <p>{{ error }}</p>
+      <a routerLink="/agents-hub/job-extractor" class="back-link">Back to Workspace</a>
+    </div>
+  } @else if (output) {
+    <div class="result-content">
+      <!-- Metadata bar -->
+      <div class="meta-bar">
+        <div class="meta-left">
+          <span class="meta-badge">Text</span>
+          <span class="meta-date">Extracted just now</span>
+        </div>
+        <div class="meta-right">
+          <button class="action-btn" (click)="copyJson()">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.6"/></svg>
+            {{ copied ? 'Copied!' : 'Copy JSON' }}
+          </button>
+          <button class="action-btn" (click)="exportJson()">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export
+          </button>
+          <a [routerLink]="'/agents-hub/guide/job-extractor'" class="action-btn accent">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            Use for CV
+          </a>
+        </div>
+      </div>
+
+      <!-- Confidence bar -->
+      <div class="conf-bar" [class]="confidenceLevel">
+        <div class="conf-bar-fill" [style.width.%]="output.overallConfidence * 100"></div>
+        <span class="conf-label">Confidence: {{ confidenceLabel }}</span>
+      </div>
+
+      <!-- Enterprise Card -->
+      <div class="result-card">
+        <div class="card-header">Enterprise</div>
+        <div class="card-body">
+          <div class="enterprise-row">
+            @if (output.enterpriseLogoUrl) {
+              <img [src]="output.enterpriseLogoUrl" alt="" class="enterprise-logo" />
+            }
+            <div>
+              @if (output.enterpriseName) {
+                <h3 class="field-value large">{{ output.enterpriseName }}</h3>
+                <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('enterpriseName'))" title="Confidence: {{ (fieldConfidence('enterpriseName') * 100).toFixed(0) }}%"></span>
+              }
+              @if (output.enterpriseDescription) {
+                <p class="field-desc">{{ output.enterpriseDescription }}</p>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Job Details Card -->
+      <div class="result-card">
+        <div class="card-header">Job Details</div>
+        <div class="card-body">
+          @if (output.jobRole) {
+            <div class="field-row">
+              <span class="field-label">Job Role</span>
+              <span class="field-value large">{{ output.jobRole }}</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('jobRole'))"></span>
+            </div>
+          }
+
+          @if (output.rawDescription) {
+            <details class="collapsible">
+              <summary class="collapsible-toggle">Show full description</summary>
+              <p class="field-desc">{{ output.rawDescription }}</p>
+            </details>
+          }
+
+          @if (output.responsibilities.length > 0) {
+            <div class="field-section">
+              <span class="field-label">Responsibilities</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('responsibilities'))"></span>
+              <ul class="bullet-list">
+                @for (item of output.responsibilities; track item) {
+                  <li>{{ item }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          @if (output.requiredSkills.length > 0) {
+            <div class="field-section">
+              <span class="field-label">Required Skills</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('requiredSkills'))"></span>
+              <div class="tag-row">
+                @for (skill of output.requiredSkills; track skill) {
+                  <span class="tag tag-blue">{{ skill }}</span>
+                }
+              </div>
+            </div>
+          }
+
+          @if (output.softSkills.length > 0) {
+            <div class="field-section">
+              <span class="field-label">Soft Skills</span>
+              <div class="tag-row">
+                @for (skill of output.softSkills; track skill) {
+                  <span class="tag tag-green">{{ skill }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Logistics Card -->
+      <div class="result-card">
+        <div class="card-header">Logistics</div>
+        <div class="card-body">
+          <div class="grid-2col">
+            @if (hasValue(output.requiredExperienceYears)) {
+              <div class="grid-field">
+                <span class="field-label">Experience</span>
+                <span class="field-value">{{ output.requiredExperienceYears }} years</span>
+              </div>
+            }
+            @if (hasValue(output.seniorityLevel)) {
+              <div class="grid-field">
+                <span class="field-label">Seniority</span>
+                <span class="field-value">{{ output.seniorityLevel }}</span>
+              </div>
+            }
+            @if (hasValue(output.employmentType)) {
+              <div class="grid-field">
+                <span class="field-label">Employment</span>
+                <span class="field-value">{{ output.employmentType }}</span>
+              </div>
+            }
+            @if (hasValue(output.location)) {
+              <div class="grid-field">
+                <span class="field-label">Location</span>
+                <span class="field-value">{{ output.location }}</span>
+              </div>
+            }
+            @if (hasValue(output.locationType)) {
+              <div class="grid-field">
+                <span class="field-label">Location Type</span>
+                <span class="field-value">{{ output.locationType }}</span>
+              </div>
+            }
+            @if (hasValue(output.salaryRange)) {
+              <div class="grid-field">
+                <span class="field-label">Salary</span>
+                <span class="field-value">{{ output.salaryRange }} {{ output.currency }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Requirements Card -->
+      <div class="result-card">
+        <div class="card-header">Requirements</div>
+        <div class="card-body">
+          @if (hasValue(output.educationRequirements)) {
+            <div class="field-row">
+              <span class="field-label">Education</span>
+              <span class="field-value">{{ output.educationRequirements }}</span>
+            </div>
+          }
+
+          @if (output.certifications.length > 0) {
+            <div class="field-section">
+              <span class="field-label">Certifications</span>
+              <div class="tag-row">
+                @for (cert of output.certifications; track cert) {
+                  <span class="tag tag-purple">{{ cert }}</span>
+                }
+              </div>
+            </div>
+          }
+
+          @if (output.languages.length > 0) {
+            <div class="field-section">
+              <span class="field-label">Languages</span>
+              <div class="tag-row">
+                @for (lang of output.languages; track lang) {
+                  <span class="tag tag-orange">{{ lang }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Meta Card -->
+      <div class="result-card">
+        <div class="card-header">Additional Info</div>
+        <div class="card-body">
+          @if (output.benefits.length > 0) {
+            <div class="field-section">
+              <span class="field-label">Benefits</span>
+              <ul class="bullet-list">
+                @for (benefit of output.benefits; track benefit) {
+                  <li>{{ benefit }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          <div class="grid-2col">
+            @if (hasValue(output.applicationDeadline)) {
+              <div class="grid-field">
+                <span class="field-label">Application Deadline</span>
+                <span class="field-value">{{ output.applicationDeadline }}</span>
+              </div>
+            }
+            @if (hasValue(output.contactEmail)) {
+              <div class="grid-field">
+                <span class="field-label">Contact Email</span>
+                <a class="field-value link" [href]="'mailto:' + output.contactEmail">{{ output.contactEmail }}</a>
+              </div>
+            }
+            @if (hasValue(output.sourceUrl)) {
+              <div class="grid-field">
+                <span class="field-label">Source URL</span>
+                <a class="field-value link" [href]="output.sourceUrl" target="_blank" rel="noopener">{{ output.sourceUrl }}</a>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -11,6 +11,7 @@ public class WorkflowDbContext : DbContext
     public DbSet<Project> Projects { get; set; }
     public DbSet<Skill> Skills { get; set; }
     public DbSet<AgentEntity> Agents { get; set; }
+    public DbSet<JobExtractionEntity> JobExtractions { get; set; }
 
     public WorkflowDbContext(DbContextOptions<WorkflowDbContext> options) : base(options) { }
 

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpService } from '../../services/http.service';
+import { HttpService } from './http.service';
 
 export interface AgentHealthStatus {
   agentName: string;

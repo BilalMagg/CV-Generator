@@ -21,6 +21,10 @@ export class AgentCardComponent {
   @Input({ required: true }) agent!: Agent;
   @Input({ required: true }) size!: string;
 
+  private readonly workspaceRoutes: Record<string, string> = {
+    'job-extractor': '/agents-hub/job-extractor',
+  };
+
   private sizeMap: Record<string, string> = {
     'tall': 'tall',
     'wide': 'wide',
@@ -31,5 +35,9 @@ export class AgentCardComponent {
   get imagePath(): string {
     const file = this.sizeMap[this.size] || 'tall';
     return `/agents/${this.agent.id}/${file}.png`;
+  }
+
+  get workspaceRoute(): string | null {
+    return this.workspaceRoutes[this.agent.id] ?? null;
   }
 }
