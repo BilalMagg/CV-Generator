@@ -60,7 +60,7 @@
       <div class="aside-section">
         <h3 class="aside-title">Agent Status</h3>
         <div class="status-list">
-          <div class="status-item" *ngFor="let agent of uniqueAgents">
+          <div class="status-item" *ngFor="let agent of allAgents">
             <span class="status-indicator" [class.is-active]="agent.status === 'active'" [class.is-idle]="agent.status === 'idle'"></span>
             <span class="status-name">{{ agent.name }}</span>
             <span class="status-badge-text">{{ agent.status }}</span>
