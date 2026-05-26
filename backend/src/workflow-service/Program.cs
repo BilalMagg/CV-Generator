@@ -38,6 +38,11 @@ builder.Services.AddHttpClient<WorkflowService.AgentClients.ITemplateAgentClient
     client.BaseAddress = new Uri("http://cv-template-agent:8003/api/v1/");
 });
 
+builder.Services.AddHttpClient<WorkflowService.AgentClients.ICvOptimizerClient, WorkflowService.AgentClients.CvOptimizerClient>(client =>
+{
+    client.BaseAddress = new Uri("http://cv-optimizer-agent:8004/api/v1/");
+});
+
 builder.Services.AddHttpClient<WorkflowService.AgentClients.IContactAgentClient, WorkflowService.AgentClients.ContactAgentClient>(client =>
 {
     client.BaseAddress = new Uri("http://cv-contact-agent:8005/api/v1/");
