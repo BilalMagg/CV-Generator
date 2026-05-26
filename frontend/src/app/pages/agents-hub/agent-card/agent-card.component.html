@@ -9,7 +9,7 @@
         <path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
       </svg>
     </button>
-    <span class="status-dot" [class.is-active]="agent.status === 'active'" [class.is-idle]="agent.status === 'idle'"></span>
+    <span class="status-dot" [class.is-active]="agent.status === 'active'" [class.is-idle]="agent.status === 'idle'" [class.is-inactive]="agent.status === 'inactive'"></span>
   </div>
 
   <div class="card-body">

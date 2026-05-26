@@ -159,7 +159,7 @@
 
   &.stat-active { color: #16a34a; }
   &.stat-idle { color: #d97706; }
-  &.stat-inactive { color: var(--text-4); }
+  &.stat-inactive { color: #dc2626; }
 }
 
 .stat-label {
@@ -200,6 +200,11 @@
   &.is-idle {
     background: #d97706;
     box-shadow: 0 0 6px rgba(217, 119, 6, 0.5);
+  }
+
+  &.is-inactive {
+    background: #dc2626;
+    box-shadow: 0 0 6px rgba(220, 38, 38, 0.5);
   }
 }
 

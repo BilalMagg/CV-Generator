@@ -40,7 +40,7 @@ builder.Services.AddHttpClient<WorkflowService.AgentClients.ITemplateAgentClient
 
 builder.Services.AddHttpClient<WorkflowService.AgentClients.ICvOptimizerClient, WorkflowService.AgentClients.CvOptimizerClient>(client =>
 {
-    client.BaseAddress = new Uri("http://cv-optimizer-agent:8004/api/v1/");
+    client.BaseAddress = new Uri("http://cv-optimizer:8004/api/v1/");
 });
 
 builder.Services.AddHttpClient<WorkflowService.AgentClients.IContactAgentClient, WorkflowService.AgentClients.ContactAgentClient>(client =>
