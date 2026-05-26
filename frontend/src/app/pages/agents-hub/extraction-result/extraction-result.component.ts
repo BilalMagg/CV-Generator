@@ -97,6 +97,10 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
     return this.output?.fieldConfidences?.[field] ?? 0;
   }
 
+  fieldConfidencePct(field: string): string {
+    return Math.round(this.fieldConfidence(field) * 100) + '%';
+  }
+
   confidenceColor(score: number): string {
     if (score >= 0.8) return '#16a34a';
     if (score >= 0.5) return '#d97706';

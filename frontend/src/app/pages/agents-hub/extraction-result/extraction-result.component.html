@@ -53,10 +53,13 @@
         </div>
       </div>
 
-      <!-- Confidence bar -->
-      <div class="conf-bar" [class]="confidenceLevel">
-        <div class="conf-bar-fill" [style.width.%]="output.overallConfidence * 100"></div>
-        <span class="conf-label">Confidence: {{ confidenceLabel }}</span>
+      <!-- Overall confidence -->
+      <div class="confidence-overall" [class]="confidenceLevel">
+        <div class="co-score">{{ confidenceLabel }}</div>
+        <div class="co-label">Overall Confidence</div>
+        <div class="co-bar">
+          <div class="co-bar-fill" [style.width.%]="output.overallConfidence * 100"></div>
+        </div>
       </div>
 
       <!-- Enterprise -->
@@ -73,6 +76,7 @@
             <div class="field-top">
               <span class="field-label">Company Name</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('enterpriseName'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('enterpriseName') }}</span>
             </div>
             @if (isEditing('enterpriseName')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('enterpriseName')" (keydown.enter)="saveEdit('enterpriseName')" (keydown.escape)="cancelEdit()" data-field="enterpriseName" />
@@ -85,6 +89,7 @@
             <div class="field-top">
               <span class="field-label">Description</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('enterpriseDescription'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('enterpriseDescription') }}</span>
             </div>
             @if (isEditing('enterpriseDescription')) {
               <textarea class="edit-textarea" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('enterpriseDescription')" (keydown.escape)="cancelEdit()" data-field="enterpriseDescription"></textarea>
@@ -103,6 +108,7 @@
             <div class="field-top">
               <span class="field-label">Job Role</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('jobRole'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('jobRole') }}</span>
             </div>
             @if (isEditing('jobRole')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('jobRole')" (keydown.enter)="saveEdit('jobRole')" (keydown.escape)="cancelEdit()" data-field="jobRole" />
@@ -115,6 +121,7 @@
             <div class="field-top">
               <span class="field-label">Raw Description</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('rawDescription'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('rawDescription') }}</span>
             </div>
             @if (isEditing('rawDescription')) {
               <textarea class="edit-textarea tall" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('rawDescription')" (keydown.escape)="cancelEdit()" data-field="rawDescription"></textarea>
@@ -127,6 +134,7 @@
             <div class="field-top">
               <span class="field-label">Responsibilities</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('responsibilities'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('responsibilities') }}</span>
             </div>
             <div class="tag-editor">
               @for (item of tagList('responsibilities'); track $index) {
@@ -146,6 +154,7 @@
             <div class="field-top">
               <span class="field-label">Required Skills</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('requiredSkills'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('requiredSkills') }}</span>
             </div>
             <div class="tag-editor">
               @for (item of tagList('requiredSkills'); track $index) {
@@ -165,6 +174,7 @@
             <div class="field-top">
               <span class="field-label">Soft Skills</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('softSkills'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('softSkills') }}</span>
             </div>
             <div class="tag-editor">
               @for (item of tagList('softSkills'); track $index) {
@@ -190,6 +200,7 @@
             <div class="field-top">
               <span class="field-label">Experience</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('requiredExperienceYears'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('requiredExperienceYears') }}</span>
             </div>
             @if (isEditing('requiredExperienceYears')) {
               <input class="edit-input" type="number" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('requiredExperienceYears')" (keydown.enter)="saveEdit('requiredExperienceYears')" (keydown.escape)="cancelEdit()" data-field="requiredExperienceYears" />
@@ -202,6 +213,7 @@
             <div class="field-top">
               <span class="field-label">Seniority</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('seniorityLevel'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('seniorityLevel') }}</span>
             </div>
             @if (isEditing('seniorityLevel')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('seniorityLevel')" (keydown.enter)="saveEdit('seniorityLevel')" (keydown.escape)="cancelEdit()" data-field="seniorityLevel" />
@@ -214,6 +226,7 @@
             <div class="field-top">
               <span class="field-label">Employment</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('employmentType'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('employmentType') }}</span>
             </div>
             @if (isEditing('employmentType')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('employmentType')" (keydown.enter)="saveEdit('employmentType')" (keydown.escape)="cancelEdit()" data-field="employmentType" />
@@ -226,6 +239,7 @@
             <div class="field-top">
               <span class="field-label">Location</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('location'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('location') }}</span>
             </div>
             @if (isEditing('location')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('location')" (keydown.enter)="saveEdit('location')" (keydown.escape)="cancelEdit()" data-field="location" />
@@ -238,6 +252,7 @@
             <div class="field-top">
               <span class="field-label">Location Type</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('locationType'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('locationType') }}</span>
             </div>
             @if (isEditing('locationType')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('locationType')" (keydown.enter)="saveEdit('locationType')" (keydown.escape)="cancelEdit()" data-field="locationType" />
@@ -250,6 +265,7 @@
             <div class="field-top">
               <span class="field-label">Salary Range</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('salaryRange'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('salaryRange') }}</span>
             </div>
             <div class="salary-group">
               @if (isEditing('salaryRange')) {
@@ -276,6 +292,7 @@
             <div class="field-top">
               <span class="field-label">Education</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('educationRequirements'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('educationRequirements') }}</span>
             </div>
             @if (isEditing('educationRequirements')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('educationRequirements')" (keydown.enter)="saveEdit('educationRequirements')" (keydown.escape)="cancelEdit()" data-field="educationRequirements" />
@@ -288,6 +305,7 @@
             <div class="field-top">
               <span class="field-label">Certifications</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('certifications'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('certifications') }}</span>
             </div>
             <div class="tag-editor">
               @for (item of tagList('certifications'); track $index) {
@@ -307,6 +325,7 @@
             <div class="field-top">
               <span class="field-label">Languages</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('languages'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('languages') }}</span>
             </div>
             <div class="tag-editor">
               @for (item of tagList('languages'); track $index) {
@@ -332,6 +351,7 @@
             <div class="field-top">
               <span class="field-label">Benefits</span>
               <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('benefits'))"></span>
+              <span class="conf-pct">{{ fieldConfidencePct('benefits') }}</span>
             </div>
             <div class="tag-editor">
               @for (item of tagList('benefits'); track $index) {
@@ -352,6 +372,7 @@
               <div class="field-top">
                 <span class="field-label">Deadline</span>
                 <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('applicationDeadline'))"></span>
+                <span class="conf-pct">{{ fieldConfidencePct('applicationDeadline') }}</span>
               </div>
               @if (isEditing('applicationDeadline')) {
                 <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('applicationDeadline')" (keydown.enter)="saveEdit('applicationDeadline')" (keydown.escape)="cancelEdit()" data-field="applicationDeadline" />
@@ -364,6 +385,7 @@
               <div class="field-top">
                 <span class="field-label">Contact Email</span>
                 <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('contactEmail'))"></span>
+                <span class="conf-pct">{{ fieldConfidencePct('contactEmail') }}</span>
               </div>
               @if (isEditing('contactEmail')) {
                 <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('contactEmail')" (keydown.enter)="saveEdit('contactEmail')" (keydown.escape)="cancelEdit()" data-field="contactEmail" />
@@ -376,6 +398,7 @@
               <div class="field-top">
                 <span class="field-label">Source URL</span>
                 <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('sourceUrl'))"></span>
+                <span class="conf-pct">{{ fieldConfidencePct('sourceUrl') }}</span>
               </div>
               @if (isEditing('sourceUrl')) {
                 <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('sourceUrl')" (keydown.enter)="saveEdit('sourceUrl')" (keydown.escape)="cancelEdit()" data-field="sourceUrl" />
