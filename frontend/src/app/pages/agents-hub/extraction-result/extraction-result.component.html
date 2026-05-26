@@ -14,11 +14,13 @@
 
   @if (loading) {
     <div class="loading-container">
-      <div class="skeleton-card" *ngFor="let _ of [1,2,3]">
-        <div class="skeleton-line w-40"></div>
-        <div class="skeleton-line w-80"></div>
-        <div class="skeleton-line w-60"></div>
-      </div>
+      @for (_ of [1,2,3]; track $index) {
+        <div class="skeleton-card">
+          <div class="skeleton-line w-40"></div>
+          <div class="skeleton-line w-80"></div>
+          <div class="skeleton-line w-60"></div>
+        </div>
+      }
     </div>
   } @else if (error) {
     <div class="error-state">

@@ -24,12 +24,23 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
   copied = false;
 
   ngOnInit(): void {
-    this.route.paramMap.pipe(
-      takeUntil(this.destroy$),
-    ).subscribe(params => {
-      const id = params.get('id');
-      if (id) this.loadResult(id);
-    });
+    const state = history.state as { output?: ExtractorOutput } | null;
+    const id = this.route.snapshot.paramMap.get('id');
+
+    if (state?.output) {
+      this.output = state.output;
+      this.loading = false;
+    } else if (id) {
+      this.route.paramMap.pipe(
+        takeUntil(this.destroy$),
+      ).subscribe(params => {
+        const pid = params.get('id');
+        if (pid) this.loadResult(pid);
+      });
+    } else {
+      this.error = 'No extraction ID provided';
+      this.loading = false;
+    }
   }
 
   ngOnDestroy(): void {

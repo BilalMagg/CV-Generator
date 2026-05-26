@@ -69,14 +69,16 @@ export class JobExtractorWorkspaceComponent implements OnInit {
     this.error = '';
 
     try {
-      const { id } = await this.extractionService.extract({
+      const { id, output } = await this.extractionService.extract({
         text: this.activeMethod === 'text' ? this.textInput : undefined,
         file: this.activeMethod === 'file' ? this.selectedFile ?? undefined : undefined,
         url: this.activeMethod === 'url' ? this.urlInput : undefined,
         jobOfferId: this.activeMethod === 'offer' ? this.jobOfferId : undefined,
         language: this.language,
       });
-      await this.router.navigate(['/agents-hub/job-extractor/result', id]);
+      await this.router.navigate(['/agents-hub/job-extractor/result', id], {
+        state: { output }
+      });
     } catch (err) {
       this.error = this.extractError(err);
     } finally {
