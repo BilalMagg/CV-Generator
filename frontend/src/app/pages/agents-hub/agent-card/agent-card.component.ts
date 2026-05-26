@@ -6,7 +6,6 @@ export interface Agent {
   id: string;
   name: string;
   role: string;
-  image: string;
   background: string;
   status: 'active' | 'idle' | 'inactive';
 }
@@ -20,4 +19,17 @@ export interface Agent {
 })
 export class AgentCardComponent {
   @Input({ required: true }) agent!: Agent;
+  @Input({ required: true }) size!: string;
+
+  private sizeMap: Record<string, string> = {
+    'tall': 'tall',
+    'wide': 'wide',
+    'wide-small': 'small',
+    'small': 'square',
+  };
+
+  get imagePath(): string {
+    const file = this.sizeMap[this.size] || 'tall';
+    return `/agents/${this.agent.id}/${file}.png`;
+  }
 }

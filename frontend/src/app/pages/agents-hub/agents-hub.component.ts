@@ -20,7 +20,6 @@ export class AgentsHubComponent implements OnInit, OnDestroy {
     id: 'job-extractor',
     name: 'Job Extractor',
     role: 'Job Description Parser',
-    image: '/agents/job-extractor.png',
     background: 'linear-gradient(145deg, #0c2340 0%, #1a3a5c 50%, #2d6a9f 100%)',
     status: 'active',
   };
@@ -29,7 +28,6 @@ export class AgentsHubComponent implements OnInit, OnDestroy {
     id: 'search-agent',
     name: 'Search Agent',
     role: 'Smart Application Search',
-    image: '/agents/search-agent.png',
     background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
     status: 'active',
   };
@@ -38,7 +36,6 @@ export class AgentsHubComponent implements OnInit, OnDestroy {
     id: 'template-agent',
     name: 'Template Agent',
     role: 'CV & Resume Generator',
-    image: '/agents/template-agent.png',
     background: 'linear-gradient(145deg, #1b1b2f 0%, #2d1b4e 50%, #4a1942 100%)',
     status: 'active',
   };
@@ -47,7 +44,6 @@ export class AgentsHubComponent implements OnInit, OnDestroy {
     id: 'cv-optimizer',
     name: 'CV Optimizer',
     role: 'Tailored CV Enhancer',
-    image: '/agents/cv-optimizer.png',
     background: 'linear-gradient(145deg, #0d2818 0%, #1a3c2a 50%, #2d6b4a 100%)',
     status: 'active',
   };
@@ -56,7 +52,6 @@ export class AgentsHubComponent implements OnInit, OnDestroy {
     id: 'contact-agent',
     name: 'Contact Agent',
     role: 'Application Delivery',
-    image: '/agents/contact-agent.png',
     background: 'linear-gradient(145deg, #2d0a28 0%, #4a154b 50%, #7b2d6b 100%)',
     status: 'active',
   };
