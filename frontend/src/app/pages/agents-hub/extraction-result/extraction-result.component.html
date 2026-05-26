@@ -70,8 +70,10 @@
           }
 
           <div class="editable-field">
-            <span class="field-label">Company Name</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('enterpriseName'))"></span>
+            <div class="field-top">
+              <span class="field-label">Company Name</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('enterpriseName'))"></span>
+            </div>
             @if (isEditing('enterpriseName')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('enterpriseName')" (keydown.enter)="saveEdit('enterpriseName')" (keydown.escape)="cancelEdit()" data-field="enterpriseName" />
             } @else {
@@ -80,12 +82,14 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Description</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('enterpriseDescription'))"></span>
+            <div class="field-top">
+              <span class="field-label">Description</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('enterpriseDescription'))"></span>
+            </div>
             @if (isEditing('enterpriseDescription')) {
               <textarea class="edit-textarea" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('enterpriseDescription')" (keydown.escape)="cancelEdit()" data-field="enterpriseDescription"></textarea>
             } @else {
-              <span class="field-value desc clickable" (click)="startEdit('enterpriseDescription')">{{ fieldValue('enterpriseDescription') }}</span>
+              <div class="field-value desc clickable" (click)="startEdit('enterpriseDescription')">{{ fieldValue('enterpriseDescription') }}</div>
             }
           </div>
         </div>
@@ -96,28 +100,34 @@
         <div class="card-header">Job Details</div>
         <div class="card-body">
           <div class="editable-field">
-            <span class="field-label">Job Role</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('jobRole'))"></span>
+            <div class="field-top">
+              <span class="field-label">Job Role</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('jobRole'))"></span>
+            </div>
             @if (isEditing('jobRole')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('jobRole')" (keydown.enter)="saveEdit('jobRole')" (keydown.escape)="cancelEdit()" data-field="jobRole" />
             } @else {
-              <span class="field-value clickable large" (click)="startEdit('jobRole')">{{ fieldValue('jobRole') }}</span>
+              <div class="field-value clickable large" (click)="startEdit('jobRole')">{{ fieldValue('jobRole') }}</div>
             }
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Raw Description</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('rawDescription'))"></span>
+            <div class="field-top">
+              <span class="field-label">Raw Description</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('rawDescription'))"></span>
+            </div>
             @if (isEditing('rawDescription')) {
               <textarea class="edit-textarea tall" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('rawDescription')" (keydown.escape)="cancelEdit()" data-field="rawDescription"></textarea>
             } @else {
-              <span class="field-value desc clickable" (click)="startEdit('rawDescription')">{{ fieldValue('rawDescription') }}</span>
+              <div class="field-value desc clickable" (click)="startEdit('rawDescription')">{{ fieldValue('rawDescription') }}</div>
             }
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Responsibilities</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('responsibilities'))"></span>
+            <div class="field-top">
+              <span class="field-label">Responsibilities</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('responsibilities'))"></span>
+            </div>
             <div class="tag-editor">
               @for (item of tagList('responsibilities'); track $index) {
                 <span class="tag tag-blue">
@@ -133,8 +143,10 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Required Skills</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('requiredSkills'))"></span>
+            <div class="field-top">
+              <span class="field-label">Required Skills</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('requiredSkills'))"></span>
+            </div>
             <div class="tag-editor">
               @for (item of tagList('requiredSkills'); track $index) {
                 <span class="tag tag-blue">
@@ -150,8 +162,10 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Soft Skills</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('softSkills'))"></span>
+            <div class="field-top">
+              <span class="field-label">Soft Skills</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('softSkills'))"></span>
+            </div>
             <div class="tag-editor">
               @for (item of tagList('softSkills'); track $index) {
                 <span class="tag tag-green">
@@ -173,8 +187,10 @@
         <div class="card-header">Logistics</div>
         <div class="card-body grid-2col">
           <div class="editable-field">
-            <span class="field-label">Experience</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('requiredExperienceYears'))"></span>
+            <div class="field-top">
+              <span class="field-label">Experience</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('requiredExperienceYears'))"></span>
+            </div>
             @if (isEditing('requiredExperienceYears')) {
               <input class="edit-input" type="number" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('requiredExperienceYears')" (keydown.enter)="saveEdit('requiredExperienceYears')" (keydown.escape)="cancelEdit()" data-field="requiredExperienceYears" />
             } @else {
@@ -183,8 +199,10 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Seniority</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('seniorityLevel'))"></span>
+            <div class="field-top">
+              <span class="field-label">Seniority</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('seniorityLevel'))"></span>
+            </div>
             @if (isEditing('seniorityLevel')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('seniorityLevel')" (keydown.enter)="saveEdit('seniorityLevel')" (keydown.escape)="cancelEdit()" data-field="seniorityLevel" />
             } @else {
@@ -193,8 +211,10 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Employment</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('employmentType'))"></span>
+            <div class="field-top">
+              <span class="field-label">Employment</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('employmentType'))"></span>
+            </div>
             @if (isEditing('employmentType')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('employmentType')" (keydown.enter)="saveEdit('employmentType')" (keydown.escape)="cancelEdit()" data-field="employmentType" />
             } @else {
@@ -203,8 +223,10 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Location</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('location'))"></span>
+            <div class="field-top">
+              <span class="field-label">Location</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('location'))"></span>
+            </div>
             @if (isEditing('location')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('location')" (keydown.enter)="saveEdit('location')" (keydown.escape)="cancelEdit()" data-field="location" />
             } @else {
@@ -213,8 +235,10 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Location Type</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('locationType'))"></span>
+            <div class="field-top">
+              <span class="field-label">Location Type</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('locationType'))"></span>
+            </div>
             @if (isEditing('locationType')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('locationType')" (keydown.enter)="saveEdit('locationType')" (keydown.escape)="cancelEdit()" data-field="locationType" />
             } @else {
@@ -223,8 +247,10 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Salary Range</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('salaryRange'))"></span>
+            <div class="field-top">
+              <span class="field-label">Salary Range</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('salaryRange'))"></span>
+            </div>
             <div class="salary-group">
               @if (isEditing('salaryRange')) {
                 <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('salaryRange')" (keydown.enter)="saveEdit('salaryRange')" (keydown.escape)="cancelEdit()" data-field="salaryRange" />
@@ -247,8 +273,10 @@
         <div class="card-header">Requirements</div>
         <div class="card-body">
           <div class="editable-field">
-            <span class="field-label">Education</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('educationRequirements'))"></span>
+            <div class="field-top">
+              <span class="field-label">Education</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('educationRequirements'))"></span>
+            </div>
             @if (isEditing('educationRequirements')) {
               <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('educationRequirements')" (keydown.enter)="saveEdit('educationRequirements')" (keydown.escape)="cancelEdit()" data-field="educationRequirements" />
             } @else {
@@ -257,8 +285,10 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Certifications</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('certifications'))"></span>
+            <div class="field-top">
+              <span class="field-label">Certifications</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('certifications'))"></span>
+            </div>
             <div class="tag-editor">
               @for (item of tagList('certifications'); track $index) {
                 <span class="tag tag-purple">
@@ -274,8 +304,10 @@
           </div>
 
           <div class="editable-field">
-            <span class="field-label">Languages</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('languages'))"></span>
+            <div class="field-top">
+              <span class="field-label">Languages</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('languages'))"></span>
+            </div>
             <div class="tag-editor">
               @for (item of tagList('languages'); track $index) {
                 <span class="tag tag-orange">
@@ -297,8 +329,10 @@
         <div class="card-header">Additional Info</div>
         <div class="card-body">
           <div class="editable-field">
-            <span class="field-label">Benefits</span>
-            <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('benefits'))"></span>
+            <div class="field-top">
+              <span class="field-label">Benefits</span>
+              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('benefits'))"></span>
+            </div>
             <div class="tag-editor">
               @for (item of tagList('benefits'); track $index) {
                 <span class="tag tag-blue">
@@ -315,8 +349,10 @@
 
           <div class="grid-2col">
             <div class="editable-field">
-              <span class="field-label">Deadline</span>
-              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('applicationDeadline'))"></span>
+              <div class="field-top">
+                <span class="field-label">Deadline</span>
+                <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('applicationDeadline'))"></span>
+              </div>
               @if (isEditing('applicationDeadline')) {
                 <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('applicationDeadline')" (keydown.enter)="saveEdit('applicationDeadline')" (keydown.escape)="cancelEdit()" data-field="applicationDeadline" />
               } @else {
@@ -325,8 +361,10 @@
             </div>
 
             <div class="editable-field">
-              <span class="field-label">Contact Email</span>
-              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('contactEmail'))"></span>
+              <div class="field-top">
+                <span class="field-label">Contact Email</span>
+                <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('contactEmail'))"></span>
+              </div>
               @if (isEditing('contactEmail')) {
                 <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('contactEmail')" (keydown.enter)="saveEdit('contactEmail')" (keydown.escape)="cancelEdit()" data-field="contactEmail" />
               } @else {
@@ -335,8 +373,10 @@
             </div>
 
             <div class="editable-field">
-              <span class="field-label">Source URL</span>
-              <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('sourceUrl'))"></span>
+              <div class="field-top">
+                <span class="field-label">Source URL</span>
+                <span class="conf-dot-sm" [style.background]="confidenceColor(fieldConfidence('sourceUrl'))"></span>
+              </div>
               @if (isEditing('sourceUrl')) {
                 <input class="edit-input" [value]="editBuffer" (input)="editBuffer = $any($event.target).value" (blur)="saveEdit('sourceUrl')" (keydown.enter)="saveEdit('sourceUrl')" (keydown.escape)="cancelEdit()" data-field="sourceUrl" />
               } @else {

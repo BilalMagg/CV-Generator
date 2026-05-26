@@ -30,11 +30,13 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const navigation = this.router.getCurrentNavigation();
-    const state = navigation?.extras?.state as { output?: ExtractorOutput } | null;
+    const navState = navigation?.extras?.state as { output?: ExtractorOutput } | undefined;
+    const histState = history.state as { output?: ExtractorOutput } | undefined;
+    const output = navState?.output ?? histState?.output;
     const id = this.route.snapshot.paramMap.get('id');
 
-    if (state?.output) {
-      this.output = state.output;
+    if (output) {
+      this.output = output;
       this.loading = false;
       this.cdr.detectChanges();
     } else if (id) {
@@ -64,6 +66,7 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
       this.error = this.extractError(err);
     } finally {
       this.loading = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -99,8 +102,6 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
     if (score >= 0.5) return '#d97706';
     return '#dc2626';
   }
-
-  // --- Editing ---
 
   startEdit(field: string): void {
     if (!this.output) return;
@@ -151,8 +152,6 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
     input.value = '';
     input.focus();
   }
-
-  // --- Actions ---
 
   async copyJson(): Promise<void> {
     if (!this.output) return;
