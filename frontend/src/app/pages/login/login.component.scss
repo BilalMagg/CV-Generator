@@ -2,7 +2,7 @@ section {
   position: relative;
   width: 100%;
   min-height: 100vh;
-  background-color: #fff;
+  background: var(--bg);
   overflow: hidden;
 }
 
@@ -14,7 +14,7 @@ section::before {
   top: -10%;
   right: 48%;
   border-radius: 50%;
-  background: linear-gradient(-45deg, #4481eb, #04befe);
+  background: linear-gradient(-45deg, var(--dark), var(--accent));
   z-index: 6;
   transform: translateY(-50%);
   transition: 1.8s ease-in-out;
@@ -64,27 +64,38 @@ form.sign-up-form {
 h2 {
   font-family: var(--font-display);
   font-size: 2.2rem;
-  color: #444;
+  color: var(--text);
   margin-bottom: 10px;
 }
 
 .input-field {
-  background-color: #f0f0f0;
+  background: var(--surface-2);
   max-width: 380px;
   width: 100%;
   height: 55px;
   margin: 10px 0;
-  border-radius: 55px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
   display: grid;
   grid-template-columns: 15% 85%;
   padding: 0 0.4rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+
+  &:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px oklch(0.55 0.19 268 / 0.12);
+  }
 
   i {
     text-align: center;
     line-height: 55px;
     font-size: 1.1rem;
-    color: #acacac;
+    color: var(--text-3);
     transition: color 0.3s;
+  }
+
+  &:focus-within i {
+    color: var(--accent);
   }
 
   input {
@@ -92,19 +103,24 @@ h2 {
     outline: none;
     border: none;
     line-height: 1;
-    font-weight: 600;
-    font-size: 1.1rem;
-    color: #333;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text);
     font-family: var(--font-body);
 
     &::placeholder {
-      color: #aaa;
-      font-weight: 500;
+      color: var(--text-3);
+      font-weight: 400;
     }
-  }
 
-  &.focused i {
-    color: #4481eb;
+    &:-webkit-autofill,
+    &:-webkit-autofill:hover,
+    &:-webkit-autofill:focus,
+    &:-webkit-autofill:active {
+      transition: background-color 999999s ease-in-out 0s;
+      -webkit-text-fill-color: var(--text);
+      caret-color: var(--text);
+    }
   }
 }
 
@@ -112,22 +128,22 @@ h2 {
   width: 100%;
   max-width: 380px;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 10px;
   font-size: 13px;
   text-align: center;
 }
 
 .alert.error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #dc2626;
+  background: oklch(0.96 0.04 25);
+  border: 1px solid oklch(0.88 0.1 25);
+  color: oklch(0.45 0.16 25);
 }
 
 .alert.success {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #16a34a;
+  background: oklch(0.95 0.06 160);
+  border: 1px solid oklch(0.85 0.1 160);
+  color: oklch(0.4 0.13 160);
 }
 
 .btn {
@@ -135,11 +151,11 @@ h2 {
   height: 50px;
   border: none;
   outline: none;
-  border-radius: 50px;
+  border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
   margin: 10px 0;
-  transition: 0.5s;
+  transition: 0.3s;
   font-family: var(--font-body);
   font-size: 0.95rem;
   display: inline-flex;
@@ -150,12 +166,11 @@ h2 {
 }
 
 .btn-primary {
-  background-color: #5995fd;
+  background: var(--dark);
   color: #fff;
-  text-transform: uppercase;
 
   &:hover:not(:disabled) {
-    background-color: #4d84e2;
+    background: oklch(0.12 0.01 80);
   }
 
   &:disabled {
@@ -168,7 +183,7 @@ h2 {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid oklch(0.8 0.01 80);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
@@ -181,13 +196,13 @@ h2 {
 .sso-text {
   margin-top: 4px;
   font-size: 0.85rem;
-  color: #999;
+  color: var(--text-3);
 }
 
 .btn-link {
   background: none;
   border: none;
-  color: #5995fd;
+  color: var(--accent);
   cursor: pointer;
   font-family: var(--font-body);
   font-size: 0.85rem;
@@ -196,7 +211,7 @@ h2 {
   transition: color 0.3s;
 
   &:hover {
-    color: #4d84e2;
+    color: var(--accent-2);
     text-decoration: underline;
   }
 }
@@ -258,7 +273,7 @@ h2 {
   border: 2px solid #fff;
   color: #fff;
   width: 130px;
-  border-radius: 15px;
+  border-radius: var(--radius);
   height: 41px;
   font-weight: 600;
   font-size: 0.9rem;
@@ -267,7 +282,7 @@ h2 {
   font-family: var(--font-body);
 
   &:hover {
-    color: #4481eb;
+    color: var(--dark);
     background-color: #fff;
   }
 }
@@ -276,8 +291,6 @@ h2 {
 .right-panel .image {
   transform: translateX(800px);
 }
-
-// ── Sign-up mode ──
 
 section.sign-up-mode::before {
   transform: translate(100%, -50%);
@@ -316,8 +329,6 @@ section.sign-up-mode form.sign-up-form {
   opacity: 1;
 }
 
-// ── Sign-in mode ──
-
 section.sign-in-mode::before {
   right: 48%;
 }
@@ -351,8 +362,6 @@ section.sign-in-mode form.sign-up-form {
   z-index: 1;
   opacity: 0;
 }
-
-// ── Responsive ──
 
 @media (max-width: 870px) {
   section {

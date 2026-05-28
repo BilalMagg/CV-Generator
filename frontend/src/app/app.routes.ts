@@ -37,6 +37,7 @@ export const routes: Routes = [
   { path: 'register', redirectTo: '/login?mode=sign-up', pathMatch: 'full' },
   { path: 'about', component: AboutComponent },
   { path: 'contact', component: ContactPageComponent },
+  { path: 'profile', component: PersonalInfoComponent, canActivate: [authGuard] },
   {
     path: 'applications',
     component: ApplicationsLayoutComponent,
@@ -73,7 +74,6 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', redirectTo: 'cvprofiles', pathMatch: 'full' },
-      { path: 'personal-info', component: PersonalInfoComponent },
       { path: ':entity', component: EntityListComponent },
       { path: ':entity/add', component: EntityFormComponent },
       { path: ':entity/:id', component: EntityDetailsComponent },

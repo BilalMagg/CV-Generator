@@ -3,7 +3,13 @@
   <!-- Left sub-sidebar -->
   <aside class="cv-sidebar">
     <div class="user-block">
-      <div class="user-avatar">{{ initials() }}</div>
+      <div class="user-avatar">
+        @if (avatarUrl()) {
+          <img [src]="avatarUrl()" alt="Avatar" />
+        } @else {
+          {{ initials() }}
+        }
+      </div>
       <div class="user-info">
         <div class="user-name">{{ fullName() }}</div>
       </div>
@@ -59,12 +65,6 @@
           <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
         </svg>
         Interests
-      </a>
-      <a class="cv-nav-item" [routerLink]="['/my-career', 'personal-info']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}">
-        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-          <circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>
-        </svg>
-        Personal Info
       </a>
     </nav>
 

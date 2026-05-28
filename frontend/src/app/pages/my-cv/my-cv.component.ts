@@ -11,14 +11,18 @@ import { AuthService } from '@app/services/auth.service'
 export class MyCvComponent {
   private authService = inject(AuthService)
 
+  user = computed(() => this.authService.currentUser())
+
+  avatarUrl = computed(() => this.user()?.avatarUrl ?? null)
+
   initials = computed(() => {
-    const u = this.authService.currentUser()
+    const u = this.user()
     if (!u) return '?'
     return (u.firstName[0] + u.lastName[0]).toUpperCase()
   })
 
   fullName = computed(() => {
-    const u = this.authService.currentUser()
+    const u = this.user()
     return u ? `${u.firstName} ${u.lastName}` : 'User'
   })
 }

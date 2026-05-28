@@ -66,6 +66,7 @@ export class PersonalInfoComponent implements OnInit {
           email: profile.email,
           role: profile.role,
           isActive: profile.isActive,
+          avatarUrl: profile.avatarUrl,
         });
       }
     } catch {

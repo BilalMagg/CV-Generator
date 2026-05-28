@@ -10,6 +10,7 @@ export interface User {
   email: string;
   role: string;
   isActive: boolean;
+  avatarUrl?: string;
   tokens?: {
     accessToken?: string;
     refreshToken?: string;

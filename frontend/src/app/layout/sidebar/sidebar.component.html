@@ -137,13 +137,19 @@
   </div>
 
   <!-- User row -->
-  <div class="user-row">
-    <div class="user-avatar">{{ initials() }}</div>
+  <div class="user-row" (click)="goToProfile()">
+    <div class="user-avatar">
+      @if (avatarUrl()) {
+        <img [src]="avatarUrl()" alt="Avatar" />
+      } @else {
+        {{ initials() }}
+      }
+    </div>
     <div class="user-info">
       <div class="user-name truncate">{{ userFullName() }}</div>
       <div class="user-email truncate">{{ userEmail() }}</div>
     </div>
-    <button class="icon-btn-sm" (click)="logout()" title="Logout">
+    <button class="icon-btn-sm" (click)="logout(); $event.stopPropagation()" title="Logout">
       <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         <polyline points="16,17 21,12 16,7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
