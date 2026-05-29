@@ -10,7 +10,7 @@ interface NavItem {
   icon: string;
   exact?: boolean;
   accent?: boolean;
-  group: 'main' | 'library';
+  group: 'main' | 'library' | 'agents';
 }
 
 @Component({
@@ -33,25 +33,36 @@ export class SidebarComponent {
     { label: 'Calendar',     route: '/applications/calendar',  icon: 'calendar',  exact: false, group: 'main' },
   ];
 
+  navAgents: NavItem[] = [
+    { label: 'Agents Hub', route: '/agents-hub', icon: 'grid', exact: false, group: 'agents' },
+  ];
+
   navLibrary: NavItem[] = [
     { label: 'My Career', route: '/my-career', icon: 'user', exact: false, group: 'library' },
   ];
 
+  user = computed(() => this.authService.currentUser());
+
+  avatarUrl = computed(() => this.user()?.avatarUrl ?? null);
+
   initials = computed(() => {
-    const user = this.authService.currentUser();
+    const user = this.user();
     if (!user) return '?';
     return (user.firstName[0] + user.lastName[0]).toUpperCase();
   });
 
   userFullName = computed(() => {
-    const user = this.authService.currentUser();
+    const user = this.user();
     return user ? `${user.firstName} ${user.lastName}` : 'Guest';
   });
 
   userEmail = computed(() => {
-    const user = this.authService.currentUser();
-    return user?.email ?? '';
+    return this.user()?.email ?? '';
   });
+
+  goToProfile(): void {
+    this.router.navigate(['/profile']);
+  }
 
   logout(): void {
     this.authService.logout();

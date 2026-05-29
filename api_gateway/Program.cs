@@ -158,6 +158,110 @@ app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
 })
 .RequireCors("Default");
 
+app.MapPost("/api/auth/login", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var body = await ctx.Request.ReadFromJsonAsync<JsonElement>();
+        var email = body.GetProperty("email").GetString() ?? "";
+        var password = body.GetProperty("password").GetString() ?? "";
+
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        {
+            ctx.Response.StatusCode = 400;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Email and password are required" });
+            return;
+        }
+
+        var tokenUrl = $"{keycloakInternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/token";
+        var http = httpClientFactory.CreateClient();
+        var tokenContent = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("grant_type", "password"),
+            new KeyValuePair<string, string>("client_id", keycloakClientId),
+            new KeyValuePair<string, string>("client_secret", keycloakClientSecret),
+            new KeyValuePair<string, string>("username", email),
+            new KeyValuePair<string, string>("password", password),
+            new KeyValuePair<string, string>("scope", "openid profile email"),
+        });
+
+        var tokenResponse = await http.PostAsync(tokenUrl, tokenContent);
+        if (!tokenResponse.IsSuccessStatusCode)
+        {
+            ctx.Response.StatusCode = 401;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid email or password" });
+            return;
+        }
+
+        var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+        if (tokenJson == null)
+        {
+            ctx.Response.StatusCode = 500;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token response" });
+            return;
+        }
+
+        var accessToken = tokenJson.GetValueOrDefault("access_token")?.ToString() ?? "";
+        var idToken = tokenJson.GetValueOrDefault("id_token")?.ToString() ?? "";
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(string.IsNullOrEmpty(idToken) ? accessToken : idToken);
+        var claims = jwt.Claims.ToList();
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        identity.AddClaim(new Claim("access_token", accessToken));
+
+        var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
+        if (!string.IsNullOrEmpty(userId))
+        {
+            identity.AddClaim(new Claim("user_id", userId));
+        }
+
+        var principal = new ClaimsPrincipal(identity);
+        var authProps = new AuthenticationProperties
+        {
+            IsPersistent = true,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
+        };
+        authProps.Items["id_token"] = idToken;
+
+        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
+
+        var firstName = jwt.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value ?? "";
+        var lastName = jwt.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
+        var jwtEmail = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value ?? "";
+        var sub = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? "";
+
+        await ctx.Response.WriteAsJsonAsync(new
+        {
+            success = true,
+            data = new
+            {
+                userId = userId ?? sub,
+                keycloakId = sub,
+                firstName,
+                lastName,
+                email = jwtEmail,
+                role = "user",
+                isActive = true,
+                tokens = new { accessToken },
+            },
+        });
+    }
+    catch (JsonException)
+    {
+        ctx.Response.StatusCode = 400;
+        await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid request body" });
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Login error: {ex.Message}");
+        ctx.Response.StatusCode = 500;
+        await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Login failed due to an internal error" });
+    }
+})
+.RequireCors("Default");
+
 app.MapGet("/api/auth/logout", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
 {
     var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:4200";

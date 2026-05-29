@@ -12,6 +12,7 @@ public record ApplicationResponseDto(
     DateTime AppliedAt,
     DateTime UpdatedAt,
     string? Notes,
+    bool IsSaved = false,
     List<StatusHistoryDto>? History = null
 );
 
@@ -54,6 +55,49 @@ public record ApplicationStatisticsDto(
     int Accepted,
     int Rejected,
     int Cancelled
+);
+
+public record MonthlyTrendDto(
+    int Year,
+    int Month,
+    int Pending,
+    int Reviewed,
+    int Interview,
+    int Accepted,
+    int Rejected,
+    int Cancelled
+);
+
+public record StatisticsTrendsDto(
+    ApplicationStatisticsDto Current,
+    List<MonthlyTrendDto> MonthlyTrends,
+    double? AverageResponseTimeDays
+);
+
+public record SeedApplicationsDto(
+    int Count = 500,
+    int MonthsBack = 12
+);
+
+public record SeedResultDto(
+    int ApplicationsCreated,
+    int StatusHistoryCreated,
+    Guid CandidateId
+);
+
+public record ActivityItemDto(
+    Guid ApplicationId,
+    string CompanyName,
+    string PositionTitle,
+    string? OldStatus,
+    string NewStatus,
+    DateTime ChangedAt,
+    string? Comment
+);
+
+public record ActivityFeedDto(
+    List<ActivityItemDto> Items,
+    int Total
 );
 
 public record ApplicationListDto(

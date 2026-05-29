@@ -34,7 +34,23 @@ public class JobRequirements
     public List<string> Certifications { get; set; } = new();
 }
 
-// Job Extractor
+// Job Extractor — sent to the Python agent
+public class JobExtractorAgentRequest
+{
+    [JsonPropertyName("job_description")]
+    public string? JobDescription { get; set; }
+
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    [JsonPropertyName("job_offer_id")]
+    public string? JobOfferId { get; set; }
+
+    [JsonPropertyName("language")]
+    public string Language { get; set; } = "en";
+}
+
+// Legacy — kept for backward compat
 public class ExtractorInput
 {
     [JsonPropertyName("job_description")]

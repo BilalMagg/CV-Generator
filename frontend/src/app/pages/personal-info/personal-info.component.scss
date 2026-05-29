@@ -1,5 +1,7 @@
 ﻿.pi-page {
-  max-width: 860px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 48px;
 }
 
 .pi-header {
@@ -7,7 +9,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .header-left {
@@ -92,24 +94,24 @@ h1 {
 
 .pi-layout {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 1.5rem;
+  grid-template-columns: 240px 1fr;
+  gap: 2rem;
   align-items: start;
 }
 
 .pi-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
   position: sticky;
   top: 0;
 }
 
 .avatar-card {
-  background: white;
-  border: 1px solid oklch(0.92 0.004 80);
-  border-radius: 12px;
-  padding: 1.5rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 1.5rem;
   text-align: center;
 }
 
@@ -176,13 +178,13 @@ h1 {
 }
 
 .meta-card {
-  background: white;
-  border: 1px solid oklch(0.92 0.004 80);
-  border-radius: 12px;
-  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: .75rem;
+  gap: 1rem;
 }
 
 .meta-item {
@@ -211,19 +213,19 @@ h1 {
 }
 
 .form-card {
-  background: white;
-  border: 1px solid oklch(0.92 0.004 80);
-  border-radius: 12px;
-  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
 }
 
 .section-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 1rem;
-  padding-bottom: .75rem;
-  border-bottom: 1px solid oklch(0.94 0.004 80);
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--hairline);
 
   i {
     width: 32px;
@@ -233,7 +235,7 @@ h1 {
     justify-content: center;
     border-radius: 8px;
     background: var(--bg);
-    border: 1px solid oklch(0.92 0.004 80);
+    border: 1px solid var(--border);
     color: var(--text-3);
     font-size: 15px;
     flex-shrink: 0;
@@ -249,8 +251,8 @@ h1 {
   }
 
   .section-desc {
-    margin: 1px 0 0;
-    font-size: 12px;
+    margin: 2px 0 0;
+    font-size: 12.5px;
     color: var(--text-3);
   }
 }
@@ -281,18 +283,19 @@ h1 {
   }
 
   input, textarea, select {
-    background: var(--bg);
-    border: 1px solid oklch(0.9 0.004 80);
-    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     padding: 8px 10px;
     font-size: 13px;
     font-family: var(--font-body);
     color: var(--text);
     outline: none;
-    transition: border-color .15s;
+    transition: border-color .12s, box-shadow .12s;
 
     &:focus {
-      border-color: var(--dark);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px oklch(0.55 0.19 268 / 0.12);
     }
 
     &:disabled {
@@ -324,13 +327,14 @@ h1 {
 .input-prefix {
   display: flex;
   align-items: center;
-  background: var(--bg);
-  border: 1px solid oklch(0.9 0.004 80);
-  border-radius: 8px;
-  transition: border-color .15s;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color .12s, box-shadow .12s;
 
   &:focus-within {
-    border-color: var(--dark);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px oklch(0.55 0.19 268 / 0.12);
   }
 
   .prefix {
@@ -365,9 +369,9 @@ h1 {
 
 .chip {
   padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid oklch(0.9 0.004 80);
-  background: white;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--text-2);
   font-size: 12px;
   font-weight: 500;
@@ -463,10 +467,10 @@ h1 {
   align-items: center;
   justify-content: space-between;
   padding: .625rem .75rem;
-  border-radius: 8px;
-  border: 1px solid oklch(0.92 0.004 80);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
   margin-bottom: 6px;
-  background: white;
+  background: var(--surface);
   transition: border-color 0.12s;
 
   &:hover { border-color: oklch(0.86 0.006 80); }
@@ -541,17 +545,19 @@ h1 {
 
   input {
     flex: 1;
-    background: white;
-    border: 1px solid oklch(0.9 0.004 80);
-    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     padding: 7px 10px;
     font-size: 13px;
     font-family: var(--font-body);
     color: var(--text);
     outline: none;
+    transition: border-color .12s, box-shadow .12s;
 
     &:focus {
-      border-color: var(--dark);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px oklch(0.55 0.19 268 / 0.12);
     }
 
     &::placeholder {

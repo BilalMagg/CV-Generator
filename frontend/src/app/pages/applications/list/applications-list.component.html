@@ -9,12 +9,6 @@
         <span class="ts-sep">·</span>
         <span class="ts-item"><strong>{{ statistics().accepted }}</strong> offers</span>
       </div>
-      <a class="add-btn" routerLink="/applications/new">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-          <line x1="6.5" y1="1" x2="6.5" y2="12"/><line x1="1" y1="6.5" x2="12" y2="6.5"/>
-        </svg>
-        Add application
-      </a>
     </div>
     <div class="toolbar-filters">
       <div class="search-wrap">
@@ -23,12 +17,51 @@
         </svg>
         <input class="search-input" placeholder="Search company or position…" [(ngModel)]="searchQuery" (keyup.enter)="onSearch()">
       </div>
-      <select class="filter-select" [(ngModel)]="selectedStatus" (ngModelChange)="onStatusFilterChange()">
-        <option value="">All statuses</option>
-        @for (s of ['PENDING','REVIEWED','INTERVIEW','ACCEPTED','REJECTED','CANCELLED']; track s) {
-          <option [value]="s">{{ getStatusLabel(s) }}</option>
+      <div class="filter-btn-wrap">
+        <button class="filter-btn" (click)="filterOpen.set(!filterOpen())">
+          <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <line x1="1" y1="4" x2="13" y2="4"/><line x1="3" y1="7" x2="11" y2="7"/><line x1="5" y1="10" x2="9" y2="10"/>
+          </svg>
+          Filter
+          @if (activeFilterCount() > 0) {
+            <span class="filter-badge">{{ activeFilterCount() }}</span>
+          }
+        </button>
+        @if (filterOpen()) {
+          <div class="filter-panel" (click)="$event.stopPropagation()">
+            <div class="fp-section">
+              <div class="fp-label">Status</div>
+              <div class="fp-chips">
+                @for (s of ALL_STATUSES; track s) {
+                  <button class="fp-chip" [class.active]="selectedStatuses().has(s)" (click)="toggleStatus(s)">
+                    {{ STATUS_LABELS[s] }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="fp-section">
+              <div class="fp-label">Applied</div>
+              <div class="fp-date-row">
+                <input type="date" class="fp-date" [(ngModel)]="appliedFrom" (ngModelChange)="0" placeholder="From">
+                <span class="fp-date-sep">→</span>
+                <input type="date" class="fp-date" [(ngModel)]="appliedTo" (ngModelChange)="0" placeholder="To">
+              </div>
+            </div>
+            <div class="fp-section">
+              <div class="fp-label">Updated</div>
+              <div class="fp-date-row">
+                <input type="date" class="fp-date" [(ngModel)]="updatedFrom" (ngModelChange)="0" placeholder="From">
+                <span class="fp-date-sep">→</span>
+                <input type="date" class="fp-date" [(ngModel)]="updatedTo" (ngModelChange)="0" placeholder="To">
+              </div>
+            </div>
+            <div class="fp-actions">
+              <button class="fp-apply" (click)="applyFilters()">Apply</button>
+              <button class="fp-clear" (click)="clearFilters()">Clear all</button>
+            </div>
+          </div>
         }
-      </select>
+      </div>
     </div>
   </div>
 
@@ -40,10 +73,6 @@
         <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="12" y2="13"/>
       </svg>
       <p>No applications yet.</p>
-      <a class="add-btn sm" routerLink="/applications/new">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/></svg>
-        Add your first application
-      </a>
     </div>
   } @else {
     <div class="table-wrap">
@@ -98,13 +127,23 @@
     </div>
 
     <div class="pagination">
-      <span class="pag-info">Showing {{ Math.min(pageSize(), totalItems()) }} of {{ totalItems() }}</span>
+      <div class="pag-left">
+        <span class="pag-info">{{ itemRange() }}</span>
+        <span class="pag-sep">·</span>
+        <select class="pag-size-sel" (change)="changePageSize($event)">
+          <option value="15" [selected]="pageSize() === 15">15 / page</option>
+          <option value="50" [selected]="pageSize() === 50">50 / page</option>
+          <option value="100" [selected]="pageSize() === 100">100 / page</option>
+        </select>
+      </div>
       <div class="pag-btns">
+        <button class="pag-btn" [disabled]="page() <= 1" (click)="changePage(1)" title="First">«</button>
         <button class="pag-btn" [disabled]="page() <= 1" (click)="changePage(page() - 1)">‹</button>
         @for (p of visiblePages(); track p) {
           <button class="pag-btn" [class.active]="p === page()" (click)="changePage(p)">{{ p }}</button>
         }
         <button class="pag-btn" [disabled]="page() >= totalPages()" (click)="changePage(page() + 1)">›</button>
+        <button class="pag-btn" [disabled]="page() >= totalPages()" (click)="changePage(totalPages())" title="Last">»</button>
       </div>
     </div>
   }

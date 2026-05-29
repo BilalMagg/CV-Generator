@@ -71,12 +71,40 @@
                 <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
               </svg>
             }
+            @case ('list') {
+              <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+                <line x1="4" y1="6" x2="20" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="4" y1="18" x2="20" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            }
           }
         </span>
         <span class="nav-label">{{ item.label }}</span>
         @if (item.accent) {
           <span class="ai-badge">AI</span>
         }
+      </a>
+    }
+  </nav>
+
+  <!-- Agents section -->
+  <div class="section-eyebrow">AI Agents</div>
+  <nav class="nav-section">
+    @for (item of navAgents; track item.route) {
+      <a class="nav-item"
+         [routerLink]="item.route"
+         routerLinkActive="active"
+         [routerLinkActiveOptions]="{ exact: false }">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+            <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+            <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+            <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+            <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+          </svg>
+        </span>
+        <span class="nav-label">{{ item.label }}</span>
       </a>
     }
   </nav>
@@ -116,13 +144,19 @@
   </div>
 
   <!-- User row -->
-  <div class="user-row">
-    <div class="user-avatar">{{ initials() }}</div>
+  <div class="user-row" (click)="goToProfile()">
+    <div class="user-avatar">
+      @if (avatarUrl()) {
+        <img [src]="avatarUrl()" alt="Avatar" />
+      } @else {
+        {{ initials() }}
+      }
+    </div>
     <div class="user-info">
       <div class="user-name truncate">{{ userFullName() }}</div>
       <div class="user-email truncate">{{ userEmail() }}</div>
     </div>
-    <button class="icon-btn-sm" (click)="logout()" title="Logout">
+    <button class="icon-btn-sm" (click)="logout(); $event.stopPropagation()" title="Logout">
       <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         <polyline points="16,17 21,12 16,7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>

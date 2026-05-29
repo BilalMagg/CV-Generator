@@ -271,6 +271,13 @@
   font-size: 11px;
   flex-shrink: 0;
   box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .user-info {

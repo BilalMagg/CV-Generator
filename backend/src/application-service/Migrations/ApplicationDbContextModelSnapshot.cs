@@ -42,6 +42,9 @@ namespace ApplicationService.Migrations
                     b.Property<Guid?>("CvVersionId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsSaved")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid?>("JobOfferId")
                         .HasColumnType("uuid");
 
