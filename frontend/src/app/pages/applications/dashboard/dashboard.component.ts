@@ -4,7 +4,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { ApplicationService } from '@app/services/application.service';
 import { AuthService } from '@app/services/auth.service';
-import { ApplicationStatisticsDto, ApplicationResponseDto } from '@app/models/application.model';
+import { StatisticsTrendsDto, MonthlyTrendDto, ApplicationResponseDto } from '@app/models/application.model';
 
 interface StatCard {
   label: string;
@@ -23,6 +23,8 @@ interface FollowUpItem {
   timeAgo: string;
 }
 
+const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -36,26 +38,56 @@ export class DashboardComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
   private router = inject(Router);
 
-  stats = signal<ApplicationStatisticsDto>({
-    total: 0, pending: 0, reviewed: 0, interview: 0, accepted: 0, rejected: 0, cancelled: 0,
-  });
+  trends = signal<StatisticsTrendsDto | null>(null);
   applications = signal<ApplicationResponseDto[]>([]);
   loading = signal(true);
 
-  ngOnInit() { this.loadStats(); }
+  ngOnInit() { this.loadTrends(); }
 
-  async loadStats() {
+  async loadTrends() {
     try {
-      const [statsRes, appsRes] = await Promise.all([
-        this.appService.getStatistics(),
+      const [trendsRes, appsRes] = await Promise.all([
+        this.appService.getTrends(),
         this.appService.getAll({ page: 1, pageSize: 50 }),
       ]);
-      if (statsRes.success && statsRes.data) this.stats.set(statsRes.data);
+      if (trendsRes.success && trendsRes.data) this.trends.set(trendsRes.data);
       if (appsRes.success && appsRes.data) this.applications.set(appsRes.data.items);
     } catch { } finally { this.loading.set(false); }
   }
 
   firstName = computed(() => this.authService.currentUser()?.firstName ?? 'there');
+  s = computed(() => this.trends()?.current ?? { total: 0, pending: 0, reviewed: 0, interview: 0, accepted: 0, rejected: 0, cancelled: 0 });
+
+  private _monthlyValues = computed<{ total: number[]; interview: number[]; accepted: number[]; responseRate: number[] }>(() => {
+    const data = this.trends()?.monthlyTrends ?? [];
+    const total: number[] = [];
+    const interview: number[] = [];
+    const accepted: number[] = [];
+    const responseRate: number[] = [];
+
+    data.forEach(m => {
+      const t = m.pending + m.reviewed + m.interview + m.accepted + m.rejected + m.cancelled;
+      total.push(t);
+      interview.push(m.interview);
+      accepted.push(m.accepted);
+      responseRate.push(t > 0 ? Math.round(((m.interview + m.accepted + m.rejected) / t) * 100) : 0);
+    });
+
+    return { total, interview, accepted, responseRate };
+  });
+
+  private _monthOverMonthChange(values: number[]): number {
+    if (values.length < 2) return 0;
+    const prev = values[values.length - 2];
+    const curr = values[values.length - 1];
+    if (prev === 0) return curr > 0 ? 100 : 0;
+    return Math.round(((curr - prev) / prev) * 100);
+  }
+
+  private _scaleBars(values: number[]): number[] {
+    const max = Math.max(...values, 1);
+    return values.map(v => Math.max(4, (v / max) * 24));
+  }
 
   timeOfDay = computed(() => {
     const h = new Date().getHours();
@@ -71,48 +103,52 @@ export class DashboardComponent implements OnInit {
     return `${days[d.getDay()]} · ${months[d.getMonth()]} ${d.getDate()}`;
   });
 
-  pendingFollowUps = computed(() => this.stats().pending);
-  activeOffers = computed(() => this.stats().accepted);
+  pendingFollowUps = computed(() => this.s().pending);
+  activeOffers = computed(() => this.s().accepted);
 
   statCards = computed<StatCard[]>(() => {
-    const s = this.stats();
+    const s = this.s();
+    const mv = this._monthlyValues();
     const pct = (a: number, b: number) => a > 0 ? Math.round((b / a) * 100) : 0;
+
     return [
       {
         label: 'Total applications',
         displayValue: String(s.total),
-        sub: 'vs last month',
-        change: 12,
+        sub: this.trends()?.monthlyTrends?.length
+          ? `${MONTH_LABELS[this.trends()!.monthlyTrends[this.trends()!.monthlyTrends.length - 1].month - 1]} total ${mv.total[mv.total.length - 1] ?? ''}`
+          : 'vs last month',
+        change: this._monthOverMonthChange(mv.total),
         dotColor: 'oklch(0.22 0.01 80)',
         valueColor: 'var(--text)',
-        bars: [6, 9, 7, 11, 8, 14, 12, 10, 16, 18, s.total || 24],
+        bars: this._scaleBars(mv.total),
       },
       {
         label: 'Interviewing',
         displayValue: String(s.interview),
         sub: `${s.interview} active`,
-        change: 50,
+        change: this._monthOverMonthChange(mv.interview),
         dotColor: 'oklch(0.6 0.16 250)',
         valueColor: 'oklch(0.5 0.16 250)',
-        bars: [2, 3, 1, 4, 2, 5, 3, 2, 4, 5, s.interview || 6],
+        bars: this._scaleBars(mv.interview),
       },
       {
         label: 'Offers',
         displayValue: String(s.accepted),
         sub: `${s.pending} pending`,
-        change: 1,
+        change: this._monthOverMonthChange(mv.accepted),
         dotColor: 'oklch(0.62 0.15 155)',
         valueColor: 'oklch(0.45 0.14 155)',
-        bars: [0, 1, 0, 1, 2, 1, 0, 2, 1, 2, s.accepted || 3],
+        bars: this._scaleBars(mv.accepted),
       },
       {
         label: 'Response rate',
         displayValue: pct(s.total, s.interview + s.accepted + s.rejected) + '%',
         sub: 'industry avg 23%',
-        change: 8,
+        change: this._monthOverMonthChange(mv.responseRate),
         dotColor: 'oklch(0.62 0.18 25)',
         valueColor: 'oklch(0.55 0.18 25)',
-        bars: [30, 35, 28, 40, 38, 36, 42, 40, 44, 41, 43],
+        bars: this._scaleBars(mv.responseRate),
       },
     ];
   });
@@ -141,7 +177,7 @@ export class DashboardComponent implements OnInit {
   }
 
   pipelineSvg = computed<SafeHtml>(() => {
-    const s = this.stats();
+    const s = this.s();
     const total = s.total || 24;
     const interview = s.interview || 6;
     const offered = s.accepted || 3;

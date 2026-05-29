@@ -62,6 +62,23 @@ export interface ApplicationStatisticsDto {
   cancelled: number;
 }
 
+export interface MonthlyTrendDto {
+  year: number;
+  month: number;
+  pending: number;
+  reviewed: number;
+  interview: number;
+  accepted: number;
+  rejected: number;
+  cancelled: number;
+}
+
+export interface StatisticsTrendsDto {
+  current: ApplicationStatisticsDto;
+  monthlyTrends: MonthlyTrendDto[];
+  averageResponseTimeDays: number | null;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;

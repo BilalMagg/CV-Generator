@@ -14,6 +14,7 @@ public interface IApplicationService
     Task<ApplicationResponseDto?> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto, string? userId);
     Task<bool> DeleteAsync(Guid id);
     Task<ApplicationStatisticsDto> GetStatisticsAsync(Guid? candidateId);
+    Task<StatisticsTrendsDto> GetTrendsAsync(Guid? candidateId);
 }
 
 public class ApplicationServiceImpl : IApplicationService
@@ -214,6 +215,15 @@ public class ApplicationServiceImpl : IApplicationService
             stats.GetValueOrDefault(ApplicationStatus.REJECTED, 0),
             stats.GetValueOrDefault(ApplicationStatus.CANCELLED, 0)
         );
+    }
+
+    public async Task<StatisticsTrendsDto> GetTrendsAsync(Guid? candidateId)
+    {
+        var current = await GetStatisticsAsync(candidateId);
+        var monthlyTrends = await _appRepo.GetMonthlyTrendsAsync(candidateId);
+        var avgResponseTime = await _appRepo.GetAverageResponseTimeAsync(candidateId);
+
+        return new StatisticsTrendsDto(current, monthlyTrends, avgResponseTime);
     }
 
     private static ApplicationResponseDto MapToDto(Application a) => new(

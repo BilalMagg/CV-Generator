@@ -56,6 +56,34 @@ public record ApplicationStatisticsDto(
     int Cancelled
 );
 
+public record MonthlyTrendDto(
+    int Year,
+    int Month,
+    int Pending,
+    int Reviewed,
+    int Interview,
+    int Accepted,
+    int Rejected,
+    int Cancelled
+);
+
+public record StatisticsTrendsDto(
+    ApplicationStatisticsDto Current,
+    List<MonthlyTrendDto> MonthlyTrends,
+    double? AverageResponseTimeDays
+);
+
+public record SeedApplicationsDto(
+    int Count = 500,
+    int MonthsBack = 12
+);
+
+public record SeedResultDto(
+    int ApplicationsCreated,
+    int StatusHistoryCreated,
+    Guid CandidateId
+);
+
 public record ApplicationListDto(
     List<ApplicationResponseDto> Items,
     int Total,

@@ -174,4 +174,29 @@ public class ApplicationsController : ControllerBase
         var stats = await _service.GetStatisticsAsync(candidateId);
         return Ok(ApiResponse<ApplicationStatisticsDto>.Ok(stats));
     }
+
+    /// GET /applications/statistics/trends
+    [HttpGet("statistics/trends")]
+    public async Task<IActionResult> GetTrends()
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var trends = await _service.GetTrendsAsync(candidateId);
+        return Ok(ApiResponse<StatisticsTrendsDto>.Ok(trends));
+    }
+
+    /// POST /applications/seed
+    [HttpPost("seed")]
+    public async Task<IActionResult> Seed([FromBody] SeedApplicationsDto dto)
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var seeder = HttpContext.RequestServices.GetRequiredService<IDataSeeder>();
+        var result = await seeder.GenerateApplicationsAsync(candidateId.Value, dto.Count, dto.MonthsBack);
+        return Ok(ApiResponse<SeedResultDto>.Ok(result));
+    }
 }

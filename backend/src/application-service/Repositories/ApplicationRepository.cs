@@ -16,6 +16,8 @@ public interface IApplicationRepository
     Task<bool> DeleteAsync(Guid id);
     Task<bool> ExistsAsync(Guid id);
     Task<Dictionary<ApplicationStatus, int>> GetStatisticsAsync(Guid? candidateId);
+    Task<List<MonthlyTrendDto>> GetMonthlyTrendsAsync(Guid? candidateId, int months = 12);
+    Task<double?> GetAverageResponseTimeAsync(Guid? candidateId);
 }
 
 public class ApplicationRepository : IApplicationRepository
@@ -116,5 +118,69 @@ public class ApplicationRepository : IApplicationRepository
             .GroupBy(a => a.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Status, x => x.Count);
+    }
+
+    public async Task<List<MonthlyTrendDto>> GetMonthlyTrendsAsync(Guid? candidateId, int months = 12)
+    {
+        var query = _db.Applications.AsQueryable();
+        if (candidateId.HasValue)
+            query = query.Where(a => a.CandidateId == candidateId.Value);
+
+        var cutoff = DateTime.UtcNow.AddMonths(-months);
+        query = query.Where(a => a.AppliedAt >= cutoff);
+
+        var raw = await query
+            .GroupBy(a => new { a.AppliedAt.Year, a.AppliedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Status = g.GroupBy(a => a.Status)
+                    .Select(sg => new { Status = sg.Key, Count = sg.Count() })
+                    .ToList()
+            })
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+            .ToListAsync();
+
+        return raw.Select(r =>
+        {
+            var s = r.Status.ToDictionary(x => x.Status, x => x.Count);
+            return new MonthlyTrendDto(
+                r.Year, r.Month,
+                s.GetValueOrDefault(ApplicationStatus.PENDING, 0),
+                s.GetValueOrDefault(ApplicationStatus.REVIEWED, 0),
+                s.GetValueOrDefault(ApplicationStatus.INTERVIEW, 0),
+                s.GetValueOrDefault(ApplicationStatus.ACCEPTED, 0),
+                s.GetValueOrDefault(ApplicationStatus.REJECTED, 0),
+                s.GetValueOrDefault(ApplicationStatus.CANCELLED, 0)
+            );
+        }).ToList();
+    }
+
+    public async Task<double?> GetAverageResponseTimeAsync(Guid? candidateId)
+    {
+        var query = _db.Applications
+            .Include(a => a.StatusHistory)
+            .AsQueryable();
+
+        if (candidateId.HasValue)
+            query = query.Where(a => a.CandidateId == candidateId.Value);
+
+        var appsWithResponse = await query
+            .Where(a => a.StatusHistory.Any(h => h.NewStatus != ApplicationStatus.PENDING))
+            .Select(a => new
+            {
+                a.AppliedAt,
+                FirstResponse = a.StatusHistory
+                    .Where(h => h.NewStatus != ApplicationStatus.PENDING)
+                    .Min(h => h.ChangedAt)
+            })
+            .ToListAsync();
+
+        if (appsWithResponse.Count == 0) return null;
+
+        return appsWithResponse
+            .Select(x => (x.FirstResponse - x.AppliedAt).TotalDays)
+            .Average();
     }
 }

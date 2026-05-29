@@ -4,6 +4,7 @@ import {
   ApplicationResponseDto,
   ApplicationListDto,
   ApplicationStatisticsDto,
+  StatisticsTrendsDto,
   CreateApplicationDto,
   UpdateStatusDto,
   UpdateApplicationDto,
@@ -60,5 +61,12 @@ export class ApplicationService {
   }): Promise<ApiResponse<ApplicationStatisticsDto>> {
     const query = params?.candidateId ? `?candidateId=${params.candidateId}` : '';
     return this.http.get<ApiResponse<ApplicationStatisticsDto>>(`/api/applications/statistics${query}`);
+  }
+
+  async getTrends(params?: {
+    candidateId?: string;
+  }): Promise<ApiResponse<StatisticsTrendsDto>> {
+    const query = params?.candidateId ? `?candidateId=${params.candidateId}` : '';
+    return this.http.get<ApiResponse<StatisticsTrendsDto>>(`/api/applications/statistics/trends${query}`);
   }
 }
