@@ -26,7 +26,7 @@ permissions:
 jobs:
 
   # ═══════════════════════════════════════════════════════════
-  # SHARED CHECKS  (parallel, independent)
+  # PHASE 1 — STATIC CHECKS  (parallel)
   # ═══════════════════════════════════════════════════════════
 
   sonarcloud:
@@ -43,8 +43,8 @@ jobs:
           SONAR_ORG: ${{ secrets.SONAR_ORG }}
         run: make sonar-scan-all
 
-  trivy-scan:
-    name: Security Scan - Trivy
+  trivy-fs:
+    name: Security - Trivy (FS)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,10 +63,9 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy
 
-  services-health:
-    name: Services Health Check
+  compose-validate:
+    name: Validate Compose Files
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Create placeholder .env files for CI
@@ -80,60 +79,15 @@ jobs:
           docker compose -f backend/docker-compose.yml config --quiet
           docker compose -f api_gateway/docker-compose.yml config --quiet
           docker compose -f ai_agents/docker-compose.yml config --quiet
-      - name: Build core services for health check
-        env:
-          DOCKER_BUILDKIT: 1
-        run: |
-          docker compose build api-gateway user-service application-service
-      - name: Start core services
-        run: |
-          docker compose up -d \
-            api-gateway user-service application-service \
-            user-db application-db kafka schema-registry
-      - name: Wait for services health
-        run: |
-          for i in $(seq 1 30); do
-            sleep 5
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://localhost:8080/health 2>/dev/null || echo "000")
-            [ "$STATUS" = "200" ] && echo "API Gateway healthy" && break
-            echo "Attempt $i - API Gateway: $STATUS"
-          done
-          echo "All services up: $(docker compose ps --services --filter status=running | wc -l)"
-      - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.15.0
-        with:
-          target: "http://localhost:8080"
-          cmd_options: "-a -j"
-          allow_issue_writing: false
-      - name: Upload ZAP Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-report
-          path: report_json.json
-          retention-days: 7
-      - name: Store service logs on failure
-        if: failure()
-        run: docker compose logs --tail=50 > service-logs.txt
-      - name: Upload service logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: service-logs
-          path: service-logs.txt
-      - name: Stop services
-        if: always()
-        run: docker compose down -v
 
   # ═══════════════════════════════════════════════════════════
-  # COMPONENT TESTS  (parallel, after health check)
+  # PHASE 2 — COMPONENT TESTS  (parallel, after phase 1 gates)
   # ═══════════════════════════════════════════════════════════
 
   backend-tests:
     name: Tests - Backend (.NET)
     runs-on: ubuntu-latest
-    needs: [services-health]
+    needs: [trivy-fs, compose-validate]
     defaults:
       run:
         working-directory: backend
@@ -169,7 +123,7 @@ jobs:
   frontend-tests:
     name: Tests - Frontend (Angular)
     runs-on: ubuntu-latest
-    needs: [services-health]
+    needs: [trivy-fs, compose-validate]
     defaults:
       run:
         working-directory: frontend
@@ -197,7 +151,7 @@ jobs:
   ai-agents-tests:
     name: Tests - AI Agents (Python)
     runs-on: ubuntu-latest
-    needs: [services-health]
+    needs: [trivy-fs, compose-validate]
     defaults:
       run:
         working-directory: ai_agents
@@ -227,18 +181,150 @@ jobs:
           cd ../contact-agent && python run_test.py || true
 
   # ═══════════════════════════════════════════════════════════
-  # E2E GATE  (after all component tests pass)
+  # PHASE 3 — BUILD ONCE  (after all tests pass)
   # ═══════════════════════════════════════════════════════════
+
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, ai-agents-tests]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Create placeholder .env files
+        run: |
+          for dir in ai_agents/services/*/; do
+            touch "$dir.env"
+          done
+      - name: Build all images
+        env:
+          DOCKER_BUILDKIT: 1
+        run: docker compose build
+      - name: Save images to artifact
+        run: |
+          IMAGES=$(docker images "cv-*" --format "{{.Repository}}" | sort -u)
+          docker save $IMAGES -o images.tar
+      - name: Upload images artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: images.tar
+          retention-days: 1
+
+  # ═══════════════════════════════════════════════════════════
+  # PHASE 4 — QUALITY GATES  (parallel, after build)
+  # ═══════════════════════════════════════════════════════════
+
+  zap-scan:
+    name: Security - ZAP Scan
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create placeholder .env files
+        run: |
+          for dir in ai_agents/services/*/; do
+            touch "$dir.env"
+          done
+      - name: Download images artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+      - name: Load images
+        run: docker load -i images.tar
+      - name: Start all services
+        run: docker compose up -d --wait
+      - name: Health check
+        run: |
+          for i in $(seq 1 30); do
+            sleep 5
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/health 2>/dev/null || echo "000")
+            [ "$STATUS" = "200" ] && echo "API Gateway healthy" && break
+            echo "Attempt $i - API Gateway: $STATUS"
+          done
+          echo "All services up: $(docker compose ps --services --filter status=running | wc -l)"
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: "http://localhost:8080"
+          cmd_options: "-a -j"
+          allow_issue_writing: false
+      - name: Upload ZAP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report_json.json
+          retention-days: 7
+      - name: Store service logs on failure
+        if: failure()
+        run: docker compose logs --tail=50 > service-logs.txt
+      - name: Upload service logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-logs
+          path: service-logs.txt
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
+
+  trivy-image:
+    name: Security - Trivy (Images)
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download images artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+      - name: Load images
+        run: docker load -i images.tar
+      - name: Scan built images
+        run: |
+          mkdir -p reports
+          for img in $(docker images "cv-*" --format "{{.Repository}}"); do
+            service="${img#cv-}"
+            echo "Scanning: $img"
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "${{ github.workspace }}/reports:/reports" \
+              aquasec/trivy:latest image --severity HIGH,CRITICAL \
+              --exit-code 0 --format sarif \
+              --output "/reports/$service.sarif" "$img"
+          done
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-reports
+          path: reports/
+          retention-days: 7
 
   e2e-tests:
     name: E2E Tests - Cypress
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-tests, ai-agents-tests]
+    needs: [docker-build]
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - name: Create placeholder .env files
+        run: |
+          for dir in "${{ github.workspace }}/ai_agents/services/"*/; do
+            touch "$dir.env"
+          done
+      - name: Download images artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+      - name: Load images
+        run: docker load -i images.tar
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -247,11 +333,6 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Create placeholder .env files for CI
-        run: |
-          for dir in "${{ github.workspace }}/ai_agents/services/"*/; do
-            touch "$dir.env"
-          done
       - name: Start services
         run: |
           docker compose up -d --wait
@@ -278,98 +359,48 @@ jobs:
         run: docker compose down -v
 
   # ═══════════════════════════════════════════════════════════
-  # BUILD PER COMPONENT  (parallel, after e2e)
+  # PHASE 5 — PUSH TO REGISTRY  (after all quality gates pass)
   # ═══════════════════════════════════════════════════════════
 
-  backend-build:
-    name: Build - Backend
+  docker-push:
+    name: Push Images to DockerHub
     runs-on: ubuntu-latest
-    needs: [e2e-tests]
+    needs: [zap-scan, e2e-tests, trivy-image]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci'
     steps:
       - uses: actions/checkout@v4
+      - name: Download images artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+      - name: Load images
+        run: docker load -i images.tar
       - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push backend images
+      - name: Tag and push images
         env:
-          DOCKER_BUILDKIT: 1
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          docker compose build api-gateway user-service user-content-service \
-            workflow-service application-service job-offer-service \
-            notification-service cv-service
-          for img in api-gateway user-service user-content-service \
-                     workflow-service application-service job-offer-service \
-                     notification-service cv-service; do
-            hub_image="$DOCKERHUB_USERNAME/$img"
-            docker tag "cv-$img" "$hub_image:latest"
-            docker tag "cv-$img" "$hub_image:${{ github.sha }}"
-            docker push "$hub_image:latest"
-            docker push "$hub_image:${{ github.sha }}"
-          done
-
-  frontend-build:
-    name: Build - Frontend
-    runs-on: ubuntu-latest
-    needs: [e2e-tests]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Log in to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push frontend image
-        env:
-          DOCKER_BUILDKIT: 1
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: |
-          docker compose build frontend
-          docker tag "cv-frontend" "$DOCKERHUB_USERNAME/frontend:latest"
-          docker tag "cv-frontend" "$DOCKERHUB_USERNAME/frontend:${{ github.sha }}"
-          docker push "$DOCKERHUB_USERNAME/frontend:latest"
-          docker push "$DOCKERHUB_USERNAME/frontend:${{ github.sha }}"
-
-  ai-agents-build:
-    name: Build - AI Agents
-    runs-on: ubuntu-latest
-    needs: [e2e-tests]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Log in to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push AI agent images
-        env:
-          DOCKER_BUILDKIT: 1
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: |
-          docker compose build job-extractor search-agent template-agent \
-            cv-optimizer contact-agent job-crawler
-          for img in job-extractor search-agent template-agent \
-                     cv-optimizer contact-agent job-crawler; do
-            hub_image="$DOCKERHUB_USERNAME/$img"
-            docker tag "cv-$img" "$hub_image:latest"
-            docker tag "cv-$img" "$hub_image:${{ github.sha }}"
+          for repo in $(docker images "cv-*" --format "{{.Repository}}"); do
+            service="${repo#cv-}"
+            hub_image="$DOCKERHUB_USERNAME/$service"
+            docker tag "$repo" "$hub_image:latest"
+            docker tag "$repo" "$hub_image:${{ github.sha }}"
             docker push "$hub_image:latest"
             docker push "$hub_image:${{ github.sha }}"
           done
 
   # ═══════════════════════════════════════════════════════════
-  # DEPLOY  (after all builds succeed)
+  # PHASE 6 — DEPLOY  (after push)
   # ═══════════════════════════════════════════════════════════
 
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    needs: [backend-build, frontend-build, ai-agents-build]
+    needs: [docker-push]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci'
     environment: production
     steps:
