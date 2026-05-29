@@ -377,6 +377,5 @@ jobs:
           DOCKER_BUILDKIT: 1
         run: |
           echo "Deploying commit ${{ github.sha }}"
-          docker compose pull
-          docker compose up -d --remove-orphans
-          echo "Deployment complete"
+          echo "Target: production / staging"
+          echo "Run: docker compose pull && docker compose up -d --remove-orphans on target host"
