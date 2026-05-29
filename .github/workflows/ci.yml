@@ -353,10 +353,12 @@ jobs:
         run: |
           docker compose build
 
-          for service in $(docker compose config --services); do
-            hub_image="$DOCKERHUB_USERNAME/$service"
-            docker tag "cv_$service" "$hub_image:latest" 2>/dev/null || continue
-            docker tag "cv_$service" "$hub_image:${{ github.sha }}"
+          docker images --filter "label=com.docker.compose.project=cv" \
+            --format "{{.Repository}}" | sort -u | while read -r repo; do
+            case "$repo" in */*) continue ;; esac
+            hub_image="$DOCKERHUB_USERNAME/${repo#cv_}"
+            docker tag "$repo" "$hub_image:latest"
+            docker tag "$repo" "$hub_image:${{ github.sha }}"
             docker push "$hub_image:latest"
             docker push "$hub_image:${{ github.sha }}"
           done
@@ -375,5 +377,6 @@ jobs:
           DOCKER_BUILDKIT: 1
         run: |
           echo "Deploying commit ${{ github.sha }}"
-          docker stack deploy -c docker-compose.yml cv-generator --with-registry-auth
+          docker compose pull
+          docker compose up -d --remove-orphans
           echo "Deployment complete"
