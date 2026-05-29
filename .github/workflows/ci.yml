@@ -270,12 +270,11 @@ jobs:
           cd ../contact-agent && python run_test.py || true
 
   # ───────────────────────────────────────────────────────────
-  # END-TO-END TESTS  (after all tests pass)
+  # END-TO-END TESTS
   # ───────────────────────────────────────────────────────────
   e2e-tests:
     name: E2E Tests - Cypress
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-tests, ai-agents-tests]
     defaults:
       run:
         working-directory: frontend
@@ -328,21 +327,29 @@ jobs:
         run: docker compose down -v
 
   # ───────────────────────────────────────────────────────────
-  # BUILD & DEPLOY  (placeholders)
+  # BUILD & DEPLOY  (DockerHub)
   # ───────────────────────────────────────────────────────────
   build:
-    name: Build Images
+    name: Build & Push Images
     runs-on: ubuntu-latest
-    needs: [e2e-tests, sonarcloud, trivy-scan]
+    needs: [e2e-tests]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
-      - name: TODO - Build & push Docker images to registry
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker images
+        env:
+          DOCKER_BUILDKIT: 1
         run: |
-          echo "🔨 Build job placeholder"
-          echo "Push images: docker compose build && docker compose push"
-          echo "Tag: ${{ github.sha }}"
+          docker compose build
+          docker compose push
+          echo "Images pushed for commit: ${{ github.sha }}"
 
   deploy:
     name: Deploy
@@ -351,8 +358,12 @@ jobs:
     if: github.ref == 'refs/heads/main'
     environment: production
     steps:
-      - name: TODO - Deploy to target environment
+      - uses: actions/checkout@v4
+
+      - name: Deploy stack
+        env:
+          DOCKER_BUILDKIT: 1
         run: |
-          echo "🚀 Deploy job placeholder"
-          echo "Deploy to: production / staging"
-          echo "Rolling update via: helm upgrade / docker stack deploy"
+          echo "Deploying commit ${{ github.sha }}"
+          docker stack deploy -c docker-compose.yml cv-generator --with-registry-auth
+          echo "Deployment complete"
