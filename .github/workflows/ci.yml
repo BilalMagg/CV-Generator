@@ -210,13 +210,11 @@ jobs:
           DOCKER_BUILDKIT: 1
         run: docker compose build
       - name: Push images to GHCR
-        env:
-          SHA: ${{ github.sha }}
-          REPO: ${{ github.repository_owner }}
         run: |
+          REPO=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           for image in $(docker images "cv-*" --format "{{.Repository}}" | sort -u); do
             service="${image#cv-}"
-            ghcr_image="ghcr.io/${REPO}/cv-${service}:${SHA}"
+            ghcr_image="ghcr.io/${REPO}/cv-${service}:${{ github.sha }}"
             docker tag "$image" "$ghcr_image"
             docker push "$ghcr_image"
             echo "Pushed $ghcr_image"
@@ -245,10 +243,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - name: Pull images from GHCR
-        env:
-          SHA: ${{ github.sha }}
-          REPO: ${{ github.repository_owner }}
         run: |
+          REPO=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA=${{ github.sha }}
           services=$(docker compose config --services)
           for service in $services; do
             image="cv-${service}"
@@ -326,10 +323,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - name: Pull and retag images from GHCR
-        env:
-          SHA: ${{ github.sha }}
-          REPO: ${{ github.repository_owner }}
         run: |
+          REPO=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA=${{ github.sha }}
           for service in frontend user-service cv-service user-content-service \
                          api-gateway notification-service application-service \
                          job-offer-service workflow-service contact-agent \
@@ -379,10 +375,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - name: Pull images from GHCR
-        env:
-          SHA: ${{ github.sha }}
-          REPO: ${{ github.repository_owner }}
         run: |
+          REPO=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA=${{ github.sha }}
           services=$(docker compose config --services)
           for service in $services; do
             image="cv-${service}"
@@ -468,10 +463,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - name: Pull and retag images from GHCR
-        env:
-          SHA: ${{ github.sha }}
-          REPO: ${{ github.repository_owner }}
         run: |
+          REPO=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA=${{ github.sha }}
           for service in frontend user-service cv-service user-content-service \
                          api-gateway notification-service application-service \
                          job-offer-service workflow-service contact-agent \
