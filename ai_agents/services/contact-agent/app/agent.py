@@ -28,13 +28,6 @@ from app.tools import (
 
 load_dotenv()
 
-
-# ── Build the agent once at module load time ──────────────────────────────────
-_llm = ChatGroq(
-    model=settings.AGENT_MODEL,
-    temperature=settings.LLM_TEMPERATURE,
-)
-
 _tools = [
     extract_cv_text,          # Step 1 — flatten OptimizedCV sections → plain text
     generate_email_subject,   # Step 2 — craft subject line
@@ -42,14 +35,15 @@ _tools = [
     send_email_with_cv,       # Step 4 — send email + attach PDF
 ]
 
-# Pass the system prompt as a SystemMessage — compatible with all LangGraph versions
 _system_message = SystemMessage(content=CONTACT_AGENT_SYSTEM_PROMPT)
 
-_agent = create_react_agent(
-    _llm,
-    _tools,
-    prompt=_system_message,
-)
+
+def _get_agent():
+    _llm = ChatGroq(
+        model=settings.AGENT_MODEL,
+        temperature=settings.LLM_TEMPERATURE,
+    )
+    return create_react_agent(_llm, _tools, prompt=_system_message)
 
 
 # ── Public function called by the Orchestrator ────────────────────────────────
@@ -80,7 +74,8 @@ async def deliver_cv(input_data: ContactInput) -> ContactOutput:
         f"--- CV SECTIONS (JSON) ---\n{sections_json}\n"
     )
 
-    result = await _agent.ainvoke(
+    agent = _get_agent()
+    result = await agent.ainvoke(
         {"messages": [{"role": "user", "content": user_message}]}
     )
 
