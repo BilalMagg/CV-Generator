@@ -188,7 +188,7 @@ sonar-down:
 
 sonar-scan-backend:
 	@echo "Scanning Backend (Dockerized)..."
-	docker run --rm -v "$(CURDIR)/backend:/app" -w /app mcr.microsoft.com/dotnet/sdk:10.0 bash -c "apt-get update && apt-get install -y openjdk-17-jre && dotnet tool install --global dotnet-sonarscanner && export PATH=\"$$PATH:/root/.dotnet/tools\" && dotnet new sln -n CV-Generator --force && find src -name \"*.csproj\" -exec dotnet sln CV-Generator.sln add {} \; && dotnet sonarscanner begin /k:cv-generator-backend /d:sonar.host.url=$(SONAR_HOST_URL) /d:sonar.login=$(SONAR_TOKEN) $(SONAR_ORG_ARG_BACKEND) && dotnet build CV-Generator.sln && dotnet sonarscanner end /d:sonar.login=$(SONAR_TOKEN)"
+	docker run --rm -v "$(CURDIR)/backend:/app" -w /app mcr.microsoft.com/dotnet/sdk:10.0 bash -c "apt-get update && apt-get install -y openjdk-17-jre && dotnet tool install --global dotnet-sonarscanner && export PATH=\"$$PATH:/root/.dotnet/tools\" && dotnet sonarscanner begin /k:cv-generator-backend /d:sonar.host.url=$(SONAR_HOST_URL) /d:sonar.login=$(SONAR_TOKEN) $(SONAR_ORG_ARG_BACKEND) && dotnet build CV_Generator.sln && dotnet sonarscanner end /d:sonar.login=$(SONAR_TOKEN)"
 
 sonar-scan-frontend:
 	@echo "Scanning Frontend (Dockerized)..."
