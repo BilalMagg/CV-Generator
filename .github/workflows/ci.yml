@@ -294,7 +294,7 @@ jobs:
 
       - name: Create placeholder .env files for CI
         run: |
-          for dir in ai_agents/services/*/; do
+          for dir in "${{ github.workspace }}/ai_agents/services/"*/; do
             touch "$dir.env"
           done
 
