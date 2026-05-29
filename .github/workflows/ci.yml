@@ -31,18 +31,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+      - name: Run Dockerized SonarScanners via Makefile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
-            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
-            -Dsonar.python.version=3.12
-            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info
-            -Dsonar.cs.opencover.reportsPath=backend/coverage/**/coverage.opencover.xml
+          SONAR_HOST_URL: "https://sonarcloud.io"
+          SONAR_ORG: ${{ vars.SONAR_ORGANIZATION }}
+        run: make sonar-scan-all
 
   # ───────────────────────────────────────────────────────────
   # STATIC SECURITY  (parallel, independent)
