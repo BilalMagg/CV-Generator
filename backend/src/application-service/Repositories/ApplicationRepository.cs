@@ -8,8 +8,8 @@ public interface IApplicationRepository
 {
     Task<Application?> GetByIdAsync(Guid id);
     Task<Application?> GetByIdWithHistoryAsync(Guid id);
-    Task<List<Application>> GetAllAsync(Guid? candidateId, int page, int pageSize);
-    Task<int> GetTotalCountAsync(Guid? candidateId);
+    Task<List<Application>> GetAllAsync(Guid? candidateId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null);
+    Task<int> GetTotalCountAsync(Guid? candidateId, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null);
     Task<Application> CreateAsync(Application application);
     Task<Application> UpdateAsync(Application application);
     Task<Application> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto);
@@ -18,6 +18,9 @@ public interface IApplicationRepository
     Task<Dictionary<ApplicationStatus, int>> GetStatisticsAsync(Guid? candidateId);
     Task<List<MonthlyTrendDto>> GetMonthlyTrendsAsync(Guid? candidateId, int months = 12);
     Task<double?> GetAverageResponseTimeAsync(Guid? candidateId);
+    Task<bool> ToggleSaveAsync(Guid id);
+    Task<List<ActivityItemDto>> GetActivityFeedAsync(Guid? candidateId, int limit = 50);
+    Task<int> GetActivityFeedCountAsync(Guid? candidateId);
 }
 
 public class ApplicationRepository : IApplicationRepository
@@ -39,12 +42,9 @@ public class ApplicationRepository : IApplicationRepository
             .Include(a => a.StatusHistory.OrderByDescending(h => h.ChangedAt))
             .FirstOrDefaultAsync(a => a.Id == id);
 
-    public async Task<List<Application>> GetAllAsync(Guid? candidateId, int page, int pageSize)
+    public async Task<List<Application>> GetAllAsync(Guid? candidateId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null)
     {
-        var query = _db.Applications.AsQueryable();
-
-        if (candidateId.HasValue)
-            query = query.Where(a => a.CandidateId == candidateId.Value);
+        var query = BuildFilteredQuery(candidateId, statuses, search, appliedFrom, appliedTo, updatedFrom, updatedTo);
 
         return await query
             .OrderByDescending(a => a.AppliedAt)
@@ -53,12 +53,46 @@ public class ApplicationRepository : IApplicationRepository
             .ToListAsync();
     }
 
-    public async Task<int> GetTotalCountAsync(Guid? candidateId)
+    public async Task<int> GetTotalCountAsync(Guid? candidateId, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null)
+    {
+        var query = BuildFilteredQuery(candidateId, statuses, search, appliedFrom, appliedTo, updatedFrom, updatedTo);
+        return await query.CountAsync();
+    }
+
+    private IQueryable<Application> BuildFilteredQuery(Guid? candidateId, string[]? statuses, string? search, DateTime? appliedFrom, DateTime? appliedTo, DateTime? updatedFrom, DateTime? updatedTo)
     {
         var query = _db.Applications.AsQueryable();
+
         if (candidateId.HasValue)
             query = query.Where(a => a.CandidateId == candidateId.Value);
-        return await query.CountAsync();
+
+        if (statuses is { Length: > 0 })
+        {
+            var parsed = statuses
+                .Select(s => Enum.TryParse<ApplicationStatus>(s, true, out var st) ? st : (ApplicationStatus?)null)
+                .Where(s => s.HasValue)
+                .Select(s => s!.Value)
+                .ToList();
+            if (parsed.Count > 0)
+                query = query.Where(a => parsed.Contains(a.Status));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a =>
+                EF.Functions.ILike(a.CompanyName, $"%{search}%") ||
+                EF.Functions.ILike(a.PositionTitle, $"%{search}%"));
+
+        if (appliedFrom.HasValue)
+            query = query.Where(a => a.AppliedAt >= appliedFrom.Value);
+        if (appliedTo.HasValue)
+            query = query.Where(a => a.AppliedAt <= appliedTo.Value);
+
+        if (updatedFrom.HasValue)
+            query = query.Where(a => a.UpdatedAt >= updatedFrom.Value);
+        if (updatedTo.HasValue)
+            query = query.Where(a => a.UpdatedAt <= updatedTo.Value);
+
+        return query;
     }
 
     public async Task<Application> CreateAsync(Application application)
@@ -182,5 +216,56 @@ public class ApplicationRepository : IApplicationRepository
         return appsWithResponse
             .Select(x => (x.FirstResponse - x.AppliedAt).TotalDays)
             .Average();
+    }
+
+    public async Task<bool> ToggleSaveAsync(Guid id)
+    {
+        var app = await _db.Applications.FindAsync(id);
+        if (app == null) return false;
+
+        app.IsSaved = !app.IsSaved;
+        app.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Toggled save for application {Id} → {IsSaved}", id, app.IsSaved);
+        return app.IsSaved;
+    }
+
+    public async Task<List<ActivityItemDto>> GetActivityFeedAsync(Guid? candidateId, int limit = 50)
+    {
+        var query = _db.ApplicationStatusHistory
+            .Include(h => h.Application)
+            .AsQueryable();
+
+        if (candidateId.HasValue)
+            query = query.Where(h => h.Application != null && h.Application.CandidateId == candidateId.Value);
+
+        var items = await query
+            .Where(h => h.Application != null)
+            .OrderByDescending(h => h.ChangedAt)
+            .Take(limit)
+            .Select(h => new ActivityItemDto(
+                h.ApplicationId,
+                h.Application!.CompanyName,
+                h.Application.PositionTitle,
+                h.OldStatus != null ? h.OldStatus.ToString() : null,
+                h.NewStatus.ToString(),
+                h.ChangedAt,
+                h.Comment
+            ))
+            .ToListAsync();
+
+        return items;
+    }
+
+    public async Task<int> GetActivityFeedCountAsync(Guid? candidateId)
+    {
+        var query = _db.ApplicationStatusHistory
+            .Include(h => h.Application)
+            .AsQueryable();
+
+        if (candidateId.HasValue)
+            query = query.Where(h => h.Application != null && h.Application.CandidateId == candidateId.Value);
+
+        return await query.CountAsync();
     }
 }

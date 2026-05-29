@@ -27,6 +27,7 @@ export interface ApplicationResponseDto {
   appliedAt: string;
   updatedAt: string;
   notes?: string;
+  isSaved: boolean;
   history?: StatusHistoryDto[];
 }
 
@@ -84,6 +85,21 @@ export interface ApiResponse<T> {
   message?: string;
   data?: T;
   errors?: unknown;
+}
+
+export interface ActivityItemDto {
+  applicationId: string;
+  companyName: string;
+  positionTitle: string;
+  oldStatus?: string;
+  newStatus: string;
+  changedAt: string;
+  comment?: string;
+}
+
+export interface ActivityFeedDto {
+  items: ActivityItemDto[];
+  total: number;
 }
 
 export interface ApplicationListDto {

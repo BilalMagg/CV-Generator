@@ -60,7 +60,7 @@ export class AnalyticsComponent implements OnInit {
   filteredTrends = computed<MonthlyTrendDto[]>(() => {
     const trends = this.trends()?.monthlyTrends ?? [];
     const cutoff = this.periodMonths();
-    return trends.slice(-cutoff);
+    return cutoff > 0 ? trends.slice(-cutoff) : trends;
   });
 
   donutSvg = computed<SafeHtml>(() => {
@@ -115,11 +115,17 @@ export class AnalyticsComponent implements OnInit {
     ];
   });
 
+  private _shortNum(n: number): string {
+    if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k';
+    return String(n);
+  }
+
   barChartSvg = computed<SafeHtml>(() => {
     const data = this.filteredTrends();
     if (data.length === 0) return this.sanitizer.bypassSecurityTrustHtml('');
 
-    const W = 320, H = 160, pad = 16, barW = 28;
+    const pad = 32;
+    const W = 340, H = 160, barW = 28;
     const gap = (W - 2 * pad - data.length * barW) / (data.length - 1);
     const maxTotal = Math.max(...data.map(d => d.pending + d.reviewed + d.interview + d.accepted + d.rejected), 1);
     const chartH = H - pad - 20;
@@ -142,7 +148,7 @@ export class AnalyticsComponent implements OnInit {
     gridLines.forEach(v => {
       const y = pad + chartH - (v / gridMax) * chartH;
       svg += `<line x1="${pad}" y1="${y.toFixed(1)}" x2="${W - pad}" y2="${y.toFixed(1)}" stroke="oklch(0.93 0.004 80)" stroke-width="1"/>`;
-      svg += `<text x="${pad - 4}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="9" fill="oklch(0.65 0.005 80)" font-family="inherit">${Math.round(v)}</text>`;
+      svg += `<text x="${pad - 6}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="9" fill="oklch(0.65 0.005 80)" font-family="inherit">${this._shortNum(Math.round(v))}</text>`;
     });
 
     data.forEach((d, i) => {

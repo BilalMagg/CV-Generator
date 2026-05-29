@@ -59,16 +59,27 @@ public class ApplicationsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? statuses = null,
+        [FromQuery] string? search = null,
+        [FromQuery] DateTime? appliedFrom = null,
+        [FromQuery] DateTime? appliedTo = null,
+        [FromQuery] DateTime? updatedFrom = null,
+        [FromQuery] DateTime? updatedTo = null)
     {
         if (page < 1) page = 1;
-        if (pageSize < 1 || pageSize > 100) pageSize = 20;
+        if (pageSize < 1 || pageSize > 500) pageSize = 20;
 
         var candidateId = GetUserCandidateId();
         if (candidateId == null)
             return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
 
-        var result = await _service.GetAllAsync(candidateId, page, pageSize);
+        var statusArr = !string.IsNullOrWhiteSpace(statuses)
+            ? statuses.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : null;
+
+        var result = await _service.GetAllAsync(candidateId, page, pageSize, statusArr, search,
+            appliedFrom, appliedTo, updatedFrom, updatedTo);
         return Ok(ApiResponse<ApplicationListDto>.Ok(result));
     }
 
@@ -185,6 +196,33 @@ public class ApplicationsController : ControllerBase
 
         var trends = await _service.GetTrendsAsync(candidateId);
         return Ok(ApiResponse<StatisticsTrendsDto>.Ok(trends));
+    }
+
+    /// PATCH /applications/{id}/toggle-save
+    [HttpPatch("{id}/toggle-save")]
+    public async Task<IActionResult> ToggleSave(Guid id)
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        if (!await OwnsApplicationAsync(id, candidateId.Value))
+            return NotFound(ApiResponse<object>.Error("Application not found"));
+
+        var isSaved = await _service.ToggleSaveAsync(id);
+        return Ok(ApiResponse<bool>.Ok(isSaved));
+    }
+
+    /// GET /applications/activity
+    [HttpGet("activity")]
+    public async Task<IActionResult> GetActivity([FromQuery] int limit = 50)
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var feed = await _service.GetActivityFeedAsync(candidateId, limit);
+        return Ok(ApiResponse<ActivityFeedDto>.Ok(feed));
     }
 
     /// POST /applications/seed

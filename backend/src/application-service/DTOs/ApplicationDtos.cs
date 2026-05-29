@@ -12,6 +12,7 @@ public record ApplicationResponseDto(
     DateTime AppliedAt,
     DateTime UpdatedAt,
     string? Notes,
+    bool IsSaved = false,
     List<StatusHistoryDto>? History = null
 );
 
@@ -82,6 +83,21 @@ public record SeedResultDto(
     int ApplicationsCreated,
     int StatusHistoryCreated,
     Guid CandidateId
+);
+
+public record ActivityItemDto(
+    Guid ApplicationId,
+    string CompanyName,
+    string PositionTitle,
+    string? OldStatus,
+    string NewStatus,
+    DateTime ChangedAt,
+    string? Comment
+);
+
+public record ActivityFeedDto(
+    List<ActivityItemDto> Items,
+    int Total
 );
 
 public record ApplicationListDto(

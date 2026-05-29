@@ -8,11 +8,13 @@
       <p class="page-sub">See what's working, where you're getting traction, and where to push harder.</p>
     </div>
     <div class="header-right">
-      <button class="period-btn">
-        Last 6 months
-        <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <button class="report-btn">
+      <div class="period-group">
+        <button class="period-btn" [class.active]="periodMonths() === 3" (click)="setPeriod(3)">3m</button>
+        <button class="period-btn" [class.active]="periodMonths() === 6" (click)="setPeriod(6)">6m</button>
+        <button class="period-btn" [class.active]="periodMonths() === 12" (click)="setPeriod(12)">12m</button>
+        <button class="period-btn" [class.active]="periodMonths() === 0" (click)="setPeriod(0)">All</button>
+      </div>
+      <button class="report-btn" title="Coming soon">
         <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Report
       </button>

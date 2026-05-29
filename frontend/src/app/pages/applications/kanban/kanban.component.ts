@@ -2,7 +2,8 @@ import { Component, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApplicationService } from '@app/services/application.service';
-import { ApplicationResponseDto, ApplicationStatus } from '@app/models/application.model';
+import { ApplicationResponseDto, ApplicationStatus, ActivityItemDto, STATUS_LABELS } from '@app/models/application.model';
+import { ApplicationsListComponent } from '../list/applications-list.component';
 
 interface Column {
   status: ApplicationStatus;
@@ -23,7 +24,7 @@ const COLUMNS: { status: ApplicationStatus; label: string; colorVar: string }[] 
 @Component({
   selector: 'app-kanban',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, ApplicationsListComponent],
   templateUrl: './kanban.component.html',
   styleUrl: './kanban.component.scss',
 })
@@ -32,9 +33,17 @@ export class KanbanComponent implements OnInit {
 
   columns = signal<Column[]>(COLUMNS.map(c => ({ ...c, items: [] })));
   loading = signal(true);
-  view = signal<'board' | 'list'>('board');
+  view = signal<'board' | 'list' | 'activity' | 'saved'>('board');
+
+  activityFeed = signal<ActivityItemDto[]>([]);
+  activityTotal = signal(0);
+  activityLoading = signal(false);
 
   totalApps = computed(() => this.columns().reduce((s, c) => s + c.items.length, 0));
+
+  savedApps = computed(() =>
+    this.columns().flatMap(c => c.items).filter(a => a.isSaved)
+  );
 
   ngOnInit() { this.loadApps(); }
 
@@ -50,6 +59,26 @@ export class KanbanComponent implements OnInit {
         })));
       }
     } catch { } finally { this.loading.set(false); }
+  }
+
+  async loadActivity() {
+    if (this.activityFeed().length > 0) return;
+    this.activityLoading.set(true);
+    try {
+      const res = await this.appService.getActivity({ limit: 50 });
+      if (res.success && res.data) {
+        this.activityFeed.set(res.data.items);
+        this.activityTotal.set(res.data.total);
+      }
+    } catch { } finally { this.activityLoading.set(false); }
+  }
+
+  async toggleSave(app: ApplicationResponseDto, event: Event) {
+    event.stopPropagation();
+    try {
+      await this.appService.toggleSave(app.id);
+      await this.loadApps();
+    } catch { }
   }
 
   onDragStart(event: DragEvent, app: ApplicationResponseDto) {
@@ -87,6 +116,17 @@ export class KanbanComponent implements OnInit {
     }
   }
 
+  relativeTime(d: string): string {
+    const diff = Date.now() - new Date(d).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    if (days < 30) return days + 'd ago';
+    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
   logoBg(name: string): string {
     const palette = [
       'oklch(0.93 0.04 250)', 'oklch(0.93 0.04 160)', 'oklch(0.93 0.04 65)',
@@ -97,13 +137,11 @@ export class KanbanComponent implements OnInit {
     return palette[Math.abs(h) % palette.length];
   }
 
-  logoText(name: string): string {
-    return name.slice(0, 2).toUpperCase();
-  }
+  logoText(name: string): string { return name.slice(0, 2).toUpperCase(); }
 
   formatDate(d: string): string {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
-  allItems = computed(() => this.columns().flatMap(c => c.items));
+  getStatusLabel(s: string) { return STATUS_LABELS[s as ApplicationStatus] || s; }
 }
