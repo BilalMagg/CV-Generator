@@ -119,6 +119,9 @@ app.UseAuthorization();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+// ── Health Check ─────────────────────────────────────────────────────────────
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "api-gateway" }));
+
 // ── Auth Endpoints ───────────────────────────────────────────────────────────
 app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
 {

@@ -126,7 +126,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.15.0
         with:
           target: "http://localhost:8080"
-          cmd_options: "-a -j -J zap-results.json"
+          cmd_options: "-a -j"
           allow_issue_writing: false
 
       - name: Upload ZAP Report
@@ -134,7 +134,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zap-report
-          path: zap-results.json
+          path: report_json.json
           retention-days: 7
 
       - name: Store service logs on failure
