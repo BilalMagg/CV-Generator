@@ -349,10 +349,17 @@ jobs:
       - name: Build and push Docker images
         env:
           DOCKER_BUILDKIT: 1
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           docker compose build
-          docker compose push
-          echo "Images pushed for commit: ${{ github.sha }}"
+
+          for service in $(docker compose config --services); do
+            hub_image="$DOCKERHUB_USERNAME/$service"
+            docker tag "cv_$service" "$hub_image:latest" 2>/dev/null || continue
+            docker tag "cv_$service" "$hub_image:${{ github.sha }}"
+            docker push "$hub_image:latest"
+            docker push "$hub_image:${{ github.sha }}"
+          done
 
   deploy:
     name: Deploy
