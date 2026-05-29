@@ -324,7 +324,7 @@ jobs:
         with:
           name: docker-images
       - name: Load images
-        run: docker load -i images.tar
+        run: docker load -i "${{ github.workspace }}/images.tar"
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
