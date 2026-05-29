@@ -118,35 +118,6 @@ services:
     networks:
       - cv-network
 
-  orchestrator:
-    build:
-      context: .
-      dockerfile: services/orchestrator/Dockerfile
-    container_name: cv-orchestrator
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./services/orchestrator/.env
-    depends_on:
-      job-extractor: { condition: service_healthy }
-      search-agent: { condition: service_healthy }
-      template-agent: { condition: service_healthy }
-      cv-optimizer: { condition: service_healthy }
-      contact-agent: { condition: service_healthy }
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - cv-network
-
 
   job-crawler:
     build:
