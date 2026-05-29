@@ -22,6 +22,7 @@ env:
 permissions:
   contents: read
   security-events: write
+  packages: write
 
 jobs:
 
@@ -198,20 +199,28 @@ jobs:
           for dir in ai_agents/services/*/; do
             touch "$dir.env"
           done
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Build all images
         env:
           DOCKER_BUILDKIT: 1
         run: docker compose build
-      - name: Save images to artifact
+      - name: Push images to GHCR
+        env:
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository_owner }}
         run: |
-          IMAGES=$(docker images "cv-*" --format "{{.Repository}}" | sort -u)
-          docker save $IMAGES -o images.tar
-      - name: Upload images artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-images
-          path: images.tar
-          retention-days: 1
+          for image in $(docker images "cv-*" --format "{{.Repository}}" | sort -u); do
+            service="${image#cv-}"
+            ghcr_image="ghcr.io/${REPO}/cv-${service}:${SHA}"
+            docker tag "$image" "$ghcr_image"
+            docker push "$ghcr_image"
+            echo "Pushed $ghcr_image"
+          done
 
   # ═══════════════════════════════════════════════════════════
   # PHASE 4 — QUALITY GATES  (parallel, after build)
@@ -229,14 +238,41 @@ jobs:
           for dir in ai_agents/services/*/; do
             touch "$dir.env"
           done
-      - name: Download images artifact
-        uses: actions/download-artifact@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          name: docker-images
-      - name: Load images
-        run: docker load -i images.tar
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Pull images from GHCR
+        env:
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository_owner }}
+        run: |
+          services=$(docker compose config --services)
+          for service in $services; do
+            image="cv-${service}"
+            ghcr_image="ghcr.io/${REPO}/${image}:${SHA}"
+            if docker pull "$ghcr_image" 2>/dev/null; then
+              docker tag "$ghcr_image" "$image"
+              echo "Pulled $ghcr_image -> $image"
+            else
+              echo "Skipping $ghcr_image (infra image)"
+            fi
+          done
       - name: Start all services
-        run: docker compose up -d --wait
+        run: |
+          docker compose up -d --wait 2>&1 || true
+          # dump logs of any exited containers
+          for container in $(docker compose ps --all --filter status=exited --format "{{.Names}}" 2>/dev/null); do
+            echo "=== FAILED: $container ==="
+            docker compose logs "$container" 2>/dev/null || docker logs "$container" 2>/dev/null || true
+          done
+          # fail if any container exited
+          if [ -n "$(docker compose ps --all --filter status=exited -q 2>/dev/null)" ]; then
+            echo "ERROR: One or more containers exited"
+            exit 1
+          fi
       - name: Health check
         run: |
           for i in $(seq 1 30); do
@@ -262,7 +298,11 @@ jobs:
           retention-days: 7
       - name: Store service logs on failure
         if: failure()
-        run: docker compose logs --tail=50 > service-logs.txt
+        run: |
+          for container in $(docker compose ps --all --format "{{.Names}}" 2>/dev/null); do
+            echo "========== $container =========="
+            docker compose logs "$container" --tail=100 2>/dev/null || true
+          done > service-logs.txt
       - name: Upload service logs
         if: failure()
         uses: actions/upload-artifact@v4
@@ -279,12 +319,25 @@ jobs:
     needs: [docker-build]
     steps:
       - uses: actions/checkout@v4
-      - name: Download images artifact
-        uses: actions/download-artifact@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          name: docker-images
-      - name: Load images
-        run: docker load -i images.tar
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Pull and retag images from GHCR
+        env:
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository_owner }}
+        run: |
+          for service in frontend user-service cv-service user-content-service \
+                         api-gateway notification-service application-service \
+                         job-offer-service workflow-service contact-agent \
+                         cv-optimizer job-crawler search-agent template-agent; do
+            ghcr_image="ghcr.io/${REPO}/cv-${service}:${SHA}"
+            docker pull "$ghcr_image"
+            docker tag "$ghcr_image" "cv-${service}"
+          done
       - name: Scan built images
         run: |
           mkdir -p reports
@@ -319,12 +372,28 @@ jobs:
           for dir in "${{ github.workspace }}/ai_agents/services/"*/; do
             touch "$dir.env"
           done
-      - name: Download images artifact
-        uses: actions/download-artifact@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          name: docker-images
-      - name: Load images
-        run: docker load -i "${{ github.workspace }}/images.tar"
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Pull images from GHCR
+        env:
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository_owner }}
+        run: |
+          services=$(docker compose config --services)
+          for service in $services; do
+            image="cv-${service}"
+            ghcr_image="ghcr.io/${REPO}/${image}:${SHA}"
+            if docker pull "$ghcr_image" 2>/dev/null; then
+              docker tag "$ghcr_image" "$image"
+              echo "Pulled $ghcr_image -> $image"
+            else
+              echo "Skipping $ghcr_image (infra image)"
+            fi
+          done
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -335,7 +404,17 @@ jobs:
         run: npm ci
       - name: Start services
         run: |
-          docker compose up -d --wait
+          docker compose up -d --wait 2>&1 || true
+          # dump logs of any exited containers
+          for container in $(docker compose ps --all --filter status=exited --format "{{.Names}}" 2>/dev/null); do
+            echo "=== FAILED: $container ==="
+            docker compose logs "$container" 2>/dev/null || docker logs "$container" 2>/dev/null || true
+          done
+          # fail if any container exited
+          if [ -n "$(docker compose ps --all --filter status=exited -q 2>/dev/null)" ]; then
+            echo "ERROR: One or more containers exited"
+            exit 1
+          fi
           for i in $(seq 1 20); do
             sleep 3
             GW=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health 2>/dev/null || echo "000")
@@ -354,6 +433,19 @@ jobs:
             frontend/cypress/screenshots/
             frontend/cypress/videos/
           retention-days: 7
+      - name: Store service logs on failure
+        if: failure()
+        run: |
+          for container in $(docker compose ps --all --format "{{.Names}}" 2>/dev/null); do
+            echo "========== $container =========="
+            docker compose logs "$container" --tail=100 2>/dev/null || true
+          done > service-logs.txt
+      - name: Upload service logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-logs
+          path: service-logs.txt
       - name: Stop services
         if: always()
         run: docker compose down -v
@@ -369,12 +461,25 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci'
     steps:
       - uses: actions/checkout@v4
-      - name: Download images artifact
-        uses: actions/download-artifact@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          name: docker-images
-      - name: Load images
-        run: docker load -i images.tar
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Pull and retag images from GHCR
+        env:
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository_owner }}
+        run: |
+          for service in frontend user-service cv-service user-content-service \
+                         api-gateway notification-service application-service \
+                         job-offer-service workflow-service contact-agent \
+                         cv-optimizer job-crawler search-agent template-agent; do
+            ghcr_image="ghcr.io/${REPO}/cv-${service}:${SHA}"
+            docker pull "$ghcr_image"
+            docker tag "$ghcr_image" "cv-${service}"
+          done
       - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:
@@ -384,7 +489,7 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          for repo in $(docker images "cv-*" --format "{{.Repository}}"); do
+          for repo in $(docker images "cv-*" --format "{{.Repository}}" | sort -u); do
             service="${repo#cv-}"
             hub_image="$DOCKERHUB_USERNAME/$service"
             docker tag "$repo" "$hub_image:latest"

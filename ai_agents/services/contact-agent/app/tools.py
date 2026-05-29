@@ -30,11 +30,18 @@ load_dotenv()
 
 # Shared LLM instance used by Tools 2 & 3
 # Using Groq here to spread load across providers (agent uses Mistral)
-_llm = ChatGroq(
-    model=settings.TOOL_MODEL,
-    temperature=0.3,
-    #temperature=settings.LLM_TEMPERATURE,
-)
+# Lazy init so we don't crash at import time when GROQ_API_KEY is unset
+_llm: ChatGroq | None = None
+
+
+def _get_llm() -> ChatGroq:
+    global _llm
+    if _llm is None:
+        _llm = ChatGroq(
+            model=settings.TOOL_MODEL,
+            temperature=0.3,
+        )
+    return _llm
 
 @tool
 def extract_cv_text(sections_json: str) -> str:
@@ -82,8 +89,9 @@ def generate_email_subject(job_title: str, company_name: str) -> str:
         f"- Do NOT add quotes, explanation, or extra lines\n"
         f"- Return ONLY the subject line text\n"
     )
-    response = _llm.invoke(prompt)
+    response = _get_llm().invoke(prompt)
     return response.content.strip()
+
 
 @tool
 def generate_email_body(
@@ -131,9 +139,10 @@ def generate_email_body(
         f"- Do NOT put everything in one paragraph\n"
         f"- Return ONLY the email body, nothing else\n"
     )
-    response = _llm.invoke(prompt)
+    response = _get_llm().invoke(prompt)
     return response.content.strip()
-    
+
+
 @tool
 def send_email_with_cv(
     recipient_email: str,
