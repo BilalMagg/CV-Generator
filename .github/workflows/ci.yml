@@ -35,7 +35,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: "https://sonarcloud.io"
-          SONAR_ORG: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
         run: make sonar-scan-all
 
   # ───────────────────────────────────────────────────────────
