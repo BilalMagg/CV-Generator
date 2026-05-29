@@ -355,8 +355,9 @@ jobs:
 
           docker images --filter "label=com.docker.compose.project=cv" \
             --format "{{.Repository}}" | sort -u | while read -r repo; do
-            case "$repo" in */*) continue ;; esac
-            hub_image="$DOCKERHUB_USERNAME/${repo#cv_}"
+            service="${repo##*/}"       # docker.io/library/cv-frontend → cv-frontend
+            service="${service#cv-}"    # cv-frontend → frontend
+            hub_image="$DOCKERHUB_USERNAME/$service"
             docker tag "$repo" "$hub_image:latest"
             docker tag "$repo" "$hub_image:${{ github.sha }}"
             docker push "$hub_image:latest"
