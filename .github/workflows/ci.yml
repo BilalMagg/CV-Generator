@@ -353,13 +353,23 @@ jobs:
         run: |
           docker compose build
 
+          echo "=== All images with cv label ==="
+          docker images --filter "label=com.docker.compose.project=cv" \
+            --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}"
+
+          echo "=== All images (full list) ==="
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}"
+
+          echo "=== Processing for push ==="
           docker images --filter "label=com.docker.compose.project=cv" \
             --format "{{.Repository}}" | sort -u | while read -r repo; do
-            service="${repo##*/}"       # docker.io/library/cv-frontend → cv-frontend
-            service="${service#cv-}"    # cv-frontend → frontend
+            service="${repo##*/}"
+            service="${service#cv-}"
             hub_image="$DOCKERHUB_USERNAME/$service"
+            echo "Tagging: $repo → $hub_image:latest"
             docker tag "$repo" "$hub_image:latest"
             docker tag "$repo" "$hub_image:${{ github.sha }}"
+            echo "Pushing: $hub_image"
             docker push "$hub_image:latest"
             docker push "$hub_image:${{ github.sha }}"
           done
