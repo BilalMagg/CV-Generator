@@ -185,6 +185,10 @@ jobs:
           done
           touch backend/src/notification-service/.env
 
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
       - name: Start infrastructure (Docker)
         run: |
           docker compose -f backend/docker-compose.yml up -d \
