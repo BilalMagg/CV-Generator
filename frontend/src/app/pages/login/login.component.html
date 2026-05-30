@@ -45,6 +45,16 @@
           }
         </button>
 
+        <div class="social-text">Or sign in with</div>
+        <div class="social-media">
+          <button type="button" class="social-icon" (click)="signInWithProvider('google')" title="Sign in with Google">
+            <i class="ti ti-brand-google"></i>
+          </button>
+          <button type="button" class="social-icon" (click)="signInWithProvider('github')" title="Sign in with GitHub">
+            <i class="ti ti-brand-github"></i>
+          </button>
+        </div>
+
         <p class="sso-text">
           <button type="button" class="btn-link" (click)="signInWithSso()">Sign in with SSO &rarr;</button>
         </p>
@@ -130,6 +140,16 @@
             Sign Up
           }
         </button>
+
+        <div class="social-text">Or sign up with</div>
+        <div class="social-media">
+          <button type="button" class="social-icon" (click)="signInWithProvider('google')" title="Sign up with Google">
+            <i class="ti ti-brand-google"></i>
+          </button>
+          <button type="button" class="social-icon" (click)="signInWithProvider('github')" title="Sign up with GitHub">
+            <i class="ti ti-brand-github"></i>
+          </button>
+        </div>
       </form>
 
     </div>

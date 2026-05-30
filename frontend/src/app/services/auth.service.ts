@@ -70,8 +70,9 @@ export class AuthService {
     throw new Error(response.message || 'Login failed');
   }
 
-  loginWithSso(): void {
-    window.location.href = `${window.location.origin}/api/auth/login?returnUrl=${encodeURIComponent(window.location.origin + '/applications')}`;
+  loginWithSso(provider?: string): void {
+    const providerParam = provider ? `&provider=${encodeURIComponent(provider)}` : '';
+    window.location.href = `${window.location.origin}/api/auth/login?returnUrl=${encodeURIComponent(window.location.origin + '/applications')}${providerParam}`;
   }
 
   logout(): void {

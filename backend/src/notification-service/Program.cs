@@ -8,6 +8,8 @@ using NotificationService.Infrastructure.Persistence;
 using NotificationService.Jobs;
 using Serilog;
 
+DotNetEnv.Env.Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Serilog ────────────────────────────────────────────────────────────────
