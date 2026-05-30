@@ -412,7 +412,8 @@ jobs:
           for service in frontend user-service cv-service user-content-service \
                          api-gateway notification-service application-service \
                          job-offer-service workflow-service contact-agent \
-                         cv-optimizer job-crawler search-agent template-agent; do
+                         job-extractor cv-optimizer job-crawler search-agent \
+                         template-agent; do
             ghcr_image="ghcr.io/${REPO}/cv-${service}:${{ github.sha }}"
             docker pull "$ghcr_image"
             docker tag "$ghcr_image" "cv-${service}"
@@ -460,7 +461,8 @@ jobs:
           for service in frontend user-service cv-service user-content-service \
                          api-gateway notification-service application-service \
                          job-offer-service workflow-service contact-agent \
-                         cv-optimizer job-crawler search-agent template-agent; do
+                         job-extractor cv-optimizer job-crawler search-agent \
+                         template-agent; do
             ghcr_image="ghcr.io/${REPO}/cv-${service}:${{ github.sha }}"
             docker pull "$ghcr_image"
             docker tag "$ghcr_image" "cv-${service}"
