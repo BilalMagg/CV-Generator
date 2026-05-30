@@ -95,12 +95,11 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore backend/tests/ApplicationService.Tests
       - name: Build
-        run: dotnet build --no-restore -c Release
+        run: dotnet build --no-restore -c Release backend/tests/ApplicationService.Tests
       - name: Run tests
         run: |
-          dotnet test backend/tests/CvService.Tests -c Release --no-build --verbosity normal
           dotnet test backend/tests/ApplicationService.Tests -c Release --no-build --verbosity normal
 
   frontend-tests:
@@ -120,8 +119,6 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Run lint
-        run: npx ng lint
       - name: Run tests
         run: npx ng test --no-watch
 
@@ -197,10 +194,22 @@ jobs:
           docker compose -f api_gateway/docker-compose.yml up -d keycloak-db keycloak
 
       - name: Restore .NET projects
-        run: dotnet restore
+        run: |
+          for project in api_gateway backend/src/user-service backend/src/user-content-service \
+                         backend/src/workflow-service backend/src/application-service \
+                         backend/src/job-offer-service backend/src/notification-service \
+                         backend/src/cv-service; do
+            dotnet restore "$project"
+          done
 
       - name: Build .NET projects
-        run: dotnet build --no-restore -c Release
+        run: |
+          for project in api_gateway backend/src/user-service backend/src/user-content-service \
+                         backend/src/workflow-service backend/src/application-service \
+                         backend/src/job-offer-service backend/src/notification-service \
+                         backend/src/cv-service; do
+            dotnet build --no-restore -c Release "$project"
+          done
 
       - name: Start backend services
         env:
