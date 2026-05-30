@@ -38,6 +38,10 @@ services:
       - KC_HOSTNAME_STRICT=false
       - KC_PROXY=edge
       - KC_FEATURES=token-exchange
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
     command: ["start-dev", "--import-realm"]
     volumes:
       - ./keycloak-realm:/opt/keycloak/data/import
