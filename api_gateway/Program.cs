@@ -123,7 +123,7 @@ app.UseSwaggerUI();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "api-gateway" }));
 
 // ── Auth Endpoints ───────────────────────────────────────────────────────────
-app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
+app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl, string? provider) =>
 {
     var state = Guid.NewGuid().ToString("N");
     var nonce = Guid.NewGuid().ToString("N");
@@ -141,6 +141,11 @@ app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
         + $"&prompt=login"
         + $"&state={encodedState}:{encodedReturn}"
         + $"&nonce={encodedNonce}";
+
+    if (!string.IsNullOrEmpty(provider))
+    {
+        loginUrl += $"&kc_idp_hint={Uri.EscapeDataString(provider)}";
+    }
 
     ctx.Response.Cookies.Append("oidc_state", state, new CookieOptions
     {
