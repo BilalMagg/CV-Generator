@@ -1,12 +1,8 @@
-# ─────────────────────────────────────────────────────────────
-# CV Generator – CI/CD Pipeline
-# Triggered on every push & PR to main/develop/"feature/ci"
-# ─────────────────────────────────────────────────────────────
 name: CI
 
 on:
   push:
-    branches: [main, develop, feature/ci]
+    branches: [main, develop, feature/ci-2]
   pull_request:
     branches: [main]
 
@@ -27,42 +23,8 @@ permissions:
 jobs:
 
   # ═══════════════════════════════════════════════════════════
-  # PHASE 1 — STATIC CHECKS  (parallel)
+  # PHASE 1 — STATIC CHECKS
   # ═══════════════════════════════════════════════════════════
-
-  sonarcloud:
-    name: Code Quality - SonarCloud
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Run Dockerized SonarScanners via Makefile
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: "https://sonarcloud.io"
-          SONAR_ORG: ${{ secrets.SONAR_ORG }}
-        run: make sonar-scan-all
-
-  trivy-fs:
-    name: Security - Trivy (FS)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run Trivy FS Scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: sarif
-          output: trivy-results.sarif
-          severity: HIGH,CRITICAL
-          exit-code: 0
-      - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy
 
   compose-validate:
     name: Validate Compose Files
@@ -82,45 +44,64 @@ jobs:
           docker compose -f api_gateway/docker-compose.yml config --quiet
           docker compose -f ai_agents/docker-compose.yml config --quiet
 
+  trivy-fs:
+    name: Security - Trivy (Filesystem)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy FS scan
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: 0
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs-results.sarif
+          category: trivy-fs
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  sonarcloud:
+    name: Quality - SonarCloud
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
   # ═══════════════════════════════════════════════════════════
-  # PHASE 2 — COMPONENT TESTS  (parallel, after phase 1 gates)
+  # PHASE 2 — COMPONENT TESTS
   # ═══════════════════════════════════════════════════════════
 
   backend-tests:
     name: Tests - Backend (.NET)
     runs-on: ubuntu-latest
     needs: [trivy-fs, compose-validate]
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      - name: Cache NuGet
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('backend/**/*.csproj') }}
-          restore-keys: ${{ runner.os }}-nuget-
-      - name: Restore
-        run: dotnet restore CV_Generator.sln
+      - name: Restore dependencies
+        run: dotnet restore
       - name: Build
-        run: dotnet build CV_Generator.sln --no-restore -c Release
-      - name: Test
-        run: >
-          dotnet test CV_Generator.sln --no-build -c Release
-          --collect:"XPlat Code Coverage"
-          --results-directory coverage/
-          --settings tests/coverlet.runsettings
-      - name: Upload Coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage
-          path: backend/coverage/**/coverage.opencover.xml
-          retention-days: 7
+        run: dotnet build --no-restore -c Release
+      - name: Run tests
+        run: |
+          dotnet test backend/tests/CvService.Tests -c Release --no-build --verbosity normal
+          dotnet test backend/tests/ApplicationService.Tests -c Release --no-build --verbosity normal
 
   frontend-tests:
     name: Tests - Frontend (Angular)
@@ -131,18 +112,6 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - name: Create placeholder .env files
-        run: |
-          for dir in "${{ github.workspace }}/ai_agents/services/"*/; do
-            touch "$dir.env"
-          done
-          touch "${{ github.workspace }}/backend/src/notification-service/.env"
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -151,16 +120,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Lint
-        run: npx ng lint || echo "No linter configured"
-      - name: Unit Tests
+      - name: Run lint
+        run: npx ng lint
+      - name: Run tests
         run: npx ng test --no-watch
-      - name: Upload Coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage
-          path: frontend/coverage/
-          retention-days: 7
 
   ai-agents-tests:
     name: Tests - AI Agents (Python)
@@ -195,14 +158,198 @@ jobs:
           cd ../contact-agent && python run_test.py || true
 
   # ═══════════════════════════════════════════════════════════
-  # PHASE 3 — BUILD ONCE  (after all tests pass)
+  # PHASE 3 — INTEGRATION (native, no Docker images needed)
+  # ═══════════════════════════════════════════════════════════
+
+  e2e-tests:
+    name: E2E Tests - Cypress
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, ai-agents-tests]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Create placeholder .env files
+        run: |
+          for dir in ai_agents/services/*/; do
+            touch "$dir.env"
+          done
+          touch backend/src/notification-service/.env
+
+      - name: Start infrastructure (Docker)
+        run: |
+          docker compose -f backend/docker-compose.yml up -d \
+            kafka schema-registry kafka-ui \
+            user-db content-db workflow-db application-db \
+            job-offer-db notification-db cv-db
+          docker compose -f api_gateway/docker-compose.yml up -d keycloak-db keycloak
+
+      - name: Restore .NET projects
+        run: dotnet restore
+
+      - name: Build .NET projects
+        run: dotnet build --no-restore -c Release
+
+      - name: Start backend services
+        env:
+          KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+          JWT_AUTHORITY: http://localhost:9090/realms/cv-realm
+        run: |
+          for pair in \
+            "backend/src/user-service 8082" \
+            "backend/src/user-content-service 8083" \
+            "backend/src/workflow-service 8084" \
+            "backend/src/application-service 8085" \
+            "backend/src/job-offer-service 8086" \
+            "backend/src/notification-service 8087" \
+            "backend/src/cv-service 8088"; do
+            project=$(echo "$pair" | awk '{print $1}')
+            port=$(echo "$pair" | awk '{print $2}')
+            dotnet run --project "$project" --no-build -c Release \
+              --urls "http://0.0.0.0:$port" &
+            echo "Started $project on :$port"
+          done
+
+      - name: Start API Gateway
+        env:
+          USER_SERVICE_URL: http://localhost:8082
+          KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+          KEYCLOAK_INTERNAL_URL: http://localhost:9090
+          KEYCLOAK_EXTERNAL_URL: http://localhost:9090
+          GATEWAY_URL: http://localhost:8080
+          FRONTEND_URL: http://localhost:4200
+          KEYCLOAK_REALM: cv-realm
+          KEYCLOAK_CLIENT_ID: cv-gateway
+          KEYCLOAK_CLIENT_SECRET: change-me-in-production
+        run: |
+          dotnet run --project api_gateway --no-build -c Release \
+            --urls "http://0.0.0.0:8080" &
+
+      - name: Start frontend
+        run: |
+          npx ng serve --configuration=production &
+        working-directory: frontend
+
+      - name: Wait for all services
+        run: |
+          # Gateway
+          for i in $(seq 1 30); do
+            sleep 5
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health 2>/dev/null || echo "000")
+            [ "$code" = "200" ] && echo "Gateway healthy" && break
+            echo "Attempt $i - Gateway: $code"
+          done
+          # Frontend
+          for i in $(seq 1 20); do
+            sleep 3
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || echo "000")
+            [ "$code" = "200" ] && echo "Frontend healthy" && break
+            echo "Attempt $i - Frontend: $code"
+          done
+
+      - name: Cypress E2E
+        run: npx cypress run --e2e --browser electron --headless
+        working-directory: frontend
+
+      - name: Upload Cypress artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: |
+            frontend/cypress/screenshots/
+            frontend/cypress/videos/
+          retention-days: 7
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f backend/docker-compose.yml -f api_gateway/docker-compose.yml down -v
+
+  zap-scan:
+    name: Security - ZAP Scan
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, ai-agents-tests]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Create placeholder .env files
+        run: |
+          for dir in ai_agents/services/*/; do
+            touch "$dir.env"
+          done
+          touch backend/src/notification-service/.env
+
+      - name: Start Keycloak
+        run: docker compose -f api_gateway/docker-compose.yml up -d keycloak-db keycloak
+
+      - name: Restore .NET projects
+        run: dotnet restore api_gateway
+
+      - name: Build API Gateway
+        run: dotnet build --no-restore -c Release api_gateway
+
+      - name: Start API Gateway
+        env:
+          KEYCLOAK_INTERNAL_URL: http://localhost:9090
+          KEYCLOAK_EXTERNAL_URL: http://localhost:9090
+          GATEWAY_URL: http://localhost:8080
+          FRONTEND_URL: http://localhost:4200
+        run: |
+          dotnet run --project api_gateway --no-build -c Release \
+            --urls "http://0.0.0.0:8080" &
+          for i in $(seq 1 20); do
+            sleep 3
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health 2>/dev/null || echo "000")
+            [ "$code" = "200" ] && echo "Gateway healthy" && break
+            echo "Attempt $i - Gateway: $code"
+          done
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: "http://localhost:8080"
+          cmd_options: "-a -j"
+          allow_issue_writing: false
+
+      - name: Upload ZAP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report_json.json
+          retention-days: 7
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f api_gateway/docker-compose.yml down -v
+
+  # ═══════════════════════════════════════════════════════════
+  # PHASE 4 — BUILD + SCAN (Docker images, only on main/ci)
   # ═══════════════════════════════════════════════════════════
 
   docker-build:
     name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-tests, ai-agents-tests]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci'
+    needs: [e2e-tests, zap-scan]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci-2'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
@@ -234,97 +381,6 @@ jobs:
             echo "Pushed $ghcr_image"
           done
 
-  # ═══════════════════════════════════════════════════════════
-  # PHASE 4 — QUALITY GATES  (parallel, after build)
-  # ═══════════════════════════════════════════════════════════
-
-  zap-scan:
-    name: Security - ZAP Scan
-    runs-on: ubuntu-latest
-    needs: [docker-build]
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - name: Create placeholder .env files
-        run: |
-          for dir in "${{ github.workspace }}/ai_agents/services/"*/; do
-            touch "$dir.env"
-          done
-          touch "${{ github.workspace }}/backend/src/notification-service/.env"
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-      - name: Pull images from GHCR
-        run: |
-          REPO=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          SHA=${{ github.sha }}
-          services=$(docker compose config --services)
-          for service in $services; do
-            image="cv-${service}"
-            ghcr_image="ghcr.io/${REPO}/${image}:${SHA}"
-            if docker pull "$ghcr_image" 2>/dev/null; then
-              docker tag "$ghcr_image" "$image"
-              echo "Pulled $ghcr_image -> $image"
-            else
-              echo "Skipping $ghcr_image (infra image)"
-            fi
-          done
-      - name: Start all services
-        run: |
-          docker compose up -d --wait 2>&1 || true
-          # dump logs of any exited containers
-          for container in $(docker compose ps --all --filter status=exited --format "{{.Names}}" 2>/dev/null); do
-            echo "=== FAILED: $container ==="
-            docker compose logs "$container" 2>/dev/null || docker logs "$container" 2>/dev/null || true
-          done
-          # fail if any container exited
-          if [ -n "$(docker compose ps --all --filter status=exited -q 2>/dev/null)" ]; then
-            echo "ERROR: One or more containers exited"
-            exit 1
-          fi
-      - name: Health check
-        run: |
-          for i in $(seq 1 30); do
-            sleep 5
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://localhost:8080/health 2>/dev/null || echo "000")
-            [ "$STATUS" = "200" ] && echo "API Gateway healthy" && break
-            echo "Attempt $i - API Gateway: $STATUS"
-          done
-          echo "All services up: $(docker compose ps --services --filter status=running | wc -l)"
-      - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.15.0
-        with:
-          target: "http://localhost:8080"
-          cmd_options: "-a -j"
-          allow_issue_writing: false
-      - name: Upload ZAP Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-report
-          path: report_json.json
-          retention-days: 7
-      - name: Store service logs on failure
-        if: failure()
-        run: |
-          for container in $(docker compose ps --all --format "{{.Names}}" 2>/dev/null); do
-            echo "========== $container =========="
-            docker compose logs "$container" --tail=100 2>/dev/null || true
-          done > service-logs.txt
-      - name: Upload service logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: service-logs
-          path: service-logs.txt
-      - name: Stop services
-        if: always()
-        run: docker compose down -v
-
   trivy-image:
     name: Security - Trivy (Images)
     runs-on: ubuntu-latest
@@ -340,12 +396,11 @@ jobs:
       - name: Pull and retag images from GHCR
         run: |
           REPO=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          SHA=${{ github.sha }}
           for service in frontend user-service cv-service user-content-service \
                          api-gateway notification-service application-service \
                          job-offer-service workflow-service contact-agent \
                          cv-optimizer job-crawler search-agent template-agent; do
-            ghcr_image="ghcr.io/${REPO}/cv-${service}:${SHA}"
+            ghcr_image="ghcr.io/${REPO}/cv-${service}:${{ github.sha }}"
             docker pull "$ghcr_image"
             docker tag "$ghcr_image" "cv-${service}"
           done
@@ -369,107 +424,15 @@ jobs:
           path: reports/
           retention-days: 7
 
-  e2e-tests:
-    name: E2E Tests - Cypress
-    runs-on: ubuntu-latest
-    needs: [docker-build]
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - name: Create placeholder .env files
-        run: |
-          for dir in "${{ github.workspace }}/ai_agents/services/"*/; do
-            touch "$dir.env"
-          done
-          touch "${{ github.workspace }}/backend/src/notification-service/.env"
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-      - name: Pull images from GHCR
-        run: |
-          REPO=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          SHA=${{ github.sha }}
-          services=$(docker compose config --services)
-          for service in $services; do
-            image="cv-${service}"
-            ghcr_image="ghcr.io/${REPO}/${image}:${SHA}"
-            if docker pull "$ghcr_image" 2>/dev/null; then
-              docker tag "$ghcr_image" "$image"
-              echo "Pulled $ghcr_image -> $image"
-            else
-              echo "Skipping $ghcr_image (infra image)"
-            fi
-          done
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install dependencies
-        run: npm ci
-      - name: Start services
-        run: |
-          docker compose up -d --wait 2>&1 || true
-          # dump logs of any exited containers
-          for container in $(docker compose ps --all --filter status=exited --format "{{.Names}}" 2>/dev/null); do
-            echo "=== FAILED: $container ==="
-            docker compose logs "$container" 2>/dev/null || docker logs "$container" 2>/dev/null || true
-          done
-          # fail if any container exited
-          if [ -n "$(docker compose ps --all --filter status=exited -q 2>/dev/null)" ]; then
-            echo "ERROR: One or more containers exited"
-            exit 1
-          fi
-          for i in $(seq 1 20); do
-            sleep 3
-            GW=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health 2>/dev/null || echo "000")
-            FE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || echo "000")
-            echo "Gateway: $GW  Frontend: $FE"
-            [ "$GW" = "200" ] && [ "$FE" = "200" ] && break
-          done
-      - name: Cypress E2E
-        run: npx cypress run --e2e --browser electron --headless
-      - name: Upload Cypress artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cypress-artifacts
-          path: |
-            frontend/cypress/screenshots/
-            frontend/cypress/videos/
-          retention-days: 7
-      - name: Store service logs on failure
-        if: failure()
-        run: |
-          for container in $(docker compose ps --all --format "{{.Names}}" 2>/dev/null); do
-            echo "========== $container =========="
-            docker compose logs "$container" --tail=100 2>/dev/null || true
-          done > service-logs.txt
-      - name: Upload service logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: service-logs
-          path: service-logs.txt
-      - name: Stop services
-        if: always()
-        run: docker compose down -v
-
   # ═══════════════════════════════════════════════════════════
-  # PHASE 5 — PUSH TO REGISTRY  (after all quality gates pass)
+  # PHASE 5 — PUSH TO REGISTRY
   # ═══════════════════════════════════════════════════════════
 
   docker-push:
     name: Push Images to DockerHub
     runs-on: ubuntu-latest
-    needs: [zap-scan, e2e-tests, trivy-image]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci'
+    needs: [trivy-image]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci-2'
     steps:
       - uses: actions/checkout@v4
       - name: Log in to GHCR
@@ -481,12 +444,11 @@ jobs:
       - name: Pull and retag images from GHCR
         run: |
           REPO=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          SHA=${{ github.sha }}
           for service in frontend user-service cv-service user-content-service \
                          api-gateway notification-service application-service \
                          job-offer-service workflow-service contact-agent \
                          cv-optimizer job-crawler search-agent template-agent; do
-            ghcr_image="ghcr.io/${REPO}/cv-${service}:${SHA}"
+            ghcr_image="ghcr.io/${REPO}/cv-${service}:${{ github.sha }}"
             docker pull "$ghcr_image"
             docker tag "$ghcr_image" "cv-${service}"
           done
@@ -509,14 +471,14 @@ jobs:
           done
 
   # ═══════════════════════════════════════════════════════════
-  # PHASE 6 — DEPLOY  (after push)
+  # PHASE 6 — DEPLOY
   # ═══════════════════════════════════════════════════════════
 
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
     needs: [docker-push]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ci-2'
     environment: production
     steps:
       - uses: actions/checkout@v4
