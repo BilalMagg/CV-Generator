@@ -213,6 +213,25 @@ public class ApplicationsController : ControllerBase
         return Ok(ApiResponse<bool>.Ok(isSaved));
     }
 
+    /// GET /applications/calendar-events
+    [HttpGet("calendar-events")]
+    public async Task<IActionResult> GetCalendarEvents(
+        [FromQuery] DateTime from,
+        [FromQuery] DateTime to,
+        [FromQuery] string? statuses = null)
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var statusArr = !string.IsNullOrWhiteSpace(statuses)
+            ? statuses.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : null;
+
+        var events = await _service.GetCalendarEventsAsync(candidateId.Value, from, to, statusArr);
+        return Ok(ApiResponse<List<CalendarEventDto>>.Ok(events));
+    }
+
     /// GET /applications/activity
     [HttpGet("activity")]
     public async Task<IActionResult> GetActivity([FromQuery] int limit = 50)

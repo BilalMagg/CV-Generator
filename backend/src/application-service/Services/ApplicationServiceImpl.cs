@@ -17,6 +17,7 @@ public interface IApplicationService
     Task<StatisticsTrendsDto> GetTrendsAsync(Guid? candidateId);
     Task<bool> ToggleSaveAsync(Guid id);
     Task<ActivityFeedDto> GetActivityFeedAsync(Guid? candidateId, int limit = 50);
+    Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid candidateId, DateTime from, DateTime to, string[]? statuses);
 }
 
 public class ApplicationServiceImpl : IApplicationService
@@ -229,6 +230,11 @@ public class ApplicationServiceImpl : IApplicationService
     }
 
     public async Task<bool> ToggleSaveAsync(Guid id) => await _appRepo.ToggleSaveAsync(id);
+
+    public async Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid candidateId, DateTime from, DateTime to, string[]? statuses)
+    {
+        return await _appRepo.GetCalendarEventsAsync(candidateId, from, to, statuses);
+    }
 
     public async Task<ActivityFeedDto> GetActivityFeedAsync(Guid? candidateId, int limit = 50)
     {
