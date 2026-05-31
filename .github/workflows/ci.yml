@@ -66,8 +66,8 @@ jobs:
           category: trivy-fs
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  sonarcloud:
-    name: Quality - SonarCloud
+  sonarcloud-frontend:
+    name: Quality - SonarCloud (Frontend)
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     steps:
@@ -76,6 +76,59 @@ jobs:
           fetch-depth: 0
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
+        with:
+          projectBaseDir: frontend
+          projectKey: cv-generator-frontend
+          organization: Nour1902
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+  sonarcloud-backend:
+    name: Quality - SonarCloud (Backend)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Setup Java (required by sonarscanner)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install dotnet-sonarscanner
+        run: dotnet tool install --global dotnet-sonarscanner
+      - name: Begin SonarCloud scan
+        run: |
+          dotnet sonarscanner begin \
+            /k:cv-generator-backend \
+            /o:Nour1902 \
+            /d:sonar.host.url=https://sonarcloud.io \
+            /d:sonar.token=${{ secrets.SONAR_TOKEN }}
+      - name: Build backend
+        run: dotnet build CV_Generator.sln
+      - name: End SonarCloud scan
+        run: dotnet sonarscanner end /d:sonar.token=${{ secrets.SONAR_TOKEN }}
+
+  sonarcloud-ai:
+    name: Quality - SonarCloud (AI Agents)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        with:
+          projectBaseDir: ai_agents
+          projectKey: cv-generator-ai
+          organization: Nour1902
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
