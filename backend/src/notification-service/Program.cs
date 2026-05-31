@@ -25,14 +25,21 @@ builder.Services.AddDbContext<NotificationDbContext>(options =>
 
 // ── Core Services ──────────────────────────────────────────────────────────
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IAesEncryptionService, AesEncryptionService>();
+builder.Services.AddScoped<IGmailAuthService, GmailAuthService>();
+builder.Services.AddScoped<IGmailSendService, GmailSendService>();
 builder.Services.AddScoped<ITemplateRenderer, TemplateRenderer>();
 builder.Services.AddScoped<INotificationService, NotificationService.Application.Services.NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<ReminderJob>();
 builder.Services.AddScoped<UserReminderJob>();
 
-// ── Kafka Consumer (Background Service) ────────────────────────────────────
+// ── HttpClient ─────────────────────────────────────────────────────────────
+builder.Services.AddHttpClient();
+
+// ── Kafka Consumers (Background Services) ──────────────────────────────────
 builder.Services.AddHostedService<KafkaConsumerService>();
+builder.Services.AddHostedService<EmailSendRequestedConsumer>();
 
 // ── Hangfire (Background Jobs) ─────────────────────────────────────────────
 builder.Services.AddHangfire(config =>
