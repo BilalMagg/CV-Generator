@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.Interfaces;
 using NotificationService.Domain.Entities;
@@ -35,7 +37,6 @@ public class GmailAuthService : IGmailAuthService
         _aes = aes;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
-
         _clientId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID")
             ?? throw new InvalidOperationException("GOOGLE_CLIENT_ID is not set");
         _clientSecret = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET")
@@ -69,7 +70,7 @@ public class GmailAuthService : IGmailAuthService
 
         var tokenResponse = await ExchangeCodeAsync(code, redirectUri);
 
-        var gmailAddress = await GetGmailAddressAsync(tokenResponse.AccessToken);
+        var gmailAddress = await GetGmailAddressAsync(tokenResponse);
 
         var existing = await _db.Set<GmailConnection>()
             .FirstOrDefaultAsync(c => c.UserId == userId);
@@ -153,32 +154,70 @@ public class GmailAuthService : IGmailAuthService
             ?? throw new InvalidOperationException("Failed to deserialize token response");
     }
 
-    private async Task<string> GetGmailAddressAsync(string accessToken)
+    private async Task<string> GetGmailAddressAsync(GoogleTokenResponse token)
     {
+        if (!string.IsNullOrEmpty(token.IdToken))
+            return ExtractEmailFromIdToken(token.IdToken);
+
+        _logger.LogInformation("id_token not present, falling back to userinfo endpoint");
+
         using var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.AccessToken);
 
-        var response = await client.GetAsync("https://www.googleapis.com/oauth2/v2/userinfo");
+        var response = await client.GetAsync("https://www.googleapis.com/oauth2/v3/userinfo");
         response.EnsureSuccessStatusCode();
 
         var info = await response.Content.ReadFromJsonAsync<GoogleUserInfo>()
-            ?? throw new InvalidOperationException("Failed to get user info");
+            ?? throw new InvalidOperationException("Failed to deserialize userinfo response");
 
         return info.Email;
     }
 
+    private static string ExtractEmailFromIdToken(string idToken)
+    {
+        var parts = idToken.Split('.');
+        if (parts.Length != 3)
+            throw new InvalidOperationException($"Invalid id_token format: expected 3 parts, got {parts.Length} (first 50 chars: {idToken[..Math.Min(50, idToken.Length)]})");
+
+        var payload = parts[1]
+            .Replace('-', '+')
+            .Replace('_', '/');
+
+        switch (payload.Length % 4)
+        {
+            case 2: payload += "=="; break;
+            case 3: payload += "="; break;
+        }
+
+        var bytes = Convert.FromBase64String(payload);
+        var json = System.Text.Encoding.UTF8.GetString(bytes);
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement.GetProperty("email").GetString()
+            ?? throw new InvalidOperationException("email claim not found in id_token");
+    }
+
     private class GoogleTokenResponse
     {
+        [JsonPropertyName("access_token")]
         public string AccessToken { get; set; } = string.Empty;
+
+        [JsonPropertyName("refresh_token")]
         public string RefreshToken { get; set; } = string.Empty;
+
+        [JsonPropertyName("expires_in")]
         public int ExpiresInSeconds { get; set; }
+
+        [JsonPropertyName("token_type")]
         public string TokenType { get; set; } = string.Empty;
+
+        [JsonPropertyName("id_token")]
+        public string IdToken { get; set; } = string.Empty;
     }
 
     private class GoogleUserInfo
     {
+        [JsonPropertyName("email")]
         public string Email { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
     }
 }

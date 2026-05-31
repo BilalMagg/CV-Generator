@@ -12,69 +12,77 @@ import {
 export class MailboxService {
   private readonly http = inject(HttpService);
 
-  getStats(userId: string): Promise<ApiResponse<MailboxStatsDto>> {
-    return this.http.get<ApiResponse<MailboxStatsDto>>(`/api/mailbox/${userId}/stats`);
+  getStats(): Promise<ApiResponse<MailboxStatsDto>> {
+    return this.http.get<ApiResponse<MailboxStatsDto>>('/api/mailbox/stats');
   }
 
-  send(userId: string, dto: SendEmailDto): Promise<ApiResponse<EmailMessageDto>> {
-    return this.http.post<ApiResponse<EmailMessageDto>>(`/api/mailbox/${userId}/send`, dto);
+  send(dto: SendEmailDto): Promise<ApiResponse<EmailMessageDto>> {
+    return this.http.post<ApiResponse<EmailMessageDto>>('/api/mailbox/send', dto);
   }
 
-  getHistory(userId: string, params?: { page?: number; pageSize?: number; status?: string }): Promise<ApiResponse<EmailHistoryResponse>> {
+  getHistory(params?: { page?: number; pageSize?: number; status?: string }): Promise<ApiResponse<EmailHistoryResponse>> {
     const qs = new URLSearchParams();
     if (params?.page) qs.set('page', String(params.page));
     if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
     if (params?.status) qs.set('status', params.status);
     const query = qs.toString();
-    return this.http.get<ApiResponse<EmailHistoryResponse>>(`/api/mailbox/${userId}/history${query ? `?${query}` : ''}`);
+    return this.http.get<ApiResponse<EmailHistoryResponse>>(`/api/mailbox/history${query ? `?${query}` : ''}`);
   }
 
-  getContacts(userId: string, params?: { page?: number; pageSize?: number; search?: string }): Promise<ApiResponse<ContactListResponse>> {
+  getContacts(params?: { page?: number; pageSize?: number; search?: string }): Promise<ApiResponse<ContactListResponse>> {
     const qs = new URLSearchParams();
     if (params?.page) qs.set('page', String(params.page));
     if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
     if (params?.search) qs.set('search', params.search);
     const query = qs.toString();
-    return this.http.get<ApiResponse<ContactListResponse>>(`/api/contacts/${userId}${query ? `?${query}` : ''}`);
+    return this.http.get<ApiResponse<ContactListResponse>>(`/api/contacts${query ? `?${query}` : ''}`);
   }
 
-  createContact(userId: string, dto: CreateContactDto): Promise<ApiResponse<ContactDto>> {
-    return this.http.post<ApiResponse<ContactDto>>(`/api/contacts/${userId}`, dto);
+  createContact(dto: CreateContactDto): Promise<ApiResponse<ContactDto>> {
+    return this.http.post<ApiResponse<ContactDto>>('/api/contacts', dto);
   }
 
-  updateContact(userId: string, contactId: string, dto: UpdateContactDto): Promise<ApiResponse<ContactDto>> {
-    return this.http.put<ApiResponse<ContactDto>>(`/api/contacts/${userId}/${contactId}`, dto);
+  updateContact(contactId: string, dto: UpdateContactDto): Promise<ApiResponse<ContactDto>> {
+    return this.http.put<ApiResponse<ContactDto>>(`/api/contacts/${contactId}`, dto);
   }
 
-  deleteContact(userId: string, contactId: string): Promise<void> {
-    return this.http.delete<void>(`/api/contacts/${userId}/${contactId}`);
+  deleteContact(contactId: string): Promise<void> {
+    return this.http.delete<void>(`/api/contacts/${contactId}`);
   }
 
-  importCsv(userId: string, csvContent: string): Promise<ApiResponse<ContactDto[]>> {
-    return this.http.post<ApiResponse<ContactDto[]>>(`/api/contacts/${userId}/import`, { csvContent });
+  importCsv(csvContent: string): Promise<ApiResponse<ContactDto[]>> {
+    return this.http.post<ApiResponse<ContactDto[]>>('/api/contacts/import-csv', { csvContent });
   }
 
-  importFromOffers(userId: string): Promise<ApiResponse<ContactDto[]>> {
-    return this.http.post<ApiResponse<ContactDto[]>>(`/api/contacts/${userId}/import-from-offers`, {});
+  importFromOffers(): Promise<ApiResponse<ContactDto[]>> {
+    return this.http.post<ApiResponse<ContactDto[]>>('/api/contacts/import-from-offers', {});
   }
 
-  getSchedules(userId: string): Promise<ApiResponse<EmailScheduleDto[]>> {
-    return this.http.get<ApiResponse<EmailScheduleDto[]>>(`/api/email-schedules/${userId}`);
+  getSchedules(): Promise<ApiResponse<EmailScheduleDto[]>> {
+    return this.http.get<ApiResponse<EmailScheduleDto[]>>('/api/email-schedules');
   }
 
-  createSchedule(userId: string, dto: CreateScheduleDto): Promise<ApiResponse<EmailScheduleDto>> {
-    return this.http.post<ApiResponse<EmailScheduleDto>>(`/api/email-schedules/${userId}`, dto);
+  createSchedule(dto: CreateScheduleDto): Promise<ApiResponse<EmailScheduleDto>> {
+    return this.http.post<ApiResponse<EmailScheduleDto>>('/api/email-schedules', dto);
   }
 
-  updateSchedule(userId: string, scheduleId: string, dto: UpdateScheduleDto): Promise<ApiResponse<EmailScheduleDto>> {
-    return this.http.put<ApiResponse<EmailScheduleDto>>(`/api/email-schedules/${userId}/${scheduleId}`, dto);
+  updateSchedule(scheduleId: string, dto: UpdateScheduleDto): Promise<ApiResponse<EmailScheduleDto>> {
+    return this.http.put<ApiResponse<EmailScheduleDto>>(`/api/email-schedules/${scheduleId}`, dto);
   }
 
-  deleteSchedule(userId: string, scheduleId: string): Promise<void> {
-    return this.http.delete<void>(`/api/email-schedules/${userId}/${scheduleId}`);
+  deleteSchedule(scheduleId: string): Promise<void> {
+    return this.http.delete<void>(`/api/email-schedules/${scheduleId}`);
   }
 
-  toggleSchedule(userId: string, scheduleId: string): Promise<ApiResponse<EmailScheduleDto>> {
-    return this.http.patch<ApiResponse<EmailScheduleDto>>(`/api/email-schedules/${userId}/${scheduleId}/toggle`, {});
+  toggleSchedule(scheduleId: string): Promise<ApiResponse<EmailScheduleDto>> {
+    return this.http.patch<ApiResponse<EmailScheduleDto>>(`/api/email-schedules/${scheduleId}/toggle`, {});
+  }
+
+  getGmailStatus(): Promise<{ connected: boolean; email?: string; connectedAt?: string }> {
+    return this.http.get<{ connected: boolean; email?: string; connectedAt?: string }>('/api/gmail/status');
+  }
+
+  disconnectGmail(): Promise<void> {
+    return this.http.delete<void>('/api/gmail/disconnect');
   }
 }

@@ -100,15 +100,21 @@
                   <th>Recipient</th>
                   <th>Subject</th>
                   <th>Sent Date</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 @for (m of history(); track m.id) {
-                  <tr class="mb-tr">
-                    <td><span class="status-badge" [class.sent]="m.status === 'Sent'" [class.failed]="m.status === 'Failed'">{{ m.status }}</span></td>
+                  <tr class="mb-tr" [class.failed-row]="m.status === 'failed'">
+                    <td><span class="status-badge" [class.sent]="m.status === 'sent'" [class.failed]="m.status === 'failed'">{{ m.status }}</span></td>
                     <td>{{ m.recipientName || m.recipientEmail }}</td>
                     <td class="mb-subj">{{ m.subject }}</td>
                     <td class="mb-date">{{ m.sentAt ? formatDateTime(m.sentAt) : '-' }}</td>
+                    <td>
+                      @if (m.status === 'failed' && m.errorMessage) {
+                        <span class="error-tip" title="{{ m.errorMessage }}">ⓘ</span>
+                      }
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -233,7 +239,14 @@
                 <div class="settings-provider-status">{{ gmailConnected() ? gmailEmail() : 'Not connected' }}</div>
               </div>
             </div>
-            <a class="mb-btn-secondary" href="/api/gmail/connect">Connect Gmail</a>
+            @if (gmailConnected()) {
+              <div class="settings-provider-connected">
+                <span class="connected-badge">Connected</span>
+                <button class="mb-btn-secondary danger" (click)="disconnectGmail()">Disconnect</button>
+              </div>
+            } @else {
+              <a class="mb-btn-secondary" href="/api/gmail/connect">Connect Gmail</a>
+            }
           </div>
         </div>
       </div>

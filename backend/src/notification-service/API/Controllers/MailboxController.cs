@@ -1,16 +1,15 @@
-using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.DTOs;
 using NotificationService.Application.Interfaces;
+using CVGenerator.Shared;
 using NotificationService.Domain.Entities;
 using NotificationService.Infrastructure.Persistence;
 
 namespace NotificationService.API.Controllers;
 
-[ApiController]
 [Route("api/mailbox")]
-public class MailboxController : ControllerBase
+public class MailboxController : BaseApiController
 {
     private readonly NotificationDbContext _db;
     private readonly IGmailSendService _gmailSendSvc;
@@ -29,13 +28,13 @@ public class MailboxController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet("{userId}/history")]
+    [HttpGet("history")]
     public async Task<IActionResult> GetHistory(
-        Guid userId,
         [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        var userId = GetUserId();
         var query = _db.Set<EmailMessage>().Where(m => m.UserId == userId);
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -76,9 +75,10 @@ public class MailboxController : ControllerBase
         }));
     }
 
-    [HttpGet("{userId}/history/{id}")]
-    public async Task<IActionResult> GetDetail(Guid userId, Guid id)
+    [HttpGet("history/{id}")]
+    public async Task<IActionResult> GetDetail(Guid id)
     {
+        var userId = GetUserId();
         var msg = await _db.Set<EmailMessage>()
             .FirstOrDefaultAsync(m => m.Id == id && m.UserId == userId);
         if (msg is null) return NotFound(ApiResponse<EmailMessageDto>.Error("Email not found"));
@@ -99,9 +99,10 @@ public class MailboxController : ControllerBase
         }));
     }
 
-    [HttpPost("{userId}/send")]
-    public async Task<IActionResult> Send(Guid userId, [FromBody] SendEmailDto dto)
+    [HttpPost("send")]
+    public async Task<IActionResult> Send([FromBody] SendEmailDto dto)
     {
+        var userId = GetUserId();
         if (dto.RecipientIds.Count == 0)
             return BadRequest(ApiResponse<object>.Error("No recipients specified"));
 
@@ -168,9 +169,10 @@ public class MailboxController : ControllerBase
         return Ok(ApiResponse<object>.Ok(new { sent, failed, total = contacts.Count }));
     }
 
-    [HttpGet("{userId}/stats")]
-    public async Task<IActionResult> GetStats(Guid userId)
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
     {
+        var userId = GetUserId();
         var totalSent = await _db.Set<EmailMessage>().CountAsync(m => m.UserId == userId && m.Status == "sent");
         var totalFailed = await _db.Set<EmailMessage>().CountAsync(m => m.UserId == userId && m.Status == "failed");
         var totalSchedules = await _db.Set<EmailSchedule>().CountAsync(s => s.UserId == userId && s.IsActive);

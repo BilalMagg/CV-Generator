@@ -1,9 +1,11 @@
 using CommonProtos.User;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.Interfaces;
 using NotificationService.Application.Services;
+using NotificationService.Infrastructure.Auth;
 using NotificationService.Infrastructure.GrpcClients;
 using NotificationService.Infrastructure.Messaging;
 using NotificationService.Infrastructure.Persistence;
@@ -61,6 +63,11 @@ builder.Services.AddHangfire(config =>
     }));
 builder.Services.AddHangfireServer();
 
+// ── Auth ───────────────────────────────────────────────────────────────────
+builder.Services.AddAuthentication(XUserIdAuthenticationHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, XUserIdAuthenticationHandler>(XUserIdAuthenticationHandler.SchemeName, _ => { });
+builder.Services.AddAuthorization();
+
 // ── API ────────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -100,6 +107,9 @@ RecurringJob.AddOrUpdate<EmailScheduleJob>(
     job => job.ExecuteAsync(),
     "*/5 * * * *"
 );
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {

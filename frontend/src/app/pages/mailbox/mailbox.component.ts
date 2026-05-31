@@ -1,7 +1,6 @@
-import { Component, signal, inject, OnInit, computed } from '@angular/core';
+import { Component, signal, inject, OnInit, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '@app/services/auth.service';
 import { MailboxService } from '@app/services/mailbox.service';
 import {
   ContactDto, EmailMessageDto, EmailScheduleDto,
@@ -18,14 +17,15 @@ type MailboxView = 'compose' | 'history' | 'contacts' | 'schedules' | 'settings'
   styleUrl: './mailbox.component.scss',
 })
 export class MailboxComponent implements OnInit {
-  private auth = inject(AuthService);
   private service = inject(MailboxService);
 
-  view = signal<MailboxView>('compose');
+  view = signal<MailboxView>((localStorage.getItem('mailbox-view') as MailboxView) || 'compose');
+
+  constructor() {
+    effect(() => localStorage.setItem('mailbox-view', this.view()));
+  }
   loading = signal(true);
   stats = signal<MailboxStatsDto | null>(null);
-
-  userId = computed(() => this.auth.currentUser()?.userId ?? '');
 
   contacts = signal<ContactDto[]>([]);
   contactsLoading = signal(false);
@@ -59,23 +59,39 @@ export class MailboxComponent implements OnInit {
   gmailEmail = signal('');
 
   async ngOnInit() {
-    if (!this.userId()) return;
     this.loading.set(true);
     try {
       const [statsRes] = await Promise.all([
-        this.service.getStats(this.userId()),
+        this.service.getStats(),
       ]);
       if (statsRes.success && statsRes.data) this.stats.set(statsRes.data);
     } catch { } finally { this.loading.set(false); }
     this.loadContacts();
     this.loadHistory();
     this.loadSchedules();
+    this.loadGmailStatus();
+  }
+
+  async loadGmailStatus() {
+    try {
+      const res = await this.service.getGmailStatus();
+      this.gmailConnected.set(res.connected);
+      if (res.email) this.gmailEmail.set(res.email);
+    } catch {}
+  }
+
+  async disconnectGmail() {
+    try {
+      await this.service.disconnectGmail();
+      this.gmailConnected.set(false);
+      this.gmailEmail.set('');
+    } catch {}
   }
 
   async loadContacts() {
     this.contactsLoading.set(true);
     try {
-      const res = await this.service.getContacts(this.userId(), { search: this.contactSearch() });
+      const res = await this.service.getContacts({ search: this.contactSearch() });
       if (res.success && res.data) {
         this.contacts.set(res.data.items);
         this.contactsTotal.set(res.data.total);
@@ -86,7 +102,7 @@ export class MailboxComponent implements OnInit {
   async loadHistory() {
     this.historyLoading.set(true);
     try {
-      const res = await this.service.getHistory(this.userId(), { page: this.historyPage(), pageSize: 20 });
+      const res = await this.service.getHistory({ page: this.historyPage(), pageSize: 20 });
       if (res.success && res.data) {
         this.history.set(res.data.items);
         this.historyTotal.set(res.data.total);
@@ -97,7 +113,7 @@ export class MailboxComponent implements OnInit {
   async loadSchedules() {
     this.schedulesLoading.set(true);
     try {
-      const res = await this.service.getSchedules(this.userId());
+      const res = await this.service.getSchedules();
       if (res.success && res.data) this.schedules.set(res.data);
     } catch {} finally { this.schedulesLoading.set(false); }
   }
@@ -111,7 +127,7 @@ export class MailboxComponent implements OnInit {
         subject: this.composeSubject(),
         body: this.composeBody(),
       };
-      const res = await this.service.send(this.userId(), dto);
+      const res = await this.service.send(dto);
       if (res.success) {
         this.composeRecipients.set([]);
         this.composeSubject.set('');
@@ -121,17 +137,17 @@ export class MailboxComponent implements OnInit {
   }
 
   async deleteContact(id: string) {
-    await this.service.deleteContact(this.userId(), id);
+    await this.service.deleteContact(id);
     this.loadContacts();
   }
 
   async toggleSchedule(id: string) {
-    await this.service.toggleSchedule(this.userId(), id);
+    await this.service.toggleSchedule(id);
     this.loadSchedules();
   }
 
   async deleteSchedule(id: string) {
-    await this.service.deleteSchedule(this.userId(), id);
+    await this.service.deleteSchedule(id);
     this.loadSchedules();
   }
 
@@ -164,9 +180,9 @@ export class MailboxComponent implements OnInit {
       position: this.contactFormPosition() || undefined,
     };
     if (this.editingContactId()) {
-      await this.service.updateContact(this.userId(), this.editingContactId()!, dto);
+      await this.service.updateContact(this.editingContactId()!, dto);
     } else {
-      await this.service.createContact(this.userId(), dto);
+      await this.service.createContact(dto);
     }
     this.showContactForm.set(false);
     this.loadContacts();
@@ -176,12 +192,12 @@ export class MailboxComponent implements OnInit {
     const file = (fileEvent.target as HTMLInputElement).files?.[0];
     if (!file) return;
     const text = await file.text();
-    await this.service.importCsv(this.userId(), text);
+    await this.service.importCsv(text);
     this.loadContacts();
   }
 
   async importFromOffers() {
-    await this.service.importFromOffers(this.userId());
+    await this.service.importFromOffers();
     this.loadContacts();
   }
 

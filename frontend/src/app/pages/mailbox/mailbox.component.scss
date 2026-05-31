@@ -196,8 +196,11 @@
 }
 
 .mb-tr { transition: background 0.1s; &:hover { background: var(--bg-2); } }
+.mb-tr.failed-row { background: oklch(0.97 0.01 25); }
 .mb-subj { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
 .mb-date { color: var(--text-3); white-space: nowrap; font-size: 12px; }
+
+.error-tip { cursor: help; color: oklch(0.5 0.18 25); font-size: 14px; }
 
 .status-badge {
   display: inline-block;
@@ -406,3 +409,18 @@
 
 .settings-provider-name { font-size: 14px; font-weight: 600; color: var(--text); }
 .settings-provider-status { font-size: 12px; color: var(--text-3); }
+
+.settings-provider-connected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.connected-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: oklch(0.5 0.18 145);
+  background: oklch(0.93 0.04 145);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
