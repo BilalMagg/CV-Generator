@@ -1,5 +1,6 @@
 using Confluent.Kafka;
 using NotificationService.Application.Interfaces;
+using NotificationService.Grpc;
 using NotificationService.Infrastructure.GrpcClients;
 using System.Text.Json;
 
@@ -56,7 +57,6 @@ public class KafkaConsumerService : BackgroundService
             }
             catch (ConsumeException ex) when (ex.Error.Code == ErrorCode.UnknownTopicOrPart)
             {
-                // Topics are auto-created by producers on first publish — this is expected on startup
                 _logger.LogWarning("Topic not yet available: {Topic}. Retrying in 5s...", ex.ConsumerRecord?.Topic);
                 await Task.Delay(5000, stoppingToken);
             }
@@ -75,6 +75,7 @@ public class KafkaConsumerService : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var notificationSvc = scope.ServiceProvider.GetRequiredService<INotificationService>();
         var userGrpc = scope.ServiceProvider.GetRequiredService<IUserGrpcClientService>();
+        var appGrpc = scope.ServiceProvider.GetRequiredService<IApplicationGrpcClientService>();
 
         JsonElement doc;
         try
@@ -124,12 +125,21 @@ public class KafkaConsumerService : BackgroundService
 
             case KafkaTopics.ApplicationCreated:
             {
-                var userId = GetString(doc, "userId") ?? GetString(doc, "candidateId");
-                var company = GetString(doc, "companyName") ?? GetString(doc, "company");
-                var position = GetString(doc, "positionTitle") ?? GetString(doc, "position");
-                if (!Guid.TryParse(userId, out var uid) || company is null || position is null)
+                var appIdStr = GetString(doc, "applicationId");
+                if (!Guid.TryParse(appIdStr, out var appId))
                 {
-                    _logger.LogWarning("application.created message missing required fields, skipping. Raw: {Json}", json);
+                    _logger.LogWarning("application.created message missing applicationId, skipping. Raw: {Json}", json);
+                    return;
+                }
+                var app = await appGrpc.GetApplicationAsync(appId);
+                if (app is null)
+                {
+                    _logger.LogWarning("application.created: could not fetch application {Id} from gRPC, skipping", appId);
+                    return;
+                }
+                if (!Guid.TryParse(app.CandidateId, out var uid))
+                {
+                    _logger.LogWarning("application.created: invalid candidateId in application {Id}, skipping", appId);
                     return;
                 }
                 var userInfo = await userGrpc.GetUserInfoAsync(uid);
@@ -138,19 +148,28 @@ public class KafkaConsumerService : BackgroundService
                     _logger.LogWarning("application.created: could not fetch user {UserId} from gRPC, skipping", uid);
                     return;
                 }
-                await notificationSvc.SendApplicationCreatedAsync(uid, userInfo.Value.Email, userInfo.Value.FirstName, company, position);
+                await notificationSvc.SendApplicationCreatedAsync(uid, userInfo.Value.Email, userInfo.Value.FirstName, app.CompanyName, app.PositionTitle);
                 break;
             }
 
             case KafkaTopics.ApplicationStatusChanged:
             {
-                var userId = GetString(doc, "userId") ?? GetString(doc, "candidateId");
-                var company = GetString(doc, "companyName") ?? GetString(doc, "company");
-                var position = GetString(doc, "positionTitle") ?? GetString(doc, "position");
-                var newStatus = GetString(doc, "newStatus");
-                if (!Guid.TryParse(userId, out var uid) || company is null || position is null || newStatus is null)
+var appIdStr = GetString(doc, "applicationId") ?? GetString(doc, "ApplicationId");
+var newStatus = GetString(doc, "newStatus") ?? GetString(doc, "NewStatus");
+if (!Guid.TryParse(appIdStr, out var appId) || newStatus is null)
+{
+    _logger.LogWarning("application.status.updated message missing required fields, skipping. Raw: {Json}", json);
+    return;
+}
+                var app = await appGrpc.GetApplicationAsync(appId);
+                if (app is null)
                 {
-                    _logger.LogWarning("application.status.updated message missing required fields, skipping. Raw: {Json}", json);
+                    _logger.LogWarning("application.status.updated: could not fetch application {Id} from gRPC, skipping", appId);
+                    return;
+                }
+                if (!Guid.TryParse(app.CandidateId, out var uid))
+                {
+                    _logger.LogWarning("application.status.updated: invalid candidateId in application {Id}, skipping", appId);
                     return;
                 }
                 var userInfo = await userGrpc.GetUserInfoAsync(uid);
@@ -159,7 +178,7 @@ public class KafkaConsumerService : BackgroundService
                     _logger.LogWarning("application.status.updated: could not fetch user {UserId} from gRPC, skipping", uid);
                     return;
                 }
-                await notificationSvc.SendApplicationStatusChangedAsync(uid, userInfo.Value.Email, userInfo.Value.FirstName, company, position, newStatus);
+                await notificationSvc.SendApplicationStatusChangedAsync(uid, userInfo.Value.Email, userInfo.Value.FirstName, app.CompanyName, app.PositionTitle, newStatus);
                 break;
             }
 
@@ -169,7 +188,6 @@ public class KafkaConsumerService : BackgroundService
         }
     }
 
-    // Returns null (instead of throwing) when the property is absent.
     private static string? GetString(JsonElement element, string propertyName)
     {
         foreach (var prop in element.EnumerateObject())
