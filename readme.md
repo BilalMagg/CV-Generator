@@ -66,7 +66,7 @@ flowchart TB
 
     subgraph Infra["Infrastructure"]
         Kafka["Kafka :9092"]
-        SR["Schema Registry :8081"]
+
         MinIO["MinIO :9000/9001"]
         Keycloak["Keycloak :9090"]
         PG["PostgreSQL × 8 (5433‑5439)"]
@@ -96,7 +96,7 @@ flowchart TB
 | **AI Agents** | Python 3.11, FastAPI, LangChain, RAG (vector search) |
 | **Database** | PostgreSQL 16 + pgvector (×8 databases) |
 | **Auth** | Keycloak 26.2, OpenID Connect, JWT |
-| **Messaging** | Confluent Kafka (KRaft mode), Schema Registry |
+| **Messaging** | Confluent Kafka (KRaft mode) |
 | **Storage** | MinIO (S3-compatible, for CV PDFs) |
 | **Scheduling** | Hangfire (email reminders) |
 | **Container** | Docker, Docker Compose, Nginx |
@@ -153,7 +153,7 @@ docker compose up -d user-db content-db workflow-db application-db \
   job-offer-db notification-db cv-db keycloak-db
 
 # Start Kafka + supporting services
-docker compose up -d kafka schema-registry kafka-ui minio
+docker compose up -d kafka kafka-ui minio
 
 # Start Keycloak (comes with keycloak-db)
 docker compose up -d keycloak
@@ -243,7 +243,6 @@ docker compose up -d job-extractor search-agent template-agent \
 |---|---|---|---|---|
 | **Keycloak** | cv-keycloak | 8080 | 9090 | Realm: cv-realm |
 | **Kafka** | cv-kafka | 9092 / 29092 | 9092 | KRaft mode, no Zookeeper |
-| **Schema Registry** | cv-schema-registry | 8081 | 8081 | Confluent Schema Registry |
 | **Kafka UI** | cv-kafka-ui | 8080 | 8090 | Web UI for Kafka |
 | **MinIO** | cv-minio | 9000/9001 | 9000/9001 | S3 storage for CV PDFs |
 | **PostgreSQL DBs** | cv-*-db | 5432 | 5433–5439 | One per microservice |

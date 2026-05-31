@@ -74,6 +74,10 @@ services:
       - KEYCLOAK_ADMIN_PASSWORD=admin
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - FRONTEND_URL=http://localhost:4200
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
     networks:
       - cv-network
 
