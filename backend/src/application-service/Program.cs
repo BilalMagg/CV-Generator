@@ -45,6 +45,9 @@ builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
     ConnectTimeout = TimeSpan.FromSeconds(5),
 });
 
+// gRPC server
+builder.Services.AddGrpc();
+
 // Validators
 builder.Services.AddScoped<IValidator<CreateApplicationDto>, CreateApplicationValidator>();
 builder.Services.AddScoped<IValidator<UpdateStatusDto>, UpdateStatusValidator>();
@@ -187,5 +190,7 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapGrpcService<ApplicationService.Services.ApplicationGrpcServiceImpl>();
 
 app.Run();

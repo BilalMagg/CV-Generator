@@ -1,3 +1,4 @@
+using CommonProtos.Application;
 using CommonProtos.User;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.Interfaces;
 using NotificationService.Application.Services;
+using NotificationService.Grpc;
 using NotificationService.Infrastructure.Auth;
 using NotificationService.Infrastructure.GrpcClients;
 using NotificationService.Infrastructure.Messaging;
@@ -50,6 +52,11 @@ var userServiceUrl = builder.Configuration["GrpcClients:UserService"] ?? "http:/
 builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
     o.Address = new Uri(userServiceUrl));
 builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
+
+var appServiceUrl = builder.Configuration["GrpcClients:ApplicationService"] ?? "http://cv-application-service:8085";
+builder.Services.AddGrpcClient<ApplicationServiceGrpc.ApplicationServiceGrpcClient>(o =>
+    o.Address = new Uri(appServiceUrl));
+builder.Services.AddScoped<IApplicationGrpcClientService, ApplicationGrpcClientService>();
 
 // ── Kafka Consumer (Background Service) ────────────────────────────────────
 builder.Services.AddHostedService<KafkaConsumerService>();
