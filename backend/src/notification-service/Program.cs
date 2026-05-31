@@ -53,7 +53,7 @@ builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
     o.Address = new Uri(userServiceUrl));
 builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
 
-var appServiceUrl = builder.Configuration["GrpcClients:ApplicationService"] ?? "http://cv-application-service:8085";
+var appServiceUrl = builder.Configuration["GrpcClients:ApplicationService"] ?? "http://cv-application-service:18085";
 builder.Services.AddGrpcClient<ApplicationServiceGrpc.ApplicationServiceGrpcClient>(o =>
     o.Address = new Uri(appServiceUrl));
 builder.Services.AddScoped<IApplicationGrpcClientService, ApplicationGrpcClientService>();

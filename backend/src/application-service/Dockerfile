@@ -29,4 +29,6 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 COPY --from=publish /app/publish .
 ENV ASPNETCORE_URLS="http://0.0.0.0:8085"
+EXPOSE 8085
+EXPOSE 18085
 ENTRYPOINT ["dotnet", "ApplicationService.dll"]
