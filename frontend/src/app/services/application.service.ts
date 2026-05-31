@@ -11,6 +11,7 @@ import {
   UpdateApplicationDto,
   ApiResponse,
 } from '../models/application.model';
+import { CalendarEventDto } from '@app/models/calendar-event.model';
 
 @Injectable({
   providedIn: 'root',
@@ -81,6 +82,19 @@ export class ApplicationService {
 
   async toggleSave(id: string): Promise<ApiResponse<boolean>> {
     return this.http.patch<ApiResponse<boolean>>(`/api/applications/${id}/toggle-save`, {});
+  }
+
+  async getCalendarEvents(params: {
+    from: string;
+    to: string;
+    statuses?: string[];
+  }): Promise<ApiResponse<CalendarEventDto[]>> {
+    const qs = new URLSearchParams();
+    qs.set('from', params.from);
+    qs.set('to', params.to);
+    if (params.statuses?.length) qs.set('statuses', params.statuses.join(','));
+    const query = qs.toString();
+    return this.http.get<ApiResponse<CalendarEventDto[]>>(`/api/applications/calendar-events?${query}`);
   }
 
   async getActivity(params?: {

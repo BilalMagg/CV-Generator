@@ -37,9 +37,9 @@ public class ApplicationsController : ControllerBase
 
     private string? GetUserId()
     {
-        return User.FindFirst("sub")?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("local_user_id")?.Value;
+        return Request.Headers["X-User-Id"].FirstOrDefault()
+            ?? User.FindFirst("user_id")?.Value
+            ?? User.FindFirst("sub")?.Value;
     }
 
     private Guid? GetUserCandidateId()
@@ -211,6 +211,25 @@ public class ApplicationsController : ControllerBase
 
         var isSaved = await _service.ToggleSaveAsync(id);
         return Ok(ApiResponse<bool>.Ok(isSaved));
+    }
+
+    /// GET /applications/calendar-events
+    [HttpGet("calendar-events")]
+    public async Task<IActionResult> GetCalendarEvents(
+        [FromQuery] DateTime from,
+        [FromQuery] DateTime to,
+        [FromQuery] string? statuses = null)
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var statusArr = !string.IsNullOrWhiteSpace(statuses)
+            ? statuses.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : null;
+
+        var events = await _service.GetCalendarEventsAsync(candidateId.Value, from, to, statusArr);
+        return Ok(ApiResponse<List<CalendarEventDto>>.Ok(events));
     }
 
     /// GET /applications/activity

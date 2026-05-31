@@ -28,6 +28,8 @@ builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>();
 builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
 builder.Services.AddScoped<ApplicationService.Services.IApplicationService, ApplicationServiceImpl>();
 builder.Services.AddScoped<IDataSeeder, DataSeeder>();
+builder.Services.AddScoped<ICalendarConfigurationRepository, CalendarConfigurationRepository>();
+builder.Services.AddScoped<ICalendarConfigurationService, CalendarConfigurationServiceImpl>();
 
 // gRPC client — UserService
 builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>

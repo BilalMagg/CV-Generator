@@ -7,6 +7,7 @@ public class ApplicationDbContext : DbContext
 {
     public DbSet<Application> Applications { get; set; }
     public DbSet<ApplicationStatusHistory> ApplicationStatusHistory { get; set; }
+    public DbSet<ApplicationConfiguration> ApplicationConfigurations { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
@@ -34,5 +35,9 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Application>()
             .HasIndex(a => a.AppliedAt);
+
+        modelBuilder.Entity<ApplicationConfiguration>()
+            .HasIndex(c => c.UserId)
+            .IsUnique();
     }
 }
