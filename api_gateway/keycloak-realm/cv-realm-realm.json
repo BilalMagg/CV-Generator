@@ -107,39 +107,5 @@
       }
     }
   ],
-  "identityProviders": [
-    {
-      "alias": "google",
-      "displayName": "Google",
-      "providerId": "google",
-      "enabled": true,
-      "trustEmail": true,
-      "storeToken": false,
-      "addReadTokenRoleOnCreate": false,
-      "authenticateByDefault": false,
-      "linkOnly": false,
-      "firstBrokerLoginFlowAlias": "first broker login",
-      "config": {
-        "clientId": "${env.GOOGLE_CLIENT_ID}",
-        "clientSecret": "${env.GOOGLE_CLIENT_SECRET}",
-        "defaultScope": "openid profile email"
-      }
-    },
-    {
-      "alias": "github",
-      "displayName": "GitHub",
-      "providerId": "github",
-      "enabled": true,
-      "trustEmail": true,
-      "storeToken": false,
-      "addReadTokenRoleOnCreate": false,
-      "authenticateByDefault": false,
-      "linkOnly": false,
-      "firstBrokerLoginFlowAlias": "first broker login",
-      "config": {
-        "clientId": "${env.GITHUB_CLIENT_ID}",
-        "clientSecret": "${env.GITHUB_CLIENT_SECRET}"
-      }
-    }
-  ]
+
 }

@@ -696,7 +696,162 @@ async Task<string?> CreateUserInServiceAsync(IHttpClientFactory factory, string 
     }
 }
 
+// ── Configure Keycloak identity providers on startup ──────────────────────
+_ = ConfigureIdentityProvidersAsync();
+
 app.Run();
+
+static async Task ConfigureIdentityProvidersAsync()
+{
+    var keycloakInternalUrl = Environment.GetEnvironmentVariable("KEYCLOAK_INTERNAL_URL") ?? "http://localhost:9090";
+    var keycloakRealm = Environment.GetEnvironmentVariable("KEYCLOAK_REALM") ?? "cv-realm";
+    var keycloakAdminUsername = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_USERNAME") ?? "admin";
+    var keycloakAdminPassword = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_PASSWORD") ?? "admin";
+
+    var providers = new[]
+    {
+        new { Alias = "google", ClientId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID"), ClientSecret = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET") },
+        new { Alias = "github", ClientId = Environment.GetEnvironmentVariable("GITHUB_CLIENT_ID"), ClientSecret = Environment.GetEnvironmentVariable("GITHUB_CLIENT_SECRET") },
+    };
+
+    using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+    const int maxRetries = 30;
+    const int delayMs = 2000;
+
+    for (var attempt = 1; attempt <= maxRetries; attempt++)
+    {
+        try
+        {
+            var tokenContent = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("client_id", "admin-cli"),
+                new KeyValuePair<string, string>("username", keycloakAdminUsername),
+                new KeyValuePair<string, string>("password", keycloakAdminPassword),
+                new KeyValuePair<string, string>("grant_type", "password"),
+            });
+
+            var tokenResponse = await client.PostAsync($"{keycloakInternalUrl}/realms/master/protocol/openid-connect/token", tokenContent);
+            if (!tokenResponse.IsSuccessStatusCode)
+            {
+                if (attempt < maxRetries) { await Task.Delay(delayMs); continue; }
+                Console.Error.WriteLine("Failed to get Keycloak admin token after retries");
+                return;
+            }
+
+            var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+            var adminToken = tokenJson?.GetValueOrDefault("access_token")?.ToString();
+            if (string.IsNullOrEmpty(adminToken))
+            {
+                if (attempt < maxRetries) { await Task.Delay(delayMs); continue; }
+                Console.Error.WriteLine("Empty Keycloak admin token");
+                return;
+            }
+
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
+
+            var allSucceeded = true;
+
+            foreach (var provider in providers)
+            {
+                if (string.IsNullOrEmpty(provider.ClientId) || string.IsNullOrEmpty(provider.ClientSecret))
+                {
+                    Console.WriteLine($"Skipping {provider.Alias} identity provider — env vars not set");
+                    continue;
+                }
+
+                var alias = provider.Alias;
+
+                // Try to create first (handles case where identity provider doesn't exist at all)
+                var createConfig = new Dictionary<string, string>
+                {
+                    ["clientId"] = provider.ClientId,
+                    ["clientSecret"] = provider.ClientSecret,
+                };
+                if (alias == "google")
+                    createConfig["defaultScope"] = "openid profile email";
+
+                var createPayload = new Dictionary<string, object>
+                {
+                    ["alias"] = alias,
+                    ["providerId"] = alias,
+                    ["enabled"] = true,
+                    ["config"] = createConfig,
+                };
+
+                var createResponse = await client.PostAsJsonAsync(
+                    $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/identity-provider/instances",
+                    createPayload);
+
+                if (createResponse.IsSuccessStatusCode || createResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
+                {
+                    // Created or already exists — now update with full config
+                    var getResponse = await client.GetAsync(
+                        $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/identity-provider/instances/{alias}");
+
+                    if (!getResponse.IsSuccessStatusCode)
+                    {
+                        allSucceeded = false;
+                        Console.Error.WriteLine($"Failed to get {alias} identity provider: {getResponse.StatusCode}");
+                        continue;
+                    }
+
+                    var existing = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+                    var config = existing.GetProperty("config").EnumerateObject()
+                        .ToDictionary(kv => kv.Name, kv => kv.Value.GetString() ?? "");
+
+                    config["clientId"] = provider.ClientId;
+                    config["clientSecret"] = provider.ClientSecret;
+                    if (alias == "google")
+                        config["defaultScope"] = "openid profile email";
+
+                    var patch = new Dictionary<string, object>
+                    {
+                        ["alias"] = alias,
+                        ["providerId"] = existing.GetProperty("providerId").GetString() ?? alias,
+                        ["enabled"] = true,
+                        ["config"] = config,
+                    };
+
+                    var putResponse = await client.PutAsJsonAsync(
+                        $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/identity-provider/instances/{alias}",
+                        patch);
+
+                    if (putResponse.IsSuccessStatusCode)
+                        Console.WriteLine($"Configured {alias} identity provider");
+                    else
+                    {
+                        allSucceeded = false;
+                        var err = await putResponse.Content.ReadAsStringAsync();
+                        Console.Error.WriteLine($"Failed to configure {alias}: {putResponse.StatusCode} {err}");
+                    }
+                }
+                else
+                {
+                    allSucceeded = false;
+                    var err = await createResponse.Content.ReadAsStringAsync();
+                    Console.Error.WriteLine($"Failed to create {alias} identity provider: {createResponse.StatusCode} {err}");
+                }
+            }
+
+            if (allSucceeded)
+                return;
+
+            if (attempt < maxRetries)
+            {
+                Console.WriteLine($"Retrying identity provider setup ({attempt}/{maxRetries})...");
+                await Task.Delay(delayMs);
+            }
+            else
+                Console.Error.WriteLine("Failed to configure identity providers after all retries");
+        }
+        catch (Exception ex) when (attempt < maxRetries)
+        {
+            Console.WriteLine($"Identity provider setup attempt {attempt}/{maxRetries} failed: {ex.Message}");
+            await Task.Delay(delayMs);
+        }
+    }
+}
 
 class MemoryCacheTicketStore : ITicketStore
 {

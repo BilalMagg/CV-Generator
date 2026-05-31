@@ -40,25 +40,6 @@ services:
     networks:
       - cv-network
 
-  # ── Schema Registry ──────────────────────────────────────────────────────────
-  schema-registry:
-    image: confluentinc/cp-schema-registry:latest
-    container_name: cv-schema-registry
-    ports:
-      - "8081:8081"
-    environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
-    depends_on:
-      kafka: { condition: service_healthy }
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8081/subjects"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - cv-network
-
   # ── Kafka UI ─────────────────────────────────────────────────────────────────
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -68,10 +49,8 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: cv-backend
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
     depends_on:
       - kafka
-      - schema-registry
     networks:
       - cv-network
 

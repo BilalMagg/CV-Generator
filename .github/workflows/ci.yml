@@ -245,7 +245,7 @@ jobs:
       - name: Start infrastructure (Docker)
         run: |
           docker compose -f backend/docker-compose.yml up -d \
-            kafka schema-registry kafka-ui \
+            kafka kafka-ui \
             user-db content-db workflow-db application-db \
             job-offer-db notification-db cv-db
           docker compose -f api_gateway/docker-compose.yml up -d keycloak-db keycloak
