@@ -24,8 +24,8 @@ public class KafkaPublisher : IKafkaPublisher, IDisposable
         {
             BootstrapServers = bootstrapServers,
             Acks = Acks.Leader,
-            MessageTimeoutMs = 5000,
-            RequestTimeoutMs = 5000,
+            MessageTimeoutMs = 30000,
+            RequestTimeoutMs = 30000,
             RetryBackoffMs = 100,
         };
 
