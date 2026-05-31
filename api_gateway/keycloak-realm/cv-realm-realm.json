@@ -106,6 +106,5 @@
         "pkce.code.challenge.method": "S256"
       }
     }
-  ],
-
+  ]
 }
