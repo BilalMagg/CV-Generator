@@ -25,11 +25,11 @@ public class CalendarConfigurationController : ControllerBase
 
     private Guid? GetUserId()
     {
-        var sub = User.FindFirst("sub")?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("local_user_id")?.Value;
-        if (sub == null) return null;
-        return Guid.TryParse(sub, out var guid) ? guid : null;
+        var userIdStr = Request.Headers["X-User-Id"].FirstOrDefault()
+            ?? User.FindFirst("user_id")?.Value
+            ?? User.FindFirst("sub")?.Value;
+        if (userIdStr == null) return null;
+        return Guid.TryParse(userIdStr, out var guid) ? guid : null;
     }
 
     [HttpGet]
