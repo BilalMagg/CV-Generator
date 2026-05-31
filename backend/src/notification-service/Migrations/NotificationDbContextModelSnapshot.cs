@@ -143,7 +143,7 @@ namespace notification_service.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Cron")
+                    b.Property<string>("CronExpression")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -160,17 +160,16 @@ namespace notification_service.Migrations
                     b.Property<DateTime?>("NextRunAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("RecipientType")
+                    b.Property<string>("RecipientIds")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("RecipientValue")
-                        .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("Subject")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");

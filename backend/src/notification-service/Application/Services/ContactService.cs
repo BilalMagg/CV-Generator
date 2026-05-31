@@ -49,6 +49,7 @@ public class ContactService : IContactService
             .Select(c => new ContactDto
             {
                 Id = c.Id,
+                UserId = c.UserId,
                 Name = c.Name,
                 Email = c.Email,
                 Phone = c.Phone,
@@ -56,7 +57,8 @@ public class ContactService : IContactService
                 Position = c.Position,
                 Notes = c.Notes,
                 Source = c.Source,
-                CreatedAt = c.CreatedAt
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt
             })
             .ToListAsync();
 
@@ -214,9 +216,9 @@ public class ContactService : IContactService
 
     private static ContactDto Map(Contact c) => new()
     {
-        Id = c.Id, Name = c.Name, Email = c.Email, Phone = c.Phone,
+        Id = c.Id, UserId = c.UserId, Name = c.Name, Email = c.Email, Phone = c.Phone,
         Company = c.Company, Position = c.Position, Notes = c.Notes,
-        Source = c.Source, CreatedAt = c.CreatedAt
+        Source = c.Source, CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt
     };
 
     private class JobOfferImportDto

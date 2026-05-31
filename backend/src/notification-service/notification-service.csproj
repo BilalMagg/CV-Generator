@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\common-protos\common-protos.csproj" />
+    <ProjectReference Include="..\shared\CVGenerator.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

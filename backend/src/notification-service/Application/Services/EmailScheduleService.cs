@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.DTOs;
-using NotificationService.Application.Interfaces;
 using NotificationService.Domain.Entities;
 using NotificationService.Infrastructure.Persistence;
 
@@ -24,10 +23,11 @@ public class EmailScheduleService
             .OrderByDescending(s => s.CreatedAt)
             .Select(s => new EmailScheduleDto
             {
-                Id = s.Id, Name = s.Name, Subject = s.Subject, Body = s.Body,
-                Cron = s.Cron, RecipientType = s.RecipientType,
-                RecipientValue = s.RecipientValue, IsActive = s.IsActive,
-                LastRunAt = s.LastRunAt, NextRunAt = s.NextRunAt, CreatedAt = s.CreatedAt
+                Id = s.Id, UserId = s.UserId, Name = s.Name, Subject = s.Subject, Body = s.Body,
+                CronExpression = s.CronExpression,
+                RecipientIds = s.RecipientIds, IsActive = s.IsActive,
+                LastRunAt = s.LastRunAt, NextRunAt = s.NextRunAt,
+                CreatedAt = s.CreatedAt, UpdatedAt = s.UpdatedAt
             })
             .ToListAsync();
     }
@@ -41,7 +41,7 @@ public class EmailScheduleService
 
     public async Task<EmailScheduleDto> CreateScheduleAsync(Guid userId, CreateScheduleDto dto)
     {
-        var nextRun = ComputeNextRun(dto.Cron);
+        var nextRun = ComputeNextRun(dto.CronExpression);
         var schedule = new EmailSchedule
         {
             Id = Guid.NewGuid(),
@@ -49,9 +49,8 @@ public class EmailScheduleService
             Name = dto.Name,
             Subject = dto.Subject,
             Body = dto.Body,
-            Cron = dto.Cron,
-            RecipientType = dto.RecipientType,
-            RecipientValue = dto.RecipientValue,
+            CronExpression = dto.CronExpression,
+            RecipientIds = dto.RecipientIds,
             NextRunAt = nextRun
         };
         _db.Set<EmailSchedule>().Add(schedule);
@@ -67,10 +66,9 @@ public class EmailScheduleService
         if (dto.Name is not null) s.Name = dto.Name;
         if (dto.Subject is not null) s.Subject = dto.Subject;
         if (dto.Body is not null) s.Body = dto.Body;
-        if (dto.Cron is not null) { s.Cron = dto.Cron; s.NextRunAt = ComputeNextRun(dto.Cron); }
-        if (dto.RecipientType is not null) s.RecipientType = dto.RecipientType;
-        if (dto.RecipientValue is not null) s.RecipientValue = dto.RecipientValue;
-        if (dto.IsActive.HasValue) s.IsActive = dto.IsActive.Value;
+        if (dto.CronExpression is not null) { s.CronExpression = dto.CronExpression; s.NextRunAt = ComputeNextRun(dto.CronExpression); }
+        if (dto.RecipientIds is not null) s.RecipientIds = dto.RecipientIds;
+        s.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return Map(s);
@@ -90,8 +88,9 @@ public class EmailScheduleService
         var s = await _db.Set<EmailSchedule>().FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
         if (s is null) return false;
         s.IsActive = !s.IsActive;
-        if (s.IsActive) s.NextRunAt = ComputeNextRun(s.Cron);
+        if (s.IsActive) s.NextRunAt = ComputeNextRun(s.CronExpression);
         else s.NextRunAt = null;
+        s.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return true;
     }
@@ -119,9 +118,10 @@ public class EmailScheduleService
 
     private static EmailScheduleDto Map(EmailSchedule s) => new()
     {
-        Id = s.Id, Name = s.Name, Subject = s.Subject, Body = s.Body,
-        Cron = s.Cron, RecipientType = s.RecipientType,
-        RecipientValue = s.RecipientValue, IsActive = s.IsActive,
-        LastRunAt = s.LastRunAt, NextRunAt = s.NextRunAt, CreatedAt = s.CreatedAt
+        Id = s.Id, UserId = s.UserId, Name = s.Name, Subject = s.Subject, Body = s.Body,
+        CronExpression = s.CronExpression,
+        RecipientIds = s.RecipientIds, IsActive = s.IsActive,
+        LastRunAt = s.LastRunAt, NextRunAt = s.NextRunAt,
+        CreatedAt = s.CreatedAt, UpdatedAt = s.UpdatedAt
     };
 }

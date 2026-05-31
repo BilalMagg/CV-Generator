@@ -1,3 +1,4 @@
+using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using NotificationService.Application.DTOs;
 using NotificationService.Application.Interfaces;
@@ -15,46 +16,46 @@ public class ContactsController : ControllerBase
         _contactSvc = contactSvc;
     }
 
-    [HttpGet]
+    [HttpGet("{userId}")]
     public async Task<IActionResult> GetAll(
-        [FromQuery] Guid userId,
+        Guid userId,
         [FromQuery] string? search,
         [FromQuery] string? source,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
         var result = await _contactSvc.GetContactsAsync(userId, search, source, page, pageSize);
-        return Ok(result);
+        return Ok(ApiResponse<ContactListResponse>.Ok(result));
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> Get(Guid id, [FromQuery] Guid userId)
+    [HttpGet("{userId}/{id}")]
+    public async Task<IActionResult> Get(Guid userId, Guid id)
     {
         var result = await _contactSvc.GetContactAsync(id, userId);
-        if (result is null) return NotFound();
-        return Ok(result);
+        if (result is null) return NotFound(ApiResponse<ContactDto>.Error("Contact not found"));
+        return Ok(ApiResponse<ContactDto>.Ok(result));
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Create([FromQuery] Guid userId, [FromBody] CreateContactDto dto)
+    [HttpPost("{userId}")]
+    public async Task<IActionResult> Create(Guid userId, [FromBody] CreateContactDto dto)
     {
         var result = await _contactSvc.CreateContactAsync(userId, dto);
-        return CreatedAtAction(nameof(Get), new { id = result.Id, userId }, result);
+        return CreatedAtAction(nameof(Get), new { userId, id = result.Id }, ApiResponse<ContactDto>.Created(result));
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, [FromQuery] Guid userId, [FromBody] UpdateContactDto dto)
+    [HttpPut("{userId}/{id}")]
+    public async Task<IActionResult> Update(Guid userId, Guid id, [FromBody] UpdateContactDto dto)
     {
         var result = await _contactSvc.UpdateContactAsync(id, userId, dto);
-        if (result is null) return NotFound();
-        return Ok(result);
+        if (result is null) return NotFound(ApiResponse<ContactDto>.Error("Contact not found"));
+        return Ok(ApiResponse<ContactDto>.Ok(result));
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid id, [FromQuery] Guid userId)
+    [HttpDelete("{userId}/{id}")]
+    public async Task<IActionResult> Delete(Guid userId, Guid id)
     {
         var deleted = await _contactSvc.DeleteContactAsync(id, userId);
-        if (!deleted) return NotFound();
+        if (!deleted) return NotFound(ApiResponse<object>.Error("Contact not found"));
         return NoContent();
     }
 
@@ -62,13 +63,13 @@ public class ContactsController : ControllerBase
     public async Task<IActionResult> ImportCsv([FromBody] ImportCsvDto dto)
     {
         var count = await _contactSvc.ImportCsvAsync(dto.UserId, dto.CsvContent);
-        return Ok(new { imported = count });
+        return Ok(ApiResponse<object>.Ok(new { imported = count }));
     }
 
-    [HttpPost("import-from-offers")]
-    public async Task<IActionResult> ImportFromOffers([FromQuery] Guid userId)
+    [HttpPost("{userId}/import-from-offers")]
+    public async Task<IActionResult> ImportFromOffers(Guid userId)
     {
         var count = await _contactSvc.ImportFromJobOffersAsync(userId);
-        return Ok(new { imported = count });
+        return Ok(ApiResponse<object>.Ok(new { imported = count }));
     }
 }

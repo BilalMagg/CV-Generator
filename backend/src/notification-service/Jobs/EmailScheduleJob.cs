@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.Services;
+using NotificationService.Domain.Entities;
 using NotificationService.Infrastructure.Persistence;
 
 namespace NotificationService.Jobs;
@@ -29,27 +30,22 @@ public class EmailScheduleJob
         {
             try
             {
-                var recipients = schedule.RecipientType switch
-                {
-                    "contacts" => await db.Set<Domain.Entities.Contact>()
-                        .Where(c => c.UserId == schedule.UserId)
-                        .Select(c => c.Email)
-                        .ToListAsync(),
-                    _ => schedule.RecipientValue.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(e => e.Trim()).ToList()
-                };
+                var contacts = await db.Set<Contact>()
+                    .Where(c => schedule.RecipientIds.Contains(c.Id) && c.UserId == schedule.UserId)
+                    .ToListAsync();
 
-                foreach (var to in recipients)
+                foreach (var contact in contacts)
                 {
                     try
                     {
-                        await gmailSendSvc.SendWithAttachmentAsync(schedule.UserId, to, schedule.Subject, schedule.Body);
+                        await gmailSendSvc.SendWithAttachmentAsync(schedule.UserId, contact.Email, schedule.Subject, schedule.Body);
 
-                        db.Set<Domain.Entities.EmailMessage>().Add(new Domain.Entities.EmailMessage
+                        db.Set<EmailMessage>().Add(new EmailMessage
                         {
                             Id = Guid.NewGuid(),
                             UserId = schedule.UserId,
-                            ToEmail = to,
+                            ToEmail = contact.Email,
+                            ToName = contact.Name,
                             Subject = schedule.Subject,
                             Body = schedule.Body,
                             Status = "sent",
@@ -60,12 +56,13 @@ public class EmailScheduleJob
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Schedule email failed to {To}", to);
-                        db.Set<Domain.Entities.EmailMessage>().Add(new Domain.Entities.EmailMessage
+                        _logger.LogError(ex, "Schedule email failed to {Email}", contact.Email);
+                        db.Set<EmailMessage>().Add(new EmailMessage
                         {
                             Id = Guid.NewGuid(),
                             UserId = schedule.UserId,
-                            ToEmail = to,
+                            ToEmail = contact.Email,
+                            ToName = contact.Name,
                             Subject = schedule.Subject,
                             Body = schedule.Body,
                             Status = "failed",
@@ -77,7 +74,7 @@ public class EmailScheduleJob
                 }
 
                 schedule.LastRunAt = DateTime.UtcNow;
-                schedule.NextRunAt = ComputeNextRun(schedule.Cron);
+                schedule.NextRunAt = ComputeNextRun(schedule.CronExpression);
                 await db.SaveChangesAsync();
             }
             catch (Exception ex)

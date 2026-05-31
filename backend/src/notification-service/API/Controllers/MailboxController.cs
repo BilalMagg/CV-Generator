@@ -1,3 +1,4 @@
+using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.DTOs;
@@ -28,9 +29,9 @@ public class MailboxController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet("history")]
+    [HttpGet("{userId}/history")]
     public async Task<IActionResult> GetHistory(
-        [FromQuery] Guid userId,
+        Guid userId,
         [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
@@ -52,77 +53,87 @@ public class MailboxController : ControllerBase
             .Select(m => new EmailMessageDto
             {
                 Id = m.Id,
-                ToEmail = m.ToEmail,
-                ToName = m.ToName,
+                UserId = m.UserId,
+                RecipientEmail = m.ToEmail,
+                RecipientName = m.ToName,
                 Subject = m.Subject,
                 Body = m.Body,
                 Status = m.Status,
-                Error = m.Error,
+                ErrorMessage = m.Error,
                 Provider = m.Provider,
                 SentAt = m.SentAt,
                 CreatedAt = m.CreatedAt
             })
             .ToListAsync();
 
-        return Ok(new EmailHistoryResponse
+        return Ok(ApiResponse<EmailHistoryResponse>.Ok(new EmailHistoryResponse
         {
             Items = items,
             Total = total,
             SentCount = sentCount,
             FailedCount = failedCount,
             DraftCount = draftCount
-        });
+        }));
     }
 
-    [HttpGet("history/{id}")]
-    public async Task<IActionResult> GetDetail(Guid id, [FromQuery] Guid userId)
+    [HttpGet("{userId}/history/{id}")]
+    public async Task<IActionResult> GetDetail(Guid userId, Guid id)
     {
         var msg = await _db.Set<EmailMessage>()
             .FirstOrDefaultAsync(m => m.Id == id && m.UserId == userId);
-        if (msg is null) return NotFound();
+        if (msg is null) return NotFound(ApiResponse<EmailMessageDto>.Error("Email not found"));
 
-        return Ok(new EmailMessageDto
+        return Ok(ApiResponse<EmailMessageDto>.Ok(new EmailMessageDto
         {
             Id = msg.Id,
-            ToEmail = msg.ToEmail,
-            ToName = msg.ToName,
+            UserId = msg.UserId,
+            RecipientEmail = msg.ToEmail,
+            RecipientName = msg.ToName,
             Subject = msg.Subject,
             Body = msg.Body,
             Status = msg.Status,
-            Error = msg.Error,
+            ErrorMessage = msg.Error,
             Provider = msg.Provider,
             SentAt = msg.SentAt,
             CreatedAt = msg.CreatedAt
-        });
+        }));
     }
 
-    [HttpPost("send")]
-    public async Task<IActionResult> Send([FromBody] SendEmailDto dto)
+    [HttpPost("{userId}/send")]
+    public async Task<IActionResult> Send(Guid userId, [FromBody] SendEmailDto dto)
     {
-        if (dto.ToEmails.Count == 0)
-            return BadRequest(new { error = "No recipients specified" });
+        if (dto.RecipientIds.Count == 0)
+            return BadRequest(ApiResponse<object>.Error("No recipients specified"));
 
-        var sent = 0;
-        var failed = 0;
+        var contacts = await _db.Set<Contact>()
+            .Where(c => dto.RecipientIds.Contains(c.Id) && c.UserId == userId)
+            .ToListAsync();
+
+        if (contacts.Count == 0)
+            return BadRequest(ApiResponse<object>.Error("No valid contacts found"));
 
         var connection = await _db.Set<GmailConnection>()
-            .FirstOrDefaultAsync(c => c.UserId == dto.UserId && !c.IsRevoked);
+            .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsRevoked);
 
         var fromEmail = connection?.GmailAddress ?? "noreply@propel.com";
         var provider = connection is not null ? "gmail" : "smtp";
 
-        foreach (var to in dto.ToEmails)
+        var sent = 0;
+        var failed = 0;
+
+        foreach (var contact in contacts)
         {
             try
             {
-                await _gmailSendSvc.SendWithAttachmentAsync(dto.UserId, to, dto.Subject, dto.Body, dto.CvPdfUrl);
+                await _gmailSendSvc.SendWithAttachmentAsync(userId, contact.Email, dto.Subject, dto.Body, null);
 
                 _db.Set<EmailMessage>().Add(new EmailMessage
                 {
                     Id = Guid.NewGuid(),
-                    UserId = dto.UserId,
+                    UserId = userId,
                     FromEmail = fromEmail,
-                    ToEmail = to,
+                    ToEmail = contact.Email,
+                    ToName = contact.Name,
                     Subject = dto.Subject,
                     Body = dto.Body,
                     Status = "sent",
@@ -133,14 +144,15 @@ public class MailboxController : ControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send email to {To} for user {UserId}", to, dto.UserId);
+                _logger.LogError(ex, "Failed to send email to {Email} for user {UserId}", contact.Email, userId);
 
                 _db.Set<EmailMessage>().Add(new EmailMessage
                 {
                     Id = Guid.NewGuid(),
-                    UserId = dto.UserId,
+                    UserId = userId,
                     FromEmail = fromEmail,
-                    ToEmail = to,
+                    ToEmail = contact.Email,
+                    ToName = contact.Name,
                     Subject = dto.Subject,
                     Body = dto.Body,
                     Status = "failed",
@@ -153,11 +165,11 @@ public class MailboxController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        return Ok(new { sent, failed, total = dto.ToEmails.Count });
+        return Ok(ApiResponse<object>.Ok(new { sent, failed, total = contacts.Count }));
     }
 
-    [HttpGet("stats")]
-    public async Task<IActionResult> GetStats([FromQuery] Guid userId)
+    [HttpGet("{userId}/stats")]
+    public async Task<IActionResult> GetStats(Guid userId)
     {
         var totalSent = await _db.Set<EmailMessage>().CountAsync(m => m.UserId == userId && m.Status == "sent");
         var totalFailed = await _db.Set<EmailMessage>().CountAsync(m => m.UserId == userId && m.Status == "failed");
@@ -167,13 +179,12 @@ public class MailboxController : ControllerBase
             ? Math.Round((double)totalSent / (totalSent + totalFailed) * 100, 1)
             : 100;
 
-        return Ok(new MailboxStatsDto
+        return Ok(ApiResponse<MailboxStatsDto>.Ok(new MailboxStatsDto
         {
-            TotalSent = totalSent,
-            TotalFailed = totalFailed,
-            TotalContacts = (int)totalContacts,
-            TotalSchedules = totalSchedules,
+            EmailsSent = totalSent,
+            ScheduledEmails = totalSchedules,
+            Contacts = (int)totalContacts,
             SuccessRate = successRate
-        });
+        }));
     }
 }

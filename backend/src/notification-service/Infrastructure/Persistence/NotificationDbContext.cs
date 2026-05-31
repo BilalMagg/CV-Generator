@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using NotificationService.Domain.Entities;
 
 namespace NotificationService.Infrastructure.Persistence;
@@ -72,6 +74,11 @@ public class NotificationDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => new { e.IsActive, e.NextRunAt });
+            entity.Property(e => e.RecipientIds)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<Guid>>(v, (JsonSerializerOptions?)null) ?? new List<Guid>())
+                .HasColumnType("jsonb");
         });
     }
 }
