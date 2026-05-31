@@ -42,7 +42,13 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - JAVA_OPTS_APPEND=-Xms256m -Xmx512m
     command: ["start-dev", "--import-realm"]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
     volumes:
       - ./keycloak-realm:/opt/keycloak/data/import
     depends_on:

@@ -1,8 +1,10 @@
+using CommonProtos.User;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.Interfaces;
 using NotificationService.Application.Services;
+using NotificationService.Infrastructure.GrpcClients;
 using NotificationService.Infrastructure.Messaging;
 using NotificationService.Infrastructure.Persistence;
 using NotificationService.Jobs;
@@ -30,6 +32,12 @@ builder.Services.AddScoped<INotificationService, NotificationService.Application
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<ReminderJob>();
 builder.Services.AddScoped<UserReminderJob>();
+
+// ── gRPC Clients ───────────────────────────────────────────────────────────
+var userServiceUrl = builder.Configuration["GrpcClients:UserService"] ?? "http://cv-user-service:18082";
+builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
+    o.Address = new Uri(userServiceUrl));
+builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
 
 // ── Kafka Consumer (Background Service) ────────────────────────────────────
 builder.Services.AddHostedService<KafkaConsumerService>();
