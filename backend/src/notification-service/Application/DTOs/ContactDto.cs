@@ -1,0 +1,49 @@
+namespace NotificationService.Application.DTOs;
+
+public class ContactDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Company { get; set; }
+    public string? Position { get; set; }
+    public string? Notes { get; set; }
+    public string Source { get; set; } = "manual";
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateContactDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Company { get; set; }
+    public string? Position { get; set; }
+    public string? Notes { get; set; }
+    public string? Source { get; set; }
+}
+
+public class UpdateContactDto
+{
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Company { get; set; }
+    public string? Position { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class ImportCsvDto
+{
+    public Guid UserId { get; set; }
+    public string CsvContent { get; set; } = string.Empty;
+}
+
+public class ContactListResponse
+{
+    public List<ContactDto> Items { get; set; } = [];
+    public int Total { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+}

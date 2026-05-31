@@ -33,8 +33,11 @@ builder.Services.AddScoped<IGmailSendService, GmailSendService>();
 builder.Services.AddScoped<ITemplateRenderer, TemplateRenderer>();
 builder.Services.AddScoped<INotificationService, NotificationService.Application.Services.NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
+builder.Services.AddScoped<IContactService, ContactService>();
+builder.Services.AddScoped<EmailScheduleService>();
 builder.Services.AddScoped<ReminderJob>();
 builder.Services.AddScoped<UserReminderJob>();
+builder.Services.AddScoped<EmailScheduleJob>();
 
 // ── HttpClient ─────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient();
@@ -90,6 +93,12 @@ RecurringJob.AddOrUpdate<UserReminderJob>(
     "user-reminders",
     job => job.ProcessAsync(),
     userReminderCron
+);
+
+RecurringJob.AddOrUpdate<EmailScheduleJob>(
+    "email-schedules",
+    job => job.ExecuteAsync(),
+    "*/5 * * * *"
 );
 
 if (app.Environment.IsDevelopment())

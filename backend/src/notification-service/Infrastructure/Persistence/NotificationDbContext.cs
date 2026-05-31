@@ -11,6 +11,9 @@ public class NotificationDbContext : DbContext
     public DbSet<Reminder> Reminders => Set<Reminder>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<GmailConnection> GmailConnections => Set<GmailConnection>();
+    public DbSet<Contact> Contacts => Set<Contact>();
+    public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
+    public DbSet<EmailSchedule> EmailSchedules => Set<EmailSchedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +48,30 @@ public class NotificationDbContext : DbContext
             entity.Property(e => e.GmailAddress).IsRequired();
             entity.Property(e => e.EncryptedAccessToken).IsRequired();
             entity.Property(e => e.EncryptedRefreshToken).IsRequired();
+        });
+
+        modelBuilder.Entity<Contact>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Email);
+            entity.Property(e => e.Name).IsRequired();
+            entity.Property(e => e.Email).IsRequired();
+        });
+
+        modelBuilder.Entity<EmailMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        modelBuilder.Entity<EmailSchedule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => new { e.IsActive, e.NextRunAt });
         });
     }
 }
