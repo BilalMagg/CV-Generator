@@ -55,6 +55,7 @@ public class GmailAuthService : IGmailAuthService
                $"&response_type=code" +
                $"&scope={scope}" +
                $"&access_type=offline" +
+               $"&prompt=consent" +
                $"&state={userId}";
     }
 
@@ -75,6 +76,13 @@ public class GmailAuthService : IGmailAuthService
         var existing = await _db.Set<GmailConnection>()
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
+        var refreshToken = tokenResponse.RefreshToken;
+        if (string.IsNullOrEmpty(refreshToken) && existing is not null)
+        {
+            refreshToken = _aes.Decrypt(existing.EncryptedRefreshToken);
+            _logger.LogInformation("Preserved existing refresh token for user {UserId}", userId);
+        }
+
         if (existing is not null)
         {
             _db.Set<GmailConnection>().Remove(existing);
@@ -86,7 +94,7 @@ public class GmailAuthService : IGmailAuthService
             UserId = userId,
             GmailAddress = gmailAddress,
             EncryptedAccessToken = _aes.Encrypt(tokenResponse.AccessToken),
-            EncryptedRefreshToken = _aes.Encrypt(tokenResponse.RefreshToken),
+            EncryptedRefreshToken = _aes.Encrypt(refreshToken),
             TokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresInSeconds),
             ConnectedAt = DateTime.UtcNow
         };
