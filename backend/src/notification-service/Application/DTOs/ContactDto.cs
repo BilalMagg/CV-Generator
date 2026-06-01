@@ -10,6 +10,7 @@ public class ContactDto
     public string? Company { get; set; }
     public string? Position { get; set; }
     public string? Notes { get; set; }
+    public string? AvatarBase64 { get; set; }
     public string Source { get; set; } = "manual";
     public bool IsFavorite { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -26,6 +27,7 @@ public class CreateContactDto
     public string? Notes { get; set; }
     public string? Source { get; set; }
     public bool IsFavorite { get; set; }
+    public string? AvatarBase64 { get; set; }
 }
 
 public class UpdateContactDto
@@ -37,6 +39,7 @@ public class UpdateContactDto
     public string? Position { get; set; }
     public string? Notes { get; set; }
     public bool? IsFavorite { get; set; }
+    public string? AvatarBase64 { get; set; }
 }
 
 public class ImportCsvDto

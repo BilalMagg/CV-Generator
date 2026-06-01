@@ -8,6 +8,7 @@ export interface ContactDto {
   position?: string;
   source?: string;
   notes?: string;
+  avatarBase64?: string;
   isFavorite: boolean;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +22,7 @@ export interface CreateContactDto {
   position?: string;
   notes?: string;
   isFavorite?: boolean;
+  avatarBase64?: string;
 }
 
 export interface UpdateContactDto {
@@ -31,6 +33,7 @@ export interface UpdateContactDto {
   position?: string;
   notes?: string;
   isFavorite?: boolean;
+  avatarBase64?: string;
 }
 
 export interface ImportCsvDto {

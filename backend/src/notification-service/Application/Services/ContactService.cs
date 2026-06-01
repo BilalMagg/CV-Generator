@@ -88,6 +88,7 @@ public class ContactService : IContactService
             Company = dto.Company,
             Position = dto.Position,
             Notes = dto.Notes,
+            AvatarBase64 = dto.AvatarBase64,
             Source = dto.Source ?? "manual"
         };
         _db.Set<Contact>().Add(contact);
@@ -107,6 +108,7 @@ public class ContactService : IContactService
         if (dto.Position is not null) c.Position = dto.Position;
         if (dto.Notes is not null) c.Notes = dto.Notes;
         if (dto.IsFavorite.HasValue) c.IsFavorite = dto.IsFavorite.Value;
+        if (dto.AvatarBase64 is not null) c.AvatarBase64 = dto.AvatarBase64;
         c.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -233,7 +235,7 @@ public class ContactService : IContactService
     {
         Id = c.Id, UserId = c.UserId, Name = c.Name, Email = c.Email, Phone = c.Phone,
         Company = c.Company, Position = c.Position, Notes = c.Notes,
-        Source = c.Source, IsFavorite = c.IsFavorite,
+        Source = c.Source, IsFavorite = c.IsFavorite, AvatarBase64 = c.AvatarBase64,
         CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt
     };
 

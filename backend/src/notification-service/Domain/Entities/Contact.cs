@@ -12,6 +12,7 @@ public class Contact
     public string? Company { get; set; }
     public string? Position { get; set; }
     public string? Notes { get; set; }
+    public string? AvatarBase64 { get; set; }
     public string Source { get; set; } = "manual";
     public bool IsFavorite { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

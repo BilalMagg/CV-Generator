@@ -65,6 +65,12 @@ export class MailboxComponent implements OnInit {
   selectedContactDetail = signal<ContactDto | null>(null);
   contactHistory = signal<EmailMessageDto[]>([]);
   contactHistoryLoading = signal(false);
+  cdEditing = signal(false);
+  cdEditName = signal('');
+  cdEditEmail = signal('');
+  cdEditCompany = signal('');
+  cdEditPosition = signal('');
+  cdEditPhone = signal('');
 
   history = signal<EmailMessageDto[]>([]);
   historyLoading = signal(false);
@@ -230,6 +236,56 @@ export class MailboxComponent implements OnInit {
     if (res.success && res.data) {
       this.contacts.set(this.contacts().map(c => c.id === contact.id ? { ...c, isFavorite: res.data!.isFavorite } : c));
     }
+  }
+
+  startContactEdit(contact: ContactDto) {
+    this.cdEditName.set(contact.name);
+    this.cdEditEmail.set(contact.email);
+    this.cdEditCompany.set(contact.company || '');
+    this.cdEditPosition.set(contact.position || '');
+    this.cdEditPhone.set(contact.phone || '');
+    this.cdEditing.set(true);
+  }
+
+  cancelContactEdit() {
+    this.cdEditing.set(false);
+  }
+
+  async saveContactDetail() {
+    const contact = this.selectedContactDetail();
+    if (!contact) return;
+    const dto: any = {
+      name: this.cdEditName(),
+      email: this.cdEditEmail(),
+      company: this.cdEditCompany() || undefined,
+      position: this.cdEditPosition() || undefined,
+      phone: this.cdEditPhone() || undefined,
+    };
+    const res = await this.service.updateContact(contact.id, dto);
+    if (res.success && res.data) {
+      this.selectedContactDetail.set(res.data);
+      this.cdEditing.set(false);
+      this.contacts.set(this.contacts().map(c => c.id === contact.id ? res.data! : c));
+    }
+  }
+
+  onContactAvatarChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input?.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      const contact = this.selectedContactDetail();
+      if (!contact) return;
+      const res = await this.service.updateContact(contact.id, { avatarBase64: base64 });
+      if (res.success && res.data) {
+        this.selectedContactDetail.set(res.data);
+        this.contacts.set(this.contacts().map(c => c.id === contact.id ? res.data! : c));
+      }
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
   }
 
   async loadSchedules() {

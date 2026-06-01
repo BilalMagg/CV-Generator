@@ -156,6 +156,7 @@ public class MailboxController : BaseApiController
                 Notes = contact.Notes,
                 Source = contact.Source,
                 IsFavorite = contact.IsFavorite,
+                AvatarBase64 = contact.AvatarBase64,
                 CreatedAt = contact.CreatedAt,
                 UpdatedAt = contact.UpdatedAt
             },
