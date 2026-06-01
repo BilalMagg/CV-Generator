@@ -43,6 +43,7 @@ export class AgentsHubComponent implements OnInit, OnDestroy {
     'template-agent': 'templateAgent',
     'cv-optimizer': 'cvOptimizer',
     'contact-agent': 'contactAgent',
+    'job-crawler': 'jobCrawler',
   };
 
   async ngOnInit(): Promise<void> {
@@ -70,7 +71,7 @@ export class AgentsHubComponent implements OnInit, OnDestroy {
 
   private buildCards(agents: Agent[]): void {
     const sizes: ('wide' | 'tall' | 'small' | 'wide-small')[] = [
-      'tall', 'tall', 'small', 'small', 'small',
+      'tall', 'tall', 'small', 'small', 'small', 'small',
     ];
     const result: { agent: Agent; size: 'wide' | 'tall' | 'small' | 'wide-small' }[] = [];
 
