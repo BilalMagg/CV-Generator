@@ -28,6 +28,9 @@ namespace notification_service.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AvatarBase64")
+                        .HasColumnType("text");
+
                     b.Property<string>("Company")
                         .HasColumnType("text");
 
@@ -37,6 +40,9 @@ namespace notification_service.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsFavorite")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -80,6 +86,9 @@ namespace notification_service.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("ContactId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -120,6 +129,8 @@ namespace notification_service.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ContactId");
 
                     b.HasIndex("CreatedAt");
 
@@ -366,6 +377,16 @@ namespace notification_service.Migrations
                     b.HasIndex("ReminderAt", "Status");
 
                     b.ToTable("Reminders");
+                });
+
+            modelBuilder.Entity("NotificationService.Domain.Entities.EmailMessage", b =>
+                {
+                    b.HasOne("NotificationService.Domain.Entities.Contact", "Contact")
+                        .WithMany()
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Contact");
                 });
 #pragma warning restore 612, 618
         }
