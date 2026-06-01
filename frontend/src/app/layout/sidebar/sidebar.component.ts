@@ -38,6 +38,7 @@ export class SidebarComponent {
   ];
 
   navLibrary: NavItem[] = [
+    { label: 'Mailbox', route: '/mailbox', icon: 'mailbox', exact: false, group: 'library' },
     { label: 'My Career', route: '/my-career', icon: 'user', exact: false, group: 'library' },
   ];
 

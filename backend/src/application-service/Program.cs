@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -13,6 +14,12 @@ using ApplicationService.Validators;
 AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(8085, o => o.Protocols = HttpProtocols.Http1);
+    options.ListenAnyIP(18085, o => o.Protocols = HttpProtocols.Http2);
+});
 
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -44,6 +51,9 @@ builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
     EnableMultipleHttp2Connections = true,
     ConnectTimeout = TimeSpan.FromSeconds(5),
 });
+
+// gRPC server
+builder.Services.AddGrpc();
 
 // Validators
 builder.Services.AddScoped<IValidator<CreateApplicationDto>, CreateApplicationValidator>();
@@ -187,5 +197,7 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapGrpcService<ApplicationService.Services.ApplicationGrpcServiceImpl>();
 
 app.Run();

@@ -1,0 +1,468 @@
+<div class="mb-shell">
+  <div class="mb-page-header">
+    <div class="mb-header-left">
+      <h1 class="mb-title">Mailbox</h1>
+      <p class="mb-subtitle">
+        @if (view() === 'compose') { Send professional emails to recruiters and companies. }
+        @else if (view() === 'history') { Track all sent emails. }
+        @else if (view() === 'contacts') { Manage recruiters and companies. }
+        @else if (view() === 'schedules') { Automate recurring email outreach. }
+        @else { Manage email providers and preferences. }
+      </p>
+    </div>
+    <div class="mb-header-right">
+      <div class="mb-view-group">
+        <button class="mb-vbtn" [class.active]="view() === 'compose'" (click)="view.set('compose')">
+          <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.6"><path d="M2 4a1 1 0 011-1h8a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l5 4 5-4"/></svg>
+          Compose
+        </button>
+        <button class="mb-vbtn" [class.active]="view() === 'history'" (click)="view.set('history')">
+          <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="6"/><polyline points="7 4 7 7 9 9"/></svg>
+          History
+        </button>
+        <button class="mb-vbtn" [class.active]="view() === 'contacts'" (click)="view.set('contacts')">
+          <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="3"/><path d="M2 13c1.5-3 5-3 5-3s3.5 0 5 3"/></svg>
+          Contacts
+        </button>
+        <button class="mb-vbtn" [class.active]="view() === 'schedules'" (click)="view.set('schedules')">
+          <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="6"/><polyline points="7 4 7 7 9 8"/></svg>
+          Schedules
+        </button>
+        <button class="mb-vbtn" [class.active]="view() === 'settings'" (click)="view.set('settings')">
+          <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="2"/><path d="M7 1v2M7 11v2M1 7h2M11 7h2M3.3 3.3l1.4 1.4M9.3 9.3l1.4 1.4M3.3 10.7l1.4-1.4M9.3 4.7l1.4-1.4"/></svg>
+          Settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="mb-loading">Loading mailbox…</div>
+  } @else {
+
+    @if (view() === 'compose') {
+      <div class="compose-main">
+        <div class="compose-form-wrap">
+          <div class="mb-card">
+            <div class="compose-section">
+              <label class="compose-label">Recipients</label>
+              <input class="compose-input" placeholder="Search contacts…" [ngModel]="composeRecipientSearch()" (ngModelChange)="composeRecipientSearch.set($event)" />
+              @if (filteredContacts().length) {
+                <div class="compose-contact-list">
+                  @for (c of filteredContacts(); track c.id) {
+                    <div class="compose-contact-row" (click)="toggleRecipient(c)">
+                      <input type="checkbox" [checked]="isRecipientSelected(c)" />
+                      <span class="compose-cname">{{ c.name }}</span>
+                      <span class="compose-cemail">{{ c.email }}</span>
+                    </div>
+                  }
+                </div>
+              }
+              @if (composeRecipients().length) {
+                <div class="compose-chips">
+                  @for (r of composeRecipients(); track r.id) {
+                    <span class="compose-chip">{{ r.name }} <button (click)="toggleRecipient(r)">&times;</button></span>
+                  }
+                </div>
+              }
+              <button class="compose-select-btn" (click)="openContactModal()">
+                <svg viewBox="0 0 14 14" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="3"/><path d="M2 13c1.5-3 5-3 5-3s3.5 0 5 3"/></svg>
+                Select from contacts
+              </button>
+            </div>
+            <div class="compose-section">
+              <label class="compose-label">Subject</label>
+              <input class="compose-input" placeholder="Enter subject…" [ngModel]="composeSubject()" (ngModelChange)="composeSubject.set($event)" />
+            </div>
+            <div class="compose-section">
+              <label class="compose-label">Message</label>
+              <textarea class="compose-textarea" rows="10" placeholder="Write your email…" [ngModel]="composeBody()" (ngModelChange)="composeBody.set($event)"></textarea>
+            </div>
+            <div class="compose-actions">
+              <button class="mb-btn-primary" (click)="sendEmail()" [disabled]="composeSending() || !composeRecipients().length || !composeSubject() || !composeBody()">
+                {{ composeSending() ? 'Sending…' : 'Send Email' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="compose-aside">
+          <div class="aside-tabs">
+            <button class="aside-tab" [class.active]="asideTab() === 'templates'" (click)="asideTab.set('templates')">Templates</button>
+            <button class="aside-tab" [class.active]="asideTab() === 'attachments'" (click)="asideTab.set('attachments')">Attachments</button>
+          </div>
+
+          @if (asideTab() === 'templates') {
+            <div class="aside-body">
+              @for (t of templates; track t.name) {
+                <div class="template-item" [class.active]="activeTemplate() === t.name" (click)="applyTemplate(t)">
+                  <div class="template-name">{{ t.name }}</div>
+                  <div class="template-preview">{{ t.subject }}</div>
+                </div>
+              }
+            </div>
+          }
+
+          @if (asideTab() === 'attachments') {
+            <div class="aside-body">
+              <div class="attach-zone" (click)="fileInput.click()">
+                <svg viewBox="0 0 14 14" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.4"><path d="M7 1v12M1 7h12"/></svg>
+                <span>Attach files</span>
+                <input #fileInput type="file" multiple hidden (change)="onFilesSelected($event)" />
+              </div>
+              @if (attachments().length) {
+                <div class="attach-list">
+                  @for (f of attachments(); track f.name + f.size) {
+                    <div class="attach-item">
+                      <svg viewBox="0 0 14 14" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.5"><path d="M4 2v10M10 2v10M2 4h10M2 10h10"/></svg>
+                      <span class="attach-name">{{ f.name }}</span>
+                      <span class="attach-size">{{ (f.size / 1024).toFixed(0) }} KB</span>
+                      <button class="attach-remove" (click)="removeAttachment(f)">&times;</button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (view() === 'history') {
+      <div class="history-main" [class.has-detail]="selectedEmail()">
+        <div class="history-list-section">
+          <div class="history-toolbar">
+            <input class="history-search" placeholder="Search by recipient, subject…" [ngModel]="historySearch()" (ngModelChange)="historySearch.set($event); loadHistory()" />
+          </div>
+          @if (historyLoading()) {
+            <div class="mb-loading">Loading history…</div>
+          } @else if (history().length === 0) {
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" width="32" height="32" stroke="currentColor" stroke-width="1.4" style="color:var(--text-3);margin-bottom:12px"><path d="M2 4a1 1 0 011-1h18a1 1 0 011 1v16a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l10 7 10-7"/></svg>
+              <p>No emails found.</p>
+            </div>
+          } @else {
+            <div class="mb-table-wrap">
+              <table class="mb-table">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Recipient</th>
+                    <th>Subject</th>
+                    <th>Sent Date</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (m of history(); track m.id) {
+                    <tr class="mb-tr" [class.active-row]="selectedEmail()?.id === m.id" [class.failed-row]="m.status === 'failed'" (click)="selectEmail(m)">
+                      <td><span class="status-badge" [class.sent]="m.status === 'sent'" [class.failed]="m.status === 'failed'">{{ m.status }}</span></td>
+                      <td>{{ m.recipientName || m.recipientEmail }}</td>
+                      <td class="mb-subj">{{ m.subject }}</td>
+                      <td class="mb-date">{{ m.sentAt ? formatDateTime(m.sentAt) : '-' }}</td>
+                      <td>
+                        @if (m.status === 'failed' && m.errorMessage) {
+                          <svg class="error-icon" viewBox="0 0 14 14" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.5" [title]="m.errorMessage">
+                            <circle cx="7" cy="7" r="6"/>
+                            <path d="M7 4.5v3.5M7 10.5v.5"/>
+                          </svg>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+
+        @if (selectedEmail(); as email) {
+          <div class="history-detail-section">
+            <div class="detail-toolbar">
+              <button class="detail-back-btn" (click)="backToHistoryList()">
+                <svg viewBox="0 0 14 14" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.6"><path d="M10 1L4 7l6 6"/></svg>
+                Back
+              </button>
+            </div>
+            <div class="detail-body">
+              <div class="detail-status-bar">
+                <span class="status-badge lg" [class.sent]="email.status === 'sent'" [class.failed]="email.status === 'failed'">{{ email.status }}</span>
+                @if (email.status === 'failed' && email.errorMessage) {
+                  <span class="detail-error-msg">{{ email.errorMessage }}</span>
+                }
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">To</span>
+                <span class="detail-value">{{ email.recipientName || email.recipientEmail }}</span>
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">Subject</span>
+                <span class="detail-value subject-line">{{ email.subject }}</span>
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">Sent</span>
+                <span class="detail-value">{{ email.sentAt ? formatDateTime(email.sentAt) : '—' }}</span>
+              </div>
+              <div class="detail-field">
+                <span class="detail-label">Provider</span>
+                <span class="detail-value">{{ email.provider }}</span>
+              </div>
+              <div class="detail-body-preview">
+                <div class="detail-label">Message</div>
+                <div class="detail-message">{{ email.body }}</div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (view() === 'contacts') {
+      @if (contactDetailView() && selectedContactDetail(); as detail) {
+        <div class="contact-detail-main">
+          <div class="contact-detail-aside">
+            <button class="detail-back-btn" (click)="backToContactList()">
+              <svg viewBox="0 0 14 14" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.6"><path d="M10 1L4 7l6 6"/></svg>
+              Back
+            </button>
+            <div class="cd-avatar-wrap" (click)="cdAvatarInput.click()">
+              @if (detail.avatarBase64) {
+                <img class="cd-avatar-img" [src]="detail.avatarBase64" alt="Avatar" />
+              } @else {
+                <div class="cd-avatar">{{ detail.name.slice(0, 2).toUpperCase() }}</div>
+              }
+              <div class="cd-avatar-overlay">
+                <svg viewBox="0 0 14 14" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.5"><path d="M7 1v12M1 7h12"/></svg>
+              </div>
+              <input #cdAvatarInput type="file" accept="image/*" hidden (change)="onContactAvatarChange($event)" />
+            </div>
+
+            @if (cdEditing()) {
+              <div class="cd-edit-fields">
+                <input class="cd-input" placeholder="Name" [ngModel]="cdEditName()" (ngModelChange)="cdEditName.set($event)" />
+                <input class="cd-input" placeholder="Email" [ngModel]="cdEditEmail()" (ngModelChange)="cdEditEmail.set($event)" />
+                <input class="cd-input" placeholder="Company" [ngModel]="cdEditCompany()" (ngModelChange)="cdEditCompany.set($event)" />
+                <input class="cd-input" placeholder="Position" [ngModel]="cdEditPosition()" (ngModelChange)="cdEditPosition.set($event)" />
+                <input class="cd-input" placeholder="Phone" [ngModel]="cdEditPhone()" (ngModelChange)="cdEditPhone.set($event)" />
+                <div class="cd-edit-actions">
+                  <button class="mb-btn-primary" (click)="saveContactDetail()">Save</button>
+                  <button class="mb-btn-ghost" (click)="cancelContactEdit()">Cancel</button>
+                </div>
+              </div>
+            } @else {
+              <div class="cd-name">{{ detail.name }}</div>
+              <div class="cd-email">{{ detail.email }}</div>
+              @if (detail.company) { <div class="cd-meta">{{ detail.company }}</div> }
+              @if (detail.position) { <div class="cd-meta">{{ detail.position }}</div> }
+              @if (detail.phone) { <div class="cd-meta">{{ detail.phone }}</div> }
+              <div class="cd-actions">
+                <button class="mb-btn-sm" (click)="startContactEdit(detail)">Edit</button>
+                <button class="mb-btn-sm danger" (click)="deleteContact(detail.id); backToContactList()">Delete</button>
+              </div>
+            }
+          </div>
+          <div class="contact-detail-history">
+            <div class="cdh-header">Email History ({{ contactHistory().length }})</div>
+            @if (contactHistoryLoading()) {
+              <div class="mb-loading">Loading history…</div>
+            } @else if (contactHistory().length === 0) {
+              <div class="empty-state"><p>No emails sent to this contact yet.</p></div>
+            } @else {
+              <div class="cdh-list">
+                @for (m of contactHistory(); track m.id) {
+                  <div class="cdh-item" [class.failed]="m.status === 'failed'">
+                    <div class="cdh-item-header">
+                      <span class="status-badge" [class.sent]="m.status === 'sent'" [class.failed]="m.status === 'failed'">{{ m.status }}</span>
+                      <span class="cdh-date">{{ m.sentAt ? formatDateTime(m.sentAt) : '-' }}</span>
+                    </div>
+                    <div class="cdh-subject">{{ m.subject }}</div>
+                    <div class="cdh-body-preview">{{ m.body }}</div>
+                    @if (m.status === 'failed' && m.errorMessage) {
+                      <div class="cdh-error">{{ m.errorMessage }}</div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="contacts-view">
+          <div class="contacts-toolbar">
+            <input class="contacts-search" placeholder="Search by name, email, company…" [ngModel]="contactSearch()" (ngModelChange)="contactSearch.set($event); loadContacts()" />
+            <div class="contacts-actions">
+              <button class="mb-btn-secondary" [class.active-filter]="showFavoritesOnly()" (click)="showFavoritesOnly.set(!showFavoritesOnly()); loadContacts()">
+                <svg viewBox="0 0 14 14" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.5"><path d="M7 1l1.5 4.6h5l-4 3 1.5 4.4L7 10.2l-4 2.8L4.5 8.6l-4-3h5L7 1z"/></svg>
+                Favorites
+              </button>
+              <button class="mb-btn-secondary" (click)="startNewContact()">Add Contact</button>
+              <button class="mb-btn-secondary" (click)="importFromOffers()">Import From Offers</button>
+              <label class="mb-btn-secondary file-label">
+                Import CSV
+                <input type="file" accept=".csv" (change)="importCsv($event)" hidden />
+              </label>
+            </div>
+          </div>
+
+          @if (showContactForm()) {
+            <div class="mb-card contact-form">
+              <h3>{{ editingContactId() ? 'Edit Contact' : 'New Contact' }}</h3>
+              <div class="form-grid">
+                <input placeholder="Name" [ngModel]="contactFormName()" (ngModelChange)="contactFormName.set($event)" />
+                <input placeholder="Email" [ngModel]="contactFormEmail()" (ngModelChange)="contactFormEmail.set($event)" />
+                <input placeholder="Phone" [ngModel]="contactFormPhone()" (ngModelChange)="contactFormPhone.set($event)" />
+                <input placeholder="Company" [ngModel]="contactFormCompany()" (ngModelChange)="contactFormCompany.set($event)" />
+                <input placeholder="Position" [ngModel]="contactFormPosition()" (ngModelChange)="contactFormPosition.set($event)" />
+              </div>
+              <div class="form-actions">
+                <button class="mb-btn-primary" (click)="saveContact()">Save</button>
+                <button class="mb-btn-ghost" (click)="showContactForm.set(false)">Cancel</button>
+              </div>
+            </div>
+          }
+
+          @if (contactsLoading()) {
+            <div class="mb-loading">Loading contacts…</div>
+          } @else if (contacts().length === 0) {
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" width="32" height="32" stroke="currentColor" stroke-width="1.4" style="color:var(--text-3);margin-bottom:12px"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+              <p>Build your professional network by adding contacts.</p>
+            </div>
+          } @else {
+            <div class="contacts-grid">
+              @for (c of contacts(); track c.id) {
+                <div class="contact-card" (click)="loadContactHistory(c)">
+                  <div class="contact-card-header">
+                    <button class="fav-btn" [class.fav-active]="c.isFavorite" (click)="$event.stopPropagation(); toggleFavorite(c)">
+                      <svg viewBox="0 0 14 14" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.5"><path d="M7 1l1.5 4.6h5l-4 3 1.5 4.4L7 10.2l-4 2.8L4.5 8.6l-4-3h5L7 1z"/></svg>
+                    </button>
+                  </div>
+                  <div class="contact-avatar">{{ c.name.slice(0, 2).toUpperCase() }}</div>
+                  <div class="contact-name">{{ c.name }}</div>
+                  <div class="contact-position">{{ c.position || '—' }}</div>
+                  <div class="contact-company">{{ c.company || '—' }}</div>
+                  <div class="contact-email">{{ c.email }}</div>
+                  <div class="contact-actions">
+                    <button class="mb-btn-sm" (click)="$event.stopPropagation(); editContact(c)">Edit</button>
+                    <button class="mb-btn-sm danger" (click)="$event.stopPropagation(); deleteContact(c.id)">Delete</button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+
+    @if (view() === 'schedules') {
+      <div class="schedules-view">
+        @if (schedulesLoading()) {
+          <div class="mb-loading">Loading schedules…</div>
+        } @else if (schedules().length === 0) {
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" width="32" height="32" stroke="currentColor" stroke-width="1.4" style="color:var(--text-3);margin-bottom:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <p>Create automated outreach campaigns.</p>
+          </div>
+        } @else {
+          <div class="mb-table-wrap">
+            <table class="mb-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Recipients</th>
+                  <th>Next Run</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of schedules(); track s.id) {
+                  <tr class="mb-tr">
+                    <td>{{ s.name }}</td>
+                    <td>{{ s.recipientIds.length }} contact(s)</td>
+                    <td>{{ s.nextRunAt ? formatDateTime(s.nextRunAt) : '—' }}</td>
+                    <td>
+                      <span class="status-badge" [class.active-status]="s.isActive" [class.inactive-status]="!s.isActive">
+                        {{ s.isActive ? 'Active' : 'Inactive' }}
+                      </span>
+                    </td>
+                    <td>
+                      <button class="mb-btn-sm" (click)="toggleSchedule(s.id)">{{ s.isActive ? 'Pause' : 'Resume' }}</button>
+                      <button class="mb-btn-sm danger" (click)="deleteSchedule(s.id)">Delete</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
+
+    @if (view() === 'settings') {
+      <div class="settings-view">
+        <div class="mb-card">
+          <h3 class="settings-section-title">Connected Accounts</h3>
+          <div class="settings-provider-card">
+            <div class="settings-provider-info">
+              <img src="/providers/gmail.svg" alt="Gmail" width="24" height="24" />
+              <div>
+                <div class="settings-provider-name">Gmail</div>
+                <div class="settings-provider-status">{{ gmailConnected() ? gmailEmail() : 'Not connected' }}</div>
+              </div>
+            </div>
+            @if (gmailConnected()) {
+              <div class="settings-provider-connected">
+                <span class="connected-badge">Connected</span>
+                <button class="mb-btn-secondary danger" (click)="disconnectGmail()">Disconnect</button>
+              </div>
+            } @else {
+              <a class="mb-btn-secondary" href="/api/gmail/connect">Connect Gmail</a>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+  }
+
+  @if (showContactModal()) {
+    <div class="modal-backdrop" (click)="closeContactModal()">
+      <div class="contact-modal" (click)="$event.stopPropagation()">
+        <div class="contact-modal-header">
+          <h3>Select Contacts</h3>
+          <button class="contact-modal-close" (click)="closeContactModal()">&times;</button>
+        </div>
+        <div class="contact-modal-body">
+          <div class="contact-modal-toolbar">
+            <input class="contact-modal-search" placeholder="Search contacts…" [ngModel]="modalContactSearch()" (ngModelChange)="modalContactSearch.set($event)" />
+            <button class="mb-btn-sm modal-fav-toggle" [class.active]="showFavoritesOnly()" (click)="showFavoritesOnly.set(!showFavoritesOnly())">
+              <svg viewBox="0 0 14 14" fill="none" width="11" height="11" stroke="currentColor" stroke-width="1.5"><path d="M7 1l1.5 4.6h5l-4 3 1.5 4.4L7 10.2l-4 2.8L4.5 8.6l-4-3h5L7 1z"/></svg>
+            </button>
+          </div>
+          <div class="contact-modal-list">
+            @for (c of modalFilteredContacts(); track c.id) {
+              <div class="contact-modal-row" (click)="toggleModalContact(c)">
+                <input type="checkbox" [checked]="modalSelectedIds().has(c.id)" />
+                <div class="contact-modal-info">
+                  <span class="contact-modal-name">{{ c.name }}</span>
+                  <span class="contact-modal-email">{{ c.email }}</span>
+                </div>
+                @if (c.isFavorite) {
+                  <svg viewBox="0 0 14 14" fill="none" width="11" height="11" stroke="currentColor" stroke-width="1.5" style="margin-left:auto;flex-shrink:0;"><path d="M7 1l1.5 4.6h5l-4 3 1.5 4.4L7 10.2l-4 2.8L4.5 8.6l-4-3h5L7 1z"/></svg>
+                }
+              </div>
+            }
+            @if (modalFilteredContacts().length === 0) {
+              <div class="contact-modal-empty">No contacts found.</div>
+            }
+          </div>
+        </div>
+        <div class="contact-modal-footer">
+          <button class="mb-btn-ghost" (click)="closeContactModal()">Cancel</button>
+          <button class="mb-btn-primary" (click)="onAddSelected()">Add Selected ({{ modalSelectedIds().size }})</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
