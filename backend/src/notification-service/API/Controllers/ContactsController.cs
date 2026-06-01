@@ -18,11 +18,12 @@ public class ContactsController : BaseApiController
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
         [FromQuery] string? source,
+        [FromQuery] bool? favorite,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
         var userId = GetUserId();
-        var result = await _contactSvc.GetContactsAsync(userId, search, source, page, pageSize);
+        var result = await _contactSvc.GetContactsAsync(userId, search, source, favorite, page, pageSize);
         return Ok(ApiResponse<ContactListResponse>.Ok(result));
     }
 
@@ -75,5 +76,14 @@ public class ContactsController : BaseApiController
         var userId = GetUserId();
         var count = await _contactSvc.ImportFromJobOffersAsync(userId);
         return Ok(ApiResponse<object>.Ok(new { imported = count }));
+    }
+
+    [HttpPatch("{id}/favorite")]
+    public async Task<IActionResult> ToggleFavorite(Guid id)
+    {
+        var userId = GetUserId();
+        var result = await _contactSvc.ToggleFavoriteAsync(id, userId);
+        if (result is null) return NotFound(ApiResponse<ContactDto>.Error("Contact not found"));
+        return Ok(ApiResponse<ContactDto>.Ok(result));
     }
 }

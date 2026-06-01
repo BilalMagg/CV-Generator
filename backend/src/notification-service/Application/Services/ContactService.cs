@@ -25,7 +25,7 @@ public class ContactService : IContactService
     }
 
     public async Task<ContactListResponse> GetContactsAsync(
-        Guid userId, string? search, string? source, int page, int pageSize)
+        Guid userId, string? search, string? source, bool? favorite, int page, int pageSize)
     {
         var query = _db.Set<Contact>().Where(c => c.UserId == userId);
 
@@ -40,6 +40,9 @@ public class ContactService : IContactService
 
         if (!string.IsNullOrWhiteSpace(source))
             query = query.Where(c => c.Source == source);
+
+        if (favorite == true)
+            query = query.Where(c => c.IsFavorite);
 
         var total = await query.CountAsync();
         var items = await query
@@ -57,6 +60,7 @@ public class ContactService : IContactService
                 Position = c.Position,
                 Notes = c.Notes,
                 Source = c.Source,
+                IsFavorite = c.IsFavorite,
                 CreatedAt = c.CreatedAt,
                 UpdatedAt = c.UpdatedAt
             })
@@ -102,6 +106,7 @@ public class ContactService : IContactService
         if (dto.Company is not null) c.Company = dto.Company;
         if (dto.Position is not null) c.Position = dto.Position;
         if (dto.Notes is not null) c.Notes = dto.Notes;
+        if (dto.IsFavorite.HasValue) c.IsFavorite = dto.IsFavorite.Value;
         c.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -115,6 +120,16 @@ public class ContactService : IContactService
         _db.Set<Contact>().Remove(c);
         await _db.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<ContactDto?> ToggleFavoriteAsync(Guid id, Guid userId)
+    {
+        var c = await _db.Set<Contact>().FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+        if (c is null) return null;
+        c.IsFavorite = !c.IsFavorite;
+        c.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Map(c);
     }
 
     public async Task<int> ImportCsvAsync(Guid userId, string csvContent)
@@ -218,7 +233,8 @@ public class ContactService : IContactService
     {
         Id = c.Id, UserId = c.UserId, Name = c.Name, Email = c.Email, Phone = c.Phone,
         Company = c.Company, Position = c.Position, Notes = c.Notes,
-        Source = c.Source, CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt
+        Source = c.Source, IsFavorite = c.IsFavorite,
+        CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt
     };
 
     private class JobOfferImportDto

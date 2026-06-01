@@ -5,7 +5,7 @@ import {
   ContactDto, CreateContactDto, UpdateContactDto, ContactListResponse,
   EmailMessageDto, SendEmailDto, EmailHistoryResponse,
   EmailScheduleDto, CreateScheduleDto, UpdateScheduleDto,
-  MailboxStatsDto,
+  MailboxStatsDto, ContactHistoryResponse,
 } from '../models/mailbox.model';
 
 @Injectable({ providedIn: 'root' })
@@ -20,20 +20,30 @@ export class MailboxService {
     return this.http.post<ApiResponse<EmailMessageDto>>('/api/mailbox/send', dto);
   }
 
-  getHistory(params?: { page?: number; pageSize?: number; status?: string }): Promise<ApiResponse<EmailHistoryResponse>> {
+  getHistory(params?: { page?: number; pageSize?: number; status?: string; search?: string }): Promise<ApiResponse<EmailHistoryResponse>> {
     const qs = new URLSearchParams();
     if (params?.page) qs.set('page', String(params.page));
     if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
     if (params?.status) qs.set('status', params.status);
+    if (params?.search) qs.set('search', params.search);
     const query = qs.toString();
     return this.http.get<ApiResponse<EmailHistoryResponse>>(`/api/mailbox/history${query ? `?${query}` : ''}`);
   }
 
-  getContacts(params?: { page?: number; pageSize?: number; search?: string }): Promise<ApiResponse<ContactListResponse>> {
+  getHistoryDetail(id: string): Promise<ApiResponse<EmailMessageDto>> {
+    return this.http.get<ApiResponse<EmailMessageDto>>(`/api/mailbox/history/${id}`);
+  }
+
+  getContactHistory(contactId: string): Promise<ApiResponse<ContactHistoryResponse>> {
+    return this.http.get<ApiResponse<ContactHistoryResponse>>(`/api/mailbox/contact-history/${contactId}`);
+  }
+
+  getContacts(params?: { page?: number; pageSize?: number; search?: string; favorite?: boolean }): Promise<ApiResponse<ContactListResponse>> {
     const qs = new URLSearchParams();
     if (params?.page) qs.set('page', String(params.page));
     if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
     if (params?.search) qs.set('search', params.search);
+    if (params?.favorite) qs.set('favorite', 'true');
     const query = qs.toString();
     return this.http.get<ApiResponse<ContactListResponse>>(`/api/contacts${query ? `?${query}` : ''}`);
   }
@@ -48,6 +58,10 @@ export class MailboxService {
 
   deleteContact(contactId: string): Promise<void> {
     return this.http.delete<void>(`/api/contacts/${contactId}`);
+  }
+
+  toggleFavorite(contactId: string): Promise<ApiResponse<ContactDto>> {
+    return this.http.patch<ApiResponse<ContactDto>>(`/api/contacts/${contactId}/favorite`, {});
   }
 
   importCsv(csvContent: string): Promise<ApiResponse<ContactDto[]>> {

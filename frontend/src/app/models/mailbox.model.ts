@@ -8,6 +8,7 @@ export interface ContactDto {
   position?: string;
   source?: string;
   notes?: string;
+  isFavorite: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +20,7 @@ export interface CreateContactDto {
   company?: string;
   position?: string;
   notes?: string;
+  isFavorite?: boolean;
 }
 
 export interface UpdateContactDto {
@@ -28,6 +30,7 @@ export interface UpdateContactDto {
   company?: string;
   position?: string;
   notes?: string;
+  isFavorite?: boolean;
 }
 
 export interface ImportCsvDto {
@@ -44,6 +47,7 @@ export interface ContactListResponse {
 export interface EmailMessageDto {
   id: string;
   userId: string;
+  contactId?: string;
   recipientEmail: string;
   recipientName?: string;
   subject: string;
@@ -64,8 +68,15 @@ export interface SendEmailDto {
 export interface EmailHistoryResponse {
   items: EmailMessageDto[];
   total: number;
-  page: number;
-  pageSize: number;
+  sentCount: number;
+  failedCount: number;
+  draftCount: number;
+}
+
+export interface ContactHistoryResponse {
+  contact: ContactDto;
+  emails: EmailMessageDto[];
+  totalEmails: number;
 }
 
 export interface EmailScheduleDto {

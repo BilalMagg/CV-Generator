@@ -31,14 +31,26 @@ public class MailboxController : BaseApiController
     [HttpGet("history")]
     public async Task<IActionResult> GetHistory(
         [FromQuery] string? status,
+        [FromQuery] string? search,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
         var userId = GetUserId();
-        var query = _db.Set<EmailMessage>().Where(m => m.UserId == userId);
+        var query = _db.Set<EmailMessage>()
+            .Include(m => m.Contact)
+            .Where(m => m.UserId == userId);
 
         if (!string.IsNullOrWhiteSpace(status))
             query = query.Where(m => m.Status == status);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.ToLower();
+            query = query.Where(m =>
+                m.Subject.ToLower().Contains(term) ||
+                m.ToEmail.ToLower().Contains(term) ||
+                (m.ToName != null && m.ToName.ToLower().Contains(term)));
+        }
 
         var total = await query.CountAsync();
         var sentCount = await query.CountAsync(m => m.Status == "sent");
@@ -53,6 +65,7 @@ public class MailboxController : BaseApiController
             {
                 Id = m.Id,
                 UserId = m.UserId,
+                ContactId = m.ContactId,
                 RecipientEmail = m.ToEmail,
                 RecipientName = m.ToName,
                 Subject = m.Subject,
@@ -87,6 +100,7 @@ public class MailboxController : BaseApiController
         {
             Id = msg.Id,
             UserId = msg.UserId,
+            ContactId = msg.ContactId,
             RecipientEmail = msg.ToEmail,
             RecipientName = msg.ToName,
             Subject = msg.Subject,
@@ -96,6 +110,57 @@ public class MailboxController : BaseApiController
             Provider = msg.Provider,
             SentAt = msg.SentAt,
             CreatedAt = msg.CreatedAt
+        }));
+    }
+
+    [HttpGet("contact-history/{contactId}")]
+    public async Task<IActionResult> GetContactHistory(Guid contactId)
+    {
+        var userId = GetUserId();
+        var contact = await _db.Set<Contact>()
+            .FirstOrDefaultAsync(c => c.Id == contactId && c.UserId == userId);
+        if (contact is null)
+            return NotFound(ApiResponse<object>.Error("Contact not found"));
+
+        var emails = await _db.Set<EmailMessage>()
+            .Where(m => m.ContactId == contactId && m.UserId == userId)
+            .OrderByDescending(m => m.CreatedAt)
+            .Select(m => new EmailMessageDto
+            {
+                Id = m.Id,
+                UserId = m.UserId,
+                ContactId = m.ContactId,
+                RecipientEmail = m.ToEmail,
+                RecipientName = m.ToName,
+                Subject = m.Subject,
+                Body = m.Body,
+                Status = m.Status,
+                ErrorMessage = m.Error,
+                Provider = m.Provider,
+                SentAt = m.SentAt,
+                CreatedAt = m.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(ApiResponse<ContactHistoryResponse>.Ok(new ContactHistoryResponse
+        {
+            Contact = new ContactDto
+            {
+                Id = contact.Id,
+                UserId = contact.UserId,
+                Name = contact.Name,
+                Email = contact.Email,
+                Phone = contact.Phone,
+                Company = contact.Company,
+                Position = contact.Position,
+                Notes = contact.Notes,
+                Source = contact.Source,
+                IsFavorite = contact.IsFavorite,
+                CreatedAt = contact.CreatedAt,
+                UpdatedAt = contact.UpdatedAt
+            },
+            Emails = emails,
+            TotalEmails = emails.Count
         }));
     }
 
@@ -132,6 +197,7 @@ public class MailboxController : BaseApiController
                 {
                     Id = Guid.NewGuid(),
                     UserId = userId,
+                    ContactId = contact.Id,
                     FromEmail = fromEmail,
                     ToEmail = contact.Email,
                     ToName = contact.Name,
@@ -151,6 +217,7 @@ public class MailboxController : BaseApiController
                 {
                     Id = Guid.NewGuid(),
                     UserId = userId,
+                    ContactId = contact.Id,
                     FromEmail = fromEmail,
                     ToEmail = contact.Email,
                     ToName = contact.Name,

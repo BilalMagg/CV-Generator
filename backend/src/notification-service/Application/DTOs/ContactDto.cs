@@ -11,6 +11,7 @@ public class ContactDto
     public string? Position { get; set; }
     public string? Notes { get; set; }
     public string Source { get; set; } = "manual";
+    public bool IsFavorite { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -24,6 +25,7 @@ public class CreateContactDto
     public string? Position { get; set; }
     public string? Notes { get; set; }
     public string? Source { get; set; }
+    public bool IsFavorite { get; set; }
 }
 
 public class UpdateContactDto
@@ -34,6 +36,7 @@ public class UpdateContactDto
     public string? Company { get; set; }
     public string? Position { get; set; }
     public string? Notes { get; set; }
+    public bool? IsFavorite { get; set; }
 }
 
 public class ImportCsvDto

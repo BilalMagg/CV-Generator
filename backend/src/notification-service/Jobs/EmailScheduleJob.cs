@@ -44,6 +44,7 @@ public class EmailScheduleJob
                         {
                             Id = Guid.NewGuid(),
                             UserId = schedule.UserId,
+                            ContactId = contact.Id,
                             ToEmail = contact.Email,
                             ToName = contact.Name,
                             Subject = schedule.Subject,
@@ -61,6 +62,7 @@ public class EmailScheduleJob
                         {
                             Id = Guid.NewGuid(),
                             UserId = schedule.UserId,
+                            ContactId = contact.Id,
                             ToEmail = contact.Email,
                             ToName = contact.Name,
                             Subject = schedule.Subject,
