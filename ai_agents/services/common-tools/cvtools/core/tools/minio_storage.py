@@ -59,6 +59,7 @@ def upload_pdf(
     object_name: Optional[str] = None,
     bucket_name: str = DEFAULT_BUCKET,
     client: Optional[Minio] = None,
+    secure: bool = False,
 ) -> str:
     """
     Upload a PDF file to MinIO and return the object URL.
@@ -68,6 +69,7 @@ def upload_pdf(
         object_name: Name of the object in MinIO. Defaults to the file's basename.
         bucket_name: The MinIO bucket to upload to.
         client:      An existing Minio client. If None, one will be created.
+        secure:      Whether to use HTTPS in the returned URL.
 
     Returns:
         The URL to access the uploaded file (e.g., http://localhost:9000/cv-pdfs/abc123.pdf)
@@ -88,7 +90,8 @@ def upload_pdf(
     )
 
     endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-    return f"http://{endpoint}/{bucket_name}/{object_name}"
+    scheme = "https" if secure else "http"
+    return f"{scheme}://{endpoint}/{bucket_name}/{object_name}"
 
 
 def download_pdf(
@@ -108,10 +111,14 @@ def download_pdf(
 
     Returns:
         The absolute path to the downloaded file.
+
+    Raises:
+        S3Error: If the bucket or object does not exist.
     """
     if client is None:
         client = get_minio_client()
 
+    ensure_bucket(client, bucket_name)
     client.fget_object(bucket_name, object_name, download_path)
     return os.path.abspath(download_path)
 
@@ -149,4 +156,6 @@ def get_template_object(
 
     response = client.get_object(bucket_name, template_id)
     data = json.loads(response.read().decode("utf-8"))
+    response.close()
+    response.release_conn()
     return data
