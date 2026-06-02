@@ -39,7 +39,7 @@ public class KafkaPublisher : IKafkaPublisher, IDisposable
             var message = new Message<string, string>
             {
                 Key = GetKey(evt),
-                Value = JsonSerializer.Serialize(evt),
+                Value = JsonSerializer.Serialize(evt, evt.GetType()),
                 Headers = new Headers
                 {
                     { "event-type", System.Text.Encoding.UTF8.GetBytes(typeof(T).Name) },
