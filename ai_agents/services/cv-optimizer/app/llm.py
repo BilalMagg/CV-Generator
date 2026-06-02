@@ -1,19 +1,13 @@
-from langchain_mistralai import ChatMistralAI
 import os
-from dotenv import load_dotenv
+from cvtools.core.llm import get_llm
+
+_llm = None
 
 
-load_dotenv()
-
-_llm: ChatMistralAI | None = None
-
-
-def _get_llm() -> ChatMistralAI:
+def _get_llm():
     global _llm
     if _llm is None:
-        _llm = ChatMistralAI(
-            model="mistral-small-latest",
-            api_key=os.getenv("MISTRAL_API_KEY"),
-            temperature=0.3,
-        )
+        provider = os.getenv("LLM_PROVIDER") or "mistralai"
+        model = os.getenv("LLM_MODEL") or "mistral-small-latest"
+        _llm = get_llm(provider=provider, model=model, temperature=0.3)
     return _llm
