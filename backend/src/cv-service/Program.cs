@@ -41,6 +41,8 @@ builder.Services.AddScoped<ICvService, CvServiceImpl>();
 builder.Services.AddScoped<ICvVersionService, CvVersionServiceImpl>();
 builder.Services.AddScoped<ICvSectionService, CvSectionServiceImpl>();
 
+// builder.Services.AddScoped(IKafkaPublisher, KafkaPublisher);
+
 // Validators
 builder.Services.AddScoped<IValidator<CreateCvDto>, CreateCvValidator>();
 
