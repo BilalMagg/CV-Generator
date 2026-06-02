@@ -66,7 +66,7 @@ flowchart TB
 
     subgraph Infra["Infrastructure"]
         Kafka["Kafka :9092"]
-        SR["Schema Registry :8081"]
+
         MinIO["MinIO :9000/9001"]
         Keycloak["Keycloak :9090"]
         PG["PostgreSQL × 8 (5433‑5439)"]
@@ -96,11 +96,11 @@ flowchart TB
 | **AI Agents** | Python 3.11, FastAPI, LangChain, RAG (vector search) |
 | **Database** | PostgreSQL 16 + pgvector (×8 databases) |
 | **Auth** | Keycloak 26.2, OpenID Connect, JWT |
-| **Messaging** | Confluent Kafka (KRaft mode), Schema Registry |
+| **Messaging** | Confluent Kafka (KRaft mode) |
 | **Storage** | MinIO (S3-compatible, for CV PDFs) |
 | **Scheduling** | Hangfire (email reminders) |
 | **Container** | Docker, Docker Compose, Nginx |
-| **CI/Quality** | SonarQube |
+| **CI/Quality** | SonarCloud, Trivy, OWASP ZAP |
 
 ## Prerequisites
 
@@ -153,7 +153,7 @@ docker compose up -d user-db content-db workflow-db application-db \
   job-offer-db notification-db cv-db keycloak-db
 
 # Start Kafka + supporting services
-docker compose up -d kafka schema-registry kafka-ui minio
+docker compose up -d kafka kafka-ui minio
 
 # Start Keycloak (comes with keycloak-db)
 docker compose up -d keycloak
@@ -178,20 +178,20 @@ cd backend/src/workflow-service && dotnet run
 # Terminal 4: Application Service (:5004)
 cd backend/src/application-service && dotnet run
 
-# Terminal 5: CV Service (:5008)
+# Terminal 5: CV Service (:5005 · gRPC on same port)
 cd backend/src/cv-service && dotnet run
 
-# Terminal 6: Job Offer Service (:5006)
-cd backend/src/job-offer-service && dotnet run
-
-# Terminal 7: Notification Service (:5007)
+# Terminal 6: Notification Service (:5006)
 cd backend/src/notification-service && dotnet run
+
+# Terminal 7: Job Offer Service (:5007)
+cd backend/src/job-offer-service && dotnet run
 
 # Terminal 8: API Gateway (:8080)
 cd api_gateway && dotnet run
 ```
 
-> Port differences between Docker and local: Docker uses `8082–8088`, local dev uses `5001–5008` (with gRPC on `50001`). The API gateway's `appsettings.Development.json` overrides cluster destinations to localhost ports.
+> Port differences between Docker and local: Docker uses `8082–8088`, local dev uses `5001–5007`. User service has a dedicated gRPC port (`50001`); user-content, workflow, and cv-service multiplex gRPC on their REST port. The API gateway's `appsettings.Development.json` overrides cluster destinations to localhost ports.
 
 ### 3. Start frontend
 
@@ -218,12 +218,14 @@ docker compose up -d job-extractor search-agent template-agent \
 |---|---|---|---|---|---|---|
 | **API Gateway** | cv-api-gateway | 8080 | 8080 | — | — | — |
 | **User Service** | cv-user-service | 8082 | 5001 | 50001 | user_db | 5433 |
-| **User Content** | cv-user-content-service | 8083 | 5002 | — | content_db | 5434 |
-| **Workflow** | cv-workflow-service | 8084 | 5003 | — | workflow_db | 5435 |
+| **User Content** | cv-user-content-service | 8083 | 5002 | —¹ | content_db | 5434 |
+| **Workflow** | cv-workflow-service | 8084 | 5003 | —¹ | workflow_db | 5435 |
 | **Application** | cv-application-service | 8085 | 5004 | — | application_db | 5436 |
-| **Job Offer** | cv-job-offer-service | 8086 | 5006 | — | job_offer_db | 5437 |
-| **Notification** | cv-notification-service | 8087 | 5007 | — | notification_db | 5438 |
-| **CV Service** | cv-cv-service | 8088 | 5008 | — | cv_db | 5439 |
+| **CV Service** | cv-cv-service | 8088 | 5005 | —¹ | cv_db | 5439 |
+| **Notification** | cv-notification-service | 8087 | 5006 | — | notification_db | 5438 |
+| **Job Offer** | cv-job-offer-service | 8086 | 5007 | — | job_offer_db | 5437 |
+
+> ¹ These services include a gRPC endpoint on the same port as REST (HTTP2 multiplexing). Docker exposes separate ports (18083, 18084, 18088) for gRPC.
 
 ### AI Agents
 
@@ -243,7 +245,6 @@ docker compose up -d job-extractor search-agent template-agent \
 |---|---|---|---|---|
 | **Keycloak** | cv-keycloak | 8080 | 9090 | Realm: cv-realm |
 | **Kafka** | cv-kafka | 9092 / 29092 | 9092 | KRaft mode, no Zookeeper |
-| **Schema Registry** | cv-schema-registry | 8081 | 8081 | Confluent Schema Registry |
 | **Kafka UI** | cv-kafka-ui | 8080 | 8090 | Web UI for Kafka |
 | **MinIO** | cv-minio | 9000/9001 | 9000/9001 | S3 storage for CV PDFs |
 | **PostgreSQL DBs** | cv-*-db | 5432 | 5433–5439 | One per microservice |
@@ -363,7 +364,7 @@ CV_Generator/
 │       ├── application-service/    # Job application tracking, gRPC client
 │       ├── job-offer-service/      # Job offers, crawling, SignalR hub
 │       ├── notification-service/   # Email, reminders, Hangfire scheduler
-│       └── monolith-service/       # Legacy monolithic alternative
+│       ├── migration-tool/         # EF Core migrations runner
 │
 ├── frontend/
 │   ├── src/app/
@@ -377,6 +378,7 @@ CV_Generator/
 │   └── nginx.conf                  # Production nginx → cv-api-gateway:8080
 │
 ├── ai_agents/
+│   ├── app/                        # Entrypoint (FastAPI app)
 │   ├── services/
 │   │   ├── orchestrator/           # Pipeline coordinator (:8000)
 │   │   ├── job-extractor/          # Job requirement extraction (:8001)
@@ -386,7 +388,6 @@ CV_Generator/
 │   │   ├── contact-agent/          # Email delivery (:8005)
 │   │   ├── job-crawler/            # Job board crawling (:8006)
 │   │   └── common-tools/           # Shared Python library
-│   └── app/                        # Orchestrator app code
 │
 ├── terraform/                      # Infrastructure as Code
 └── Makefile                        # Root automation (docker, tests, etc.)

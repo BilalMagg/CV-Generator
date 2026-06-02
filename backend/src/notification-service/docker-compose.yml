@@ -9,6 +9,10 @@ services:
       - ASPNETCORE_URLS=http://0.0.0.0:8087
       - ConnectionStrings__DefaultConnection=Host=notification-db;Port=5432;Database=notification_db;Username=postgres;Password=postgres
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GMAIL_TOKEN_ENCRYPTION_KEY=${GMAIL_TOKEN_ENCRYPTION_KEY}
+      - Gmail__CallbackBaseUrl=http://localhost:8080
     depends_on:
       notification-db: { condition: service_healthy }
     networks:

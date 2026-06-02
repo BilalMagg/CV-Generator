@@ -4,9 +4,8 @@ using NotificationService.Application.Interfaces;
 
 namespace NotificationService.API.Controllers;
 
-[ApiController]
 [Route("api/notifications")]
-public class NotificationsController : ControllerBase
+public class NotificationsController : BaseApiController
 {
     private readonly INotificationService _notificationSvc;
 
@@ -15,9 +14,10 @@ public class NotificationsController : ControllerBase
         _notificationSvc = notificationSvc;
     }
 
-    [HttpGet("{userId}")]
-    public async Task<IActionResult> GetUserNotifications(Guid userId)
+    [HttpGet]
+    public async Task<IActionResult> GetUserNotifications()
     {
+        var userId = GetUserId();
         var notifications = await _notificationSvc.GetUserNotificationsAsync(userId);
         return Ok(notifications);
     }
@@ -36,16 +36,18 @@ public class NotificationsController : ControllerBase
         return Ok(new { message = "Welcome email triggered" });
     }
 
-    [HttpGet("{userId}/preferences")]
-    public async Task<IActionResult> GetPreferences(Guid userId)
+    [HttpGet("preferences")]
+    public async Task<IActionResult> GetPreferences()
     {
+        var userId = GetUserId();
         var prefs = await _notificationSvc.GetUserPreferencesAsync(userId);
         return Ok(prefs);
     }
 
-    [HttpPut("{userId}/preferences")]
-    public async Task<IActionResult> UpdatePreferences(Guid userId, [FromBody] UpdateNotificationPreferenceDto dto)
+    [HttpPut("preferences")]
+    public async Task<IActionResult> UpdatePreferences([FromBody] UpdateNotificationPreferenceDto dto)
     {
+        var userId = GetUserId();
         var prefs = await _notificationSvc.UpdateUserPreferencesAsync(userId, dto);
         return Ok(prefs);
     }

@@ -18,7 +18,34 @@
           Calendar
         </button>
         <button class="vbtn" (click)="goToToday()">Today</button>
+        <div class="filter-wrap">
+          <button class="vbtn filter-btn" [class.active]="showFilter()" (click)="toggleFilter()">
+            <svg viewBox="0 0 16 16" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M2 4h12M4 8h8M6 12h4"/>
+            </svg>
+            Filter
+          </button>
+          @if (showFilter()) {
+            <div class="filter-dropdown" (click)="$event.stopPropagation()">
+              <label class="filter-option">
+                <input type="checkbox" [checked]="config()?.showReminders !== false" (change)="toggleReminderFilter()" />
+                <span>Reminders</span>
+              </label>
+              <div class="filter-divider"></div>
+              <div class="filter-section-label">Applications</div>
+              @for (s of statusOptions; track s) {
+                <label class="filter-option">
+                  <input type="checkbox" [checked]="isStatusSelected(s)" (change)="toggleStatusFilter(s)" />
+                  <span>{{ getStatusLabel(s) }}</span>
+                </label>
+              }
+            </div>
+          }
+        </div>
       </div>
+      @if (showFilter()) {
+        <div class="filter-backdrop" (click)="closeFilter()"></div>
+      }
       <div class="nav-btns">
         <button class="nav-arrow" (click)="prevMonth()">
           <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -49,9 +76,16 @@
             [class.today]="cell.isToday"
           >
             <div class="day-num" [class.today-num]="cell.isToday">{{ cell.day }}</div>
-            @for (ev of eventsForDay(cell.day, cell.month, cell.year); track ev.title) {
-              <div class="event-pill" [ngClass]="'ev-' + ev.type">{{ ev.title }}</div>
-            }
+            <div class="day-events">
+              @for (ev of visibleEventsForDay(cell.day, cell.month, cell.year); track ev.id + ev.type) {
+                <div class="event-pill" [ngClass]="'ev-' + ev.type" [title]="ev.subtitle">{{ ev.title }}</div>
+              }
+              @if (hiddenCountForDay(cell.day, cell.month, cell.year) > 0) {
+                <div class="more-link" (click)="showDayPopover(cell.day, cell.month, cell.year)">
+                  +{{ hiddenCountForDay(cell.day, cell.month, cell.year) }} more
+                </div>
+              }
+            </div>
           </div>
         }
       </div>
@@ -72,24 +106,24 @@
         @if (loading()) {
           <div class="loading-msg">Loading…</div>
         }
-        @for (rem of remindersList(); track rem.id) {
-          <div class="upcoming-item" [class.is-past]="rem.status !== 'Pending'">
+        @for (ev of calendarEvents().slice(0, 20); track ev.id + ev.type) {
+          <div class="upcoming-item">
             <div class="date-chip">
-              <span class="chip-month">{{ rem.eventDate | date:'MMM' | uppercase }}</span>
-              <span class="chip-day">{{ rem.eventDate | date:'d' }}</span>
+              <span class="chip-month">{{ ev.date | date:'MMM' | uppercase }}</span>
+              <span class="chip-day">{{ ev.date | date:'d' }}</span>
             </div>
             <div class="item-body">
-              <div class="item-type">{{ rem.title }}</div>
-              @if (rem.message) {
-                <div class="item-meta">{{ rem.message }}</div>
+              <div class="item-type">{{ ev.title }}</div>
+              @if (ev.subtitle) {
+                <div class="item-meta">{{ ev.subtitle }}</div>
               }
             </div>
-            <svg class="item-chevron" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            <span class="item-badge" [ngClass]="'ev-' + ev.type">{{ ev.source === 'application' ? (ev.type) : '' }}</span>
           </div>
         } @empty {
           @if (!loading()) {
             <div class="empty-upcoming">
-              <p>No upcoming reminders.</p>
+              <p>No upcoming events.</p>
               <button class="add-first-btn" (click)="toggleForm()">Add your first reminder</button>
             </div>
           }
@@ -97,6 +131,31 @@
       </div>
     </div>
   </div>
+
+  <!-- Day popover -->
+  @if (popoverDay(); as dayInfo) {
+    <div class="popover-overlay" (click)="closeDayPopover()">
+      <div class="day-popover" (click)="$event.stopPropagation()">
+        <div class="popover-header">
+          <h3>{{ dayInfo.day }} {{ monthYear() }}</h3>
+          <button class="close-btn" (click)="closeDayPopover()">✕</button>
+        </div>
+        <div class="popover-body">
+          @for (ev of eventsForDay(dayInfo.day, dayInfo.month, dayInfo.year); track ev.id + ev.type) {
+            <div class="popover-event">
+              <span class="popover-dot" [ngClass]="'ev-' + ev.type"></span>
+              <div class="popover-info">
+                <div class="popover-title">{{ ev.title }}</div>
+                @if (ev.subtitle) {
+                  <div class="popover-sub">{{ ev.subtitle }}</div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
 
   <!-- Create reminder modal -->
   @if (showForm()) {

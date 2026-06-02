@@ -16,6 +16,7 @@ public class ApplicationServiceImplTests
     private readonly IApplicationRepository _appRepo;
     private readonly IApplicationStatusHistoryRepository _historyRepo;
     private readonly IKafkaPublisher _kafka;
+    private readonly IUserGrpcClientService _userGrpc;
     private readonly ApplicationServiceImpl _sut;
 
     public ApplicationServiceImplTests()
@@ -23,9 +24,10 @@ public class ApplicationServiceImplTests
         _appRepo = Substitute.For<IApplicationRepository>();
         _historyRepo = Substitute.For<IApplicationStatusHistoryRepository>();
         _kafka = Substitute.For<IKafkaPublisher>();
+        _userGrpc = Substitute.For<IUserGrpcClientService>();
         var logger = Substitute.For<ILogger<ApplicationServiceImpl>>();
 
-        _sut = new ApplicationServiceImpl(_appRepo, _historyRepo, _kafka, logger);
+        _sut = new ApplicationServiceImpl(_appRepo, _historyRepo, _kafka, _userGrpc, logger);
     }
 
     [Fact]

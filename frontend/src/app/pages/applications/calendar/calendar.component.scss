@@ -63,6 +63,7 @@
   border-radius: 8px;
   padding: 2px;
   gap: 1px;
+  position: relative;
 }
 
 .vbtn {
@@ -82,6 +83,60 @@
 
   &.active { background: var(--dark); color: white; }
   &:not(.active):hover { background: var(--bg-2); color: var(--text-2); }
+}
+
+.filter-btn { position: relative; }
+
+.filter-wrap { position: relative; }
+
+.filter-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-pop);
+  padding: 8px;
+  min-width: 180px;
+  z-index: 100;
+  animation: filterIn 0.12s ease-out;
+}
+
+@keyframes filterIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--text);
+  transition: background 0.1s;
+  &:hover { background: var(--bg); }
+  input { accent-color: var(--dark); }
+}
+
+.filter-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+.filter-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px 2px;
+}
+
+.filter-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
 }
 
 .nav-btns { display: flex; gap: 4px; }
@@ -114,8 +169,9 @@
 /* Calendar grid */
 .cal-grid-wrap {
   padding: 16px 16px 16px 24px;
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--bg);
+  min-height: 0;
 }
 
 .cal-grid {
@@ -130,20 +186,24 @@
 
 .cal-day-name {
   background: var(--surface);
-  padding: 8px 6px;
+  padding: 8px 4px;
   text-align: center;
   font-size: 10px;
   font-weight: 700;
   color: var(--text-4);
   letter-spacing: 0.06em;
+  min-width: 0;
 }
 
 .cal-day {
   background: var(--surface);
-  padding: 6px 6px 4px;
-  min-height: 76px;
+  padding: 4px 3px 3px;
+  height: 90px;
   cursor: pointer;
   transition: background 0.1s;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 
   &:hover { background: var(--bg); }
   &.other-month { background: oklch(0.99 0.002 80); }
@@ -151,16 +211,17 @@
 }
 
 .day-num {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
+  flex-shrink: 0;
 }
 
 .today-num {
@@ -169,20 +230,44 @@
   font-weight: 700;
 }
 
+.day-events {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
 .event-pill {
   display: block;
-  padding: 2px 5px;
-  border-radius: 4px;
-  font-size: 9.5px;
-  margin-bottom: 2px;
+  max-width: 100%;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  margin-bottom: 1px;
   font-weight: 500;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  line-height: 1.4;
 
   &.ev-interview  { background: oklch(0.94 0.04 250); color: oklch(0.42 0.16 250); }
   &.ev-follow-up  { background: oklch(0.93 0.04 155); color: oklch(0.38 0.12 155); }
   &.ev-deadline   { background: oklch(0.95 0.05 65);  color: oklch(0.45 0.13 65); }
+  &.ev-applied    { background: oklch(0.95 0.04 200); color: oklch(0.35 0.14 200); }
+  &.ev-reviewed   { background: oklch(0.94 0.04 280); color: oklch(0.40 0.15 280); }
+  &.ev-accepted   { background: oklch(0.93 0.06 150); color: oklch(0.35 0.14 150); }
+  &.ev-rejected   { background: oklch(0.94 0.05 30);  color: oklch(0.45 0.16 30); }
+  &.ev-cancelled  { background: oklch(0.94 0.02 20);  color: oklch(0.45 0.05 20); }
+  &.ev-reminder   { background: oklch(0.95 0.03 80);  color: oklch(0.45 0.10 80); }
+}
+
+.more-link {
+  font-size: 9px;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 3px;
+  &:hover { background: var(--accent-soft); }
 }
 
 /* Upcoming panel */
@@ -295,7 +380,24 @@
   white-space: nowrap;
 }
 
-.item-chevron { color: var(--text-4); flex-shrink: 0; }
+.item-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  text-transform: capitalize;
+
+  &.ev-interview  { background: oklch(0.94 0.04 250); color: oklch(0.42 0.16 250); }
+  &.ev-follow-up  { background: oklch(0.93 0.04 155); color: oklch(0.38 0.12 155); }
+  &.ev-deadline   { background: oklch(0.95 0.05 65);  color: oklch(0.45 0.13 65); }
+  &.ev-applied    { background: oklch(0.95 0.04 200); color: oklch(0.35 0.14 200); }
+  &.ev-reviewed   { background: oklch(0.94 0.04 280); color: oklch(0.40 0.15 280); }
+  &.ev-accepted   { background: oklch(0.93 0.06 150); color: oklch(0.35 0.14 150); }
+  &.ev-rejected   { background: oklch(0.94 0.05 30);  color: oklch(0.45 0.16 30); }
+  &.ev-cancelled  { background: oklch(0.94 0.02 20);  color: oklch(0.45 0.05 20); }
+  &.ev-reminder   { background: oklch(0.95 0.03 80);  color: oklch(0.45 0.10 80); }
+}
 
 .loading-msg, .empty-upcoming {
   text-align: center;
@@ -425,4 +527,90 @@
 
 .alert-error {
   background: oklch(0.96 0.04 25); border: 1px solid oklch(0.88 0.1 25); color: oklch(0.45 0.16 25);
+}
+
+/* Day popover */
+.popover-overlay {
+  position: fixed;
+  inset: 0;
+  background: oklch(0.1 0.01 80 / 0.3);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.day-popover {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: var(--shadow-pop);
+  animation: modalIn 0.15s ease-out;
+}
+
+.popover-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); font-family: var(--font-display); }
+}
+
+.popover-body {
+  padding: 8px 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.popover-event {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+
+  &:last-child { border-bottom: none; }
+}
+
+.popover-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+
+  &.ev-interview  { background: oklch(0.42 0.16 250); }
+  &.ev-follow-up  { background: oklch(0.38 0.12 155); }
+  &.ev-deadline   { background: oklch(0.45 0.13 65); }
+  &.ev-applied    { background: oklch(0.35 0.14 200); }
+  &.ev-reviewed   { background: oklch(0.40 0.15 280); }
+  &.ev-accepted   { background: oklch(0.35 0.14 150); }
+  &.ev-rejected   { background: oklch(0.45 0.16 30); }
+  &.ev-cancelled  { background: oklch(0.45 0.05 20); }
+  &.ev-reminder   { background: oklch(0.45 0.10 80); }
+}
+
+.popover-info { flex: 1; min-width: 0; }
+
+.popover-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
 }

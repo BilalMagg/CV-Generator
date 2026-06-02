@@ -3,16 +3,25 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReminderService } from '@app/services/reminder.service';
 import { AuthService } from '@app/services/auth.service';
+import { ApplicationService } from '@app/services/application.service';
+import { CalendarConfigurationService } from '@app/services/calendar-configuration.service';
 import {
   CreateReminderDto,
   ReminderResultDto,
   ReminderOffsetType,
   REMINDER_OFFSET_OPTIONS,
 } from '@app/models/reminder.model';
+import { CalendarEventDto } from '@app/models/calendar-event.model';
+import { CalendarConfigurationDto } from '@app/models/calendar-configuration.model';
+import { STATUS_LABELS } from '@app/models/application.model';
 
 interface CalendarEvent {
-  type: 'interview' | 'follow-up' | 'deadline';
+  id: string;
+  date: Date;
+  type: string;
   title: string;
+  subtitle?: string;
+  source: 'reminder' | 'application';
 }
 
 interface CalendarDay {
@@ -23,7 +32,8 @@ interface CalendarDay {
   isToday: boolean;
 }
 
-// We will use ReminderResultDto from the model instead
+const MAX_VISIBLE_EVENTS = 3;
+const STATUS_OPTIONS = ['PENDING', 'REVIEWED', 'INTERVIEW', 'ACCEPTED', 'REJECTED', 'CANCELLED'];
 
 @Component({
   selector: 'app-calendar',
@@ -35,11 +45,12 @@ interface CalendarDay {
 export class CalendarComponent implements OnInit {
   private reminderSvc = inject(ReminderService);
   private authSvc = inject(AuthService);
+  private appSvc = inject(ApplicationService);
+  private configSvc = inject(CalendarConfigurationService);
 
   currentMonth = signal(new Date());
   viewMode = signal<'month' | 'week'>('month');
   
-  // Real reminders from service
   remindersList = signal<ReminderResultDto[]>([]);
   offsetOptions = REMINDER_OFFSET_OPTIONS;
   loading = signal(false);
@@ -47,7 +58,12 @@ export class CalendarComponent implements OnInit {
   error = signal('');
   successMsg = signal('');
 
-  // Form state
+  config = signal<CalendarConfigurationDto | null>(null);
+  appEvents = signal<CalendarEventDto[]>([]);
+  showFilter = signal(false);
+  configLoading = signal(false);
+  popoverDay = signal<CalendarDay | null>(null);
+
   showForm = signal(false);
   form = {
     title: '',
@@ -56,8 +72,82 @@ export class CalendarComponent implements OnInit {
     reminderOffset: 'OneDay' as ReminderOffsetType,
   };
 
+  statusOptions = STATUS_OPTIONS;
+  statusLabels = STATUS_LABELS;
+
   async ngOnInit() {
-    await this.loadReminders();
+    await Promise.all([
+      this.loadReminders(),
+      this.loadConfig(),
+    ]);
+  }
+
+  calendarEvents = computed(() => {
+    const cfg = this.config();
+    const events: CalendarEvent[] = [];
+
+    if (cfg?.showReminders !== false) {
+      for (const r of this.remindersList()) {
+        events.push({
+          id: r.id,
+          date: new Date(r.eventDate),
+          type: this.getEventTypeFromTitle(r.title),
+          title: r.title,
+          subtitle: r.message,
+          source: 'reminder',
+        });
+      }
+    }
+
+    const selected = cfg?.selectedStatuses ?? [];
+    for (const e of this.appEvents()) {
+      if (selected.length === 0 || this.isStatusInFilter(e.type, selected)) {
+        events.push({
+          id: e.applicationId,
+          date: new Date(e.date + 'T00:00:00'),
+          type: e.type,
+          title: e.title,
+          subtitle: `${e.companyName} - ${e.positionTitle}`,
+          source: 'application',
+        });
+      }
+    }
+
+    return events;
+  });
+
+  eventsForDay(day: number, month?: number, year?: number): CalendarEvent[] {
+    const d = this.currentMonth();
+    const targetDate = new Date(year ?? d.getFullYear(), month ?? d.getMonth(), day);
+    return this.calendarEvents().filter(ev =>
+      ev.date.getFullYear() === targetDate.getFullYear() &&
+      ev.date.getMonth() === targetDate.getMonth() &&
+      ev.date.getDate() === targetDate.getDate()
+    );
+  }
+
+  visibleEventsForDay(day: number, month?: number, year?: number): CalendarEvent[] {
+    return this.eventsForDay(day, month, year).slice(0, MAX_VISIBLE_EVENTS);
+  }
+
+  hiddenCountForDay(day: number, month?: number, year?: number): number {
+    const total = this.eventsForDay(day, month, year).length;
+    return Math.max(0, total - MAX_VISIBLE_EVENTS);
+  }
+
+  private isStatusInFilter(type: string, statuses: string[]): boolean {
+    const upper = type.toUpperCase();
+    if (upper === 'APPLIED') return statuses.includes('PENDING');
+    return statuses.includes(upper);
+  }
+
+  showDayPopover(day: number, month?: number, year?: number) {
+    const d = this.currentMonth();
+    this.popoverDay.set({ day, month: month ?? d.getMonth(), year: year ?? d.getFullYear(), isCurrentMonth: true, isToday: false });
+  }
+
+  closeDayPopover() {
+    this.popoverDay.set(null);
   }
 
   async loadReminders() {
@@ -75,6 +165,103 @@ export class CalendarComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async loadConfig() {
+    this.configLoading.set(true);
+    try {
+      const user = this.authSvc.currentUser();
+      if (!user) return;
+      const res = await this.configSvc.getConfiguration();
+      if (res.success && res.data) {
+        this.config.set(res.data);
+        await this.loadAppEvents();
+      }
+    } catch (e: any) {
+      console.error('Failed to load config', e);
+    } finally {
+      this.configLoading.set(false);
+    }
+  }
+
+  async loadAppEvents() {
+    const d = this.currentMonth();
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const from = new Date(year, month, 1);
+    const to = new Date(year, month + 1, 0, 23, 59, 59);
+
+    const statuses = this.config()?.selectedStatuses;
+    if (!statuses || statuses.length === 0) {
+      this.appEvents.set([]);
+      return;
+    }
+
+    try {
+      const res = await this.appSvc.getCalendarEvents({
+        from: from.toISOString(),
+        to: to.toISOString(),
+        statuses,
+      });
+      if (res.success && res.data) {
+        this.appEvents.set(res.data);
+      }
+    } catch (e: any) {
+      console.error('Failed to load app events', e);
+    }
+  }
+
+  async saveConfig() {
+    const cfg = this.config();
+    if (!cfg) return;
+    try {
+      await this.configSvc.updateConfiguration({
+        showReminders: cfg.showReminders,
+        selectedStatuses: cfg.selectedStatuses,
+      });
+      await this.loadAppEvents();
+    } catch (e: any) {
+      console.error('Failed to save config', e);
+    }
+  }
+
+  toggleFilter() {
+    this.showFilter.update(v => !v);
+  }
+
+  closeFilter() {
+    this.showFilter.set(false);
+  }
+
+  toggleReminderFilter() {
+    this.config.update(cfg => {
+      if (!cfg) return cfg;
+      return { ...cfg, showReminders: !cfg.showReminders };
+    });
+    this.saveConfig();
+  }
+
+  toggleStatusFilter(status: string) {
+    this.config.update(cfg => {
+      if (!cfg) return cfg;
+      const current = [...cfg.selectedStatuses];
+      const idx = current.indexOf(status);
+      if (idx >= 0) {
+        current.splice(idx, 1);
+      } else {
+        current.push(status);
+      }
+      return { ...cfg, selectedStatuses: current };
+    });
+    this.saveConfig();
+  }
+
+  isStatusSelected(status: string): boolean {
+    return this.config()?.selectedStatuses?.includes(status) ?? false;
+  }
+
+  getStatusLabel(status: string): string {
+    return (this.statusLabels as Record<string, string>)[status] ?? status;
   }
 
   toggleForm() {
@@ -186,56 +373,34 @@ export class CalendarComponent implements OnInit {
 
   goToToday() {
     this.currentMonth.set(new Date());
+    this.loadAppEvents();
   }
 
-  eventsForDay(day: number, month?: number, year?: number): CalendarEvent[] {
-    const d = this.currentMonth();
-    const targetDate = new Date(year ?? d.getFullYear(), month ?? d.getMonth(), day);
-    
-    return this.remindersList()
-      .filter(r => {
-        const rDate = new Date(r.eventDate);
-        return rDate.getDate() === targetDate.getDate() &&
-               rDate.getMonth() === targetDate.getMonth() &&
-               rDate.getFullYear() === targetDate.getFullYear();
-      })
-      .map(r => ({
-        // Map reminder to a type for the legend colors
-        // Since ReminderResultDto doesn't have an explicit 'type', 
-        // we can guess from title or just use a default 'interview' color for now,
-        // or if the model had a type I would use it.
-        // Looking at previous code, it used Interview, Follow-up, Deadline.
-        type: this.getEventTypeFromTitle(r.title),
-        title: r.title
-      }));
-  }
-
-  private getEventTypeFromTitle(title: string): 'interview' | 'follow-up' | 'deadline' {
+  private getEventTypeFromTitle(title: string): string {
     const t = title.toLowerCase();
     if (t.includes('interview')) return 'interview';
     if (t.includes('follow') || t.includes('follow-up')) return 'follow-up';
     if (t.includes('deadline') || t.includes('due')) return 'deadline';
-    return 'interview'; // default
+    if (t.includes('apply') || t.includes('applied')) return 'applied';
+    if (t.includes('review')) return 'reviewed';
+    return 'reminder';
   }
 
   prevMonth() {
     const d = new Date(this.currentMonth());
     d.setMonth(d.getMonth() - 1);
     this.currentMonth.set(d);
+    this.loadAppEvents();
   }
 
   nextMonth() {
     const d = new Date(this.currentMonth());
     d.setMonth(d.getMonth() + 1);
     this.currentMonth.set(d);
+    this.loadAppEvents();
   }
 
   toggleView(view: 'month' | 'week') {
     this.viewMode.set(view);
-  }
-
-  toggleReminder(id: string) {
-    // This was for mock data, maybe keep it or remove it?
-    // The user wants real data, so I'll remove it.
   }
 }

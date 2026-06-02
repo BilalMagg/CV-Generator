@@ -27,5 +27,9 @@ RUN dotnet publish -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENV ASPNETCORE_URLS="http://0.0.0.0:8082"
+ENV PORT=8082
+ENV GRPC_PORT=18082
+ENV ASPNETCORE_URLS="http://0.0.0.0:${PORT}"
+EXPOSE ${PORT}
+EXPOSE ${GRPC_PORT}
 ENTRYPOINT ["dotnet", "UserService.dll"]

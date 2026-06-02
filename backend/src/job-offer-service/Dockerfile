@@ -25,6 +25,7 @@ WORKDIR /app
 # Added the Kafka linux dependency since your service uses Kafka
 RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 COPY --from=publish /app/publish .
-ENV ASPNETCORE_URLS="http://0.0.0.0:8086"
-EXPOSE 8086
+ENV PORT=8086
+ENV ASPNETCORE_URLS="http://0.0.0.0:${PORT}"
+EXPOSE ${PORT}
 ENTRYPOINT ["dotnet", "job-offer-service.dll"]

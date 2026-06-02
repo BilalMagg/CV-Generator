@@ -101,4 +101,8 @@ export class LoginComponent {
   signInWithSso(): void {
     this.authService.loginWithSso();
   }
+
+  signInWithProvider(provider: string): void {
+    this.authService.loginWithSso(provider);
+  }
 }

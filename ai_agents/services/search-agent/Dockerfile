@@ -12,4 +12,4 @@ COPY services/common-tools/cvtools/models/ ./app/models/
 
 COPY services/search-agent/app/ ./app/
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8002}

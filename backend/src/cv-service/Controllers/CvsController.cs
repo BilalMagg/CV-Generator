@@ -63,8 +63,9 @@ public class CvsController : ControllerBase
 
     private string GetUserId()
     {
-        return User.FindFirst("sub")?.Value
-            ?? User.FindFirst("local_user_id")?.Value
+        return Request.Headers["X-User-Id"].FirstOrDefault()
+            ?? User.FindFirst("user_id")?.Value
+            ?? User.FindFirst("sub")?.Value
             ?? throw new UnauthorizedAccessException();
     }
 }

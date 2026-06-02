@@ -19,6 +19,7 @@ public interface IApplicationRepository
     Task<List<MonthlyTrendDto>> GetMonthlyTrendsAsync(Guid? candidateId, int months = 12);
     Task<double?> GetAverageResponseTimeAsync(Guid? candidateId);
     Task<bool> ToggleSaveAsync(Guid id);
+    Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid candidateId, DateTime from, DateTime to, string[]? statuses);
     Task<List<ActivityItemDto>> GetActivityFeedAsync(Guid? candidateId, int limit = 50);
     Task<int> GetActivityFeedCountAsync(Guid? candidateId);
 }
@@ -228,6 +229,57 @@ public class ApplicationRepository : IApplicationRepository
         await _db.SaveChangesAsync();
         _logger.LogInformation("Toggled save for application {Id} → {IsSaved}", id, app.IsSaved);
         return app.IsSaved;
+    }
+
+    public async Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid candidateId, DateTime from, DateTime to, string[]? statuses)
+    {
+        var events = new List<CalendarEventDto>();
+
+        var parsedStatuses = statuses?.Select(s => Enum.TryParse<ApplicationStatus>(s, true, out var st) ? st : (ApplicationStatus?)null)
+            .Where(s => s.HasValue)
+            .Select(s => s!.Value)
+            .ToList() ?? [];
+
+        if (parsedStatuses.Contains(ApplicationStatus.PENDING))
+        {
+            var appliedEvents = await _db.Applications
+                .Where(a => a.CandidateId == candidateId
+                    && a.AppliedAt >= from
+                    && a.AppliedAt <= to)
+                .Select(a => new CalendarEventDto(
+                    a.AppliedAt.ToString("yyyy-MM-dd"),
+                    "applied",
+                    "Applied at " + a.CompanyName,
+                    a.Id,
+                    a.CompanyName,
+                    a.PositionTitle
+                ))
+                .ToListAsync();
+
+            events.AddRange(appliedEvents);
+        }
+
+        var statusEvents = await _db.ApplicationStatusHistory
+            .Include(h => h.Application)
+            .Where(h => h.Application != null
+                && h.Application.CandidateId == candidateId
+                && h.ChangedAt >= from
+                && h.ChangedAt <= to
+                && parsedStatuses.Contains(h.NewStatus)
+                && h.NewStatus != ApplicationStatus.PENDING)
+            .Select(h => new CalendarEventDto(
+                h.ChangedAt.ToString("yyyy-MM-dd"),
+                h.NewStatus.ToString().ToLower(),
+                h.Application!.CompanyName + " - " + h.NewStatus.ToString(),
+                h.ApplicationId,
+                h.Application!.CompanyName,
+                h.Application.PositionTitle
+            ))
+            .ToListAsync();
+
+        events.AddRange(statusEvents);
+
+        return events.OrderBy(e => e.Date).ToList();
     }
 
     public async Task<List<ActivityItemDto>> GetActivityFeedAsync(Guid? candidateId, int limit = 50)

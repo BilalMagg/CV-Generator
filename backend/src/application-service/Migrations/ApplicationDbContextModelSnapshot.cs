@@ -78,6 +78,33 @@ namespace ApplicationService.Migrations
                     b.ToTable("applications");
                 });
 
+            modelBuilder.Entity("ApplicationService.Entities.ApplicationConfiguration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SelectedStatuses")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("ShowReminders")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("application_configurations");
+                });
+
             modelBuilder.Entity("ApplicationService.Entities.ApplicationStatusHistory", b =>
                 {
                     b.Property<Guid>("Id")

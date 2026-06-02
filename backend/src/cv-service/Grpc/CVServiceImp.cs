@@ -90,7 +90,6 @@ public class CvServiceImp : CVServiceGrpc.CVServiceGrpcBase
 
         cv.Title = request.Title;
         cv.TemplateId = request.TemplateId;
-        cv.UserId = Guid.Parse(request.UserId);
         cv.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
