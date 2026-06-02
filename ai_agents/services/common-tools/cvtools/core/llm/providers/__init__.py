@@ -1,13 +1,10 @@
-from cvtools.core.llm.providers import groq
-from cvtools.core.llm.providers import openai
-from cvtools.core.llm.providers import google
-from cvtools.core.llm.providers import mistralai
+import importlib
 
-_REGISTRY: dict[str, object] = {
-    "groq": groq,
-    "openai": openai,
-    "mistralai": mistralai,
-    "google": google,
+_REGISTRY: dict[str, str] = {
+    "groq": "cvtools.core.llm.providers.groq",
+    "openai": "cvtools.core.llm.providers.openai",
+    "mistralai": "cvtools.core.llm.providers.mistralai",
+    "google": "cvtools.core.llm.providers.google",
 }
 
 _MODEL_PREFIX_MAP: dict[str, str] = {
@@ -32,13 +29,13 @@ def resolve_provider(model: str) -> str | None:
 
 
 def get_provider(name: str):
-    module = _REGISTRY.get(name)
-    if module is None:
+    module_path = _REGISTRY.get(name)
+    if module_path is None:
         available = list(_REGISTRY)
         raise ValueError(
             f"Unknown provider '{name}'. Available providers: {available}"
         )
-    return module
+    return importlib.import_module(module_path)
 
 
 def list_providers() -> list[str]:
@@ -49,5 +46,4 @@ __all__ = [
     "resolve_provider",
     "get_provider",
     "list_providers",
-    "_REGISTRY",
 ]
