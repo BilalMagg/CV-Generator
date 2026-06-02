@@ -107,7 +107,7 @@ export class ApplicationDetailComponent implements OnInit {
   async onDelete() {
     const app = this.application();
     if (!app || !confirm('Delete this application?')) return;
-    try { await this.appService.delete(app.id); this.router.navigate(['/applications/list']); }
+    try { await this.appService.delete(app.id); this.router.navigate(['/applications/kanban']); }
     catch { }
   }
 

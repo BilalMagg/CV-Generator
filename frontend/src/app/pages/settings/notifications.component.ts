@@ -1,7 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '@app/services/auth.service';
 import { NotificationService } from '@app/services/notification.service';
 import {
   NotificationPreference,
@@ -16,7 +15,6 @@ import {
   styleUrl: './notifications.component.scss',
 })
 export class NotificationsComponent implements OnInit {
-  private auth = inject(AuthService);
   private notifSvc = inject(NotificationService);
 
   preferences = signal<NotificationPreference | null>(null);
@@ -33,10 +31,8 @@ export class NotificationsComponent implements OnInit {
   }
 
   private async loadPreferences() {
-    const user = this.auth.currentUser();
-    if (!user) return;
     try {
-      const res = await this.notifSvc.getPreferences(user.userId);
+      const res = await this.notifSvc.getPreferences();
       if (res.success && res.data) this.preferences.set(res.data);
     } catch {
       /* will show empty state */
@@ -59,8 +55,7 @@ export class NotificationsComponent implements OnInit {
 
   async savePreferences() {
     const prefs = this.preferences();
-    const user = this.auth.currentUser();
-    if (!prefs || !user) return;
+    if (!prefs) return;
 
     this.saving.set(true);
     try {
@@ -73,7 +68,7 @@ export class NotificationsComponent implements OnInit {
         weeklyDigest: prefs.weeklyDigest,
         defaultReminderDaysBefore: prefs.defaultReminderDaysBefore,
       };
-      const saved = await this.notifSvc.updatePreferences(user.userId, dto);
+      const saved = await this.notifSvc.updatePreferences(dto);
       if (saved.success && saved.data) this.preferences.set(saved.data);
       this.showSuccessToast();
     } catch {

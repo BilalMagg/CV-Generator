@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit, computed } from '@angular/core';
+import { Component, signal, inject, OnInit, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApplicationService } from '@app/services/application.service';
@@ -33,7 +33,11 @@ export class KanbanComponent implements OnInit {
 
   columns = signal<Column[]>(COLUMNS.map(c => ({ ...c, items: [] })));
   loading = signal(true);
-  view = signal<'board' | 'list' | 'activity' | 'saved'>('board');
+  view = signal<'board' | 'list' | 'activity' | 'saved'>((localStorage.getItem('kanban-view') as 'board' | 'list' | 'activity' | 'saved') || 'board');
+
+  constructor() {
+    effect(() => localStorage.setItem('kanban-view', this.view()));
+  }
 
   activityFeed = signal<ActivityItemDto[]>([]);
   activityTotal = signal(0);

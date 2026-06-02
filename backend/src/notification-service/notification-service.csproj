@@ -10,10 +10,13 @@
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.69.0" />
+    <PackageReference Include="Google.Apis.Gmail.v1" Version="1.68.0.3427" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.62.0" />
     <PackageReference Include="Grpc.Net.Client" Version="2.67.0" />
     <PackageReference Include="Grpc.Net.ClientFactory" Version="2.67.0" />
     <PackageReference Include="Google.Protobuf" Version="3.28.2" />
+    <PackageReference Include="Cronos" Version="0.4.0" />
     <PackageReference Include="Grpc.Tools" Version="2.67.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -35,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\common-protos\common-protos.csproj" />
+    <ProjectReference Include="..\shared\CVGenerator.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
