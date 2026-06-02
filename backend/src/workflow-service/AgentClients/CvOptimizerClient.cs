@@ -10,14 +10,14 @@ public interface ICvOptimizerClient
 
 public class CvOptimizerClient : ICvOptimizerClient
 {
-    private readonly HttpClient _client;
+    private readonly HttpClient _client; //okiii
 
     public CvOptimizerClient(HttpClient client)
     {
         _client = client;
     }
 
-    public async Task<OptimizerOutput?> OptimizeAsync(OptimizerInput input)
+    public async Task<OptimizerOutput?> OptimizeAsync(OptimizerInput input) //okiii
     {
         var response = await _client.PostAsJsonAsync("optimize", input);
         response.EnsureSuccessStatusCode();
@@ -28,7 +28,7 @@ public class CvOptimizerClient : ICvOptimizerClient
     {
         try
         {
-            var response = await _client.GetAsync("health");
+            var response = await _client.GetAsync("health"); ///yes okiiii
             return response.IsSuccessStatusCode;
         }
         catch

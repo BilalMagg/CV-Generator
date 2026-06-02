@@ -11,7 +11,7 @@ public interface IJobExtractorClient
 public class JobExtractorClient : IJobExtractorClient
 {
     private readonly HttpClient _client;
-
+//niiiice 
     public JobExtractorClient(HttpClient client)
     {
         _client = client;
