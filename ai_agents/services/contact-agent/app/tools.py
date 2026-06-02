@@ -17,30 +17,20 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
 
-import requests                           # pip install requests
+import requests
 from app.core.config import settings
+from cvtools.core.llm import get_llm as _get_llm_base
 
 from langchain_core.tools import tool
 
-from langchain_groq import ChatGroq
-
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Shared LLM instance used by Tools 2 & 3
-# Using Groq here to spread load across providers (agent uses Mistral)
-# Lazy init so we don't crash at import time when GROQ_API_KEY is unset
-_llm: ChatGroq | None = None
+_llm = None
 
 
-def _get_llm() -> ChatGroq:
+def _get_llm():
     global _llm
     if _llm is None:
-        _llm = ChatGroq(
-            model=settings.TOOL_MODEL,
-            temperature=0.3,
-        )
+        provider = os.getenv("LLM_PROVIDER") or "groq"
+        _llm = _get_llm_base(provider=provider, model=settings.TOOL_MODEL, temperature=0.3)
     return _llm
 
 @tool

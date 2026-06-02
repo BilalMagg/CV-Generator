@@ -4,7 +4,7 @@ WORKDIR /app
 
 
 COPY services/common-tools services/common-tools
-RUN pip install --no-cache-dir -e ./services/common-tools
+RUN pip install --no-cache-dir -e "./services/common-tools[all]"
 
 COPY services/template-agent/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt

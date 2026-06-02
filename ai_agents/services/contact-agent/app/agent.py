@@ -6,14 +6,13 @@ LangGraph ReAct agent, and returns a ContactOutput.
 """
 
 import json
+import os
 import re
 import uuid
 
-import os
 from app.core.config import settings
-from langchain_groq import ChatGroq
+from cvtools.core.llm import get_llm
 from langgraph.prebuilt import create_react_agent
-from dotenv import load_dotenv
 
 from langchain_core.messages import SystemMessage
 
@@ -26,8 +25,6 @@ from app.tools import (
     send_email_with_cv,
 )
 
-load_dotenv()
-
 _tools = [
     extract_cv_text,          # Step 1 — flatten OptimizedCV sections → plain text
     generate_email_subject,   # Step 2 — craft subject line
@@ -39,10 +36,8 @@ _system_message = SystemMessage(content=CONTACT_AGENT_SYSTEM_PROMPT)
 
 
 def _get_agent():
-    _llm = ChatGroq(
-        model=settings.AGENT_MODEL,
-        temperature=settings.LLM_TEMPERATURE,
-    )
+    provider = os.getenv("LLM_PROVIDER") or "groq"
+    _llm = get_llm(provider=provider, model=settings.AGENT_MODEL, temperature=settings.LLM_TEMPERATURE)
     return create_react_agent(_llm, _tools, prompt=_system_message)
 
 
