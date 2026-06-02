@@ -13,4 +13,4 @@ COPY services/common-tools/cvtools/models/ ./app/models/
 
 COPY services/job-extractor/app/ ./app/
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8001}

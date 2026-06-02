@@ -118,20 +118,28 @@ test-template:
 	cd ai_agents && PYTHONPATH=. .venv/Scripts/python.exe app/agents/template_agent/test_template_agent.py
 
 # ----------------------------------
+# Environment (load root .env)
+# ----------------------------------
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
+# ----------------------------------
 # Infrastructure
 # ----------------------------------
 
 kafka-topics:
-	docker exec cv-kafka kafka-topics --bootstrap-server localhost:9092 --list
+	docker exec cv-kafka kafka-topics --bootstrap-server ${KAFKA_HOST:-localhost}:${KAFKA_PORT:-9092} --list
 
 minio-console:
-	@echo "MinIO Console: http://localhost:9001"
-	@echo "MinIO API: http://localhost:9000"
-	@echo "Credentials: minioadmin/minioadmin"
+	@echo "MinIO Console: http://localhost:${MINIO_CONSOLE_PORT:-9001}"
+	@echo "MinIO API: http://localhost:${MINIO_PORT:-9000}"
+	@echo "Credentials: ${MINIO_ROOT_USER:-minioadmin}/${MINIO_ROOT_PASSWORD:-minioadmin}"
 
 keycloak-admin:
-	@echo "Keycloak Admin: http://localhost:8443"
-	@echo "Credentials: admin/admin"
+	@echo "Keycloak Admin: http://${KEYCLOAK_EXTERNAL_HOST:-localhost}:${KEYCLOAK_EXTERNAL_PORT:-9090}"
+	@echo "Credentials: ${KEYCLOAK_ADMIN_USERNAME:-admin}/${KEYCLOAK_ADMIN_PASSWORD:-admin}"
 
 kafka-ui:
 	@echo "Kafka UI: http://localhost:8090"

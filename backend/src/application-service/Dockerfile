@@ -28,7 +28,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 COPY --from=publish /app/publish .
-ENV ASPNETCORE_URLS="http://0.0.0.0:8085"
-EXPOSE 8085
-EXPOSE 18085
+ENV PORT=8085
+ENV GRPC_PORT=18085
+ENV ASPNETCORE_URLS="http://0.0.0.0:${PORT}"
+EXPOSE ${PORT}
+EXPOSE ${GRPC_PORT}
 ENTRYPOINT ["dotnet", "ApplicationService.dll"]

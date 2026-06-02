@@ -1,3 +1,9 @@
+# ── Environment (load root .env) ─────────────────────────────────────────────
+ifneq (,$(wildcard ../.env))
+    include ../.env
+    export
+endif
+
 KAFKA=cv-kafka
 
 SERVICES := user-service user-content-service workflow-service \
@@ -71,20 +77,22 @@ migrate:
 # Kafka
 #################################
 
+KAFKA_BOOTSTRAP ?= ${KAFKA_HOST:-kafka}:${KAFKA_PORT:-9092}
+
 kafka-topics:
-	docker exec -it $(KAFKA) kafka-topics --bootstrap-server localhost:9092 --list
+	docker exec -it $(KAFKA) kafka-topics --bootstrap-server $(KAFKA_BOOTSTRAP) --list
 
 kafka-create-topic:
-	docker exec -it $(KAFKA) kafka-topics --bootstrap-server localhost:9092 --create --topic $(topic) --partitions 1 --replication-factor 1
+	docker exec -it $(KAFKA) kafka-topics --bootstrap-server $(KAFKA_BOOTSTRAP) --create --topic $(topic) --partitions 1 --replication-factor 1
 
 kafka-delete-topic:
-	docker exec -it $(KAFKA) kafka-topics --bootstrap-server localhost:9092 --delete --topic $(topic)
+	docker exec -it $(KAFKA) kafka-topics --bootstrap-server $(KAFKA_BOOTSTRAP) --delete --topic $(topic)
 
 kafka-consume:
-	docker exec -it $(KAFKA) kafka-console-consumer --bootstrap-server localhost:9092 --topic $(topic) --from-beginning
+	docker exec -it $(KAFKA) kafka-console-consumer --bootstrap-server $(KAFKA_BOOTSTRAP) --topic $(topic) --from-beginning
 
 kafka-produce:
-	docker exec -it $(KAFKA) kafka-console-producer --bootstrap-server localhost:9092 --topic $(topic)
+	docker exec -it $(KAFKA) kafka-console-producer --bootstrap-server $(KAFKA_BOOTSTRAP) --topic $(topic)
 
 kafka-ui:
 	@echo "Kafka UI: http://localhost:8090"

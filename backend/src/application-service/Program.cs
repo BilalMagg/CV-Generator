@@ -15,10 +15,13 @@ AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport
 
 var builder = WebApplication.CreateBuilder(args);
 
+var httpPort = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "8085");
+var grpcPort = int.Parse(Environment.GetEnvironmentVariable("GRPC_PORT") ?? "18085");
+
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(8085, o => o.Protocols = HttpProtocols.Http1);
-    options.ListenAnyIP(18085, o => o.Protocols = HttpProtocols.Http2);
+    options.ListenAnyIP(httpPort, o => o.Protocols = HttpProtocols.Http1);
+    options.ListenAnyIP(grpcPort, o => o.Protocols = HttpProtocols.Http2);
 });
 
 // Database
@@ -39,12 +42,11 @@ builder.Services.AddScoped<ICalendarConfigurationRepository, CalendarConfigurati
 builder.Services.AddScoped<ICalendarConfigurationService, CalendarConfigurationServiceImpl>();
 
 // gRPC client — UserService
+var userServiceGrpcUrl = Environment.GetEnvironmentVariable("USER_SERVICE_GRPC_URL")
+    ?? "http://cv-user-service:18082";
 builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
 {
-    var grpcUrl = builder.Configuration.GetValue<string>("USER_SERVICE_GRPC_URL")
-        ?? Environment.GetEnvironmentVariable("USER_SERVICE_GRPC_URL")
-        ?? "http://cv-user-service:8082";
-    o.Address = new Uri(grpcUrl);
+    o.Address = new Uri(userServiceGrpcUrl);
 })
 .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
 {
@@ -72,14 +74,17 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        var jwtAuthority = builder.Configuration["JWT_AUTHORITY"] ?? "";
+        var jwtAuthority = Environment.GetEnvironmentVariable("JWT_AUTHORITY")
+            ?? builder.Configuration["JWT_AUTHORITY"]
+            ?? "http://cv-keycloak:8080/realms/cv-realm";
+        var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+            ?? $"http://{Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_HOST") ?? "localhost"}:{Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_PORT") ?? "9090"}/realms/cv-realm";
         options.Authority = jwtAuthority;
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters.ValidateAudience = false;
-        // Accept the external URL as a valid issuer (the JWT's iss claim)
         options.TokenValidationParameters.ValidIssuers = new[]
         {
-            "http://localhost:9090/realms/cv-realm",
+            jwtIssuer,
         };
     });
 

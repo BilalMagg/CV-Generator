@@ -200,9 +200,10 @@ def send_email_with_cv(
         except requests.RequestException as e:
             return f"Error: Could not download PDF from '{pdf_url}' — {str(e)}"
 
-    # ── Send via Gmail SMTP over SSL ──────────────────────────────────────
+    # ── Send via SMTP over SSL ────────────────────────────────────────────
+    smtp_port_ssl = 465  # default SSL port
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP_SSL(smtp_server, smtp_port_ssl) as server:
             server.login(sender_email, sender_password)
             server.send_message(msg)
     except smtplib.SMTPAuthenticationError:
