@@ -30,6 +30,8 @@ var gatewayHost = Env("GATEWAY_HOST", "localhost");
 var gatewayPort = Env("GATEWAY_PORT", "8080");
 var gatewayUrl = $"http://{gatewayHost}:{gatewayPort}";
 
+builder.WebHost.UseUrls($"http://0.0.0.0:{gatewayPort}");
+
 var frontendHost = Env("FRONTEND_HOST", "localhost");
 var frontendPort = Env("FRONTEND_PORT", "4200");
 var frontendUrl = $"http://{frontendHost}:{frontendPort}";
