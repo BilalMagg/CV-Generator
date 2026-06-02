@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using NotificationService.Application.DTOs;
 using NotificationService.Application.Interfaces;
 
 namespace NotificationService.API.Controllers;
 
-[ApiController]
-[Route("api/notification")]
-public class NotificationsController : ControllerBase
+[Route("api/notifications")]
+public class NotificationsController : BaseApiController
 {
     private readonly INotificationService _notificationSvc;
 
@@ -14,15 +14,14 @@ public class NotificationsController : ControllerBase
         _notificationSvc = notificationSvc;
     }
 
-    /// <summary>Get all notifications for a user (in-app inbox)</summary>
-    [HttpGet("{userId}")]
-    public async Task<IActionResult> GetUserNotifications(Guid userId)
+    [HttpGet]
+    public async Task<IActionResult> GetUserNotifications()
     {
+        var userId = GetUserId();
         var notifications = await _notificationSvc.GetUserNotificationsAsync(userId);
         return Ok(notifications);
     }
 
-    /// <summary>Mark a notification as read</summary>
     [HttpPatch("{notificationId}/read")]
     public async Task<IActionResult> MarkAsRead(Guid notificationId)
     {
@@ -30,12 +29,27 @@ public class NotificationsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Manual trigger for testing — remove in production</summary>
     [HttpPost("test/welcome")]
     public async Task<IActionResult> TestWelcome([FromBody] TestWelcomeRequest req)
     {
         await _notificationSvc.SendWelcomeAsync(req.UserId, req.Email, req.FirstName);
         return Ok(new { message = "Welcome email triggered" });
+    }
+
+    [HttpGet("preferences")]
+    public async Task<IActionResult> GetPreferences()
+    {
+        var userId = GetUserId();
+        var prefs = await _notificationSvc.GetUserPreferencesAsync(userId);
+        return Ok(prefs);
+    }
+
+    [HttpPut("preferences")]
+    public async Task<IActionResult> UpdatePreferences([FromBody] UpdateNotificationPreferenceDto dto)
+    {
+        var userId = GetUserId();
+        var prefs = await _notificationSvc.UpdateUserPreferencesAsync(userId, dto);
+        return Ok(prefs);
     }
 }
 

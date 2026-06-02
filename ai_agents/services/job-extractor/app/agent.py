@@ -1,4 +1,5 @@
 import logging
+import os
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -26,7 +27,9 @@ async def normalize_input(input_data: ExtractorInput) -> str:
 async def extract_job_requirements(input_data: ExtractorInput) -> ExtractorOutput:
     text = await normalize_input(input_data)
 
-    llm = get_llm(model="llama-3.1-8b-instant", temperature=0.0)
+    provider = os.getenv("LLM_PROVIDER") or "groq"
+    model = os.getenv("LLM_MODEL") or "llama-3.1-8b-instant"
+    llm = get_llm(provider=provider, model=model, temperature=0.0)
     parser = PydanticOutputParser(pydantic_object=ExtractorOutput)
 
     prompt = ChatPromptTemplate.from_messages([

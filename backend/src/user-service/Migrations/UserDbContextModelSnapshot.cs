@@ -31,25 +31,57 @@ namespace UserService.Migrations
                     b.Property<string>("AiProfileDataJson")
                         .HasColumnType("text");
 
+                    b.Property<string>("AuthorizedCountry")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("AvatarUrl")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<string>("Bio")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("BirthDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DesiredJobTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("DesiredSalaryMax")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("DesiredSalaryMin")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("EmploymentTypes")
+                        .HasColumnType("text");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Headline")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -67,6 +99,10 @@ namespace UserService.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("NoticePeriod")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -74,8 +110,22 @@ namespace UserService.Migrations
                     b.Property<string>("PreferencesJson")
                         .HasColumnType("text");
 
+                    b.Property<string>("ProfessionalTitles")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RemotePreference")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool?>("RequiresVisaSponsorship")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Role")
                         .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("WillingToRelocate")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 

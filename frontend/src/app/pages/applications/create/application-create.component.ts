@@ -2,8 +2,8 @@ import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { ApplicationService } from '../../../services/application.service';
-import { AuthService } from '../../../services/auth.service';
+import { ApplicationService } from '@app/services/application.service';
+import { AuthService } from '@app/services/auth.service';
 
 @Component({
   selector: 'app-application-create',

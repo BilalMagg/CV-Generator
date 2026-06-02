@@ -27,6 +27,7 @@ export interface ApplicationResponseDto {
   appliedAt: string;
   updatedAt: string;
   notes?: string;
+  isSaved: boolean;
   history?: StatusHistoryDto[];
 }
 
@@ -62,11 +63,43 @@ export interface ApplicationStatisticsDto {
   cancelled: number;
 }
 
+export interface MonthlyTrendDto {
+  year: number;
+  month: number;
+  pending: number;
+  reviewed: number;
+  interview: number;
+  accepted: number;
+  rejected: number;
+  cancelled: number;
+}
+
+export interface StatisticsTrendsDto {
+  current: ApplicationStatisticsDto;
+  monthlyTrends: MonthlyTrendDto[];
+  averageResponseTimeDays: number | null;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;
   data?: T;
   errors?: unknown;
+}
+
+export interface ActivityItemDto {
+  applicationId: string;
+  companyName: string;
+  positionTitle: string;
+  oldStatus?: string;
+  newStatus: string;
+  changedAt: string;
+  comment?: string;
+}
+
+export interface ActivityFeedDto {
+  items: ActivityItemDto[];
+  total: number;
 }
 
 export interface ApplicationListDto {

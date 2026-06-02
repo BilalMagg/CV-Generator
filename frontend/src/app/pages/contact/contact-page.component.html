@@ -1,0 +1,104 @@
+<app-navbar />
+
+<main class="contact-page">
+  <div class="blob-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+  </div>
+
+  <div class="container">
+    <header class="contact-header">
+      <p class="kicker">Get in Touch</p>
+      <h1>Let's Start a <span class="highlight">Conversation</span></h1>
+      <p class="header-sub">Have a question about the platform or just want to say hi? We'd love to hear from you.</p>
+    </header>
+
+    <div class="contact-grid">
+      <!-- Contact Form -->
+      <div class="form-container">
+        @if (!submitted) {
+          <form (ngSubmit)="onSubmit()" #contactForm="ngForm">
+            <div class="form-group">
+              <label for="name">Full Name</label>
+              <input type="text" id="name" name="name" [(ngModel)]="name" required placeholder="John Doe">
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email Address</label>
+              <input type="email" id="email" name="email" [(ngModel)]="email" required placeholder="john@example.com">
+            </div>
+
+            <div class="form-group">
+              <label for="subject">Subject</label>
+              <select id="subject" name="subject" [(ngModel)]="subject">
+                <option value="">Select a topic</option>
+                <option value="support">Support</option>
+                <option value="billing">Billing</option>
+                <option value="feedback">Feedback</option>
+                <option value="partnership">Partnership</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="message">Message</label>
+              <textarea id="message" name="message" [(ngModel)]="message" required rows="5" placeholder="Tell us what's on your mind..."></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit" [disabled]="!contactForm.form.valid">
+              Send Message
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+        } @else {
+          <div class="success-message">
+            <div class="success-icon">✓</div>
+            <h2>Message Sent!</h2>
+            <p>Thanks for reaching out. We'll get back to you within 24 hours.</p>
+            <button class="btn-secondary" (click)="submitted = false">Send another message</button>
+          </div>
+        }
+      </div>
+
+      <!-- Info Cards -->
+      <div class="info-container">
+        <div class="info-card">
+          <div class="icon">📧</div>
+          <div class="details">
+            <h3>Email Us</h3>
+            <p>support@cvgenerator.ai</p>
+            <span>Response time: < 24h</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="icon">💬</div>
+          <div class="details">
+            <h3>Live Chat</h3>
+            <p>Available Mon-Fri</p>
+            <span>9:00 AM - 6:00 PM EST</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="icon">📍</div>
+          <div class="details">
+            <h3>Headquarters</h3>
+            <p>Remote-First Team</p>
+            <span>Based in London, UK</span>
+          </div>
+        </div>
+
+        <div class="social-links">
+          <a href="#" class="social-btn">Twitter</a>
+          <a href="#" class="social-btn">LinkedIn</a>
+          <a href="#" class="social-btn">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<app-footer />

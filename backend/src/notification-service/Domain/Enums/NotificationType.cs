@@ -23,5 +23,8 @@ public enum NotificationType
     ProfileInactive,
 
     // Digest
-    WeeklyDigest
+    WeeklyDigest,
+
+    // User Reminders
+    UserReminder
 }

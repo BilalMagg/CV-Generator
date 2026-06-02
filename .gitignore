@@ -47,7 +47,6 @@ node_modules/
 # Coverage
 coverage/
 
-CV_Generator.sln
 
 *__pycache__/
 *build/
@@ -63,3 +62,5 @@ terraform.tfstate*
 venv/
 
 cv-generator.sln
+
+*.lscache

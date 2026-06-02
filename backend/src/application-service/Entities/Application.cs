@@ -37,6 +37,8 @@ public class Application
 
     public string? Notes { get; set; }
 
+    public bool IsSaved { get; set; } = false;
+
     // Navigation
     public ICollection<ApplicationStatusHistory> StatusHistory { get; set; } = new List<ApplicationStatusHistory>();
 }

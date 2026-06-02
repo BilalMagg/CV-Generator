@@ -3,14 +3,14 @@
 } @else if (error()) {
   <div class="error-state">
     <p>{{ error() }}</p>
-    <a routerLink="/applications/list" class="back-link" style="margin-top:1rem;display:inline-flex;gap:6px"><i class="ti ti-arrow-left"></i> Back</a>
+    <a routerLink="/applications/kanban" class="back-link" style="margin-top:1rem;display:inline-flex;gap:6px"><i class="ti ti-arrow-left"></i> Back</a>
   </div>
 } @else if (application(); as app) {
 
   <div class="det-header">
     <div class="det-header-row">
       <div>
-        <a routerLink="/applications/list" class="back-link"><i class="ti ti-arrow-left"></i> Applications</a>
+        <a routerLink="/applications/kanban" class="back-link"><i class="ti ti-arrow-left"></i> Applications</a>
         <div class="det-title-block">
           <div class="co-init" [style.background]="'#E6F1FB'" [style.color]="'#185FA5'">{{ app.companyName[0] }}</div>
           <div>
@@ -52,7 +52,7 @@
               </div>
             }
           } @else {
-            <div style="color:var(--color-text-tertiary);font-size:13px">No status changes yet.</div>
+            <div style="color:var(--text-3);font-size:13px">No status changes yet.</div>
           }
         </div>
       </div>
@@ -60,6 +60,7 @@
       <div class="card">
         <div class="card-title">Notes</div>
         <textarea class="note-area" placeholder="Add a note…" [(ngModel)]="editNotes"></textarea>
+        <button class="det-btn primary" style="margin-top:8px" (click)="saveEdit()">Save notes</button>
       </div>
     </div>
 

@@ -1,6 +1,6 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpService } from './http.service';
-import { environment } from '../../environments/environment';
+import { firstValueFrom } from 'rxjs';
 
 export interface User {
   userId: string;
@@ -10,6 +10,7 @@ export interface User {
   email: string;
   role: string;
   isActive: boolean;
+  avatarUrl?: string;
   tokens?: {
     accessToken?: string;
     refreshToken?: string;
@@ -26,35 +27,16 @@ export interface ApiResponse<T> {
   errors?: unknown;
 }
 
-const TEMP_USER: User = {
-  userId: environment.tempUserId,
-  keycloakId: 'temp-keycloak-id',
-  firstName: 'Temp',
-  lastName: 'User',
-  email: 'temp@example.com',
-  role: 'user',
-  isActive: true,
-};
-
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly TOKEN_KEY = 'access_token';
+  private readonly http = inject(HttpService);
 
   currentUser = signal<User | null>(null);
   isAuthenticated = computed(() => this.currentUser() !== null);
 
-  constructor(private http: HttpService) {
-    if (environment.useTempAuth) {
-      this.currentUser.set(TEMP_USER);
-    }
-  }
-
   async checkAuth(): Promise<boolean> {
-    if (environment.useTempAuth) {
-      return true;
-    }
     try {
       const response = await this.http.get<ApiResponse<User>>('/api/auth/me');
       if (response.success && response.data) {
@@ -69,7 +51,6 @@ export class AuthService {
   }
 
   async refreshUser(): Promise<void> {
-    if (environment.useTempAuth) return;
     try {
       const response = await this.http.get<ApiResponse<User>>('/api/auth/me');
       if (response.success && response.data) {
@@ -80,25 +61,23 @@ export class AuthService {
     }
   }
 
-  login(): void {
-    if (environment.useTempAuth) {
-      this.currentUser.set(TEMP_USER);
-      return;
+  async loginWithCredentials(email: string, password: string): Promise<User> {
+    const response = await this.http.post<ApiResponse<User>>('/api/auth/login', { email, password });
+    if (response.success && response.data) {
+      this.currentUser.set(response.data);
+      return response.data;
     }
-    // Redirect to backend OIDC login endpoint
-    window.location.href = `${environment.gatewayUrl}/api/auth/login`;
+    throw new Error(response.message || 'Login failed');
+  }
+
+  loginWithSso(provider?: string): void {
+    const providerParam = provider ? `&provider=${encodeURIComponent(provider)}` : '';
+    window.location.href = `${window.location.origin}/api/auth/login?returnUrl=${encodeURIComponent(window.location.origin + '/applications')}${providerParam}`;
   }
 
   logout(): void {
-    if (environment.useTempAuth) {
-      this.currentUser.set(null);
-      return;
-    }
-    // Clear local state
     this.currentUser.set(null);
-    localStorage.removeItem(this.TOKEN_KEY);
-    // Redirect to backend logout endpoint
-    window.location.href = `${environment.gatewayUrl}/api/auth/logout`;
+    window.location.href = `${window.location.origin}/api/auth/logout`;
   }
 
   async register(data: {
@@ -107,9 +86,6 @@ export class AuthService {
     email: string;
     password: string;
   }): Promise<{ success: boolean; message: string }> {
-    if (environment.useTempAuth) {
-      return { success: true, message: 'Registration disabled in temp auth mode' };
-    }
     try {
       const response = await this.http.post<ApiResponse<object>>('/api/auth/register', data);
       if (response.success) {
@@ -119,14 +95,5 @@ export class AuthService {
     } catch (err) {
       return { success: false, message: err instanceof Error ? err.message : 'Registration failed' };
     }
-  }
-
-  getAccessToken(): string | null {
-    if (environment.useTempAuth) return null;
-    return localStorage.getItem(this.TOKEN_KEY);
-  }
-
-  setAccessToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
   }
 }

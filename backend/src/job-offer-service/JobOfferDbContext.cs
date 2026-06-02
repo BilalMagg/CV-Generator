@@ -11,6 +11,8 @@ public class JobOfferDbContext : DbContext
     public DbSet<JobSkill> JobSkills { get; set; }
     public DbSet<JobResponsibility> JobResponsibilities { get; set; }
     public DbSet<JobBenefit> JobBenefits { get; set; }
+    public DbSet<SearchCache> SearchCaches { get; set; }
+    public DbSet<UserQuota> UserQuotas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,6 +27,20 @@ public class JobOfferDbContext : DbContext
             entity.HasMany(j => j.Skills).WithOne(s => s.JobOffer).HasForeignKey(s => s.JobOfferId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(j => j.Responsibilities).WithOne(r => r.JobOffer).HasForeignKey(r => r.JobOfferId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(j => j.Benefits).WithOne(b => b.JobOffer).HasForeignKey(b => b.JobOfferId).OnDelete(DeleteBehavior.Cascade);
+
+            // Unique index for deduplication — crawler upsert relies on this
+            entity.HasIndex(j => j.JobHash).IsUnique().HasFilter("\"JobHash\" IS NOT NULL");
+        });
+
+        modelBuilder.Entity<SearchCache>(entity =>
+        {
+            entity.HasKey(s => s.SearchId);
+            entity.HasIndex(s => new { s.Keyword, s.CrawledDate });
+        });
+
+        modelBuilder.Entity<UserQuota>(entity =>
+        {
+            entity.HasKey(u => u.UserId);
         });
     }
 }

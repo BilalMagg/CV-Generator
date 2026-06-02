@@ -1,22 +1,28 @@
-"""
-LLM factory — returns configured chat models from different providers.
-"""
-from langchain_groq import ChatGroq
-from cvtools.core.config import settings
-import logging
+from typing import Any
 
-logger = logging.getLogger(__name__)
+from cvtools.core.llm.providers import resolve_provider, get_provider, list_providers
 
 
-def get_llm(model: str = "llama-3.3-70b-versatile", temperature: float = 0.0) -> ChatGroq:
-    """
-    Returns a configured ChatGroq instance.
-    """
-    if not settings.GROQ_API_KEY:
-        logger.warning("GROQ_API_KEY is not set.")
+def get_llm(
+    provider: str | None = None,
+    model: str | None = None,
+    temperature: float = 0.0,
+    **kwargs: Any,
+):
+    if provider is None:
+        if model:
+            resolved = resolve_provider(model)
+            if resolved is None:
+                raise ValueError(
+                    f"Could not auto-detect provider from model '{model}'. "
+                    f"Please specify provider explicitly."
+                )
+            provider = resolved
+        else:
+            provider = "groq"
 
-    return ChatGroq(
-        model=model,
-        api_key=settings.GROQ_API_KEY,
-        temperature=temperature,
-    )
+    mod = get_provider(provider)
+    return mod.create(model=model, temperature=temperature, **kwargs)
+
+
+__all__ = ["get_llm", "list_providers"]

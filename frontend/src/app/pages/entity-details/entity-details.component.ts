@@ -2,8 +2,8 @@ import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { environment } from '../../../environments/environment';
-import { ENTITY_FIELDS, EntityType } from '../../models/user-content.models';
+import { environment } from '@env/environment';
+import { ENTITY_FIELDS, EntityType } from '@app/models/user-content.models';
 
 @Component({
   selector: 'app-entity-detail',
@@ -38,8 +38,7 @@ export class EntityDetailsComponent implements OnInit {
   }
 
   loadData() {
-    const baseUrl = environment.apiUrl || 'http://localhost:8080/api/user-content';
-    const url = `${baseUrl}/${this.entity}/${this.id}?t=${new Date().getTime()}`;
+    const url = `${environment.apiUrl}/api/user-content/${this.entity}/${this.id}?t=${new Date().getTime()}`;
     
     this.http.get(url, { withCredentials: true }).subscribe({
       next: (res: any) => {
@@ -80,7 +79,7 @@ export class EntityDetailsComponent implements OnInit {
   }
 
   goToEdit() {
-    this.router.navigate(['/my-cv', this.entity, this.id, 'edit']);
+    this.router.navigate(['/my-career', this.entity, this.id, 'edit']);
   }
 
   deleteItem() {
@@ -88,11 +87,10 @@ export class EntityDetailsComponent implements OnInit {
   }
 
   confirmDelete() {
-    const baseUrl = environment.apiUrl || 'http://localhost:8080/api/user-content';
-    const url = `${baseUrl}/${this.entity}/${this.id}`;
+    const url = `${environment.apiUrl}/api/user-content/${this.entity}/${this.id}`;
     this.http.delete(url, { withCredentials: true }).subscribe({
       next: () => {
-        this.router.navigate(['/my-cv', this.entity]);
+        this.router.navigate(['/my-career', this.entity]);
       },
       error: (err) => {
         console.error('Delete failed', err);
@@ -106,6 +104,6 @@ export class EntityDetailsComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/my-cv', this.entity]);
+    this.router.navigate(['/my-career', this.entity]);
   }
 }

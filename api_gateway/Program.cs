@@ -1,28 +1,68 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Caching.Distributed;
-using System.Text;
 using Confluent.Kafka;
-using Yarp.ReverseProxy.Configuration;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-var keycloakInternalUrl = Environment.GetEnvironmentVariable("KEYCLOAK_INTERNAL_URL") ?? "http://localhost:9090";
-var keycloakExternalUrl = Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_URL") ?? "http://localhost:9090";
-var keycloakRealm = Environment.GetEnvironmentVariable("KEYCLOAK_REALM") ?? "cv-realm";
-var keycloakClientId = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID") ?? "cv-gateway";
-var keycloakClientSecret = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_SECRET") ?? "change-me-in-production";
-var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL") ?? "http://localhost:8080";
-var userServiceUrl = Environment.GetEnvironmentVariable("USER_SERVICE_URL") ?? "http://localhost:5001";
-var keycloakAdminUsername = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_USERNAME") ?? "admin";
-var keycloakAdminPassword = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_PASSWORD") ?? "admin";
+// ── Environment variables with fallbacks ─────────────────────────────────────
+string Env(string key, string fallback) =>
+    Environment.GetEnvironmentVariable(key) ?? fallback;
+
+var keycloakHost = Env("KEYCLOAK_HOST", "keycloak");
+var keycloakPort = Env("KEYCLOAK_PORT", "8080");
+var keycloakExtHost = Env("KEYCLOAK_EXTERNAL_HOST", "localhost");
+var keycloakExtPort = Env("KEYCLOAK_EXTERNAL_PORT", "9090");
+
+var keycloakInternalUrl = $"http://{keycloakHost}:{keycloakPort}";
+var keycloakExternalUrl = $"http://{keycloakExtHost}:{keycloakExtPort}";
+
+var keycloakRealm = Env("KEYCLOAK_REALM", "cv-realm");
+var keycloakClientId = Env("KEYCLOAK_CLIENT_ID", "cv-gateway");
+var keycloakClientSecret = Env("KEYCLOAK_CLIENT_SECRET", "change-me-in-production");
+
+var gatewayHost = Env("GATEWAY_HOST", "localhost");
+var gatewayPort = Env("GATEWAY_PORT", "8080");
+var gatewayUrl = $"http://{gatewayHost}:{gatewayPort}";
+
+builder.WebHost.UseUrls($"http://0.0.0.0:{gatewayPort}");
+
+var frontendHost = Env("FRONTEND_HOST", "localhost");
+var frontendPort = Env("FRONTEND_PORT", "4200");
+var frontendUrl = $"http://{frontendHost}:{frontendPort}";
+
+var userServiceUrl = $"http://{Env("USER_SERVICE_HOST", "cv-user-service")}:{Env("USER_SERVICE_PORT", "8082")}";
+
+var keycloakAdminUsername = Env("KEYCLOAK_ADMIN_USERNAME", "admin");
+var keycloakAdminPassword = Env("KEYCLOAK_ADMIN_PASSWORD", "admin");
+
+var kafkaBootstrapServers = $"{Env("KAFKA_HOST", "kafka")}:{Env("KAFKA_PORT", "9092")}";
 
 var authority = $"{keycloakInternalUrl}/realms/{keycloakRealm}";
 var keycloakLoginUrl = $"{keycloakExternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/auth";
 var keycloakLogoutUrl = $"{keycloakExternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/logout";
+
+// ── Override YARP cluster addresses from env vars ──────────────────────────
+// (config file has fallback addresses; env vars take precedence at runtime)
+void SetClusterAddress(string clusterId, string hostVar, string portVar, string defaultHost, string defaultPort)
+{
+    var host = Environment.GetEnvironmentVariable(hostVar) ?? defaultHost;
+    var port = Environment.GetEnvironmentVariable(portVar) ?? defaultPort;
+    builder.Configuration[$"Proxy:Clusters:{clusterId}:Destinations:destination-1:Address"] = $"http://{host}:{port}";
+}
+
+SetClusterAddress("user-cluster",          "USER_SERVICE_HOST",          "USER_SERVICE_PORT",          "cv-user-service",          "8082");
+SetClusterAddress("content-cluster",       "CONTENT_SERVICE_HOST",       "CONTENT_SERVICE_PORT",       "cv-user-content-service",  "8083");
+SetClusterAddress("workflow-cluster",      "WORKFLOW_SERVICE_HOST",      "WORKFLOW_SERVICE_PORT",      "cv-workflow-service",      "8084");
+SetClusterAddress("application-cluster",   "APPLICATION_SERVICE_HOST",   "APPLICATION_SERVICE_PORT",   "cv-application-service",   "8085");
+SetClusterAddress("job-offer-cluster",     "JOB_OFFER_SERVICE_HOST",     "JOB_OFFER_SERVICE_PORT",     "cv-job-offer-service",     "8086");
+SetClusterAddress("notification-cluster",  "NOTIFICATION_SERVICE_HOST",  "NOTIFICATION_SERVICE_PORT",  "cv-notification-service",  "8087");
+SetClusterAddress("cv-cluster",            "CV_SERVICE_HOST",            "CV_SERVICE_PORT",            "cv-cv-service",            "8088");
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
@@ -30,7 +70,7 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         policy
-            .WithOrigins("http://localhost:4200")
+            .WithOrigins(frontendUrl)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -56,8 +96,6 @@ builder.Services.AddAuthentication(options =>
     options.SlidingExpiration = true;
 });
 
-// Use PostConfigure to wire up the server-side session store
-// (avoids "use before declare" error with 'app' variable)
 builder.Services.AddSingleton<ITicketStore>(sp =>
     new MemoryCacheTicketStore(sp.GetRequiredService<IDistributedCache>()));
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -77,13 +115,12 @@ builder.Services.AddAuthentication("Bearer")
         };
     });
 
-// 2. Define the "default" authorization policy that we reference in appsettings.json
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("default", policy => policy.RequireAuthenticatedUser());
 });
 
-// ── Reverse Proxy ────────────────────────────────────────────────────────────
+// ── Reverse Proxy (routes from JSON, clusters from env vars) ─────────────────
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("Proxy"));
 
@@ -93,10 +130,7 @@ builder.Services.AddSwaggerGen();
 // ── HTTP Client for token exchange ───────────────────────────────────────────
 builder.Services.AddHttpClient();
 
-// ── Kafka Producer ──────────────────────────────────────────────────────────
-var kafkaBootstrapServers = builder.Configuration.GetValue<string>("KAFKA_BOOTSTRAP_SERVERS")
-    ?? Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS")
-    ?? "kafka:9092";
+// ── Kafka Producer ───────────────────────────────────────────────────────────
 builder.Services.AddSingleton<IProducer<string, string>>(_ =>
 {
     var config = new ProducerConfig
@@ -119,8 +153,11 @@ app.UseAuthorization();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+// ── Health Check ─────────────────────────────────────────────────────────────
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "api-gateway" }));
+
 // ── Auth Endpoints ───────────────────────────────────────────────────────────
-app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
+app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl, string? provider) =>
 {
     var state = Guid.NewGuid().ToString("N");
     var nonce = Guid.NewGuid().ToString("N");
@@ -138,6 +175,11 @@ app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
         + $"&prompt=login"
         + $"&state={encodedState}:{encodedReturn}"
         + $"&nonce={encodedNonce}";
+
+    if (!string.IsNullOrEmpty(provider))
+    {
+        loginUrl += $"&kc_idp_hint={Uri.EscapeDataString(provider)}";
+    }
 
     ctx.Response.Cookies.Append("oidc_state", state, new CookieOptions
     {
@@ -158,9 +200,112 @@ app.MapGet("/api/auth/login", async (HttpContext ctx, string? returnUrl) =>
 })
 .RequireCors("Default");
 
+app.MapPost("/api/auth/login", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var body = await ctx.Request.ReadFromJsonAsync<JsonElement>();
+        var email = body.GetProperty("email").GetString() ?? "";
+        var password = body.GetProperty("password").GetString() ?? "";
+
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        {
+            ctx.Response.StatusCode = 400;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Email and password are required" });
+            return;
+        }
+
+        var tokenUrl = $"{keycloakInternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/token";
+        var http = httpClientFactory.CreateClient();
+        var tokenContent = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("grant_type", "password"),
+            new KeyValuePair<string, string>("client_id", keycloakClientId),
+            new KeyValuePair<string, string>("client_secret", keycloakClientSecret),
+            new KeyValuePair<string, string>("username", email),
+            new KeyValuePair<string, string>("password", password),
+            new KeyValuePair<string, string>("scope", "openid profile email"),
+        });
+
+        var tokenResponse = await http.PostAsync(tokenUrl, tokenContent);
+        if (!tokenResponse.IsSuccessStatusCode)
+        {
+            ctx.Response.StatusCode = 401;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid email or password" });
+            return;
+        }
+
+        var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+        if (tokenJson == null)
+        {
+            ctx.Response.StatusCode = 500;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token response" });
+            return;
+        }
+
+        var accessToken = tokenJson.GetValueOrDefault("access_token")?.ToString() ?? "";
+        var idToken = tokenJson.GetValueOrDefault("id_token")?.ToString() ?? "";
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(string.IsNullOrEmpty(idToken) ? accessToken : idToken);
+        var claims = jwt.Claims.ToList();
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        identity.AddClaim(new Claim("access_token", accessToken));
+
+        var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
+        if (!string.IsNullOrEmpty(userId))
+        {
+            identity.AddClaim(new Claim("user_id", userId));
+        }
+
+        var principal = new ClaimsPrincipal(identity);
+        var authProps = new AuthenticationProperties
+        {
+            IsPersistent = true,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
+        };
+        authProps.Items["id_token"] = idToken;
+
+        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
+
+        var firstName = jwt.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value ?? "";
+        var lastName = jwt.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
+        var jwtEmail = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value ?? "";
+        var sub = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? "";
+
+        await ctx.Response.WriteAsJsonAsync(new
+        {
+            success = true,
+            data = new
+            {
+                userId = userId ?? sub,
+                keycloakId = sub,
+                firstName,
+                lastName,
+                email = jwtEmail,
+                role = "user",
+                isActive = true,
+                tokens = new { accessToken },
+            },
+        });
+    }
+    catch (JsonException)
+    {
+        ctx.Response.StatusCode = 400;
+        await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid request body" });
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Login error: {ex.Message}");
+        ctx.Response.StatusCode = 500;
+        await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Login failed due to an internal error" });
+    }
+})
+.RequireCors("Default");
+
 app.MapGet("/api/auth/logout", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
 {
-    var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:4200";
     var postLogoutRedirectUri = $"{frontendUrl}/login";
 
     var authResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -168,8 +313,6 @@ app.MapGet("/api/auth/logout", async (HttpContext ctx, IHttpClientFactory httpCl
 
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-    // Invalidate Keycloak session server-side (fire-and-forget) — avoids browser redirect
-    // to Keycloak and the post_logout_redirect_uri validation issue entirely.
     if (!string.IsNullOrEmpty(idToken))
     {
         var client = httpClientFactory.CreateClient();
@@ -255,11 +398,8 @@ app.MapGet("/api/auth/callback", async (HttpContext ctx, IHttpClientFactory http
     var claims = jwt.Claims.ToList();
 
     var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-    // Store only the essential access_token for proxy forwarding.
-    // Avoid storing id_token/refresh_token — they make the cookie too large (>4 KB).
     identity.AddClaim(new Claim("access_token", accessToken));
 
-    // Sync user to user-service and capture internal userId
     var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
     if (!string.IsNullOrEmpty(userId))
     {
@@ -274,7 +414,6 @@ app.MapGet("/api/auth/callback", async (HttpContext ctx, IHttpClientFactory http
         ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
         RedirectUri = expectedReturn,
     };
-    // Store id_token in server-side session props (not in cookie) for logout
     authProps.Items["id_token"] = idToken;
 
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
@@ -350,16 +489,17 @@ app.MapPost("/api/auth/register", async (HttpContext ctx, IHttpClientFactory htt
             return;
         }
 
-        var userCreated = await CreateKeycloakUserAsync(httpClientFactory, adminToken, email, password, firstName, lastName);
-        if (!userCreated)
+        var keycloakUserId = await CreateKeycloakUserAsync(httpClientFactory, adminToken, email, password, firstName, lastName);
+        if (string.IsNullOrEmpty(keycloakUserId))
         {
             ctx.Response.StatusCode = 409;
             await ctx.Response.WriteAsJsonAsync(new { success = false, message = "User with this email already exists" });
             return;
         }
 
-        // Emit registration event to Kafka (fire-and-forget)
-        _ = PublishRegistrationEvent(kafkaProducer, email, firstName, lastName);
+        var internalUserId = await CreateUserInServiceAsync(httpClientFactory, userServiceUrl, keycloakUserId, email, firstName, lastName);
+
+        _ = PublishRegistrationEvent(kafkaProducer, internalUserId ?? "", email, firstName, lastName);
 
         await ctx.Response.WriteAsJsonAsync(new { success = true, message = "Account created successfully. You can now login." });
     }
@@ -391,8 +531,7 @@ app.MapReverseProxy(proxyApp =>
                 ctx.Request.Headers.Authorization = $"Bearer {token}";
             }
 
-            // ON COLLE LE POST-IT !
-            var internalUserId = authResult.Principal?.FindFirstValue("user_id") 
+            var internalUserId = authResult.Principal?.FindFirstValue("user_id")
                                ?? authResult.Principal?.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
                                ?? authResult.Principal?.FindFirstValue("sub");
 
@@ -459,7 +598,7 @@ async Task<string?> GetKeycloakAdminTokenAsync(IHttpClientFactory factory)
     }
 }
 
-async Task<bool> CreateKeycloakUserAsync(IHttpClientFactory factory, string adminToken, string email, string password, string firstName, string lastName)
+async Task<string?> CreateKeycloakUserAsync(IHttpClientFactory factory, string adminToken, string email, string password, string firstName, string lastName)
 {
     try
     {
@@ -487,22 +626,22 @@ async Task<bool> CreateKeycloakUserAsync(IHttpClientFactory factory, string admi
         };
 
         var response = await client.PostAsJsonAsync($"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/users", userData);
-        if (!response.IsSuccessStatusCode) return false;
+        if (!response.IsSuccessStatusCode) return null;
 
         var location = response.Headers.Location?.ToString();
-        if (string.IsNullOrEmpty(location)) return true;
+        if (string.IsNullOrEmpty(location)) return null;
 
         var userId = location.Split('/').Last();
 
         var availableRolesResponse = await client.GetAsync($"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/roles");
-        if (!availableRolesResponse.IsSuccessStatusCode) return true;
+        if (!availableRolesResponse.IsSuccessStatusCode) return userId;
         var roles = await availableRolesResponse.Content.ReadFromJsonAsync<List<JsonElement>>();
-        if (roles == null) return true;
+        if (roles == null) return userId;
 
         var userRole = roles.FirstOrDefault(r =>
             r.GetProperty("name").GetString() == "user");
 
-        if (userRole.ValueKind == JsonValueKind.Undefined) return true;
+        if (userRole.ValueKind == JsonValueKind.Undefined) return userId;
 
         var roleMapping = new[] { new
         {
@@ -514,15 +653,15 @@ async Task<bool> CreateKeycloakUserAsync(IHttpClientFactory factory, string admi
             $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/users/{userId}/role-mappings/realm",
             roleMapping);
 
-        return true;
+        return userId;
     }
     catch
     {
-        return false;
+        return null;
     }
 }
 
-async Task PublishRegistrationEvent(IProducer<string, string> producer, string email, string firstName, string lastName)
+async Task PublishRegistrationEvent(IProducer<string, string> producer, string internalUserId, string email, string firstName, string lastName)
 {
     try
     {
@@ -530,6 +669,7 @@ async Task PublishRegistrationEvent(IProducer<string, string> producer, string e
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTime.UtcNow,
+            InternalUserId = string.IsNullOrEmpty(internalUserId) ? null : internalUserId,
             Email = email,
             FirstName = firstName,
             LastName = lastName,
@@ -548,7 +688,292 @@ async Task PublishRegistrationEvent(IProducer<string, string> producer, string e
     }
 }
 
+async Task<string?> CreateUserInServiceAsync(IHttpClientFactory factory, string baseUrl, string keycloakId, string email, string firstName, string lastName)
+{
+    try
+    {
+        using var client = factory.CreateClient();
+        var payload = new
+        {
+            keycloakId,
+            firstName,
+            lastName,
+            email,
+            role = "USER",
+        };
+        var response = await client.PostAsJsonAsync($"{baseUrl}/api/users", payload);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            Console.Error.WriteLine($"User creation in user-service failed ({response.StatusCode}): {body}");
+            return null;
+        }
+        var bodyJson = await response.Content.ReadFromJsonAsync<JsonElement>();
+        if (bodyJson.TryGetProperty("data", out var data) && data.TryGetProperty("id", out var id))
+            return id.GetString();
+        return null;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"User creation error: {ex.Message}");
+        return null;
+    }
+}
+
+// ── Configure Keycloak realm (identity providers + client redirect URIs) ────
+_ = ConfigureKeycloakAsync();
+
 app.Run();
+
+static async Task ConfigureKeycloakAsync()
+{
+    var keycloakHost = Environment.GetEnvironmentVariable("KEYCLOAK_HOST") ?? "keycloak";
+    var keycloakPort = Environment.GetEnvironmentVariable("KEYCLOAK_PORT") ?? "8080";
+    var keycloakExtHost = Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_HOST") ?? "localhost";
+    var keycloakExtPort = Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_PORT") ?? "9090";
+
+    var keycloakInternalUrl = $"http://{keycloakHost}:{keycloakPort}";
+    var keycloakExternalUrl = $"http://{keycloakExtHost}:{keycloakExtPort}";
+
+    var keycloakRealm = Environment.GetEnvironmentVariable("KEYCLOAK_REALM") ?? "cv-realm";
+    var keycloakAdminUsername = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_USERNAME") ?? "admin";
+    var keycloakAdminPassword = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_PASSWORD") ?? "admin";
+
+    var gatewayHost = Environment.GetEnvironmentVariable("GATEWAY_HOST") ?? "localhost";
+    var gatewayPort = Environment.GetEnvironmentVariable("GATEWAY_PORT") ?? "8080";
+    var gatewayUrl = $"http://{gatewayHost}:{gatewayPort}";
+
+    var frontendHost = Environment.GetEnvironmentVariable("FRONTEND_HOST") ?? "localhost";
+    var frontendPort = Environment.GetEnvironmentVariable("FRONTEND_PORT") ?? "4200";
+    var frontendUrl = $"http://{frontendHost}:{frontendPort}";
+
+    using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+    const int maxRetries = 30;
+    const int delayMs = 2000;
+
+    for (var attempt = 1; attempt <= maxRetries; attempt++)
+    {
+        try
+        {
+            var tokenContent = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("client_id", "admin-cli"),
+                new KeyValuePair<string, string>("username", keycloakAdminUsername),
+                new KeyValuePair<string, string>("password", keycloakAdminPassword),
+                new KeyValuePair<string, string>("grant_type", "password"),
+            });
+
+            var tokenResponse = await client.PostAsync($"{keycloakInternalUrl}/realms/master/protocol/openid-connect/token", tokenContent);
+            if (!tokenResponse.IsSuccessStatusCode)
+            {
+                if (attempt < maxRetries) { await Task.Delay(delayMs); continue; }
+                Console.Error.WriteLine("Failed to get Keycloak admin token after retries");
+                return;
+            }
+
+            var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+            var adminToken = tokenJson?.GetValueOrDefault("access_token")?.ToString();
+            if (string.IsNullOrEmpty(adminToken))
+            {
+                if (attempt < maxRetries) { await Task.Delay(delayMs); continue; }
+                Console.Error.WriteLine("Empty Keycloak admin token");
+                return;
+            }
+
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
+
+            // ── Configure redirect URIs for cv-gateway client ────────────────
+            var gatewayRedirectUris = new[]
+            {
+                $"{gatewayUrl}/api/auth/callback",
+                $"{gatewayUrl}/*",
+            };
+            var gatewayWebOrigins = new[] { gatewayUrl };
+
+            // ── Configure redirect URIs for frontend client ──────────────────
+            var frontendRedirectUris = new[] { $"{frontendUrl}/*" };
+            var frontendWebOrigins = new[] { frontendUrl };
+
+            await ConfigureClientUrisAsync(client, keycloakInternalUrl, keycloakRealm, "cv-gateway", gatewayRedirectUris, gatewayWebOrigins);
+            await ConfigureClientUrisAsync(client, keycloakInternalUrl, keycloakRealm, "cv-frontend", frontendRedirectUris, frontendWebOrigins);
+
+            // ── Configure identity providers (Google, GitHub) ────────────────
+            var providers = new[]
+            {
+                new { Alias = "google", ClientId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID"), ClientSecret = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET") },
+                new { Alias = "github", ClientId = Environment.GetEnvironmentVariable("GITHUB_CLIENT_ID"), ClientSecret = Environment.GetEnvironmentVariable("GITHUB_CLIENT_SECRET") },
+            };
+
+            var allSucceeded = true;
+
+            foreach (var provider in providers)
+            {
+                if (string.IsNullOrEmpty(provider.ClientId) || string.IsNullOrEmpty(provider.ClientSecret))
+                {
+                    Console.WriteLine($"Skipping {provider.Alias} identity provider — env vars not set");
+                    continue;
+                }
+
+                var alias = provider.Alias;
+
+                var createConfig = new Dictionary<string, string>
+                {
+                    ["clientId"] = provider.ClientId,
+                    ["clientSecret"] = provider.ClientSecret,
+                };
+                if (alias == "google")
+                    createConfig["defaultScope"] = "openid profile email";
+
+                var createPayload = new Dictionary<string, object>
+                {
+                    ["alias"] = alias,
+                    ["providerId"] = alias,
+                    ["enabled"] = true,
+                    ["config"] = createConfig,
+                };
+
+                var createResponse = await client.PostAsJsonAsync(
+                    $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/identity-provider/instances",
+                    createPayload);
+
+                if (createResponse.IsSuccessStatusCode || createResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
+                {
+                    var getResponse = await client.GetAsync(
+                        $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/identity-provider/instances/{alias}");
+
+                    if (!getResponse.IsSuccessStatusCode)
+                    {
+                        allSucceeded = false;
+                        Console.Error.WriteLine($"Failed to get {alias} identity provider: {getResponse.StatusCode}");
+                        continue;
+                    }
+
+                    var existing = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+                    var config = existing.GetProperty("config").EnumerateObject()
+                        .ToDictionary(kv => kv.Name, kv => kv.Value.GetString() ?? "");
+
+                    config["clientId"] = provider.ClientId;
+                    config["clientSecret"] = provider.ClientSecret;
+                    if (alias == "google")
+                        config["defaultScope"] = "openid profile email";
+
+                    var patch = new Dictionary<string, object>
+                    {
+                        ["alias"] = alias,
+                        ["providerId"] = existing.GetProperty("providerId").GetString() ?? alias,
+                        ["enabled"] = true,
+                        ["config"] = config,
+                    };
+
+                    var putResponse = await client.PutAsJsonAsync(
+                        $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/identity-provider/instances/{alias}",
+                        patch);
+
+                    if (putResponse.IsSuccessStatusCode)
+                        Console.WriteLine($"Configured {alias} identity provider");
+                    else
+                    {
+                        allSucceeded = false;
+                        var err = await putResponse.Content.ReadAsStringAsync();
+                        Console.Error.WriteLine($"Failed to configure {alias}: {putResponse.StatusCode} {err}");
+                    }
+                }
+                else
+                {
+                    allSucceeded = false;
+                    var err = await createResponse.Content.ReadAsStringAsync();
+                    Console.Error.WriteLine($"Failed to create {alias} identity provider: {createResponse.StatusCode} {err}");
+                }
+            }
+
+            if (allSucceeded)
+            {
+                Console.WriteLine("Keycloak configuration completed successfully");
+                return;
+            }
+
+            if (attempt < maxRetries)
+            {
+                Console.WriteLine($"Retrying Keycloak configuration ({attempt}/{maxRetries})...");
+                await Task.Delay(delayMs);
+            }
+            else
+                Console.Error.WriteLine("Failed to configure Keycloak after all retries");
+        }
+        catch (Exception ex) when (attempt < maxRetries)
+        {
+            Console.WriteLine($"Keycloak configuration attempt {attempt}/{maxRetries} failed: {ex.Message}");
+            await Task.Delay(delayMs);
+        }
+    }
+}
+
+static async Task ConfigureClientUrisAsync(HttpClient client, string keycloakUrl, string realm, string clientId, string[] redirectUris, string[] webOrigins)
+{
+    try
+    {
+        var getResponse = await client.GetAsync($"{keycloakUrl}/admin/realms/{realm}/clients");
+        if (!getResponse.IsSuccessStatusCode)
+        {
+            Console.Error.WriteLine($"Failed to list clients: {getResponse.StatusCode}");
+            return;
+        }
+
+        var clients = await getResponse.Content.ReadFromJsonAsync<List<JsonElement>>();
+        if (clients == null) return;
+
+        var targetClient = clients.FirstOrDefault(c =>
+            c.GetProperty("clientId").GetString() == clientId);
+
+        if (targetClient.ValueKind == JsonValueKind.Undefined)
+        {
+            Console.WriteLine($"Client '{clientId}' not found in Keycloak, skipping redirect URIs config");
+            return;
+        }
+
+        var currentRedirectUris = targetClient.GetProperty("redirectUris").EnumerateArray()
+            .Select(u => u.GetString()).Where(u => u != null).Cast<string>().ToList();
+        var currentWebOrigins = targetClient.GetProperty("webOrigins").EnumerateArray()
+            .Select(o => o.GetString()).Where(o => o != null).Cast<string>().ToList();
+
+        var mergedRedirectUris = currentRedirectUris
+            .Concat(redirectUris.Where(u => !currentRedirectUris.Contains(u)))
+            .ToList();
+
+        var mergedWebOrigins = currentWebOrigins
+            .Concat(webOrigins.Where(o => !currentWebOrigins.Contains(o)))
+            .ToList();
+
+        if (mergedRedirectUris.Count == currentRedirectUris.Count && mergedWebOrigins.Count == currentWebOrigins.Count)
+        {
+            Console.WriteLine($"Client '{clientId}' redirect URIs are up to date");
+            return;
+        }
+
+        var updatePayload = new Dictionary<string, object>
+        {
+            ["redirectUris"] = mergedRedirectUris,
+            ["webOrigins"] = mergedWebOrigins,
+        };
+
+        var updateResponse = await client.PutAsJsonAsync(
+            $"{keycloakUrl}/admin/realms/{realm}/clients/{targetClient.GetProperty("id").GetString()}",
+            updatePayload);
+
+        if (updateResponse.IsSuccessStatusCode)
+            Console.WriteLine($"Updated '{clientId}' redirect URIs: {string.Join(", ", mergedRedirectUris)}");
+        else
+        {
+            var err = await updateResponse.Content.ReadAsStringAsync();
+            Console.Error.WriteLine($"Failed to update '{clientId}' client: {updateResponse.StatusCode} {err}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Error configuring client '{clientId}': {ex.Message}");
+    }
+}
 
 class MemoryCacheTicketStore : ITicketStore
 {

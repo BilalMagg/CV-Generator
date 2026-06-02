@@ -118,20 +118,28 @@ test-template:
 	cd ai_agents && PYTHONPATH=. .venv/Scripts/python.exe app/agents/template_agent/test_template_agent.py
 
 # ----------------------------------
+# Environment (load root .env)
+# ----------------------------------
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
+# ----------------------------------
 # Infrastructure
 # ----------------------------------
 
 kafka-topics:
-	docker exec cv-kafka kafka-topics --bootstrap-server localhost:9092 --list
+	docker exec cv-kafka kafka-topics --bootstrap-server ${KAFKA_HOST:-localhost}:${KAFKA_PORT:-9092} --list
 
 minio-console:
-	@echo "MinIO Console: http://localhost:9001"
-	@echo "MinIO API: http://localhost:9000"
-	@echo "Credentials: minioadmin/minioadmin"
+	@echo "MinIO Console: http://localhost:${MINIO_CONSOLE_PORT:-9001}"
+	@echo "MinIO API: http://localhost:${MINIO_PORT:-9000}"
+	@echo "Credentials: ${MINIO_ROOT_USER:-minioadmin}/${MINIO_ROOT_PASSWORD:-minioadmin}"
 
 keycloak-admin:
-	@echo "Keycloak Admin: http://localhost:8443"
-	@echo "Credentials: admin/admin"
+	@echo "Keycloak Admin: http://${KEYCLOAK_EXTERNAL_HOST:-localhost}:${KEYCLOAK_EXTERNAL_PORT:-9090}"
+	@echo "Credentials: ${KEYCLOAK_ADMIN_USERNAME:-admin}/${KEYCLOAK_ADMIN_PASSWORD:-admin}"
 
 kafka-ui:
 	@echo "Kafka UI: http://localhost:8090"
@@ -188,15 +196,15 @@ sonar-down:
 
 sonar-scan-backend:
 	@echo "Scanning Backend (Dockerized)..."
-	docker run --rm --network cv-network -v "$(CURDIR)/backend:/app" -w /app mcr.microsoft.com/dotnet/sdk:10.0 bash -c "apt-get update && apt-get install -y openjdk-17-jre && dotnet tool install --global dotnet-sonarscanner && export PATH=\"$$PATH:/root/.dotnet/tools\" && dotnet new sln -n CV-Generator --force && find src -name \"*.csproj\" -exec dotnet sln CV-Generator.sln add {} \; && dotnet sonarscanner begin /k:cv-generator-backend /d:sonar.host.url=$(SONAR_HOST_URL) /d:sonar.login=$(SONAR_TOKEN) $(SONAR_ORG_ARG_BACKEND) && dotnet build CV-Generator.sln && dotnet sonarscanner end /d:sonar.login=$(SONAR_TOKEN)"
+	docker run --rm -v "$(CURDIR)/backend:/app" -w /app mcr.microsoft.com/dotnet/sdk:10.0 bash -c "apt-get update && apt-get install -y openjdk-17-jre && dotnet tool install --global dotnet-sonarscanner && export PATH=\"$$PATH:/root/.dotnet/tools\" && dotnet sonarscanner begin /k:cv-generator-backend /d:sonar.host.url=$(SONAR_HOST_URL) /d:sonar.login=$(SONAR_TOKEN) $(SONAR_ORG_ARG_BACKEND) && dotnet build CV_Generator.sln && dotnet sonarscanner end /d:sonar.login=$(SONAR_TOKEN)"
 
 sonar-scan-frontend:
 	@echo "Scanning Frontend (Dockerized)..."
-	docker run --rm --network cv-network -e SONAR_HOST_URL="$(SONAR_HOST_URL)" -e SONAR_TOKEN="$(SONAR_TOKEN)" -v "$(CURDIR)/frontend:/usr/src" sonarsource/sonar-scanner-cli sonar-scanner $(SONAR_ORG_ARG)
+	docker run --rm -e SONAR_HOST_URL="$(SONAR_HOST_URL)" -e SONAR_TOKEN="$(SONAR_TOKEN)" -v "$(CURDIR)/frontend:/usr/src" sonarsource/sonar-scanner-cli sonar-scanner $(SONAR_ORG_ARG)
 
 sonar-scan-ai:
 	@echo "Scanning AI Agents (Dockerized)..."
-	docker run --rm --network cv-network -e SONAR_HOST_URL="$(SONAR_HOST_URL)" -e SONAR_TOKEN="$(SONAR_TOKEN)" -v "$(CURDIR)/ai_agents:/usr/src" sonarsource/sonar-scanner-cli sonar-scanner $(SONAR_ORG_ARG)
+	docker run --rm -e SONAR_HOST_URL="$(SONAR_HOST_URL)" -e SONAR_TOKEN="$(SONAR_TOKEN)" -v "$(CURDIR)/ai_agents:/usr/src" sonarsource/sonar-scanner-cli sonar-scanner $(SONAR_ORG_ARG)
 
 sonar-scan-all: sonar-scan-backend sonar-scan-frontend sonar-scan-ai
 

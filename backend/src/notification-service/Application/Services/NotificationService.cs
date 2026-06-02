@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.DTOs;
 using NotificationService.Application.Interfaces;
 using NotificationService.Domain.Entities;
@@ -123,17 +124,88 @@ public class NotificationService : INotificationService
         await _db.SaveChangesAsync();
     }
 
+    // ── Preferences ───────────────────────────────────────────────────────────
+
+    public async Task<NotificationPreferenceDto> GetUserPreferencesAsync(Guid userId)
+    {
+        var prefs = await _db.NotificationPreferences
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (prefs is null)
+        {
+            prefs = new NotificationPreference { UserId = userId };
+            _db.NotificationPreferences.Add(prefs);
+            await _db.SaveChangesAsync();
+        }
+
+        return MapToDto(prefs);
+    }
+
+    public async Task<NotificationPreferenceDto> UpdateUserPreferencesAsync(
+        Guid userId, UpdateNotificationPreferenceDto dto)
+    {
+        var prefs = await _db.NotificationPreferences
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (prefs is null)
+        {
+            prefs = new NotificationPreference { UserId = userId };
+            _db.NotificationPreferences.Add(prefs);
+        }
+
+        if (dto.EnableEmail.HasValue) prefs.EnableEmail = dto.EnableEmail.Value;
+        if (dto.EnableInApp.HasValue) prefs.EnableInApp = dto.EnableInApp.Value;
+        if (dto.Reminders.HasValue) prefs.Reminders = dto.Reminders.Value;
+        if (dto.ApplicationUpdates.HasValue) prefs.ApplicationUpdates = dto.ApplicationUpdates.Value;
+        if (dto.CvUpdates.HasValue) prefs.CvUpdates = dto.CvUpdates.Value;
+        if (dto.WeeklyDigest.HasValue) prefs.WeeklyDigest = dto.WeeklyDigest.Value;
+        if (dto.DefaultReminderDaysBefore.HasValue) prefs.DefaultReminderDaysBefore = dto.DefaultReminderDaysBefore.Value;
+
+        prefs.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return MapToDto(prefs);
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private async Task SaveAndSendAsync(Guid userId, string email, string name,
         NotificationType type, string subject, string htmlBody)
     {
+        var prefs = await _db.NotificationPreferences
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (prefs is null)
+        {
+            prefs = new NotificationPreference { UserId = userId };
+            _db.NotificationPreferences.Add(prefs);
+            await _db.SaveChangesAsync();
+        }
+
+        var channel = NotificationChannel.Email;
+
+        if (!prefs.EnableEmail)
+        {
+            _logger.LogInformation("Skipping email for user {UserId} — email channel disabled", userId);
+            return;
+        }
+
+        if (!IsCategoryEnabled(type, prefs))
+        {
+            _logger.LogInformation(
+                "Skipping notification of type {Type} for user {UserId} — category disabled",
+                type, userId);
+            return;
+        }
+
         var entity = new Notification
         {
             UserId = userId,
             UserEmail = email,
             Type = type,
-            Channel = NotificationChannel.Email,
+            Channel = channel,
             Subject = subject,
             Body = htmlBody
         };
@@ -154,5 +226,42 @@ public class NotificationService : INotificationService
         }
 
         await _db.SaveChangesAsync();
+    }
+
+    private static bool IsCategoryEnabled(NotificationType type, NotificationPreference prefs)
+    {
+        return type switch
+        {
+            NotificationType.ApplicationCreated or
+            NotificationType.ApplicationStatusChanged => prefs.ApplicationUpdates,
+
+            NotificationType.ApplicationNoResponseOneWeek or
+            NotificationType.ApplicationNoResponseTwoWeeks or
+            NotificationType.UserReminder => prefs.Reminders,
+
+            NotificationType.CvGenerated or
+            NotificationType.CvExportReady => prefs.CvUpdates,
+
+            NotificationType.WeeklyDigest => prefs.WeeklyDigest,
+
+            _ => true
+        };
+    }
+
+    private static NotificationPreferenceDto MapToDto(NotificationPreference prefs)
+    {
+        return new NotificationPreferenceDto
+        {
+            Id = prefs.Id,
+            UserId = prefs.UserId,
+            EnableEmail = prefs.EnableEmail,
+            EnableInApp = prefs.EnableInApp,
+            Reminders = prefs.Reminders,
+            ApplicationUpdates = prefs.ApplicationUpdates,
+            CvUpdates = prefs.CvUpdates,
+            WeeklyDigest = prefs.WeeklyDigest,
+            DefaultReminderDaysBefore = prefs.DefaultReminderDaysBefore,
+            UpdatedAt = prefs.UpdatedAt
+        };
     }
 }

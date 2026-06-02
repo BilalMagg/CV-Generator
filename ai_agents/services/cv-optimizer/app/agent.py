@@ -1,31 +1,30 @@
 import os
 import re
-import atexit
-import psycopg
 
-from langchain_postgres import PostgresChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain.agents import create_tool_calling_agent
 from langchain.agents import AgentExecutor
 from .tool import tools
 from .prompt import prompt
-from .llm import llm
+from .llm import _get_llm
 from .db import get_session_history
 
+_agent_with_memory: RunnableWithMessageHistory | None = None
 
 
-
-agent = create_tool_calling_agent(llm, tools, prompt)
-agent_Executor=AgentExecutor(agent=agent,tools=tools,verbose=True)
-
-
-agent_with_memory=RunnableWithMessageHistory(
-    agent_Executor,
-    get_session_history,
-    input_messages_key="input",
-    history_messages_key="chat_history"
-
-)
+def _get_agent_with_memory() -> RunnableWithMessageHistory:
+    global _agent_with_memory
+    if _agent_with_memory is None:
+        llm = _get_llm()
+        agent = create_tool_calling_agent(llm, tools, prompt)
+        agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+        _agent_with_memory = RunnableWithMessageHistory(
+            agent_executor,
+            get_session_history,
+            input_messages_key="input",
+            history_messages_key="chat_history",
+        )
+    return _agent_with_memory
 
 
 def optimize_CV(file_path: str, job_data: str, candidate_name: str, session_id: str, user_focus: str = None):
@@ -48,7 +47,7 @@ def optimize_CV(file_path: str, job_data: str, candidate_name: str, session_id: 
     """
 
     config = {"configurable": {"session_id": session_id}}
-    result = agent_with_memory.invoke({"input": user_prompt}, config=config)
+    result = _get_agent_with_memory().invoke({"input": user_prompt}, config=config)
     output = result["output"]
 
     # Parsing des scores ATS (depuis le format défini dans prompt.py)

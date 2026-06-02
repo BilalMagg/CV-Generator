@@ -1,0 +1,18 @@
+<section id="how-it-works" class="hiw-section">
+  <div class="hiw-inner">
+    <div class="section-head">
+      <div class="section-eyebrow-pill">How it works</div>
+      <h2 class="section-display-title">Four steps to your next offer</h2>
+    </div>
+
+    <div class="hiw-grid">
+      @for (step of steps; track step.num) {
+        <div class="hiw-card">
+          <div class="hiw-num">{{ step.num }}</div>
+          <div class="hiw-title">{{ step.title }}</div>
+          <div class="hiw-desc">{{ step.desc }}</div>
+        </div>
+      }
+    </div>
+  </div>
+</section>

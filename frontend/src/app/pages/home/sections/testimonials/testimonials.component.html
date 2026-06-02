@@ -1,0 +1,26 @@
+<section class="testi-section">
+  <div class="testi-inner">
+    <div class="testi-card">
+      <blockquote class="testi-quote">
+        "I sent 14 tailored CVs in a week. Got 9 callbacks and 4 interviews.
+        {{ appName }} turned my job search from a part-time job back into a side quest."
+      </blockquote>
+      <div class="testi-author">
+        <div class="testi-avatar">MA</div>
+        <div>
+          <div class="testi-name">Maya Arce</div>
+          <div class="testi-role">Senior Product Designer · placed at Linear</div>
+        </div>
+      </div>
+
+      <div class="testi-stats">
+        @for (s of stats; track s.num) {
+          <div class="testi-stat">
+            <div class="testi-stat-num">{{ s.num }}</div>
+            <div class="testi-stat-label">{{ s.label }}</div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</section>

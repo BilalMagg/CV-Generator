@@ -1,90 +1,149 @@
-<div class="content">
-  <div class="topbar">
-    <div class="topbar-row1">
-      <div class="topbar-title">Applications</div>
-      <div class="mini-stats">
-        <div class="mini-stat"><span>{{ statistics().total }}</span>Total</div>
-        <div class="mini-stat"><span>{{ statistics().pending + statistics().reviewed }}</span>Active</div>
-        <div class="mini-stat"><span>{{ statistics().interview }}</span>Interview</div>
-        <div class="mini-stat"><span>{{ statistics().accepted }}</span>Offers</div>
+<div class="list-shell">
+  <!-- Toolbar -->
+  <div class="list-toolbar">
+    <div class="toolbar-row">
+      <div class="toolbar-stats">
+        <span class="ts-item"><strong>{{ statistics().total }}</strong> total</span>
+        <span class="ts-sep">·</span>
+        <span class="ts-item"><strong>{{ statistics().interview }}</strong> interviews</span>
+        <span class="ts-sep">·</span>
+        <span class="ts-item"><strong>{{ statistics().accepted }}</strong> offers</span>
       </div>
-      <a class="add-btn" routerLink="/applications/new"><i class="ti ti-plus"></i>Add application</a>
     </div>
-    <div class="search-row">
+    <div class="toolbar-filters">
       <div class="search-wrap">
-        <i class="ti ti-search"></i>
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="13" y2="13"/>
+        </svg>
         <input class="search-input" placeholder="Search company or position…" [(ngModel)]="searchQuery" (keyup.enter)="onSearch()">
       </div>
-      <select class="chip" [(ngModel)]="selectedStatus" (ngModelChange)="onStatusFilterChange()">
-        <option value="">All statuses</option>
-        <option *ngFor="let s of ['PENDING','REVIEWED','INTERVIEW','ACCEPTED','REJECTED','CANCELLED']" [value]="s">{{ getStatusLabel(s) }}</option>
-      </select>
+      <div class="filter-btn-wrap">
+        <button class="filter-btn" (click)="filterOpen.set(!filterOpen())">
+          <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <line x1="1" y1="4" x2="13" y2="4"/><line x1="3" y1="7" x2="11" y2="7"/><line x1="5" y1="10" x2="9" y2="10"/>
+          </svg>
+          Filter
+          @if (activeFilterCount() > 0) {
+            <span class="filter-badge">{{ activeFilterCount() }}</span>
+          }
+        </button>
+        @if (filterOpen()) {
+          <div class="filter-panel" (click)="$event.stopPropagation()">
+            <div class="fp-section">
+              <div class="fp-label">Status</div>
+              <div class="fp-chips">
+                @for (s of ALL_STATUSES; track s) {
+                  <button class="fp-chip" [class.active]="selectedStatuses().has(s)" (click)="toggleStatus(s)">
+                    {{ STATUS_LABELS[s] }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="fp-section">
+              <div class="fp-label">Applied</div>
+              <div class="fp-date-row">
+                <input type="date" class="fp-date" [(ngModel)]="appliedFrom" (ngModelChange)="0" placeholder="From">
+                <span class="fp-date-sep">→</span>
+                <input type="date" class="fp-date" [(ngModel)]="appliedTo" (ngModelChange)="0" placeholder="To">
+              </div>
+            </div>
+            <div class="fp-section">
+              <div class="fp-label">Updated</div>
+              <div class="fp-date-row">
+                <input type="date" class="fp-date" [(ngModel)]="updatedFrom" (ngModelChange)="0" placeholder="From">
+                <span class="fp-date-sep">→</span>
+                <input type="date" class="fp-date" [(ngModel)]="updatedTo" (ngModelChange)="0" placeholder="To">
+              </div>
+            </div>
+            <div class="fp-actions">
+              <button class="fp-apply" (click)="applyFilters()">Apply</button>
+              <button class="fp-clear" (click)="clearFilters()">Clear all</button>
+            </div>
+          </div>
+        }
+      </div>
     </div>
   </div>
 
   @if (loading()) {
-    <div class="loading-state">Loading...</div>
+    <div class="state-msg">Loading…</div>
   } @else if (applications().length === 0) {
-    <div class="empty-state">
-      <i class="ti ti-inbox" style="font-size:40px;color:var(--color-text-tertiary);display:block;margin-bottom:1rem"></i>
-      <h3>No applications yet</h3>
-      <p>Start tracking your job applications.</p>
-      <a class="add-btn" routerLink="/applications/new" style="margin-top:1rem;display:inline-flex"><i class="ti ti-plus"></i>Add application</a>
+    <div class="state-msg empty">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="color:var(--text-3);margin-bottom:12px">
+        <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="12" y2="13"/>
+      </svg>
+      <p>No applications yet.</p>
     </div>
   } @else {
-    <table>
-      <thead>
-        <tr>
-          <th>Company · Position</th>
-          <th>Status</th>
-          <th>Applied</th>
-          <th>Last update</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (app of applications(); track app.id) {
-          <tr [routerLink]="['/applications', app.id]" style="cursor:pointer">
-            <td>
-              <div class="co-cell">
-                <div class="co-logo" [style.background]="logoBg(app.companyName)" [style.color]="logoColor(app.companyName)">{{ app.companyName[0] }}</div>
-                <div>
-                  <div class="co-name">{{ app.companyName }}</div>
-                  <div class="co-pos">{{ app.positionTitle }}</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <select class="status-sel" [style.background]="STATUS_BG[app.status.toLowerCase()]" [style.color]="STATUS_TEXT[app.status.toLowerCase()]" (change)="onInlineStatusChange(app, $event)" (click)="$event.stopPropagation()" [value]="app.status">
-                <option value="PENDING">Pending</option>
-                <option value="REVIEWED">Reviewed</option>
-                <option value="INTERVIEW">Interview</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="REJECTED">Rejected</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
-            </td>
-            <td style="color:var(--color-text-secondary);font-size:13px">{{ formatDate(app.appliedAt) }}</td>
-            <td style="color:var(--color-text-secondary);font-size:13px">{{ formatDate(app.updatedAt) }}</td>
-            <td>
-              <div class="actions" (click)="$event.stopPropagation()">
-                <button class="act-btn" title="View" [routerLink]="['/applications', app.id]"><i class="ti ti-eye"></i></button>
-                <button class="act-btn" title="Delete" (click)="onDelete(app.id)"><i class="ti ti-trash"></i></button>
-              </div>
-            </td>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Company · Position</th>
+            <th>Status</th>
+            <th>Applied</th>
+            <th>Updated</th>
+            <th></th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (app of applications(); track app.id) {
+            <tr [routerLink]="['/applications', app.id]">
+              <td>
+                <div class="co-cell">
+                  <div class="co-logo" [style.background]="logoBg(app.companyName)">{{ app.companyName[0] }}</div>
+                  <div>
+                    <div class="co-name">{{ app.companyName }}</div>
+                    <div class="co-role">{{ app.positionTitle }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <select class="status-sel" [attr.data-status]="app.status" (change)="onInlineStatusChange(app, $event)" (click)="$event.stopPropagation()" [value]="app.status">
+                  <option value="PENDING">Pending</option>
+                  <option value="REVIEWED">Reviewed</option>
+                  <option value="INTERVIEW">Interview</option>
+                  <option value="ACCEPTED">Accepted</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </td>
+              <td class="td-meta">{{ formatDate(app.appliedAt) }}</td>
+              <td class="td-meta">{{ formatDate(app.updatedAt) }}</td>
+              <td>
+                <div class="row-actions" (click)="$event.stopPropagation()">
+                  <button class="row-btn" title="View" [routerLink]="['/applications', app.id]">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                  <button class="row-btn danger" title="Delete" (click)="onDelete(app.id)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
 
-    <div class="pag">
-      <div>Showing 1–{{ Math.min(pageSize(), totalItems()) }} of {{ totalItems() }} applications</div>
+    <div class="pagination">
+      <div class="pag-left">
+        <span class="pag-info">{{ itemRange() }}</span>
+        <span class="pag-sep">·</span>
+        <select class="pag-size-sel" (change)="changePageSize($event)">
+          <option value="15" [selected]="pageSize() === 15">15 / page</option>
+          <option value="50" [selected]="pageSize() === 50">50 / page</option>
+          <option value="100" [selected]="pageSize() === 100">100 / page</option>
+        </select>
+      </div>
       <div class="pag-btns">
-        <button class="pag-btn" [class.active]="page() === 1" disabled>‹</button>
+        <button class="pag-btn" [disabled]="page() <= 1" (click)="changePage(1)" title="First">«</button>
+        <button class="pag-btn" [disabled]="page() <= 1" (click)="changePage(page() - 1)">‹</button>
         @for (p of visiblePages(); track p) {
           <button class="pag-btn" [class.active]="p === page()" (click)="changePage(p)">{{ p }}</button>
         }
-        <button class="pag-btn">›</button>
+        <button class="pag-btn" [disabled]="page() >= totalPages()" (click)="changePage(page() + 1)">›</button>
+        <button class="pag-btn" [disabled]="page() >= totalPages()" (click)="changePage(totalPages())" title="Last">»</button>
       </div>
     </div>
   }

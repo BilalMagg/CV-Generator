@@ -71,10 +71,20 @@ namespace job_offer_service.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("JobHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("JobRole")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Location")
                         .HasMaxLength(200)
@@ -109,6 +119,10 @@ namespace job_offer_service.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("JobHash")
+                        .IsUnique()
+                        .HasFilter("\"JobHash\" IS NOT NULL");
 
                     b.ToTable("job_offers");
                 });
@@ -159,6 +173,60 @@ namespace job_offer_service.Migrations
                     b.HasIndex("JobOfferId");
 
                     b.ToTable("job_skills");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.SearchCache", b =>
+                {
+                    b.Property<Guid>("SearchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("CrawledDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ExpectedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Keyword")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("ProcessedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("SearchId");
+
+                    b.HasIndex("Keyword", "CrawledDate");
+
+                    b.ToTable("search_caches");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.UserQuota", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("LastCrawlDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("user_quotas");
                 });
 
             modelBuilder.Entity("JobOfferService.Entities.JobBenefit", b =>

@@ -1,0 +1,29 @@
+<nav class="landing-nav">
+  <div class="nav-pill">
+
+    <!-- Brand -->
+    <div class="nav-brand">
+      <div class="nav-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+          <path d="M12 3l2.1 5.4 5.4 2.1-5.4 2.1L12 18l-2.1-5.4L4.5 10.5l5.4-2.1z"
+            stroke="white" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="nav-brand-name">{{ appName }}</span>
+    </div>
+
+    <!-- Links -->
+    <div class="nav-links">
+      <a href="#" (click)="scrollTo($event, 'features')" class="nav-link">Features</a>
+      <a href="#" (click)="scrollTo($event, 'pricing')" class="nav-link">Pricing</a>
+      <a href="#" (click)="scrollTo($event, 'how-it-works')" class="nav-link">How it works</a>
+    </div>
+
+    <!-- Actions -->
+    <div class="nav-actions">
+      <a routerLink="/login" class="nav-signin">Log in</a>
+      <a routerLink="/register" class="nav-cta">Sign up for free</a>
+    </div>
+
+  </div>
+</nav>

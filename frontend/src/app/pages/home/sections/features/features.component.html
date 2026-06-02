@@ -1,0 +1,17 @@
+<section class="challenges-section">
+  <div class="challenges-inner">
+    <div class="section-head">
+      <div class="section-eyebrow-pill">Solutions</div>
+      <h2 class="section-display-title">Solve your job search's biggest challenges</h2>
+    </div>
+
+    <div class="challenges-grid">
+      @for (item of challenges; track item.title) {
+        <div class="challenge-item">
+          <div class="challenge-icon" [innerHTML]="item.icon"></div>
+          <p class="challenge-body">{{ item.body }}</p>
+        </div>
+      }
+    </div>
+  </div>
+</section>

@@ -1,0 +1,72 @@
+<div class="analytics-page">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="header-left">
+      <span class="badge-pill">Analytics</span>
+      <h1 class="page-title">Your search, by the numbers</h1>
+      <p class="page-sub">See what's working, where you're getting traction, and where to push harder.</p>
+    </div>
+    <div class="header-right">
+      <div class="period-group">
+        <button class="period-btn" [class.active]="periodMonths() === 3" (click)="setPeriod(3)">3m</button>
+        <button class="period-btn" [class.active]="periodMonths() === 6" (click)="setPeriod(6)">6m</button>
+        <button class="period-btn" [class.active]="periodMonths() === 12" (click)="setPeriod(12)">12m</button>
+        <button class="period-btn" [class.active]="periodMonths() === 0" (click)="setPeriod(0)">All</button>
+      </div>
+      <button class="report-btn" title="Coming soon">
+        <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-row">
+    @for (s of statCards(); track s.label) {
+      <div class="stat-card">
+        <div class="stat-top">
+          <span class="stat-label">{{ s.label }}</span>
+          <span class="stat-badge" [class.positive]="s.positive" [class.negative]="!s.positive">{{ s.change }}</span>
+        </div>
+        <div class="stat-value" [style.color]="s.color">{{ s.value }}</div>
+      </div>
+    }
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <!-- Donut chart -->
+    <div class="chart-card">
+      <h3 class="chart-title">Status distribution</h3>
+      <p class="chart-sub">Active applications</p>
+      <div class="donut-layout">
+        <div [innerHTML]="donutSvg()"></div>
+        <div class="donut-legend">
+          @for (sl of donutSlices(); track sl.label) {
+            <div class="legend-row">
+              <span class="legend-dot" [style.background]="sl.color"></span>
+              <span class="legend-label">{{ sl.label }}</span>
+              <span class="legend-pct">{{ sl.pct }}%</span>
+              <span class="legend-count">{{ sl.count }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="chart-card">
+      <h3 class="chart-title">Applications per month</h3>
+      <p class="chart-sub">Stacked by status</p>
+      <div [innerHTML]="barChartSvg()"></div>
+      <div class="bar-legend">
+        <span class="leg"><span class="leg-dot" style="background:oklch(0.72 0.01 80)"></span>Applied</span>
+        <span class="leg"><span class="leg-dot" style="background:oklch(0.6 0.16 250)"></span>Interview</span>
+        <span class="leg"><span class="leg-dot" style="background:oklch(0.62 0.15 155)"></span>Offer</span>
+        <span class="leg"><span class="leg-dot" style="background:oklch(0.62 0.18 25)"></span>Rejected</span>
+      </div>
+    </div>
+  </div>
+
+</div>

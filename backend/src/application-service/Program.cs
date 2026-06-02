@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -10,7 +11,18 @@ using ApplicationService.Repositories;
 using ApplicationService.DTOs;
 using ApplicationService.Validators;
 
+AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
 var builder = WebApplication.CreateBuilder(args);
+
+var httpPort = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "8085");
+var grpcPort = int.Parse(Environment.GetEnvironmentVariable("GRPC_PORT") ?? "18085");
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(httpPort, o => o.Protocols = HttpProtocols.Http1);
+    options.ListenAnyIP(grpcPort, o => o.Protocols = HttpProtocols.Http2);
+});
 
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -25,23 +37,25 @@ builder.Services.AddScoped<IApplicationStatusHistoryRepository, ApplicationStatu
 builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>();
 builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
 builder.Services.AddScoped<ApplicationService.Services.IApplicationService, ApplicationServiceImpl>();
+builder.Services.AddScoped<IDataSeeder, DataSeeder>();
+builder.Services.AddScoped<ICalendarConfigurationRepository, CalendarConfigurationRepository>();
+builder.Services.AddScoped<ICalendarConfigurationService, CalendarConfigurationServiceImpl>();
 
 // gRPC client — UserService
+var userServiceGrpcUrl = Environment.GetEnvironmentVariable("USER_SERVICE_GRPC_URL")
+    ?? "http://cv-user-service:18082";
 builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
 {
-    var grpcUrl = builder.Configuration.GetValue<string>("USER_SERVICE_GRPC_URL")
-        ?? Environment.GetEnvironmentVariable("USER_SERVICE_GRPC_URL")
-        ?? "http://cv-user-service:8082";
-    o.Address = new Uri(grpcUrl);
+    o.Address = new Uri(userServiceGrpcUrl);
 })
-.ConfigureChannel(o =>
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
 {
-    o.HttpHandler = new SocketsHttpHandler
-    {
-        EnableMultipleHttp2Connections = true,
-        ConnectTimeout = TimeSpan.FromSeconds(5),
-    };
+    EnableMultipleHttp2Connections = true,
+    ConnectTimeout = TimeSpan.FromSeconds(5),
 });
+
+// gRPC server
+builder.Services.AddGrpc();
 
 // Validators
 builder.Services.AddScoped<IValidator<CreateApplicationDto>, CreateApplicationValidator>();
@@ -60,14 +74,17 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        var jwtAuthority = builder.Configuration["JWT_AUTHORITY"] ?? "";
+        var jwtAuthority = Environment.GetEnvironmentVariable("JWT_AUTHORITY")
+            ?? builder.Configuration["JWT_AUTHORITY"]
+            ?? "http://cv-keycloak:8080/realms/cv-realm";
+        var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+            ?? $"http://{Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_HOST") ?? "localhost"}:{Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_PORT") ?? "9090"}/realms/cv-realm";
         options.Authority = jwtAuthority;
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters.ValidateAudience = false;
-        // Accept the external URL as a valid issuer (the JWT's iss claim)
         options.TokenValidationParameters.ValidIssuers = new[]
         {
-            "http://localhost:9090/realms/cv-realm",
+            jwtIssuer,
         };
     });
 
@@ -106,20 +123,20 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ── Kafka test endpoint ─────────────────────────────────────────────────────
-app.MapGet("/api/test/kafka", async (HttpContext ctx) =>
+app.MapGet("/api/test/kafka", async (HttpContext ctx, IConfiguration config) =>
 {
     var results = new List<string>();
-    var config = new ProducerConfig
+    var kafkaConfig = new ProducerConfig
     {
-        BootstrapServers = "localhost:9092",
+        BootstrapServers = config.GetValue<string>("KAFKA_BOOTSTRAP_SERVERS") ?? "kafka:9092",
         MessageTimeoutMs = 5000,
         RequestTimeoutMs = 5000,
     };
-    results.Add($"Using bootstrap.servers = '{config.BootstrapServers}'");
+    results.Add($"Using KAFKA_BOOTSTRAP_SERVERS = '{kafkaConfig.BootstrapServers}'");
 
     try
     {
-        using var producer = new ProducerBuilder<string, string>(config).Build();
+        using var producer = new ProducerBuilder<string, string>(kafkaConfig).Build();
         results.Add("Producer built successfully");
 
         var msg = new Message<string, string>
@@ -140,10 +157,52 @@ app.MapGet("/api/test/kafka", async (HttpContext ctx) =>
 })
 .WithName("TestKafka");
 
+// ── gRPC test endpoint ──────────────────────────────────────────────────────
+app.MapGet("/api/test/grpc", async (string? userId, IUserGrpcClientService userGrpc) =>
+{
+    var results = new List<string>();
+
+    if (string.IsNullOrEmpty(userId))
+    {
+        results.Add("Provide ?userId={guid} query parameter");
+        return Results.Ok(results);
+    }
+
+    if (!Guid.TryParse(userId, out var parsed))
+    {
+        results.Add($"Invalid userId format: '{userId}'");
+        return Results.Ok(results);
+    }
+
+    results.Add($"Looking up userId={parsed} via gRPC...");
+
+    try
+    {
+        var exists = await userGrpc.UserExistsAsync(parsed);
+        results.Add($"UserExistsAsync => {exists}");
+
+        var user = await userGrpc.GetUserAsync(parsed);
+        if (user != null)
+            results.Add($"GetUserAsync => Id={user.Id}, Email={user.Email}, Name={user.FirstName} {user.LastName}");
+        else
+            results.Add("GetUserAsync => null (not found)");
+
+        return Results.Ok(results);
+    }
+    catch (Exception ex)
+    {
+        results.Add($"FAILED: {ex.GetType().Name}: {ex.Message}");
+        return Results.Ok(results);
+    }
+})
+.WithName("TestGrpc");
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapGrpcService<ApplicationService.Services.ApplicationGrpcServiceImpl>();
 
 app.Run();

@@ -2,29 +2,15 @@ import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
-import { ApplicationService } from '../../../services/application.service';
+import { ApplicationService } from '@app/services/application.service';
 import {
   ApplicationResponseDto,
   ApplicationStatisticsDto,
   ApplicationStatus,
   STATUS_LABELS,
-  STATUS_ORDER,
-} from '../../../models/application.model';
+} from '@app/models/application.model';
 
-interface StatsCard {
-  status: ApplicationStatus;
-  label: string;
-  count: number;
-}
-
-const STATUS_BG: Record<string, string> = {
-  pending: '#F1EFE8', reviewed: '#E6F1FB', interview: '#EEEDFE',
-  accepted: '#EAF3DE', rejected: '#FCEBEB', cancelled: '#F1EFE8',
-};
-const STATUS_TEXT: Record<string, string> = {
-  pending: '#5F5E5A', reviewed: '#185FA5', interview: '#534AB7',
-  accepted: '#3B6D11', rejected: '#A32D2D', cancelled: '#888780',
-};
+const ALL_STATUSES: ApplicationStatus[] = ['PENDING','REVIEWED','INTERVIEW','ACCEPTED','REJECTED','CANCELLED'];
 
 @Component({
   selector: 'app-applications-list',
@@ -44,22 +30,49 @@ export class ApplicationsListComponent implements OnInit {
   pageSize = signal(15);
   totalItems = signal(0);
   searchQuery = signal('');
-  selectedStatus = signal<ApplicationStatus | ''>('');
+
+  selectedStatuses = signal<Set<ApplicationStatus>>(new Set());
+  appliedFrom = signal('');
+  appliedTo = signal('');
+  updatedFrom = signal('');
+  updatedTo = signal('');
+
+  filterOpen = signal(false);
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.totalItems() / this.pageSize())));
   visiblePages = computed(() => {
-    const current = this.page();
-    const total = this.totalPages();
+    const cur = this.page(), total = this.totalPages();
     const pages: number[] = [];
-    const start = Math.max(1, current - 2);
-    const end = Math.min(total, current + 2);
+    const start = Math.max(1, cur - 2), end = Math.min(total, cur + 2);
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   });
 
+  itemRange = computed(() => {
+    const p = this.page(), ps = this.pageSize(), total = this.totalItems();
+    if (total === 0) return '0 of 0';
+    const from = (p - 1) * ps + 1;
+    const to = Math.min(p * ps, total);
+    return `${from}–${to} of ${total}`;
+  });
+
+  activeFilterCount = computed(() => {
+    let count = this.selectedStatuses().size;
+    if (this.appliedFrom()) count++;
+    if (this.appliedTo()) count++;
+    if (this.updatedFrom()) count++;
+    if (this.updatedTo()) count++;
+    return count;
+  });
+
+  toggleStatus = (s: ApplicationStatus) => this.selectedStatuses.update(set => {
+    const next = new Set(set);
+    if (next.has(s)) next.delete(s); else next.add(s);
+    return next;
+  });
+
   protected readonly STATUS_LABELS = STATUS_LABELS;
-  protected readonly STATUS_BG = STATUS_BG;
-  protected readonly STATUS_TEXT = STATUS_TEXT;
+  protected readonly ALL_STATUSES = ALL_STATUSES;
   protected Math = Math;
 
   ngOnInit() { this.loadData(); }
@@ -67,11 +80,16 @@ export class ApplicationsListComponent implements OnInit {
   async loadData() {
     this.loading.set(true);
     try {
+      const statusArr = this.selectedStatuses().size > 0 ? [...this.selectedStatuses()] : undefined;
       const [listRes, statsRes] = await Promise.all([
         this.appService.getAll({
           page: this.page(), pageSize: this.pageSize(),
-          status: this.selectedStatus() || undefined,
+          statuses: statusArr,
           search: this.searchQuery() || undefined,
+          appliedFrom: this.appliedFrom() || undefined,
+          appliedTo: this.appliedTo() || undefined,
+          updatedFrom: this.updatedFrom() || undefined,
+          updatedTo: this.updatedTo() || undefined,
         }),
         this.appService.getStatistics(),
       ]);
@@ -84,14 +102,32 @@ export class ApplicationsListComponent implements OnInit {
     finally { this.loading.set(false); }
   }
 
-  onSearch() { this.page.set(1); this.loadData(); }
-  onStatusFilterChange() { this.page.set(1); this.loadData(); }
+  onSearch() { this.page.set(1); this.loadData(); this.filterOpen.set(false); }
+
+  applyFilters() { this.page.set(1); this.loadData(); this.filterOpen.set(false); }
+
+  clearFilters() {
+    this.selectedStatuses.set(new Set());
+    this.appliedFrom.set('');
+    this.appliedTo.set('');
+    this.updatedFrom.set('');
+    this.updatedTo.set('');
+    this.page.set(1);
+    this.loadData();
+    this.filterOpen.set(false);
+  }
+
   changePage(p: number) { if (p >= 1 && p <= this.totalPages()) { this.page.set(p); this.loadData(); } }
+  changePageSize(event: Event) {
+    const ps = parseInt((event.target as HTMLSelectElement).value, 10);
+    this.pageSize.set(ps);
+    this.page.set(1);
+    this.loadData();
+  }
 
   async onDelete(id: string) {
     if (!confirm('Delete this application?')) return;
-    try { await this.appService.delete(id); this.loadData(); }
-    catch { }
+    try { await this.appService.delete(id); this.loadData(); } catch { }
   }
 
   async onInlineStatusChange(app: ApplicationResponseDto, event: Event) {
@@ -103,19 +139,18 @@ export class ApplicationsListComponent implements OnInit {
   }
 
   getStatusLabel(s: string) { return STATUS_LABELS[s as ApplicationStatus] || s; }
+
   formatDate(d: string) {
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
+
   logoBg(name: string): string {
-    const colors = ['#E6F1FB', '#EEEDFE', '#FAEEDA', '#E1F5EE', '#F1EFE8', '#FCEBEB', '#FAECE7'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return colors[Math.abs(hash) % colors.length];
-  }
-  logoColor(name: string): string {
-    const colors = ['#185FA5', '#534AB7', '#854F0B', '#0F6E56', '#5F5E5A', '#A32D2D', '#993C1D'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return colors[Math.abs(hash) % colors.length];
+    const palette = [
+      'oklch(0.93 0.04 250)', 'oklch(0.93 0.04 160)', 'oklch(0.93 0.04 65)',
+      'oklch(0.93 0.04 300)', 'oklch(0.93 0.04 25)',  'oklch(0.94 0.02 80)',
+    ];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return palette[Math.abs(h) % palette.length];
   }
 }

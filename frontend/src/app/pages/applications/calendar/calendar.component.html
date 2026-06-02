@@ -1,70 +1,207 @@
 <div class="calendar-page">
-  <div class="content">
-    <div class="cal-area">
-      <div class="cal-header">
-        <div>
-          <button class="nav-arrow" (click)="prevMonth()">
-            <i class="ti ti-chevron-left"></i>
+
+  <!-- Page header -->
+  <div class="cal-page-header">
+    <div class="header-left">
+      <span class="badge-pill">Schedule</span>
+      <h1 class="page-title">{{ monthYear() }}</h1>
+      <p class="page-sub">Interviews, follow-ups, and offer deadlines, never miss a beat.</p>
+    </div>
+    <div class="header-right">
+      <div class="view-group">
+        <button class="vbtn">Board</button>
+        <button class="vbtn">List</button>
+        <button class="vbtn active">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <rect x="1" y="2" width="12" height="11" rx="1.5"/><line x1="1" y1="5.5" x2="13" y2="5.5"/><line x1="4" y1="1" x2="4" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/>
+          </svg>
+          Calendar
+        </button>
+        <button class="vbtn" (click)="goToToday()">Today</button>
+        <div class="filter-wrap">
+          <button class="vbtn filter-btn" [class.active]="showFilter()" (click)="toggleFilter()">
+            <svg viewBox="0 0 16 16" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M2 4h12M4 8h8M6 12h4"/>
+            </svg>
+            Filter
           </button>
-          <span class="cal-month">{{ monthYear() }}</span>
-          <button class="nav-arrow" (click)="nextMonth()">
-            <i class="ti ti-chevron-right"></i>
-          </button>
-        </div>
-        <div class="cal-actions">
-          <button class="tb-btn" [class.active]="viewMode() === 'month'" (click)="toggleView('month')">Month</button>
-          <button class="tb-btn" [class.active]="viewMode() === 'week'" (click)="toggleView('week')">Week</button>
-          <button class="tb-btn primary"><i class="ti ti-plus"></i>Add reminder</button>
+          @if (showFilter()) {
+            <div class="filter-dropdown" (click)="$event.stopPropagation()">
+              <label class="filter-option">
+                <input type="checkbox" [checked]="config()?.showReminders !== false" (change)="toggleReminderFilter()" />
+                <span>Reminders</span>
+              </label>
+              <div class="filter-divider"></div>
+              <div class="filter-section-label">Applications</div>
+              @for (s of statusOptions; track s) {
+                <label class="filter-option">
+                  <input type="checkbox" [checked]="isStatusSelected(s)" (change)="toggleStatusFilter(s)" />
+                  <span>{{ getStatusLabel(s) }}</span>
+                </label>
+              }
+            </div>
+          }
         </div>
       </div>
+      @if (showFilter()) {
+        <div class="filter-backdrop" (click)="closeFilter()"></div>
+      }
+      <div class="nav-btns">
+        <button class="nav-arrow" (click)="prevMonth()">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="nav-arrow" (click)="nextMonth()">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
 
+  <!-- Main area -->
+  <div class="cal-main">
+    <!-- Calendar grid -->
+    <div class="cal-grid-wrap">
       <div class="cal-grid">
-        <div class="cal-day-name">Mon</div>
-        <div class="cal-day-name">Tue</div>
-        <div class="cal-day-name">Wed</div>
-        <div class="cal-day-name">Thu</div>
-        <div class="cal-day-name">Fri</div>
-        <div class="cal-day-name">Sat</div>
-        <div class="cal-day-name">Sun</div>
+        <div class="cal-day-name">MON</div>
+        <div class="cal-day-name">TUE</div>
+        <div class="cal-day-name">WED</div>
+        <div class="cal-day-name">THU</div>
+        <div class="cal-day-name">FRI</div>
+        <div class="cal-day-name">SAT</div>
+        <div class="cal-day-name">SUN</div>
 
         @for (cell of calendarDays(); track cell.year + '-' + cell.month + '-' + cell.day) {
           <div class="cal-day"
             [class.other-month]="!cell.isCurrentMonth"
             [class.today]="cell.isToday"
           >
-            <div class="day-num">{{ cell.day }}</div>
-            @for (ev of eventsForDay(cell.day); track ev.type + ev.title) {
-              <div class="event-dot" [class]="'ev-' + ev.type">{{ ev.title }}</div>
-            }
-          </div>
-        }
-      </div>
-
-      <div class="cal-legend">
-        <span class="legend-item"><span class="legend-swatch sw-interview"></span>Interview</span>
-        <span class="legend-item"><span class="legend-swatch sw-followup"></span>Follow-up</span>
-        <span class="legend-item"><span class="legend-swatch sw-deadline"></span>Deadline</span>
-      </div>
-    </div>
-
-    <div class="reminder-panel">
-      <div class="panel-header">
-        <div class="panel-title">Upcoming reminders</div>
-        <button class="add-btn"><i class="ti ti-plus"></i></button>
-      </div>
-      <div class="reminder-list">
-        @for (rem of reminders(); track rem.id) {
-          <div class="reminder" [class.done]="rem.done">
-            <div class="rem-check" [class.done]="rem.done" (click)="toggleReminder(rem.id)"></div>
-            <div>
-              <div class="rem-title">{{ rem.title }}</div>
-              <div class="rem-app" [routerLink]="['/applications/list']">{{ rem.company }} &middot; {{ rem.position }}</div>
-              <div class="rem-date">{{ rem.dateStr }} · {{ rem.timeStr }}</div>
-              <span class="rem-tag" [class]="'ev-' + (rem.type === 'Interview' ? 'interview' : rem.type === 'Follow-up' ? 'followup' : 'deadline')">{{ rem.type }}</span>
+            <div class="day-num" [class.today-num]="cell.isToday">{{ cell.day }}</div>
+            <div class="day-events">
+              @for (ev of visibleEventsForDay(cell.day, cell.month, cell.year); track ev.id + ev.type) {
+                <div class="event-pill" [ngClass]="'ev-' + ev.type" [title]="ev.subtitle">{{ ev.title }}</div>
+              }
+              @if (hiddenCountForDay(cell.day, cell.month, cell.year) > 0) {
+                <div class="more-link" (click)="showDayPopover(cell.day, cell.month, cell.year)">
+                  +{{ hiddenCountForDay(cell.day, cell.month, cell.year) }} more
+                </div>
+              }
             </div>
           </div>
         }
       </div>
     </div>
+
+    <!-- Upcoming panel -->
+    <div class="upcoming-panel">
+      <div class="upcoming-header">
+        <h3 class="upcoming-title">Upcoming</h3>
+        <button class="add-reminder-btn" (click)="toggleForm()">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add
+        </button>
+      </div>
+      <div class="upcoming-list">
+        @if (loading()) {
+          <div class="loading-msg">Loading…</div>
+        }
+        @for (ev of calendarEvents().slice(0, 20); track ev.id + ev.type) {
+          <div class="upcoming-item">
+            <div class="date-chip">
+              <span class="chip-month">{{ ev.date | date:'MMM' | uppercase }}</span>
+              <span class="chip-day">{{ ev.date | date:'d' }}</span>
+            </div>
+            <div class="item-body">
+              <div class="item-type">{{ ev.title }}</div>
+              @if (ev.subtitle) {
+                <div class="item-meta">{{ ev.subtitle }}</div>
+              }
+            </div>
+            <span class="item-badge" [ngClass]="'ev-' + ev.type">{{ ev.source === 'application' ? (ev.type) : '' }}</span>
+          </div>
+        } @empty {
+          @if (!loading()) {
+            <div class="empty-upcoming">
+              <p>No upcoming events.</p>
+              <button class="add-first-btn" (click)="toggleForm()">Add your first reminder</button>
+            </div>
+          }
+        }
+      </div>
+    </div>
   </div>
+
+  <!-- Day popover -->
+  @if (popoverDay(); as dayInfo) {
+    <div class="popover-overlay" (click)="closeDayPopover()">
+      <div class="day-popover" (click)="$event.stopPropagation()">
+        <div class="popover-header">
+          <h3>{{ dayInfo.day }} {{ monthYear() }}</h3>
+          <button class="close-btn" (click)="closeDayPopover()">✕</button>
+        </div>
+        <div class="popover-body">
+          @for (ev of eventsForDay(dayInfo.day, dayInfo.month, dayInfo.year); track ev.id + ev.type) {
+            <div class="popover-event">
+              <span class="popover-dot" [ngClass]="'ev-' + ev.type"></span>
+              <div class="popover-info">
+                <div class="popover-title">{{ ev.title }}</div>
+                @if (ev.subtitle) {
+                  <div class="popover-sub">{{ ev.subtitle }}</div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Create reminder modal -->
+  @if (showForm()) {
+    <div class="modal-overlay" (click)="toggleForm()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Create Reminder</h3>
+          <button class="close-btn" (click)="toggleForm()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+          @if (successMsg()) { <div class="alert alert-success">{{ successMsg() }}</div> }
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Title *</label>
+              <input type="text" [(ngModel)]="form.title" placeholder="e.g. Follow up with Google" />
+            </div>
+            <div class="form-group">
+              <label>Event Date *</label>
+              <input type="datetime-local" [(ngModel)]="form.eventDate" />
+            </div>
+            <div class="form-group">
+              <label>Remind Me</label>
+              <select [(ngModel)]="form.reminderOffset">
+                @for (opt of offsetOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <label>Note (optional)</label>
+              <textarea [(ngModel)]="form.message" rows="3" placeholder="Any details…"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="toggleForm()">Cancel</button>
+          <button class="btn-submit" (click)="submit()" [disabled]="saving()">
+            {{ saving() ? 'Creating…' : 'Create Reminder' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
 </div>

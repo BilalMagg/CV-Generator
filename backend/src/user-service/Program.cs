@@ -2,12 +2,24 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using UserService;
 using UserService.Services;
 
+AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
 var builder = WebApplication.CreateBuilder(args);
+
+var httpPort = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "8082");
+var grpcPort = int.Parse(Environment.GetEnvironmentVariable("GRPC_PORT") ?? "18082");
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(httpPort, o => o.Protocols = HttpProtocols.Http1);
+    options.ListenAnyIP(grpcPort, o => o.Protocols = HttpProtocols.Http2);
+});
 
 builder.Services.AddDbContext<UserDbContext>(options =>
 {

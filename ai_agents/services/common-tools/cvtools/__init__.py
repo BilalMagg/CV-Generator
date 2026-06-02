@@ -23,6 +23,7 @@ from cvtools.core import (
     get_user_skills,
     get_workflow,
     get_llm,
+    list_providers,
 )
 from cvtools.core.tools import (
     html_to_pdf,
@@ -60,6 +61,7 @@ __all__ = [
     "get_user_skills",
     "get_workflow",
     "get_llm",
+    "list_providers",
     # tools
     "html_to_pdf",
     "latex_to_pdf",

@@ -14,4 +14,6 @@ public class CvVersion
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Cv Cv { get; set; } = null!;
+    public List<CvSection> Sections {get; set;} = [];
+    
 }

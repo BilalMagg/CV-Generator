@@ -2,10 +2,27 @@ using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using CvService;
 using CvService.DTOs;
+using CvService.Grpc;
 using CvService.Services;
 using CvService.Validators;
+using CommonProtos.CV;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var httpPort = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "8088");
+var grpcPort = int.Parse(Environment.GetEnvironmentVariable("GRPC_PORT") ?? "18088");
+
+builder.WebHost.ConfigureKestrel(options =>
+  {
+      options.ListenAnyIP(httpPort, listenOptions =>
+      {
+          listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
+      });
+      options.ListenAnyIP(grpcPort, listenOption =>
+      {
+          listenOption.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+      });
+  });
 
 // Database
 builder.Services.AddDbContext<CvDbContext>(options =>
@@ -35,6 +52,9 @@ builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+//gRPC
+builder.Services.AddGrpc();
 
 // Auth (JWT from gateway/keycloak)
 builder.Services.AddAuthentication("Bearer")
@@ -80,5 +100,6 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGrpcService<CvServiceImp>();
 
 app.Run();

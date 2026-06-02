@@ -1,0 +1,22 @@
+<section class="logos-section">
+  <div class="logos-inner">
+    <div class="logos-label">Job seekers placed at</div>
+    <div class="logos-viewport">
+      <div class="logos-track">
+        @for (company of marqueeItems; track $index) {
+          <div class="logo-item">
+            <img
+              class="logo-img"
+              [src]="'https://cdn.simpleicons.org/' + company.slug + '/' + company.color"
+              [alt]="company.name + ' logo'"
+              width="20"
+              height="20"
+              loading="lazy"
+            />
+            <span>{{ company.name }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</section>

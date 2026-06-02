@@ -37,9 +37,9 @@ public class ApplicationsController : ControllerBase
 
     private string? GetUserId()
     {
-        return User.FindFirst("sub")?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("local_user_id")?.Value;
+        return Request.Headers["X-User-Id"].FirstOrDefault()
+            ?? User.FindFirst("user_id")?.Value
+            ?? User.FindFirst("sub")?.Value;
     }
 
     private Guid? GetUserCandidateId()
@@ -59,16 +59,27 @@ public class ApplicationsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? statuses = null,
+        [FromQuery] string? search = null,
+        [FromQuery] DateTime? appliedFrom = null,
+        [FromQuery] DateTime? appliedTo = null,
+        [FromQuery] DateTime? updatedFrom = null,
+        [FromQuery] DateTime? updatedTo = null)
     {
         if (page < 1) page = 1;
-        if (pageSize < 1 || pageSize > 100) pageSize = 20;
+        if (pageSize < 1 || pageSize > 500) pageSize = 20;
 
         var candidateId = GetUserCandidateId();
         if (candidateId == null)
             return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
 
-        var result = await _service.GetAllAsync(candidateId, page, pageSize);
+        var statusArr = !string.IsNullOrWhiteSpace(statuses)
+            ? statuses.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : null;
+
+        var result = await _service.GetAllAsync(candidateId, page, pageSize, statusArr, search,
+            appliedFrom, appliedTo, updatedFrom, updatedTo);
         return Ok(ApiResponse<ApplicationListDto>.Ok(result));
     }
 
@@ -173,5 +184,76 @@ public class ApplicationsController : ControllerBase
 
         var stats = await _service.GetStatisticsAsync(candidateId);
         return Ok(ApiResponse<ApplicationStatisticsDto>.Ok(stats));
+    }
+
+    /// GET /applications/statistics/trends
+    [HttpGet("statistics/trends")]
+    public async Task<IActionResult> GetTrends()
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var trends = await _service.GetTrendsAsync(candidateId);
+        return Ok(ApiResponse<StatisticsTrendsDto>.Ok(trends));
+    }
+
+    /// PATCH /applications/{id}/toggle-save
+    [HttpPatch("{id}/toggle-save")]
+    public async Task<IActionResult> ToggleSave(Guid id)
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        if (!await OwnsApplicationAsync(id, candidateId.Value))
+            return NotFound(ApiResponse<object>.Error("Application not found"));
+
+        var isSaved = await _service.ToggleSaveAsync(id);
+        return Ok(ApiResponse<bool>.Ok(isSaved));
+    }
+
+    /// GET /applications/calendar-events
+    [HttpGet("calendar-events")]
+    public async Task<IActionResult> GetCalendarEvents(
+        [FromQuery] DateTime from,
+        [FromQuery] DateTime to,
+        [FromQuery] string? statuses = null)
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var statusArr = !string.IsNullOrWhiteSpace(statuses)
+            ? statuses.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : null;
+
+        var events = await _service.GetCalendarEventsAsync(candidateId.Value, from, to, statusArr);
+        return Ok(ApiResponse<List<CalendarEventDto>>.Ok(events));
+    }
+
+    /// GET /applications/activity
+    [HttpGet("activity")]
+    public async Task<IActionResult> GetActivity([FromQuery] int limit = 50)
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var feed = await _service.GetActivityFeedAsync(candidateId, limit);
+        return Ok(ApiResponse<ActivityFeedDto>.Ok(feed));
+    }
+
+    /// POST /applications/seed
+    [HttpPost("seed")]
+    public async Task<IActionResult> Seed([FromBody] SeedApplicationsDto dto)
+    {
+        var candidateId = GetUserCandidateId();
+        if (candidateId == null)
+            return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var seeder = HttpContext.RequestServices.GetRequiredService<IDataSeeder>();
+        var result = await seeder.GenerateApplicationsAsync(candidateId.Value, dto.Count, dto.MonthsBack);
+        return Ok(ApiResponse<SeedResultDto>.Ok(result));
     }
 }

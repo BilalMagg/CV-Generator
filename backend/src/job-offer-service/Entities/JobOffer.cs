@@ -49,6 +49,10 @@ public class JobOffer
 
     [MaxLength(500)]
     public string? SourceUrl { get; set; }
+    [MaxLength(100)]
+    public string? JobHash { get; set; }
+    public DateTime? LastSeenAt { get; set; }
+    public bool IsActive { get; set; } = true;
     
     [Required]
     public JobOfferStatus Status { get; set; } = JobOfferStatus.OPEN;

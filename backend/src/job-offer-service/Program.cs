@@ -5,8 +5,13 @@ using JobOfferService.Services;
 using JobOfferService.Repositories;
 using JobOfferService.DTOs;
 using JobOfferService.Validators;
+using JobOfferService.Hubs;
+using JobOfferService.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8086";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // 1. Database (Configured with pgvector via the DbContext)
 builder.Services.AddDbContext<JobOfferDbContext>(options =>
@@ -17,10 +22,12 @@ builder.Services.AddDbContext<JobOfferDbContext>(options =>
 
 // 2. Repositories
 builder.Services.AddScoped<IJobOfferRepository, JobOfferRepository>();
-// builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>(); // Uncomment when Kafka is ready
+builder.Services.AddScoped<ISearchCacheRepository, SearchCacheRepository>();
+builder.Services.AddScoped<IUserQuotaRepository, UserQuotaRepository>();
 
 // 3. Services
 builder.Services.AddScoped<IJobOfferService, JobOfferService.Services.JobOfferService>();
+builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>();
 
 // 4. Validators
 builder.Services.AddScoped<IValidator<SubmitJobOfferDto>, SubmitJobOfferValidator>();
@@ -35,7 +42,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 8. Auth (JWT from gateway/keycloak)
+// 7. SignalR
+builder.Services.AddSignalR();
+
+// 8. Kafka background workers
+builder.Services.AddHostedService<CrawlSummaryConsumer>();
+
+// 9. Auth (JWT from gateway/keycloak)
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -44,6 +57,15 @@ builder.Services.AddAuthentication("Bearer")
     });
 
 builder.Services.AddAuthorization();
+
+// 10. CORS — needed for SignalR WebSocket handshake from the frontend
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod());
+});
 
 var app = builder.Build();
 
@@ -79,10 +101,14 @@ using (var scope = app.Services.CreateScope())
 // ------------------------
 // Middleware Pipeline
 // ------------------------
+app.UseCors();
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Map the SignalR hub at /hubs/jobs
+app.MapHub<JobHub>("/hubs/jobs");
 
 app.Run();

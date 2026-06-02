@@ -17,24 +17,21 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
 
-import requests                           # pip install requests
+import requests
 from app.core.config import settings
+from cvtools.core.llm import get_llm as _get_llm_base
 
 from langchain_core.tools import tool
 
-from langchain_groq import ChatGroq
+_llm = None
 
-from dotenv import load_dotenv
 
-load_dotenv()
-
-# Shared LLM instance used by Tools 2 & 3
-# Using Groq here to spread load across providers (agent uses Mistral)
-_llm = ChatGroq(
-    model=settings.TOOL_MODEL,
-    temperature=0.3,
-    #temperature=settings.LLM_TEMPERATURE,
-)
+def _get_llm():
+    global _llm
+    if _llm is None:
+        provider = os.getenv("LLM_PROVIDER") or "groq"
+        _llm = _get_llm_base(provider=provider, model=settings.TOOL_MODEL, temperature=0.3)
+    return _llm
 
 @tool
 def extract_cv_text(sections_json: str) -> str:
@@ -82,8 +79,9 @@ def generate_email_subject(job_title: str, company_name: str) -> str:
         f"- Do NOT add quotes, explanation, or extra lines\n"
         f"- Return ONLY the subject line text\n"
     )
-    response = _llm.invoke(prompt)
+    response = _get_llm().invoke(prompt)
     return response.content.strip()
+
 
 @tool
 def generate_email_body(
@@ -131,9 +129,10 @@ def generate_email_body(
         f"- Do NOT put everything in one paragraph\n"
         f"- Return ONLY the email body, nothing else\n"
     )
-    response = _llm.invoke(prompt)
+    response = _get_llm().invoke(prompt)
     return response.content.strip()
-    
+
+
 @tool
 def send_email_with_cv(
     recipient_email: str,
@@ -191,9 +190,10 @@ def send_email_with_cv(
         except requests.RequestException as e:
             return f"Error: Could not download PDF from '{pdf_url}' — {str(e)}"
 
-    # ── Send via Gmail SMTP over SSL ──────────────────────────────────────
+    # ── Send via SMTP over SSL ────────────────────────────────────────────
+    smtp_port_ssl = 465  # default SSL port
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP_SSL(smtp_server, smtp_port_ssl) as server:
             server.login(sender_email, sender_password)
             server.send_message(msg)
     except smtplib.SMTPAuthenticationError:

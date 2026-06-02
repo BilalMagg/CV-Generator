@@ -9,7 +9,7 @@ from cvtools.core.backend_client import (
     get_user_skills,
     get_workflow,
 )
-from cvtools.core.llm import get_llm
+from cvtools.core.llm import get_llm, list_providers
 
 __all__ = [
     "settings",
@@ -22,4 +22,5 @@ __all__ = [
     "get_user_skills",
     "get_workflow",
     "get_llm",
+    "list_providers",
 ]

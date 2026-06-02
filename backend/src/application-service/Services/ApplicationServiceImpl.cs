@@ -7,13 +7,17 @@ namespace ApplicationService.Services;
 
 public interface IApplicationService
 {
-    Task<ApplicationListDto> GetAllAsync(Guid? candidateId, int page, int pageSize);
+    Task<ApplicationListDto> GetAllAsync(Guid? candidateId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null);
     Task<ApplicationResponseDto?> GetByIdAsync(Guid id);
     Task<ApplicationResponseDto> CreateAsync(CreateApplicationDto dto, string? userId);
     Task<ApplicationResponseDto?> UpdateStatusAsync(Guid id, UpdateStatusDto dto, string? userId);
     Task<ApplicationResponseDto?> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto, string? userId);
     Task<bool> DeleteAsync(Guid id);
     Task<ApplicationStatisticsDto> GetStatisticsAsync(Guid? candidateId);
+    Task<StatisticsTrendsDto> GetTrendsAsync(Guid? candidateId);
+    Task<bool> ToggleSaveAsync(Guid id);
+    Task<ActivityFeedDto> GetActivityFeedAsync(Guid? candidateId, int limit = 50);
+    Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid candidateId, DateTime from, DateTime to, string[]? statuses);
 }
 
 public class ApplicationServiceImpl : IApplicationService
@@ -38,10 +42,10 @@ public class ApplicationServiceImpl : IApplicationService
         _logger = logger;
     }
 
-    public async Task<ApplicationListDto> GetAllAsync(Guid? candidateId, int page, int pageSize)
+    public async Task<ApplicationListDto> GetAllAsync(Guid? candidateId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null)
     {
-        var apps = await _appRepo.GetAllAsync(candidateId, page, pageSize);
-        var total = await _appRepo.GetTotalCountAsync(candidateId);
+        var apps = await _appRepo.GetAllAsync(candidateId, page, pageSize, statuses, search, appliedFrom, appliedTo, updatedFrom, updatedTo);
+        var total = await _appRepo.GetTotalCountAsync(candidateId, statuses, search, appliedFrom, appliedTo, updatedFrom, updatedTo);
 
         return new ApplicationListDto(
             apps.Select(MapToDto).ToList(),
@@ -216,16 +220,39 @@ public class ApplicationServiceImpl : IApplicationService
         );
     }
 
+    public async Task<StatisticsTrendsDto> GetTrendsAsync(Guid? candidateId)
+    {
+        var current = await GetStatisticsAsync(candidateId);
+        var monthlyTrends = await _appRepo.GetMonthlyTrendsAsync(candidateId);
+        var avgResponseTime = await _appRepo.GetAverageResponseTimeAsync(candidateId);
+
+        return new StatisticsTrendsDto(current, monthlyTrends, avgResponseTime);
+    }
+
+    public async Task<bool> ToggleSaveAsync(Guid id) => await _appRepo.ToggleSaveAsync(id);
+
+    public async Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid candidateId, DateTime from, DateTime to, string[]? statuses)
+    {
+        return await _appRepo.GetCalendarEventsAsync(candidateId, from, to, statuses);
+    }
+
+    public async Task<ActivityFeedDto> GetActivityFeedAsync(Guid? candidateId, int limit = 50)
+    {
+        var items = await _appRepo.GetActivityFeedAsync(candidateId, limit);
+        var total = await _appRepo.GetActivityFeedCountAsync(candidateId);
+        return new ActivityFeedDto(items, total);
+    }
+
     private static ApplicationResponseDto MapToDto(Application a) => new(
         a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
         a.CompanyName, a.PositionTitle, a.OfferSource,
-        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes
+        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.IsSaved
     );
 
     private static ApplicationResponseDto MapToDtoWithHistory(Application a) => new(
         a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
         a.CompanyName, a.PositionTitle, a.OfferSource,
-        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes,
+        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.IsSaved,
         a.StatusHistory?.Select(h => new StatusHistoryDto(
             h.Id, h.OldStatus?.ToString(), h.NewStatus.ToString(),
             h.ChangedAt, h.ChangedBy, h.Comment

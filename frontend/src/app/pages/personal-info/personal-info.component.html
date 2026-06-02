@@ -1,15 +1,23 @@
-<div class="page">
-  <div class="page-header">
-    <div>
-      <h1>Profile</h1>
-      <p class="subtitle">Manage your personal information and preferences</p>
+<div class="pi-page">
+  <div class="pi-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Personal Info</h1>
+        <p class="subtitle">Your canonical profile, used as the base for every tailored CV</p>
+      </div>
     </div>
     @if (profile(); as p) {
-      <button class="btn btn-primary" (click)="save()" [disabled]="saving()">
+      <button class="btn btn-primary" (click)="save()" [disabled]="saving() || loading()">
         @if (saving()) {
-          <span class="spinner"></span> Saving…
+          <span class="mini-spinner"></span> Saving…
         } @else {
-          Save changes
+          <i class="ti ti-device-floppy"></i> Save changes
         }
       </button>
     }
@@ -27,23 +35,26 @@
       <div class="success-banner">Profile saved successfully</div>
     }
 
-    <div class="profile-layout">
-      <div class="profile-sidebar">
-        <div class="avatar-section">
+    <div class="pi-layout">
+      <!-- Sidebar -->
+      <aside class="pi-sidebar">
+        <div class="avatar-card">
           <div class="avatar">
             @if (p.avatarUrl) {
               <img [src]="p.avatarUrl" alt="Avatar" />
             } @else {
-              <span class="avatar-initials">{{ p.firstName[0] }}{{ p.lastName[0] }}</span>
+              <span class="avatar-initials">{{ initials() }}</span>
             }
           </div>
+          <div class="avatar-name">{{ fullName() }}</div>
           <div class="avatar-role">{{ p.role }}</div>
           <div class="avatar-status" [class.active]="p.isActive">
+            <span class="status-dot"></span>
             {{ p.isActive ? 'Active' : 'Inactive' }}
           </div>
         </div>
 
-        <div class="meta-section">
+        <div class="meta-card">
           <div class="meta-item">
             <span class="meta-label">Member since</span>
             <span class="meta-value">{{ formatDate(p.createdAt) }}</span>
@@ -54,18 +65,23 @@
               <span class="meta-value">{{ formatDate(p.lastLogin) }}</span>
             </div>
           }
-          <div class="meta-item">
-            <span class="meta-label">User ID</span>
-            <span class="meta-value mono">{{ p.id | slice:0:8 }}…</span>
-          </div>
         </div>
-      </div>
+      </aside>
 
-      <div class="profile-form">
-        <div class="form-section">
-          <h3>Basic Information</h3>
+      <!-- Main form -->
+      <div class="pi-form">
 
-          <div class="form-row">
+        <!-- Section: Basic Info -->
+        <section class="form-card">
+          <div class="section-head">
+            <i class="ti ti-user"></i>
+            <div>
+              <h2>Basic Information</h2>
+              <p class="section-desc">Your name, contact details and professional headline</p>
+            </div>
+          </div>
+
+          <div class="form-row two-col">
             <div class="form-group">
               <label for="firstName">First name</label>
               <input id="firstName" type="text" [(ngModel)]="p.firstName" name="firstName" />
@@ -78,38 +94,242 @@
 
           <div class="form-row">
             <div class="form-group">
+              <label for="headline">Professional headline</label>
+              <input id="headline" type="text" [(ngModel)]="p.headline" name="headline" placeholder="e.g. Senior Product Designer | 8+ years in SaaS" />
+            </div>
+          </div>
+
+          <div class="form-row two-col">
+            <div class="form-group">
               <label for="email">Email</label>
               <input id="email" type="email" [value]="p.email" disabled />
+            </div>
+            <div class="form-group">
+              <label for="phone">Phone</label>
+              <input id="phone" type="tel" [(ngModel)]="p.phoneNumber" name="phone" placeholder="+1 (555) 123-4567" />
+            </div>
+          </div>
+
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="birthDate">Birth date</label>
+              <input id="birthDate" type="date" [(ngModel)]="p.birthDate" name="birthDate" />
+            </div>
+            <div class="form-group">
+              <label for="avatarUrl">Avatar URL</label>
+              <input id="avatarUrl" type="url" [(ngModel)]="p.avatarUrl" name="avatarUrl" placeholder="https://example.com/avatar.jpg" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Professional Titles (1:N) -->
+        <section class="form-card">
+          <div class="section-head">
+            <i class="ti ti-briefcase"></i>
+            <div>
+              <h2>Professional Titles</h2>
+              <p class="section-desc">Multiple role titles you can switch between when applying. One is set as default.</p>
+            </div>
+          </div>
+
+          <div class="titles-list">
+            @if ((p.professionalTitles ?? []).length === 0) {
+              <div class="empty-titles">
+                <p>No titles yet. Add one to get started.</p>
+              </div>
+            }
+            @for (title of p.professionalTitles; track title) {
+              <div class="title-row" [class.default]="title.isDefault">
+                <div class="title-left">
+                  @if (title.isDefault) {
+                    <span class="default-badge">Default</span>
+                  }
+                  <span class="title-text">{{ title.title }}</span>
+                </div>
+                <div class="title-actions">
+                  <button class="btn-icon" (click)="setDefaultTitle(title)" [title]="'Set as default'">
+                    <i class="ti ti-star"></i>
+                  </button>
+                  <button class="btn-icon" (click)="editTitle(title)" [title]="'Edit'">
+                    <i class="ti ti-pencil"></i>
+                  </button>
+                  <button class="btn-icon danger" (click)="removeTitle(title)" [title]="'Remove'">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (showTitleForm()) {
+            <div class="title-form">
+              <input
+                type="text"
+                [(ngModel)]="titleInput"
+                name="titleInput"
+                placeholder="e.g. Senior Full-Stack Engineer"
+                (keyup.enter)="saveTitle()"
+              />
+              <div class="title-form-actions">
+                <button class="btn btn-primary btn-sm" (click)="saveTitle()">Save</button>
+                <button class="btn btn-sm" (click)="cancelTitleForm()">Cancel</button>
+              </div>
+            </div>
+          } @else {
+            <button class="btn btn-sm add-title-btn" (click)="openTitleForm()">
+              <i class="ti ti-plus"></i> Add title
+            </button>
+          }
+        </section>
+
+        <!-- Section: Location & Work Eligibility -->
+        <section class="form-card">
+          <div class="section-head">
+            <i class="ti ti-map-pin"></i>
+            <div>
+              <h2>Location &amp; Work Eligibility</h2>
+              <p class="section-desc">Where you are and your right to work</p>
+            </div>
+          </div>
+
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="city">City</label>
+              <input id="city" type="text" [(ngModel)]="p.city" name="city" placeholder="e.g. San Francisco" />
+            </div>
+            <div class="form-group">
+              <label for="country">Country</label>
+              <input id="country" type="text" [(ngModel)]="p.country" name="country" placeholder="e.g. United States" />
+            </div>
+          </div>
+
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="authorizedCountry">Authorized to work in</label>
+              <input id="authorizedCountry" type="text" [(ngModel)]="p.authorizedCountry" name="authorizedCountry" placeholder="e.g. United States" />
+            </div>
+            <div class="form-group">
+              <label>Requires visa sponsorship</label>
+              <label class="toggle-wrap">
+                <input type="checkbox" [(ngModel)]="p.requiresVisaSponsorship" name="requiresVisaSponsorship" />
+                <span class="toggle-track">
+                  <span class="toggle-thumb"></span>
+                </span>
+                <span class="toggle-label">{{ p.requiresVisaSponsorship ? 'Yes' : 'No' }}</span>
+              </label>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="phone">Phone number</label>
-              <input id="phone" type="tel" [(ngModel)]="p.phoneNumber" name="phone" placeholder="+1 (555) 123-4567" />
+              <label for="noticePeriod">Notice period</label>
+              <select id="noticePeriod" [(ngModel)]="p.noticePeriod" name="noticePeriod" class="select">
+                <option value="" disabled>Select notice period</option>
+                @for (opt of noticeOptions; track opt) {
+                  <option [value]="opt">{{ opt }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Work Preferences -->
+        <section class="form-card">
+          <div class="section-head">
+            <i class="ti ti-settings"></i>
+            <div>
+              <h2>Work Preferences</h2>
+              <p class="section-desc">Your ideal role setup, helps us match you better</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="desiredJobTitle">Desired job title</label>
+              <input id="desiredJobTitle" type="text" [(ngModel)]="p.desiredJobTitle" name="desiredJobTitle" placeholder="e.g. Product Designer" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Employment type</label>
+              <div class="chip-group">
+                @for (opt of employmentTypeOptions; track opt) {
+                  <button
+                    class="chip"
+                    [class.active]="(p.employmentTypes ?? []).includes(opt)"
+                    (click)="toggleEmployment(opt)"
+                  >{{ opt }}</button>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label>Remote preference</label>
+              <div class="chip-group">
+                @for (opt of remoteOptions; track opt) {
+                  <button
+                    class="chip"
+                    [class.active]="p.remotePreference === opt"
+                    (click)="setRemote(opt)"
+                  >{{ opt }}</button>
+                }
+              </div>
             </div>
             <div class="form-group">
-              <label for="birthDate">Birth date</label>
-              <input id="birthDate" type="date" [(ngModel)]="p.birthDate" name="birthDate" />
+              <label>Willing to relocate</label>
+              <div class="chip-group">
+                @for (opt of relocateOptions; track opt) {
+                  <button
+                    class="chip"
+                    [class.active]="p.willingToRelocate === opt"
+                    (click)="setRelocate(opt)"
+                  >{{ opt }}</button>
+                }
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="form-section">
-          <h3>Avatar</h3>
-          <div class="form-group">
-            <label for="avatarUrl">Avatar URL</label>
-            <input id="avatarUrl" type="url" [(ngModel)]="p.avatarUrl" name="avatarUrl" placeholder="https://example.com/avatar.jpg" />
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="salaryMin">Desired salary (min)</label>
+              <div class="input-prefix">
+                <span class="prefix">$</span>
+                <input id="salaryMin" type="number" [(ngModel)]="p.desiredSalaryMin" name="salaryMin" placeholder="80000" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="salaryMax">Desired salary (max)</label>
+              <div class="input-prefix">
+                <span class="prefix">$</span>
+                <input id="salaryMax" type="number" [(ngModel)]="p.desiredSalaryMax" name="salaryMax" placeholder="150000" />
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div class="form-section">
-          <h3>Preferences</h3>
-          <div class="form-group">
-            <label for="preferences">Preferences (JSON)</label>
-            <textarea id="preferences" [(ngModel)]="p.preferencesJson" name="preferences" rows="4" placeholder='{"theme": "dark", "notifications": true}'></textarea>
+        <!-- Section: Professional Summary -->
+        <section class="form-card">
+          <div class="section-head">
+            <i class="ti ti-file-text"></i>
+            <div>
+              <h2>Professional Summary</h2>
+              <p class="section-desc">A short bio that appears at the top of your CV</p>
+            </div>
           </div>
-        </div>
+
+          <div class="form-group">
+            <textarea
+              [(ngModel)]="p.bio"
+              name="bio"
+              rows="5"
+              placeholder="Write a short professional summary that highlights your key achievements and career goals…"
+            ></textarea>
+          </div>
+        </section>
+
       </div>
     </div>
   }
