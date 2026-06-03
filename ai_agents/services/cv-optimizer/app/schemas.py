@@ -8,6 +8,7 @@ class OptimizerInput(BaseModel):
     candidate_name: str = Field(..., min_length=2, description="Candidate name")
     session_id: str = Field(..., min_length=1, description="Session ID for chat history")
     user_focus: str | None = Field(None, description="Sections or aspects to prioritize")
+    cv_content: str | None = Field(None, description="Optional CV content (HTML/LaTeX) from template agent")
 
 
 class OptimizerOutput(BaseModel):

@@ -77,12 +77,17 @@ async def score_endpoint(
 
 @app.post("/api/v1/optimize")
 async def optimize_json_endpoint(input_data: OptimizerInput):
-    # Create a minimal draft CV from candidate name
-    skills_html = "\n".join(f"<li>{s}</li>" for s in ["Communication", "Problem Solving", "Teamwork"])
-    draft = DRAFT_CV_HTML.format(candidate_name=input_data.candidate_name, skills=skills_html)
+    # Use cv_content from template agent if provided, otherwise generate a draft
+    if input_data.cv_content:
+        cv_body = input_data.cv_content
+        suffix = ".html"
+    else:
+        skills_html = "\n".join(f"<li>{s}</li>" for s in ["Communication", "Problem Solving", "Teamwork"])
+        cv_body = DRAFT_CV_HTML.format(candidate_name=input_data.candidate_name, skills=skills_html)
+        suffix = ".html"
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False) as f:
-        f.write(draft)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False) as f:
+        f.write(cv_body)
         temp_path = f.name
 
     try:

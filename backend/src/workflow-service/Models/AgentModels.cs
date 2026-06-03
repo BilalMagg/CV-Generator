@@ -156,6 +156,9 @@ public class OptimizerInput
 
     [JsonPropertyName("user_focus")]
     public string? UserFocus { get; set; }
+
+    [JsonPropertyName("cv_content")]
+    public string? CvContent { get; set; }
 }
 
 public class OptimizerOutput

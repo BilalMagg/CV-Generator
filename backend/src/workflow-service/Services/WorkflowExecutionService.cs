@@ -19,8 +19,8 @@ public class WorkflowExecutionService
     {
         new(0, "Job Extraction"),
         new(1, "Profile Matching"),
-        new(2, "CV Optimization"),
-        new(3, "Template Rendering"),
+        new(2, "Template Rendering"),
+        new(3, "CV Optimization"),
         new(4, "Email Delivery"),
     };
 
@@ -95,35 +95,43 @@ public class WorkflowExecutionService
 
             ct.ThrowIfCancellationRequested();
 
-            // Step 2: CV Optimization
+            // Step 2: Template Rendering — generate first CV from matched profile
             await ExecuteStepAsync(run, 2, ct, async () =>
             {
+                var searchData = JsonSerializer.Deserialize<SearchOutput>(run.SearchResult ?? "{}");
+                var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
+                var result = await _templateAgent.RenderAsync(new TemplateInput
+                {
+                    CvDraft = new
+                    {
+                        matchedSkills = searchData?.MatchedSkills,
+                        matchedExperiences = searchData?.MatchedExperiences,
+                        matchedProjects = searchData?.MatchedProjects,
+                        candidateName = run.CandidateName ?? "Candidate"
+                    },
+                    TemplateId = run.TemplateId ?? "default",
+                    TemplateType = "pdf",
+                    TargetRole = jobData?.JobRole ?? "Professional"
+                }, ct);
+                run.RenderResult = JsonSerializer.Serialize(result);
+            });
+
+            ct.ThrowIfCancellationRequested();
+
+            // Step 3: CV Optimization — optimize the rendered CV
+            await ExecuteStepAsync(run, 3, ct, async () =>
+            {
+                var rendered = JsonSerializer.Deserialize<RenderedCV>(run.RenderResult ?? "{}");
                 var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
                 var jobDataText = JsonSerializer.Serialize(jobData);
                 var result = await _cvOptimizer.OptimizeAsync(new OptimizerInput
                 {
                     JobData = jobDataText,
                     CandidateName = run.CandidateName ?? "Candidate",
-                    SessionId = Guid.NewGuid().ToString()
+                    SessionId = Guid.NewGuid().ToString(),
+                    CvContent = rendered?.CvCode
                 }, ct);
                 run.OptimizationResult = JsonSerializer.Serialize(result);
-            });
-
-            ct.ThrowIfCancellationRequested();
-
-            // Step 3: Template Rendering
-            await ExecuteStepAsync(run, 3, ct, async () =>
-            {
-                var optimizedCv = JsonSerializer.Deserialize<OptimizerOutput>(run.OptimizationResult ?? "{}");
-                var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
-                var result = await _templateAgent.RenderAsync(new TemplateInput
-                {
-                    CvDraft = new { optimizedContent = optimizedCv?.FilePath ?? "" },
-                    TemplateId = run.TemplateId ?? "default",
-                    TemplateType = "pdf",
-                    TargetRole = jobData?.JobRole ?? "Professional"
-                }, ct);
-                run.RenderResult = JsonSerializer.Serialize(result);
             });
 
             ct.ThrowIfCancellationRequested();
