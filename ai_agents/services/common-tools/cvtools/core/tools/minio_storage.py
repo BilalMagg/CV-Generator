@@ -76,9 +76,9 @@ def get_minio_client(
         A configured Minio client instance.
     """
     return Minio(
-        endpoint=endpoint or _require_env("MINIO_ENDPOINT"),
-        access_key=access_key or _require_env("MINIO_ROOT_USER"),
-        secret_key=secret_key or _require_env("MINIO_ROOT_PASSWORD"),
+        endpoint=endpoint or os.getenv("MINIO_ENDPOINT", "localhost:9000"),
+        access_key=access_key or os.getenv("MINIO_ROOT_USER", "minioadmin"),
+        secret_key=secret_key or os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"),
         secure=_minio_secure() if secure is None else secure,
     )
 
@@ -126,7 +126,7 @@ def upload_pdf(
         content_type="application/pdf",
     )
 
-    endpoint = _require_env("MINIO_ENDPOINT")
+    endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
     use_tls = _minio_secure() if secure is None else secure
     scheme = "https" if use_tls else "http"
     return f"{scheme}://{endpoint}/{bucket_name}/{object_name}"
@@ -159,6 +159,22 @@ def download_pdf(
     ensure_bucket(client, bucket_name)
     client.fget_object(bucket_name, object_name, download_path)
     return os.path.abspath(download_path)
+
+
+def init_minio_storage() -> Minio:
+    """
+    Initialize MinIO client and ensure required buckets exist.
+
+    Creates the default CV PDFs bucket and templates bucket if they
+    don't already exist. Returns the configured Minio client.
+
+    Raises:
+        RuntimeError: If required MinIO environment variables are not set.
+    """
+    client = get_minio_client()
+    ensure_bucket(client, DEFAULT_BUCKET)
+    ensure_templates_bucket(client)
+    return client
 
 
 def ensure_templates_bucket(client: Minio) -> None:
