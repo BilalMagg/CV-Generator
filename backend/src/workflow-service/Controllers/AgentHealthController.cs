@@ -38,11 +38,11 @@ public class AgentHealthController : ControllerBase
     {
         var healthTasks = new Dictionary<string, Func<Task<AgentHealthStatus>>>
         {
-            ["jobExtractor"]  = () => CheckAgentHealthAsync("Job Extractor", _jobExtractor.CheckHealthAsync),
-            ["searchAgent"]   = () => CheckAgentHealthAsync("Search Agent", _searchAgent.CheckHealthAsync),
-            ["templateAgent"] = () => CheckAgentHealthAsync("Template Agent", _templateAgent.CheckHealthAsync),
-            ["cvOptimizer"]   = () => CheckAgentHealthAsync("CV Optimizer", _cvOptimizer.CheckHealthAsync),
-            ["contactAgent"]  = () => CheckAgentHealthAsync("Contact Agent", _contactAgent.CheckHealthAsync),
+            ["jobExtractor"]  = () => CheckAgentHealthAsync("Job Extractor", ct => _jobExtractor.CheckHealthAsync(ct)),
+            ["searchAgent"]   = () => CheckAgentHealthAsync("Search Agent", ct => _searchAgent.CheckHealthAsync(ct)),
+            ["templateAgent"] = () => CheckAgentHealthAsync("Template Agent", ct => _templateAgent.CheckHealthAsync(ct)),
+            ["cvOptimizer"]   = () => CheckAgentHealthAsync("CV Optimizer", ct => _cvOptimizer.CheckHealthAsync(ct)),
+            ["contactAgent"]  = () => CheckAgentHealthAsync("Contact Agent", ct => _contactAgent.CheckHealthAsync(ct)),
         };
 
         var tasks = healthTasks.ToDictionary(kv => kv.Key, kv => kv.Value());
@@ -52,12 +52,12 @@ public class AgentHealthController : ControllerBase
         return Ok(ApiResponse<Dictionary<string, AgentHealthStatus>>.Ok(results));
     }
 
-    private async Task<AgentHealthStatus> CheckAgentHealthAsync(string agentName, Func<Task<bool>> healthCheck)
+    private async Task<AgentHealthStatus> CheckAgentHealthAsync(string agentName, Func<CancellationToken, Task<bool>> healthCheck)
     {
         var sw = Stopwatch.StartNew();
         try
         {
-            var healthy = await healthCheck();
+            var healthy = await healthCheck(CancellationToken.None);
             sw.Stop();
             return new AgentHealthStatus
             {

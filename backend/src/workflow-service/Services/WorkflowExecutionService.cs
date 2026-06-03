@@ -1,26 +1,39 @@
-using System.Text;
 using System.Text.Json;
+using WorkflowService.AgentClients;
+using WorkflowService.Entity;
 using WorkflowService.Models;
 
 namespace WorkflowService.Services;
 
 public class WorkflowExecutionService
 {
-    private readonly WorkflowService.AgentClients.IJobExtractorClient _jobExtractor;
-    private readonly WorkflowService.AgentClients.ISearchAgentClient _searchAgent;
-    private readonly WorkflowService.AgentClients.ICvOptimizerClient _cvOptimizer;
-    private readonly WorkflowService.AgentClients.ITemplateAgentClient _templateAgent;
-    private readonly WorkflowService.AgentClients.IContactAgentClient _contactAgent;
+    private readonly WorkflowDbContext _db;
+    private readonly IJobExtractorClient _jobExtractor;
+    private readonly ISearchAgentClient _searchAgent;
+    private readonly ICvOptimizerClient _cvOptimizer;
+    private readonly ITemplateAgentClient _templateAgent;
+    private readonly IContactAgentClient _contactAgent;
     private readonly ILogger<WorkflowExecutionService> _logger;
 
+    private static readonly StepDefinition[] PipelineSteps =
+    {
+        new(0, "Job Extraction"),
+        new(1, "Profile Matching"),
+        new(2, "CV Optimization"),
+        new(3, "Template Rendering"),
+        new(4, "Email Delivery"),
+    };
+
     public WorkflowExecutionService(
-        WorkflowService.AgentClients.IJobExtractorClient jobExtractor,
-        WorkflowService.AgentClients.ISearchAgentClient searchAgent,
-        WorkflowService.AgentClients.ICvOptimizerClient cvOptimizer,
-        WorkflowService.AgentClients.ITemplateAgentClient templateAgent,
-        WorkflowService.AgentClients.IContactAgentClient contactAgent,
+        WorkflowDbContext db,
+        IJobExtractorClient jobExtractor,
+        ISearchAgentClient searchAgent,
+        ICvOptimizerClient cvOptimizer,
+        ITemplateAgentClient templateAgent,
+        IContactAgentClient contactAgent,
         ILogger<WorkflowExecutionService> logger)
     {
+        _db = db;
         _jobExtractor = jobExtractor;
         _searchAgent = searchAgent;
         _cvOptimizer = cvOptimizer;
@@ -29,53 +42,167 @@ public class WorkflowExecutionService
         _logger = logger;
     }
 
-    public async Task<ContactOutput?> GenerateTailoredCvAsync(GenerateCvRequest request)
+    public async Task ExecutePipelineAsync(Guid runId, CancellationToken ct)
     {
-        _logger.LogInformation("Starting CV Generation Workflow for User {UserId}", request.UserId);
-
-        // Step 1: Extract Job Requirements
-        _logger.LogInformation("Step 1: Extracting job requirements...");
-        var jobData = await _jobExtractor.ExtractAsync(new ExtractorInput { JobDescription = request.JobDescription });
-        if (jobData == null) throw new Exception("Job extraction failed");
-
-        // Step 2: Search User Profile for Matches
-        _logger.LogInformation("Step 2: Searching for candidate matches...");
-        var searchResult = await _searchAgent.MatchAsync(new SearchInput { UserId = request.UserId, JobRequirements = jobData });
-        if (searchResult == null) throw new Exception("Profile search failed");
-
-        // Step 3: Optimize CV (We pass the raw text as Optimizer expects)
-        _logger.LogInformation("Step 3: Optimizing CV content...");
-        var jobDataText = JsonSerializer.Serialize(jobData); // Formatted exactly as Optimizer expects
-        var optimizedCv = await _cvOptimizer.OptimizeAsync(new OptimizerInput 
-        { 
-            JobData = jobDataText, 
-            CandidateName = request.CandidateName,
-            SessionId = Guid.NewGuid().ToString() // Generate a unique session
-        });
-        if (optimizedCv == null) throw new Exception("CV Optimization failed");
-
-        // Step 4: Render Template
-        _logger.LogInformation("Step 4: Rendering PDF Template...");
-        var pdfResult = await _templateAgent.RenderAsync(new TemplateInput 
-        { 
-            CvDraft = new { }, // Pass necessary structure here
-            TemplateType = "pdf",
-            TargetRole = jobData.JobRole ?? "Professional"
-        });
-        if (pdfResult == null) throw new Exception("PDF Rendering failed");
-
-        // Step 5: Deliver Email
-        _logger.LogInformation("Step 5: Delivering via Contact Agent...");
-        var deliveryResult = await _contactAgent.DeliverAsync(new ContactInput
+        var run = await _db.CvGenerationRuns.FindAsync(new object[] { runId }, ct);
+        if (run == null)
         {
-            OptimizedCv = new { FilePath = optimizedCv.FilePath }, // Match structure
-            JobTitle = jobData.JobRole ?? "Job Opportunity",
-            CompanyName = "Target Company", // Can extract this too
-            JobDescription = request.JobDescription,
-            RecipientEmail = request.RecipientEmail
-        });
+            _logger.LogWarning("Run {RunId} not found", runId);
+            return;
+        }
 
-        _logger.LogInformation("Workflow Complete! Delivery Success: {Success}", deliveryResult?.Success);
-        return deliveryResult;
+        run.Status = "running";
+        run.CurrentStep = 0;
+        run.StepStatuses = JsonSerializer.Serialize(PipelineSteps.Select(s => new StepStatusDto
+        {
+            Step = s.Index,
+            Name = s.Name,
+            Status = "pending"
+        }).ToList());
+        await _db.SaveChangesAsync(ct);
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // Step 0: Job Extraction
+            await ExecuteStepAsync(run, 0, ct, async () =>
+            {
+                var result = await _jobExtractor.ExtractAsync(
+                    new ExtractorInput { JobDescription = run.JobDescription }, ct);
+                run.ExtractionResult = JsonSerializer.Serialize(result);
+            });
+
+            ct.ThrowIfCancellationRequested();
+
+            // Step 1: Profile Matching
+            await ExecuteStepAsync(run, 1, ct, async () =>
+            {
+                var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
+                var result = await _searchAgent.MatchAsync(
+                    new SearchInput { UserId = run.UserId, JobRequirements = jobData ?? new() }, ct);
+                run.SearchResult = JsonSerializer.Serialize(result);
+            });
+
+            ct.ThrowIfCancellationRequested();
+
+            // Step 2: CV Optimization
+            await ExecuteStepAsync(run, 2, ct, async () =>
+            {
+                var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
+                var jobDataText = JsonSerializer.Serialize(jobData);
+                var result = await _cvOptimizer.OptimizeAsync(new OptimizerInput
+                {
+                    JobData = jobDataText,
+                    CandidateName = run.CandidateName ?? "Candidate",
+                    SessionId = Guid.NewGuid().ToString()
+                }, ct);
+                run.OptimizationResult = JsonSerializer.Serialize(result);
+            });
+
+            ct.ThrowIfCancellationRequested();
+
+            // Step 3: Template Rendering
+            await ExecuteStepAsync(run, 3, ct, async () =>
+            {
+                var optimizedCv = JsonSerializer.Deserialize<OptimizerOutput>(run.OptimizationResult ?? "{}");
+                var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
+                var result = await _templateAgent.RenderAsync(new TemplateInput
+                {
+                    CvDraft = new { optimizedContent = optimizedCv?.FilePath ?? "" },
+                    TemplateType = "pdf",
+                    TargetRole = jobData?.JobRole ?? "Professional"
+                }, ct);
+                run.RenderResult = JsonSerializer.Serialize(result);
+            });
+
+            ct.ThrowIfCancellationRequested();
+
+            // Step 4: Email Delivery
+            await ExecuteStepAsync(run, 4, ct, async () =>
+            {
+                var optimizedCv = JsonSerializer.Deserialize<OptimizerOutput>(run.OptimizationResult ?? "{}");
+                var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
+                var result = await _contactAgent.DeliverAsync(new ContactInput
+                {
+                    OptimizedCv = new { FilePath = optimizedCv?.FilePath ?? "" },
+                    JobTitle = jobData?.JobRole ?? "Job Opportunity",
+                    CompanyName = "Target Company",
+                    JobDescription = run.JobDescription,
+                    RecipientEmail = run.RecipientEmail ?? ""
+                }, ct);
+                run.DeliveryResult = JsonSerializer.Serialize(result);
+            });
+
+            run.Status = "completed";
+            run.CompletedAt = DateTime.UtcNow;
+            _logger.LogInformation("Run {RunId} completed successfully", runId);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            run.Status = "cancelled";
+            run.CancelledAt = DateTime.UtcNow;
+            run.ErrorMessage = "Cancelled by user";
+            _logger.LogInformation("Run {RunId} was cancelled via token", runId);
+        }
+        catch (Exception ex)
+        {
+            run.Status = "failed";
+            run.ErrorMessage = ex.ToString();
+            _logger.LogError(ex, "Run {RunId} failed", runId);
+        }
+
+        await _db.SaveChangesAsync(ct);
     }
+
+    private async Task ExecuteStepAsync(CvGenerationRun run, int stepIndex, CancellationToken ct, Func<Task> action)
+    {
+        var stepName = PipelineSteps[stepIndex].Name;
+        _logger.LogInformation("Step {Index}: {Name} — starting", stepIndex, stepName);
+
+        var steps = JsonSerializer.Deserialize<List<StepStatusDto>>(run.StepStatuses ?? "[]")!;
+        steps[stepIndex].Status = "running";
+        steps[stepIndex].StartedAt = DateTime.UtcNow;
+        run.StepStatuses = JsonSerializer.Serialize(steps);
+        run.CurrentStep = stepIndex;
+        await _db.SaveChangesAsync(ct);
+
+        var startedAt = DateTime.UtcNow;
+
+        try
+        {
+            await action();
+
+            var duration = DateTime.UtcNow - startedAt;
+            steps[stepIndex].Status = "completed";
+            steps[stepIndex].CompletedAt = DateTime.UtcNow;
+            steps[stepIndex].DurationMs = (long)duration.TotalMilliseconds;
+            run.StepStatuses = JsonSerializer.Serialize(steps);
+            await _db.SaveChangesAsync(ct);
+
+            _logger.LogInformation("Step {Index}: {Name} — completed in {DurationMs}ms",
+                stepIndex, stepName, steps[stepIndex].DurationMs);
+        }
+        catch (OperationCanceledException)
+        {
+            steps[stepIndex].Status = "cancelled";
+            steps[stepIndex].Error = "Cancelled";
+            run.StepStatuses = JsonSerializer.Serialize(steps);
+            await _db.SaveChangesAsync(ct);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var duration = DateTime.UtcNow - startedAt;
+            steps[stepIndex].Status = "failed";
+            steps[stepIndex].CompletedAt = DateTime.UtcNow;
+            steps[stepIndex].DurationMs = (long)duration.TotalMilliseconds;
+            steps[stepIndex].Error = ex.Message;
+            run.StepStatuses = JsonSerializer.Serialize(steps);
+            await _db.SaveChangesAsync(ct);
+            throw;
+        }
+    }
+
+    private record StepDefinition(int Index, string Name);
 }

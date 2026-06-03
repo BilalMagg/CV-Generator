@@ -4,8 +4,8 @@ namespace WorkflowService.AgentClients;
 
 public interface IContactAgentClient
 {
-    Task<ContactOutput?> DeliverAsync(ContactInput input);
-    Task<bool> CheckHealthAsync();
+    Task<ContactOutput?> DeliverAsync(ContactInput input, CancellationToken cancellationToken = default);
+    Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default);
 }
 
 public class ContactAgentClient : IContactAgentClient
@@ -17,18 +17,18 @@ public class ContactAgentClient : IContactAgentClient
         _client = client;
     }
 
-    public async Task<ContactOutput?> DeliverAsync(ContactInput input)
+    public async Task<ContactOutput?> DeliverAsync(ContactInput input, CancellationToken cancellationToken = default)
     {
-        var response = await _client.PostAsJsonAsync("deliver", input);
+        var response = await _client.PostAsJsonAsync("deliver", input, cancellationToken: cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<ContactOutput>();
+        return await response.Content.ReadFromJsonAsync<ContactOutput>(cancellationToken: cancellationToken);
     }
 
-    public async Task<bool> CheckHealthAsync()
+    public async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await _client.GetAsync("health");
+            var response = await _client.GetAsync("health", cancellationToken);
             return response.IsSuccessStatusCode;
         }
         catch
