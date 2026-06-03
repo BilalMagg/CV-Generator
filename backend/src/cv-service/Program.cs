@@ -70,6 +70,10 @@ builder.Services.AddAuthentication("Bearer")
             ?? $"http://{Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_HOST") ?? "localhost"}:{Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_PORT") ?? "9090"}/realms/cv-realm";
         options.Authority = jwtAuthority;
         options.RequireHttpsMetadata = false;
+        // Keep original claim names (e.g. "sub") instead of remapping to the long
+        // ClaimTypes.* URIs, so controllers can read User.FindFirst("sub") directly
+        // when a service is called with a bearer token (no gateway X-User-Id header).
+        options.MapInboundClaims = false;
         options.TokenValidationParameters.ValidateAudience = false;
         options.TokenValidationParameters.ValidIssuers = new[]
         {
