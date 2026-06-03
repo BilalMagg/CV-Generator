@@ -67,6 +67,12 @@ services:
     environment:
       - TEMPLATE_AGENT_URL=http://${TEMPLATE_AGENT_HOST:-cv-template-agent}:${TEMPLATE_AGENT_PORT:-8003}
       - BACKEND_BASE_URL=http://${GATEWAY_HOST:-cv-api-gateway}:${GATEWAY_PORT:-8080}
+      - MINIO_ENDPOINT=${MINIO_HOST:-cv-minio}:${MINIO_PORT:-9000}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_SECURE=${MINIO_SECURE:-false}
+      - MINIO_BUCKET=${MINIO_BUCKET:-cv-pdfs}
+      - MINIO_TEMPLATES_BUCKET=${MINIO_TEMPLATES_BUCKET:-cv-templates}
     healthcheck:
       test:
         [

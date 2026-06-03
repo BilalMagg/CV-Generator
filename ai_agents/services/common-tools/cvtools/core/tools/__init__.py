@@ -5,7 +5,10 @@ from cvtools.core.tools.minio_storage import (
     upload_pdf,
     download_pdf,
     get_template_object,
+    ensure_bucket,
     ensure_templates_bucket,
+    init_minio_storage,
+    DEFAULT_BUCKET,
     TEMPLATES_BUCKET,
 )
 from cvtools.core.tools.pdf_extractor import (extract_text_from_pdf, extract_text_from_pdf_bytes)
@@ -17,7 +20,10 @@ __all__ = [
     "upload_pdf",
     "download_pdf",
     "get_template_object",
+    "ensure_bucket",
     "ensure_templates_bucket",
+    "init_minio_storage",
+    "DEFAULT_BUCKET",
     "TEMPLATES_BUCKET",
     "extract_text_from_pdf",
     "extract_text_from_pdf_bytes",
