@@ -69,7 +69,11 @@ public class WorkflowExecutionService
             await ExecuteStepAsync(run, 0, ct, async () =>
             {
                 var result = await _jobExtractor.ExtractAsync(
-                    new ExtractorInput { JobDescription = run.JobDescription }, ct);
+                    new ExtractorInput
+                    {
+                        JobDescription = run.JobDescription,
+                        Language = run.Language ?? "en"
+                    }, ct);
                 run.ExtractionResult = JsonSerializer.Serialize(result);
             });
 
@@ -110,6 +114,7 @@ public class WorkflowExecutionService
                 var result = await _templateAgent.RenderAsync(new TemplateInput
                 {
                     CvDraft = new { optimizedContent = optimizedCv?.FilePath ?? "" },
+                    TemplateId = run.TemplateId ?? "default",
                     TemplateType = "pdf",
                     TargetRole = jobData?.JobRole ?? "Professional"
                 }, ct);
@@ -129,7 +134,8 @@ public class WorkflowExecutionService
                     JobTitle = jobData?.JobRole ?? "Job Opportunity",
                     CompanyName = "Target Company",
                     JobDescription = run.JobDescription,
-                    RecipientEmail = run.RecipientEmail ?? ""
+                    RecipientEmail = run.RecipientEmail ?? "",
+                    CoverLetterHint = run.Tone != null ? $"Tone: {run.Tone}" : null
                 }, ct);
                 run.DeliveryResult = JsonSerializer.Serialize(result);
             });

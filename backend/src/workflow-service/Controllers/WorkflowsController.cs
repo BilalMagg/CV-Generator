@@ -95,6 +95,10 @@ public class WorkflowsController : ControllerBase
             JobDescription = request.JobDescription,
             CandidateName = request.CandidateName,
             RecipientEmail = request.RecipientEmail,
+            TemplateId = request.TemplateId,
+            Language = request.Language,
+            Tone = request.Tone,
+            EmailSubject = request.EmailSubject,
             Status = "pending",
             CreatedAt = DateTime.UtcNow
         };

@@ -199,8 +199,20 @@ public class GenerateCvRequest
     public string JobDescription { get; set; } = string.Empty;
 
     [JsonPropertyName("candidate_name")]
-    public string CandidateName { get; set; } = string.Empty;
+    public string? CandidateName { get; set; }
 
     [JsonPropertyName("recipient_email")]
-    public string RecipientEmail { get; set; } = string.Empty;
+    public string? RecipientEmail { get; set; }
+
+    [JsonPropertyName("template_id")]
+    public string? TemplateId { get; set; }
+
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
+
+    [JsonPropertyName("tone")]
+    public string? Tone { get; set; }
+
+    [JsonPropertyName("email_subject")]
+    public string? EmailSubject { get; set; }
 }
