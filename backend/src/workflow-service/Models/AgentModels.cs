@@ -197,8 +197,8 @@ public class RenderedCV
     [JsonPropertyName("cv_code")]
     public string CvCode { get; set; } = string.Empty; // Using string to handle both text and base64 encoded bytes
 
-    [JsonPropertyName("template_type")]
-    public string TemplateType { get; set; } = string.Empty;
+    [JsonPropertyName("template_id")]
+    public string TemplateId { get; set; } = string.Empty;
 
     [JsonPropertyName("sections")]
     public List<dynamic>? Sections { get; set; }

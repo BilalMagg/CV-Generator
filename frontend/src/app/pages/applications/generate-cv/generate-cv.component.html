@@ -300,7 +300,7 @@
         <h2 class="preview-title"><i class="ti ti-file-text"></i> CV Preview</h2>
       </div>
       <div class="preview-frame">
-        @if (result()?.render?.file_path || result()?.render?.FilePath) {
+        @if (result()?.render?.cv_code || result()?.render?.CvCode) {
           <iframe
             [src]="pdfPreviewUrl()"
             class="pdf-iframe"

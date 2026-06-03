@@ -100,18 +100,21 @@ public class WorkflowExecutionService
             {
                 var searchData = JsonSerializer.Deserialize<SearchOutput>(run.SearchResult ?? "{}");
                 var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
+                var targetRole = jobData?.JobRole ?? "Professional";
                 var result = await _templateAgent.RenderAsync(new TemplateInput
                 {
-                    CvDraft = new
+                    CvDraft = new Dictionary<string, object>
                     {
-                        matchedSkills = searchData?.MatchedSkills,
-                        matchedExperiences = searchData?.MatchedExperiences,
-                        matchedProjects = searchData?.MatchedProjects,
-                        candidateName = run.CandidateName ?? "Candidate"
+                        ["target_role"] = targetRole,
+                        ["summary"] = $"Professional summary for {run.CandidateName ?? "Candidate"}",
+                        ["matched_skills"] = searchData?.MatchedSkills ?? new List<object>(),
+                        ["matched_experiences"] = searchData?.MatchedExperiences ?? new List<object>(),
+                        ["matched_projects"] = searchData?.MatchedProjects ?? new List<object>(),
+                        ["gap_skills"] = searchData?.GapSkills ?? new List<string>()
                     },
                     TemplateId = run.TemplateId ?? "default",
                     TemplateType = "pdf",
-                    TargetRole = jobData?.JobRole ?? "Professional"
+                    TargetRole = targetRole
                 }, ct);
                 run.RenderResult = JsonSerializer.Serialize(result);
             });
@@ -143,7 +146,15 @@ public class WorkflowExecutionService
                 var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
                 var result = await _contactAgent.DeliverAsync(new ContactInput
                 {
-                    OptimizedCv = new { FilePath = optimizedCv?.FilePath ?? "" },
+                    OptimizedCv = new Dictionary<string, object?>
+                    {
+                        ["job_id"] = runId,
+                        ["final_sections"] = new List<object>(),
+                        ["ats_score_estimate"] = optimizedCv?.AtsScoreAfter ?? 0,
+                        ["optimization_notes"] = new List<string>(),
+                        ["pdf_url"] = optimizedCv?.FilePath ?? "",
+                        ["generated_at"] = DateTime.UtcNow
+                    },
                     JobTitle = jobData?.JobRole ?? "Job Opportunity",
                     CompanyName = "Target Company",
                     JobDescription = run.JobDescription,

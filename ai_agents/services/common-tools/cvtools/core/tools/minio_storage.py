@@ -131,6 +131,34 @@ def ensure_templates_bucket(client: Minio) -> None:
         client.make_bucket(TEMPLATES_BUCKET)
 
 
+DEFAULT_TEMPLATE = {
+    "id": "default",
+    "type": "html",
+    "latex_code": "",
+    "html_code": """<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #333; }
+h1 { color: #1a5276; border-bottom: 2px solid #1a5276; padding-bottom: 8px; }
+h2 { color: #2c3e50; margin-top: 24px; }
+.section { margin: 16px 0; }
+ul { list-style: none; padding-left: 0; }
+li { padding: 4px 0; }
+</style></head>
+<body>
+<h1>{candidate_name}</h1>
+<h2>Professional Summary</h2>
+<p>{summary}</p>
+<h2>Experience</h2>
+<ul>{experience}</ul>
+<h2>Skills</h2>
+<ul>{skills}</ul>
+<h2>Projects</h2>
+<ul>{projects}</ul>
+</body></html>"""
+}
+
+
 def get_template_object(
     template_id: str,
     bucket_name: str = TEMPLATES_BUCKET,
@@ -154,8 +182,13 @@ def get_template_object(
     if client is None:
         client = get_minio_client()
 
-    response = client.get_object(bucket_name, template_id)
-    data = json.loads(response.read().decode("utf-8"))
-    response.close()
-    response.release_conn()
-    return data
+    ensure_templates_bucket(client)
+
+    try:
+        response = client.get_object(bucket_name, template_id)
+        data = json.loads(response.read().decode("utf-8"))
+        response.close()
+        response.release_conn()
+        return data
+    except S3Error:
+        return DEFAULT_TEMPLATE

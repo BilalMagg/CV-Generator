@@ -78,8 +78,8 @@ export class GenerateCvComponent implements OnInit, OnDestroy {
   defaultSteps: StepStatus[] = [
     { step: 0, name: 'Job Extraction', status: 'pending', started_at: null, completed_at: null, duration_ms: null, error: null },
     { step: 1, name: 'Profile Matching', status: 'pending', started_at: null, completed_at: null, duration_ms: null, error: null },
-    { step: 2, name: 'CV Optimization', status: 'pending', started_at: null, completed_at: null, duration_ms: null, error: null },
-    { step: 3, name: 'Template Rendering', status: 'pending', started_at: null, completed_at: null, duration_ms: null, error: null },
+    { step: 2, name: 'Template Rendering', status: 'pending', started_at: null, completed_at: null, duration_ms: null, error: null },
+    { step: 3, name: 'CV Optimization', status: 'pending', started_at: null, completed_at: null, duration_ms: null, error: null },
     { step: 4, name: 'Email Delivery', status: 'pending', started_at: null, completed_at: null, duration_ms: null, error: null },
   ];
 
@@ -328,8 +328,8 @@ export class GenerateCvComponent implements OnInit, OnDestroy {
     switch (idx) {
       case 0: return r.extraction;
       case 1: return r.search;
-      case 2: return r.optimization;
-      case 3: return r.render;
+      case 2: return r.render;
+      case 3: return r.optimization;
       case 4: return r.delivery;
       default: return null;
     }
