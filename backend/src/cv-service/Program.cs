@@ -1,8 +1,10 @@
+using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using CvService;
 using CvService.DTOs;
 using CvService.Grpc;
+using CvService.Repositories;
 using CvService.Services;
 using CvService.Validators;
 using CommonProtos.CV;
@@ -32,15 +34,16 @@ builder.Services.AddDbContext<CvDbContext>(options =>
 });
 
 // Repositories
-// TODO: Register repository implementations
-// builder.Services.AddScoped<ICvRepository, CvRepository>();
-// builder.Services.AddScoped<ICvVersionRepository, CvVersionRepository>();
-// builder.Services.AddScoped<ICvSectionRepository, CvSectionRepository>();
+builder.Services.AddScoped<ICvRepository, CvRepository>();
+builder.Services.AddScoped<ICvVersionRepository, CvVersionRepository>();
+builder.Services.AddScoped<ICvSectionRepository, CvSectionRepository>();
 
 // Services
 builder.Services.AddScoped<ICvService, CvServiceImpl>();
 builder.Services.AddScoped<ICvVersionService, CvVersionServiceImpl>();
 builder.Services.AddScoped<ICvSectionService, CvSectionServiceImpl>();
+
+builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>();
 
 // Validators
 builder.Services.AddScoped<IValidator<CreateCvDto>, CreateCvValidator>();
@@ -60,8 +63,22 @@ builder.Services.AddGrpc();
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        options.Authority = Environment.GetEnvironmentVariable("JWT_AUTHORITY") ?? "";
+        var jwtAuthority = Environment.GetEnvironmentVariable("JWT_AUTHORITY")
+            ?? builder.Configuration["JWT_AUTHORITY"]
+            ?? "http://localhost:9090/realms/cv-realm";
+        var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+            ?? $"http://{Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_HOST") ?? "localhost"}:{Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_PORT") ?? "9090"}/realms/cv-realm";
+        options.Authority = jwtAuthority;
         options.RequireHttpsMetadata = false;
+        // Keep original claim names (e.g. "sub") instead of remapping to the long
+        // ClaimTypes.* URIs, so controllers can read User.FindFirst("sub") directly
+        // when a service is called with a bearer token (no gateway X-User-Id header).
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters.ValidateAudience = false;
+        options.TokenValidationParameters.ValidIssuers = new[]
+        {
+            jwtIssuer,
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -94,6 +111,41 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "An error occurred while applying migrations.");
     }
 }
+
+// ── Kafka test endpoint ─────────────────────────────────────────────────────
+app.MapGet("/api/test/kafka", async (IConfiguration config) =>
+{
+    var results = new List<string>();
+    var kafkaConfig = new ProducerConfig
+    {
+        BootstrapServers = config.GetValue<string>("KAFKA_BOOTSTRAP_SERVERS") ?? "kafka:9092",
+        MessageTimeoutMs = 5000,
+        RequestTimeoutMs = 5000,
+    };
+    results.Add($"Using KAFKA_BOOTSTRAP_SERVERS = '{kafkaConfig.BootstrapServers}'");
+
+    try
+    {
+        using var producer = new ProducerBuilder<string, string>(kafkaConfig).Build();
+        results.Add("Producer built successfully");
+
+        var msg = new Message<string, string>
+        {
+            Key = Guid.NewGuid().ToString(),
+            Value = "{\"test\":true,\"timestamp\":\"" + DateTime.UtcNow.ToString("O") + "\"}"
+        };
+
+        var dr = await producer.ProduceAsync("cv-test-topic", msg);
+        results.Add($"Published to {dr.TopicPartitionOffset}");
+        return Results.Ok(results);
+    }
+    catch (Exception ex)
+    {
+        results.Add($"FAILED: {ex.GetType().Name}: {ex.Message}");
+        return Results.Ok(results);
+    }
+})
+.WithName("TestKafka");
 
 app.UseSwagger();
 app.UseSwaggerUI();

@@ -196,8 +196,10 @@ services:
       - GRPC_PORT=${CV_SERVICE_GRPC_PORT:-18088}
       - ConnectionStrings__DefaultConnection=Host=${CV_DB_HOST:-cv-db};Port=${CV_DB_PORT:-5432};Database=cv_db;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       - JWT_AUTHORITY=http://${KEYCLOAK_HOST:-keycloak}:${KEYCLOAK_PORT:-8080}/realms/cv-realm
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_HOST:-kafka}:${KAFKA_PORT:-9092}
     depends_on:
       cv-db: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     networks:
       - cv-network
 
