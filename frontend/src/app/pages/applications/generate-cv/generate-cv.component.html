@@ -1,24 +1,19 @@
+<!-- ===================== FORM STATE ===================== -->
+@if (state() === 'form') {
 <div class="gen-page">
-
-  <!-- Page header -->
   <div class="gen-header">
     <div class="gen-header-main">
       <span class="ai-badge">
-        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
-          <path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"/>
-        </svg>
+        <i class="ti ti-sparkles" style="font-size:12px"></i>
         AI {{ appName }}
       </span>
-      <h1 class="gen-title">Tailor a CV in eleven seconds.</h1>
-      <p class="gen-sub">Paste any job description. We'll match it against your portfolio and write a CV that scores 95%+ on ATS parsers.</p>
+      <h1 class="gen-title">Tailor a CV in seconds.</h1>
+      <p class="gen-sub">Paste any job description. We'll match it against your profile and generate a tailored CV.</p>
     </div>
     <button class="history-btn" (click)="goToHistory()">History</button>
   </div>
 
-  <!-- Two-column layout -->
   <div class="gen-layout">
-
-    <!-- Left: Job description input -->
     <div class="left-panel">
       <div class="card">
         <div class="card-top">
@@ -28,13 +23,6 @@
           </div>
           <div class="card-top-btns">
             <button class="helper-btn" (click)="useSample()">Use sample</button>
-            <button class="helper-btn">
-              <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-              </svg>
-              Paste URL
-            </button>
           </div>
         </div>
         <textarea
@@ -44,83 +32,345 @@
           (input)="jobDescription.set($any($event.target).value)"
         ></textarea>
       </div>
-    </div>
 
-    <!-- Right: Settings -->
-    <div class="right-panel">
-
-      <!-- Generation settings -->
-      <div class="card settings-card">
-        <h3 class="settings-title">Generation settings</h3>
-
-        <div class="field">
-          <label class="field-label">CV profile</label>
-          <select class="field-select">
-            <option>Senior Product Designer · Product · Web</option>
-            <option>Software Engineer · Backend · Python</option>
-            <option>Product Manager · B2B SaaS</option>
-          </select>
-          <p class="field-caption">The base we'll tailor to this role.</p>
-        </div>
-
-        <div class="field">
-          <label class="field-label">Tone</label>
-          <div class="tone-group">
-            @for (tone of tones; track tone) {
-              <button
-                class="tone-btn"
-                [class.active]="selectedTone() === tone"
-                (click)="setTone(tone)"
-              >{{ tone }}</button>
-            }
+      <div class="card">
+        <h2 class="card-title" style="margin-bottom:12px">Your details</h2>
+        <div class="inline-fields">
+          <div class="field">
+            <label class="field-label">Full name</label>
+            <input
+              class="field-input"
+              type="text"
+              placeholder="Your name"
+              [value]="candidateName()"
+              (input)="candidateName.set($any($event.target).value)"
+            />
+          </div>
+          <div class="field">
+            <label class="field-label">Email (for delivery)</label>
+            <input
+              class="field-input"
+              type="email"
+              placeholder="you@example.com"
+              [value]="recipientEmail()"
+              (input)="recipientEmail.set($any($event.target).value)"
+              [disabled]="!sendEmail()"
+            />
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="card settings-card">
+        <h3 class="settings-title">Options</h3>
 
         <div class="checkbox-row">
           <label class="checkbox-label">
-            <input type="checkbox" [checked]="emailResult()" (change)="emailResult.set($any($event.target).checked)" />
+            <input type="checkbox" [checked]="sendEmail()" (change)="sendEmail.set($any($event.target).checked)" />
             <span class="checkbox-text">
-              <strong>Email me the finished CV &amp; cover letter</strong>
-              <span class="checkbox-caption">Sent as PDF + DOCX.</span>
+              <strong>Email me the finished CV</strong>
+              <span class="checkbox-caption">PDF delivered to your inbox.</span>
             </span>
           </label>
         </div>
       </div>
 
-      <!-- You'll get -->
       <div class="card">
         <h3 class="settings-title">You'll get</h3>
         <ul class="get-list">
-          <li>
-            <span class="check-icon"></span>
-            Tailored CV (PDF + DOCX)
-          </li>
-          <li>
-            <span class="check-icon"></span>
-            Personalized cover letter
-          </li>
-          <li>
-            <span class="check-icon"></span>
-            ATS compatibility score
-          </li>
-          <li>
-            <span class="check-icon"></span>
-            Keyword gap analysis
-          </li>
+          <li><span class="check-icon"></span> Tailored CV (PDF)</li>
+          <li><span class="check-icon"></span> Personalized cover letter</li>
+          <li><span class="check-icon"></span> ATS compatibility score</li>
+          <li><span class="check-icon"></span> Keyword gap analysis</li>
+          <li><span class="check-icon"></span> Matched profile summary</li>
         </ul>
       </div>
 
-      <button class="generate-btn" [disabled]="!jobDescription().trim() || generating()" (click)="generate()">
-        @if (generating()) {
-          Generating…
-        } @else {
-          <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
-            <path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"/>
-          </svg>
-          Generate CV
-        }
+      @if (error()) {
+        <div class="error-banner">{{ error() }}</div>
+      }
+
+      <button class="generate-btn" [disabled]="!jobDescription().trim()" (click)="generate()">
+        <i class="ti ti-sparkles" style="font-size:14px"></i>
+        Generate CV
       </button>
     </div>
-
   </div>
 </div>
+}
+
+<!-- ===================== PROGRESS STATE ===================== -->
+@if (state() === 'progress') {
+<div class="gen-page progress-page">
+  <div class="progress-header">
+    <span class="ai-badge">
+      <i class="ti ti-sparkles" style="font-size:12px"></i>
+      AI {{ appName }}
+    </span>
+    <h1 class="gen-title">Generating your CV…</h1>
+    <p class="gen-sub">Our agents are working through each step. This takes about 10–20 seconds.</p>
+  </div>
+
+  <div class="step-timeline">
+    @for (step of (status()?.steps ?? defaultSteps); track step.step) {
+      <div class="step-row" [class.active]="step.status === 'running'" [class.done]="step.status === 'completed'" [class.failed]="step.status === 'failed'">
+        <div class="step-indicator">
+          @if (step.status === 'completed') {
+            <div class="step-dot done"><i class="ti ti-check"></i></div>
+          } @else if (step.status === 'running') {
+            <div class="step-dot active"><div class="pulse-ring"></div><i class="ti ti-refresh"></i></div>
+          } @else if (step.status === 'failed') {
+            <div class="step-dot failed"><i class="ti ti-x"></i></div>
+          } @else {
+            <div class="step-dot pending"><i class="{{ stepIcon(step.name) }}"></i></div>
+          }
+          <div class="step-line" [class.line-done]="step.status === 'completed'"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-name">{{ step.name }}</div>
+          <div class="step-meta">
+            @if (step.status === 'running') {
+              <span class="step-badge running">In progress</span>
+            } @else if (step.status === 'completed') {
+              <span class="step-badge done">Done</span>
+              @if (step.duration_ms != null) {
+                <span class="step-duration">{{ formatDuration(step.duration_ms) }}</span>
+              }
+            } @else if (step.status === 'failed') {
+              <span class="step-badge failed">Failed</span>
+              @if (step.error) {
+                <span class="step-error">{{ step.error }}</span>
+              }
+            } @else {
+              <span class="step-badge pending">Pending</span>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="error-banner">{{ error() }}</div>
+  }
+
+  <button class="cancel-btn" (click)="cancelRun()">Cancel</button>
+</div>
+}
+
+<!-- ===================== RESULTS STATE ===================== -->
+@if (state() === 'results') {
+<div class="gen-page results-page">
+  <div class="results-header">
+    <div class="results-header-left">
+      <span class="ai-badge success">
+        <i class="ti ti-check" style="font-size:12px"></i>
+        Complete
+      </span>
+      <h1 class="gen-title">Your CV is ready</h1>
+      <p class="gen-sub">Review each section below. You can regenerate with modifications anytime.</p>
+    </div>
+    <div class="results-header-actions">
+      <button class="helper-btn" (click)="goBack()">New generation</button>
+      <button class="generate-btn regenerate-btn" (click)="openRegenerateModal()">
+        <i class="ti ti-refresh" style="font-size:14px"></i>
+        Regenerate
+      </button>
+    </div>
+  </div>
+
+  <div class="results-grid">
+    <!-- Extraction -->
+    @if (result()?.extraction; as extraction) {
+      <div class="result-card">
+        <div class="result-card-header">
+          <div class="result-card-title">
+            <i class="ti ti-file-search result-icon"></i>
+            <span>Job Extraction</span>
+          </div>
+        </div>
+        <div class="result-card-body">
+          <div class="result-field"><label>Company</label><span>{{ extraction.enterprise_name || extraction.EnterpriseName || '—' }}</span></div>
+          <div class="result-field"><label>Role</label><span>{{ extraction.job_role || extraction.JobRole || '—' }}</span></div>
+          @if (extraction.required_skills?.length || extraction.RequiredSkills?.length) {
+            <div class="result-field"><label>Required Skills</label>
+              <div class="tag-list">
+                @for (s of (extraction.required_skills ?? extraction.RequiredSkills ?? []); track s) {
+                  <span class="tag">{{ s }}</span>
+                }
+              </div>
+            </div>
+          }
+          @if (extraction.responsibilities?.length) {
+            <div class="result-field"><label>Responsibilities</label>
+              <ul class="result-list">
+                @for (r of (extraction.responsibilities ?? extraction.Responsibilities ?? []); track r) {
+                  <li>{{ r }}</li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Profile Match -->
+    @if (result()?.search; as search) {
+      <div class="result-card">
+        <div class="result-card-header">
+          <div class="result-card-title">
+            <i class="ti ti-users result-icon"></i>
+            <span>Profile Matching</span>
+          </div>
+          @if (search.match_score != null || search.MatchScore != null) {
+            <div class="match-score">
+              <span class="score-value">{{ search.match_score ?? search.MatchScore }}</span>
+              <span class="score-label">match</span>
+            </div>
+          }
+        </div>
+        <div class="result-card-body">
+          @if (search.matched_skills?.length || search.MatchedSkills?.length) {
+            <div class="result-field"><label>Matched Skills</label>
+              <div class="tag-list">
+                @for (s of (search.matched_skills ?? search.MatchedSkills ?? []); track s) {
+                  <span class="tag green">{{ s }}</span>
+                }
+              </div>
+            </div>
+          }
+          @if (search.gap_skills?.length || search.GapSkills?.length) {
+            <div class="result-field"><label>Gap Skills</label>
+              <div class="tag-list">
+                @for (s of (search.gap_skills ?? search.GapSkills ?? []); track s) {
+                  <span class="tag orange">{{ s }}</span>
+                }
+              </div>
+            </div>
+          }
+          @if (search.matched_experiences?.length || search.MatchedExperiences?.length) {
+            <div class="result-field"><label>Matched Experiences</label>
+              <ul class="result-list">
+                @for (e of (search.matched_experiences ?? search.MatchedExperiences ?? []); track e) {
+                  <li>{{ e.title || e }}</li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Optimization -->
+    @if (result()?.optimization; as opt) {
+      <div class="result-card">
+        <div class="result-card-header">
+          <div class="result-card-title">
+            <i class="ti ti-sparkles result-icon"></i>
+            <span>CV Optimization</span>
+          </div>
+        </div>
+        <div class="result-card-body">
+          <div class="ats-scores">
+            <div class="ats-bar">
+              <label>Before</label>
+              <div class="bar-track">
+                <div class="bar-fill before" [style.width.%]="opt.ats_score_before ?? opt.AtsScoreBefore ?? 0"></div>
+              </div>
+              <span class="bar-value">{{ opt.ats_score_before ?? opt.AtsScoreBefore ?? '?' }}</span>
+            </div>
+            <div class="ats-bar">
+              <label>After</label>
+              <div class="bar-track">
+                <div class="bar-fill after" [style.width.%]="opt.ats_score_after ?? opt.AtsScoreAfter ?? 0"></div>
+              </div>
+              <span class="bar-value">{{ opt.ats_score_after ?? opt.AtsScoreAfter ?? '?' }}</span>
+            </div>
+            @if (opt.improvement != null || opt.Improvement != null) {
+              <div class="improvement">
+                +{{ opt.improvement ?? opt.Improvement }} points improvement
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Render -->
+    @if (result()?.render; as render) {
+      <div class="result-card">
+        <div class="result-card-header">
+          <div class="result-card-title">
+            <i class="ti ti-template result-icon"></i>
+            <span>Rendered CV</span>
+          </div>
+        </div>
+        <div class="result-card-body">
+          <div class="render-preview">
+            <i class="ti ti-file-text" style="font-size:48px;color:var(--text-3)"></i>
+            <p>Your CV has been rendered as a PDF.</p>
+            <button class="helper-btn download-btn" (click)="goToHistory()">
+              <i class="ti ti-download" style="font-size:14px"></i>
+              View in History
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Delivery -->
+    @if (result()?.delivery; as delivery) {
+      <div class="result-card">
+        <div class="result-card-header">
+          <div class="result-card-title">
+            <i class="ti ti-mail result-icon"></i>
+            <span>Email Delivery</span>
+          </div>
+          @if (delivery.success ?? delivery.Success) {
+            <span class="delivery-status success">Delivered</span>
+          } @else {
+            <span class="delivery-status failed">Failed</span>
+          }
+        </div>
+        <div class="result-card-body">
+          @if (delivery.success ?? delivery.Success) {
+            <div class="result-field"><label>Delivery ID</label><span>{{ delivery.delivery_id ?? delivery.DeliveryId ?? '—' }}</span></div>
+            @if (delivery.sent_at || delivery.SentAt) {
+              <div class="result-field"><label>Sent at</label><span>{{ delivery.sent_at ?? delivery.SentAt | date:'medium' }}</span></div>
+            }
+            @if (delivery.subject_used || delivery.SubjectUsed) {
+              <div class="result-field"><label>Subject</label><span>{{ delivery.subject_used ?? delivery.SubjectUsed }}</span></div>
+            }
+          } @else {
+            <div class="result-field"><label>Error</label><span class="error-text">{{ delivery.error_message ?? delivery.ErrorMessage ?? 'Unknown error' }}</span></div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>
+}
+
+<!-- ===================== REGENERATE MODAL ===================== -->
+@if (showRegenerateModal()) {
+  <div class="modal-overlay" (click)="closeRegenerateModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Regenerate with modifications</h2>
+        <button class="modal-close" (click)="closeRegenerateModal()"><i class="ti ti-x"></i></button>
+      </div>
+      <p class="modal-sub">Tell us what you'd like to change. For example: "Make it more technical" or "Focus on leadership experience."</p>
+      <textarea
+        class="modal-textarea"
+        placeholder="Describe the changes you want…"
+        [value]="regenerateInput()"
+        (input)="regenerateInput.set($any($event.target).value)"
+      ></textarea>
+      <div class="modal-actions">
+        <button class="helper-btn" (click)="closeRegenerateModal()">Cancel</button>
+        <button class="generate-btn" (click)="regenerate()">Regenerate</button>
+      </div>
+    </div>
+  </div>
+}
