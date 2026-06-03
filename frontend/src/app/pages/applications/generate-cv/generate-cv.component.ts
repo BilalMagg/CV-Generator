@@ -66,6 +66,7 @@ export class GenerateCvComponent implements OnInit, OnDestroy {
   elapsedSeconds = signal(0);
   error = signal('');
   showRegeneratePanel = signal(false);
+  selectedStepIndex = signal<number | null>(null);
 
   regenerateJobDesc = signal('');
   regenerateTone = signal('');
@@ -309,6 +310,45 @@ export class GenerateCvComponent implements OnInit, OnDestroy {
       this.state.set('results');
       this.stopElapsedTimer();
     }
+  }
+
+  // ── Step Detail ──
+  openStepDetail(idx: number) {
+    this.selectedStepIndex.set(idx);
+  }
+
+  closeStepDetail() {
+    this.selectedStepIndex.set(null);
+  }
+
+  stepDetailData(idx: number): any {
+    const r = this.result();
+    if (!r) return null;
+    switch (idx) {
+      case 0: return r.extraction;
+      case 1: return r.search;
+      case 2: return r.optimization;
+      case 3: return r.render;
+      case 4: return r.delivery;
+      default: return null;
+    }
+  }
+
+  isObject(v: any): boolean {
+    return v !== null && typeof v === 'object' && !Array.isArray(v);
+  }
+
+  isArray(v: any): boolean {
+    return Array.isArray(v);
+  }
+
+  keysOf(obj: any): string[] {
+    if (!obj || typeof obj !== 'object') return [];
+    return Object.keys(obj);
+  }
+
+  jsonStringify(v: any): string {
+    try { return JSON.stringify(v); } catch { return String(v); }
   }
 
   useSample() {

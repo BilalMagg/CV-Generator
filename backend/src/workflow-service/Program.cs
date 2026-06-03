@@ -4,6 +4,8 @@ using WorkflowService.AgentClients;
 using WorkflowService.Entity;
 using WorkflowService.Services;
 
+Console.WriteLine("[CV_GEN_2026-06-03] Starting WorkflowService with CvGenerationBackgroundService registration...");
+
 var builder = WebApplication.CreateBuilder(args);
 
 var httpPort = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "8084");
@@ -28,7 +30,9 @@ builder.Services.AddGrpc();
 builder.Services.AddHttpClient();
 
 // Background job queue for CV generation
-builder.Services.AddHostedService<CvGenerationBackgroundService>();
+// Register as singleton so [FromServices] injection in controllers works
+builder.Services.AddSingleton<CvGenerationBackgroundService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CvGenerationBackgroundService>());
 builder.Services.AddScoped<WorkflowExecutionService>();
 
 // New Strongly-Typed Agent SDK Clients — URLs from env vars

@@ -13,7 +13,7 @@ public class JobRequirements
     public List<string> ExtractedSkills { get; set; } = new();
 
     [JsonPropertyName("required_experience_years")]
-    public int RequiredExperienceYears { get; set; }
+    public int? RequiredExperienceYears { get; set; }
 
     [JsonPropertyName("keywords")]
     public List<string> Keywords { get; set; } = new();
