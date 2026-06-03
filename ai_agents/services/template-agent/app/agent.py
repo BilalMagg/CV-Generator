@@ -1,6 +1,7 @@
 """
 Template agent — renders CV sections from matched data.
 """
+import os
 from langchain.agents import create_agent
 from cvtools.core.llm import get_llm
 from app.schemas import TemplateInput, RenderedCV
@@ -30,7 +31,9 @@ async def render_template(input_data: TemplateInput) -> RenderedCV:
         template_code=template_code,
     )
 
-    model = get_llm()
+    provider = os.getenv("LLM_PROVIDER") or "groq"
+    model_name = os.getenv("LLM_MODEL") or "llama-3.3-70b-versatile"
+    model = get_llm(provider=provider, model=model_name)
     client_agent = create_agent(model, tools=[], system_prompt=system_prompt)
 
     model_input = {"messages": [

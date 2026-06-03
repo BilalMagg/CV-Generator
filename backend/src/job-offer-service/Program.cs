@@ -10,6 +10,9 @@ using JobOfferService.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8086";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // 1. Database (Configured with pgvector via the DbContext)
 builder.Services.AddDbContext<JobOfferDbContext>(options =>
 {

@@ -1,8 +1,10 @@
+using System.Text.Json;
 using CVGenerator.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WorkflowService;
 using WorkflowService.Entity;
+using WorkflowService.Models;
 
 namespace WorkflowService.Controllers;
 
@@ -80,21 +82,106 @@ public class WorkflowsController : ControllerBase
     }
 
     [HttpPost("generate-cv")]
-    public async Task<IActionResult> GenerateTailoredCv([FromBody] WorkflowService.Models.GenerateCvRequest request, [FromServices] WorkflowService.Services.WorkflowExecutionService executionService)
+    public async Task<IActionResult> GenerateTailoredCv(
+        [FromBody] GenerateCvRequest request,
+        [FromServices] Services.CvGenerationBackgroundService backgroundService)
     {
         if (request == null || request.UserId == Guid.Empty || string.IsNullOrWhiteSpace(request.JobDescription))
             return BadRequest(ApiResponse<object>.Error("Invalid request payload. UserId and JobDescription are required."));
 
-        try
+        var run = new CvGenerationRun
         {
-            var finalResult = await executionService.GenerateTailoredCvAsync(request);
-            return Ok(ApiResponse<WorkflowService.Models.ContactOutput>.Ok(finalResult));
-        }
-        catch (Exception ex)
+            UserId = request.UserId,
+            JobDescription = request.JobDescription,
+            CandidateName = request.CandidateName,
+            RecipientEmail = request.RecipientEmail,
+            Status = "pending",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.CvGenerationRuns.Add(run);
+        await _db.SaveChangesAsync();
+
+        await backgroundService.EnqueueRunAsync(run.Id);
+
+        _logger.LogInformation("Enqueued CV generation run {RunId} for User {UserId}", run.Id, request.UserId);
+        return Accepted(ApiResponse<CvGenerationSubmitResponse>.Ok(new CvGenerationSubmitResponse { RunId = run.Id }));
+    }
+
+    [HttpGet("generate-cv/{runId:guid}/status")]
+    public async Task<IActionResult> GetRunStatus(Guid runId)
+    {
+        var run = await _db.CvGenerationRuns.FindAsync(runId);
+        if (run == null) return NotFound(ApiResponse<object>.Error("Run not found"));
+
+        var steps = DeserializeSteps(run.StepStatuses);
+
+        var response = new CvGenerationStatusResponse
         {
-            _logger.LogError(ex, "Error generating tailored CV for User {UserId}", request.UserId);
-            return StatusCode(500, ApiResponse<object>.Error(ex.Message));
-        }
+            RunId = run.Id,
+            Status = run.Status,
+            CurrentStep = run.CurrentStep,
+            Steps = steps,
+            ErrorMessage = run.ErrorMessage,
+            CreatedAt = run.CreatedAt,
+            CompletedAt = run.CompletedAt,
+            CancelledAt = run.CancelledAt
+        };
+
+        return Ok(ApiResponse<CvGenerationStatusResponse>.Ok(response));
+    }
+
+    [HttpGet("generate-cv/{runId:guid}/result")]
+    public async Task<IActionResult> GetRunResult(Guid runId)
+    {
+        var run = await _db.CvGenerationRuns.FindAsync(runId);
+        if (run == null) return NotFound(ApiResponse<object>.Error("Run not found"));
+
+        if (run.Status != "completed")
+            return BadRequest(ApiResponse<object>.Error("Run has not completed yet. Current status: " + run.Status));
+
+        var response = new CvGenerationResultResponse
+        {
+            RunId = run.Id,
+            Extraction = DeserializeJson(run.ExtractionResult),
+            Search = DeserializeJson(run.SearchResult),
+            Optimization = DeserializeJson(run.OptimizationResult),
+            Render = DeserializeJson(run.RenderResult),
+            Delivery = DeserializeJson(run.DeliveryResult)
+        };
+
+        return Ok(ApiResponse<CvGenerationResultResponse>.Ok(response));
+    }
+
+    [HttpPost("generate-cv/{runId:guid}/cancel")]
+    public async Task<IActionResult> CancelRun(
+        Guid runId,
+        [FromServices] Services.CvGenerationBackgroundService backgroundService)
+    {
+        var run = await _db.CvGenerationRuns.FindAsync(runId);
+        if (run == null) return NotFound(ApiResponse<object>.Error("Run not found"));
+
+        if (run.Status is "completed" or "cancelled" or "failed")
+            return BadRequest(ApiResponse<object>.Error("Run is already in terminal state: " + run.Status));
+
+        backgroundService.CancelRun(runId);
+
+        _logger.LogInformation("Cancellation requested for run {RunId}", runId);
+        return Ok(ApiResponse<object>.Ok(new { message = "Cancellation requested" }));
+    }
+
+    private static List<StepStatusDto> DeserializeSteps(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new List<StepStatusDto>();
+        try { return JsonSerializer.Deserialize<List<StepStatusDto>>(json) ?? new(); }
+        catch { return new List<StepStatusDto>(); }
+    }
+
+    private static object? DeserializeJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<object>(json); }
+        catch { return json; }
     }
 
     public record CreateWorkflowDto(string? Name, string? Description, string? DefinitionJson);

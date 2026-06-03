@@ -10,7 +10,7 @@ Two conversion paths:
 Both return the absolute path of the generated PDF file.
 
 Dependencies:
-    uv add weasyprint minio
+    pip install weasyprint minio
     MiKTeX (for LaTeX): https://miktex.org/download
 """
 
@@ -49,7 +49,7 @@ def html_to_pdf(html_content: str, output_path: str | None = None) -> str:
     except ImportError:
         raise ImportError(
             "weasyprint is required for HTML→PDF conversion.\n"
-            "Install it with: uv add weasyprint"
+            "Install it with: pip install weasyprint"
         )
 
     if not output_path:

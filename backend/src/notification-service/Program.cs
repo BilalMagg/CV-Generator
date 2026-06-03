@@ -18,6 +18,9 @@ DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8087";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // ── Serilog ────────────────────────────────────────────────────────────────
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
@@ -48,12 +51,16 @@ builder.Services.AddHttpClient();
 
 // ── Kafka Consumers (Background Services) ──────────────────────────────────
 // ── gRPC Clients ───────────────────────────────────────────────────────────
-var userServiceUrl = builder.Configuration["GrpcClients:UserService"] ?? "http://cv-user-service:18082";
+var userServiceUrl = Environment.GetEnvironmentVariable("USER_SERVICE_GRPC_URL")
+    ?? builder.Configuration["GrpcClients:UserService"]
+    ?? "http://cv-user-service:18082";
 builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
     o.Address = new Uri(userServiceUrl));
 builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
 
-var appServiceUrl = builder.Configuration["GrpcClients:ApplicationService"] ?? "http://cv-application-service:18085";
+var appServiceUrl = Environment.GetEnvironmentVariable("APPLICATION_SERVICE_GRPC_URL")
+    ?? builder.Configuration["GrpcClients:ApplicationService"]
+    ?? "http://cv-application-service:18085";
 builder.Services.AddGrpcClient<ApplicationServiceGrpc.ApplicationServiceGrpcClient>(o =>
     o.Address = new Uri(appServiceUrl));
 builder.Services.AddScoped<IApplicationGrpcClientService, ApplicationGrpcClientService>();

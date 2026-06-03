@@ -6,13 +6,15 @@ import json
 from typing import List, Dict, Any
 from app.schemas import SearchInput, SearchOutput
 from app.core import backend_client
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from cvtools.core.llm import get_llm as _get_base_llm
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
 def get_llm():
-    model_name = os.getenv("LLM_MODEL", "gemini-1.5-flash")
-    return ChatGoogleGenerativeAI(model=model_name, temperature=0)
+    provider = os.getenv("LLM_PROVIDER") or "google"
+    model = os.getenv("LLM_MODEL") or "gemini-1.5-flash"
+    return _get_base_llm(provider=provider, model=model, temperature=0)
 
 def get_embeddings():
     model_name = os.getenv("EMBEDDING_MODEL", "models/embedding-001")

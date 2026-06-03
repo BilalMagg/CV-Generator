@@ -1,18 +1,66 @@
 import shutil
 import os
+import re
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, UploadFile, Form
 from fastapi.responses import FileResponse
 from app import optimize_CV, OptimizerInput, OptimizerOutput
-
-
-
-
+from app.tool import calculate_ats_score
 
 app = FastAPI()
 
 @app.get("/api/v1/health")
 async def health_check():
     return {"status": "healthy", "service": "cv-optimizer"}
+
+@app.post("/score")
+async def score_endpoint(
+    file: UploadFile,
+    job_data: str = Form(...)
+):
+    # Lire le contenu du fichier (HTML ou LaTeX)
+    contents = await file.read()
+    cv_content = contents.decode("utf-8")
+
+    # Nettoyer le contenu HTML/LaTeX pour avoir le texte brut
+    clean_cv = re.sub(r'<[^>]+>', ' ', cv_content)
+    clean_cv = re.sub(r'\\[a-zA-Z]+\{([^}]*)\}', r'\1', clean_cv)
+    clean_cv = clean_cv.lower()
+    clean_job = job_data.lower()
+
+    # Extraire les mots clés de l'offre (mots de plus de 4 lettres)
+    job_words = set(re.findall(r'\b\w{4,}\b', clean_job))
+
+    # Mots à ignorer
+    stop_words = {
+        'with', 'that', 'this', 'from', 'have', 'will',
+        'your', 'nous', 'vous', 'pour', 'dans', 'avec',
+        'sont', 'être', 'tout', 'plus', 'bien', 'notre'
+    }
+    job_keywords = job_words - stop_words
+
+    # Calculer les mots trouvés dans le CV
+    found = {kw for kw in job_keywords if kw in clean_cv}
+    missing = job_keywords - found
+
+    # Calculer le score
+    if len(job_keywords) == 0:
+        score = 0
+    else:
+        score = round((len(found) / len(job_keywords)) * 100)
+
+    # Appeler le tool pour avoir le rapport textuel
+    report = calculate_ats_score.func(cv_content, job_data)
+
+    return {
+        "ats_score": score,
+        "keywords_found": sorted(list(found)),
+        "keywords_missing": sorted(list(missing)),
+        "keywords_found_count": len(found),
+        "keywords_missing_count": len(missing),
+        "total_keywords_count": len(job_keywords),
+        "report": report.strip()
+    }
 
 @app.post("/optimize")
 async def optimize_endpoint(
