@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,63 +11,114 @@ namespace notification_service.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "Cron",
-                table: "EmailSchedules");
+            migrationBuilder.CreateTable(
+                name: "Contacts",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Email = table.Column<string>(type: "text", nullable: false),
+                    Phone = table.Column<string>(type: "text", nullable: true),
+                    Company = table.Column<string>(type: "text", nullable: true),
+                    Position = table.Column<string>(type: "text", nullable: true),
+                    Notes = table.Column<string>(type: "text", nullable: true),
+                    Source = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Contacts", x => x.Id);
+                });
 
-            migrationBuilder.DropColumn(
-                name: "RecipientType",
-                table: "EmailSchedules");
+            migrationBuilder.CreateIndex(
+                name: "IX_Contacts_Email",
+                table: "Contacts",
+                column: "Email");
 
-            migrationBuilder.RenameColumn(
-                name: "RecipientValue",
+            migrationBuilder.CreateIndex(
+                name: "IX_Contacts_UserId",
+                table: "Contacts",
+                column: "UserId");
+
+            migrationBuilder.CreateTable(
+                name: "EmailMessages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Subject = table.Column<string>(type: "text", nullable: false),
+                    Body = table.Column<string>(type: "text", nullable: false),
+                    FromEmail = table.Column<string>(type: "text", nullable: false),
+                    ToEmail = table.Column<string>(type: "text", nullable: false),
+                    ToName = table.Column<string>(type: "text", nullable: false),
+                    Provider = table.Column<string>(type: "text", nullable: false),
+                    ScheduleId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    Error = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    SentAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EmailMessages", x => x.Id);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EmailMessages_CreatedAt",
+                table: "EmailMessages",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EmailMessages_Status",
+                table: "EmailMessages",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EmailMessages_UserId",
+                table: "EmailMessages",
+                column: "UserId");
+
+            migrationBuilder.CreateTable(
+                name: "EmailSchedules",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Subject = table.Column<string>(type: "text", nullable: false),
+                    Body = table.Column<string>(type: "text", nullable: false),
+                    CronExpression = table.Column<string>(type: "text", nullable: false),
+                    RecipientIds = table.Column<string>(type: "jsonb", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    LastRunAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    NextRunAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EmailSchedules", x => x.Id);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EmailSchedules_UserId",
                 table: "EmailSchedules",
-                newName: "CronExpression");
+                column: "UserId");
 
-            migrationBuilder.AddColumn<string>(
-                name: "RecipientIds",
+            migrationBuilder.CreateIndex(
+                name: "IX_EmailSchedules_IsActive_NextRunAt",
                 table: "EmailSchedules",
-                type: "jsonb",
-                nullable: false,
-                defaultValue: "");
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "UpdatedAt",
-                table: "EmailSchedules",
-                type: "timestamp with time zone",
-                nullable: false,
-                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+                columns: new[] { "IsActive", "NextRunAt" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "RecipientIds",
-                table: "EmailSchedules");
-
-            migrationBuilder.DropColumn(
-                name: "UpdatedAt",
-                table: "EmailSchedules");
-
-            migrationBuilder.RenameColumn(
-                name: "CronExpression",
-                table: "EmailSchedules",
-                newName: "RecipientValue");
-
-            migrationBuilder.AddColumn<string>(
-                name: "Cron",
-                table: "EmailSchedules",
-                type: "text",
-                nullable: false,
-                defaultValue: "");
-
-            migrationBuilder.AddColumn<string>(
-                name: "RecipientType",
-                table: "EmailSchedules",
-                type: "text",
-                nullable: false,
-                defaultValue: "");
+            migrationBuilder.DropTable(name: "EmailSchedules");
+            migrationBuilder.DropTable(name: "EmailMessages");
+            migrationBuilder.DropTable(name: "Contacts");
         }
     }
 }
