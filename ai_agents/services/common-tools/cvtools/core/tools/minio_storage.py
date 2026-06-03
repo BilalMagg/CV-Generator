@@ -6,6 +6,7 @@ Used by CV services to store generated PDF files and CV templates.
 """
 
 import json
+import logging
 import os
 from typing import Optional
 
@@ -13,36 +14,72 @@ from minio import Minio
 from minio.error import S3Error
 
 
-# Default bucket name for CV PDFs
-DEFAULT_BUCKET = "cv-pdfs"
+# Bucket names — overridable via env so local dev and deploy share the same
+# names (only the values differ). Bucket names are non-secret config, so a
+# sane default here is safe and does not mask a misconfiguration.
+DEFAULT_BUCKET = os.getenv("MINIO_BUCKET", "cv-pdfs")  # generated CV PDFs
+TEMPLATES_BUCKET = os.getenv("MINIO_TEMPLATES_BUCKET", "cv-templates")  # CV templates
 
-# Bucket name for CV templates
-TEMPLATES_BUCKET = "cv-templates"
+
+def _require_env(name: str) -> str:
+    """
+    Read a required MinIO env var, failing loudly if it is missing.
+
+    There is deliberately NO localhost fallback: a silent default
+    (e.g. localhost:9000) is exactly what makes object storage mysteriously
+    fail in the cloud, so an unconfigured deployment must crash with a clear
+    message instead of pretending to be configured.
+    """
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(
+            f"{name} is not set. MinIO object storage requires {name} to be "
+            f"provided via an environment variable (no localhost fallback)."
+        )
+    return value
+
+
+def _minio_secure() -> bool:
+    """
+    Whether to connect to MinIO over TLS, driven by the MINIO_SECURE env var.
+
+    Cloud MinIO commonly sits behind TLS while local dev is plaintext, so this
+    must be env-driven rather than hardcoded. Defaults to False (plaintext)
+    when unset, which is the safe local-dev default.
+    """
+    raw = os.getenv("MINIO_SECURE")
+    if raw is None:
+        return False
+    return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
 def get_minio_client(
     endpoint: str | None = None,
     access_key: str | None = None,
     secret_key: str | None = None,
-    secure: bool = False,
+    secure: bool | None = None,
 ) -> Minio:
     """
-    Create and return a MinIO client.
+    Create and return a MinIO client from environment configuration.
+
+    All connection details come from env vars (no localhost fallback); a
+    missing required var raises RuntimeError. Explicit arguments override the
+    env values (used mainly in tests).
 
     Args:
-        endpoint:   MinIO server URL (default: from MINIO_ENDPOINT env var or localhost:9000)
-        access_key: MinIO access key (default: from MINIO_ROOT_USER env var)
-        secret_key: MinIO secret key (default: from MINIO_ROOT_PASSWORD env var)
-        secure:     Whether to use HTTPS (default: False for local dev)
+        endpoint:   MinIO server URL. Default: MINIO_ENDPOINT env var (required).
+        access_key: MinIO access key. Default: MINIO_ROOT_USER env var (required).
+        secret_key: MinIO secret key. Default: MINIO_ROOT_PASSWORD env var (required).
+        secure:     Use HTTPS. Default: MINIO_SECURE env var (false when unset).
 
     Returns:
         A configured Minio client instance.
     """
     return Minio(
-        endpoint=endpoint or os.getenv("MINIO_ENDPOINT", "localhost:9000"),
-        access_key=access_key or os.getenv("MINIO_ROOT_USER", "minioadmin"),
-        secret_key=secret_key or os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"),
-        secure=secure,
+        endpoint=endpoint or _require_env("MINIO_ENDPOINT"),
+        access_key=access_key or _require_env("MINIO_ROOT_USER"),
+        secret_key=secret_key or _require_env("MINIO_ROOT_PASSWORD"),
+        secure=_minio_secure() if secure is None else secure,
     )
 
 
@@ -59,7 +96,7 @@ def upload_pdf(
     object_name: Optional[str] = None,
     bucket_name: str = DEFAULT_BUCKET,
     client: Optional[Minio] = None,
-    secure: bool = False,
+    secure: bool | None = None,
 ) -> str:
     """
     Upload a PDF file to MinIO and return the object URL.
@@ -89,8 +126,9 @@ def upload_pdf(
         content_type="application/pdf",
     )
 
-    endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-    scheme = "https" if secure else "http"
+    endpoint = _require_env("MINIO_ENDPOINT")
+    use_tls = _minio_secure() if secure is None else secure
+    scheme = "https" if use_tls else "http"
     return f"{scheme}://{endpoint}/{bucket_name}/{object_name}"
 
 

@@ -6,6 +6,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from cvtools import init_minio_storage
+
 from app.core.config import settings
 from app.routers import router
 
@@ -16,6 +18,10 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Template Agent service starting up")
+    # Fail loud on boot if MinIO object storage is not configured, and
+    # pre-create the buckets so a fresh MinIO volume works on first deploy.
+    init_minio_storage()
+    logger.info("MinIO object storage initialised")
     yield
     logger.info("Template Agent service shutting down")
 
