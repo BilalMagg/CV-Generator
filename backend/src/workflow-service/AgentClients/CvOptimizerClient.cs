@@ -10,7 +10,7 @@ public interface ICvOptimizerClient
 
 public class CvOptimizerClient : ICvOptimizerClient
 {
-    private readonly HttpClient _client;
+    private readonly HttpClient _client; //okiii
 
     public CvOptimizerClient(HttpClient client)
     {
