@@ -60,7 +60,59 @@ public class ExtractorInput
     public string Language { get; set; } = "en";
 }
 
-public class ExtractorOutput : JobRequirements { }
+public class ExtractorOutput : JobRequirements
+{
+    [JsonPropertyName("enterprise_name")]
+    public string? EnterpriseName { get; set; }
+
+    [JsonPropertyName("enterprise_description")]
+    public string? EnterpriseDescription { get; set; }
+
+    [JsonPropertyName("enterprise_logo_url")]
+    public string? EnterpriseLogoUrl { get; set; }
+
+    [JsonPropertyName("raw_description")]
+    public string? RawDescription { get; set; }
+
+    [JsonPropertyName("required_skills")]
+    public List<string> RequiredSkills { get; set; } = new();
+
+    [JsonPropertyName("soft_skills")]
+    public List<string> SoftSkills { get; set; } = new();
+
+    [JsonPropertyName("location")]
+    public string? Location { get; set; }
+
+    [JsonPropertyName("salary_range")]
+    public string? SalaryRange { get; set; }
+
+    [JsonPropertyName("currency")]
+    public string? Currency { get; set; }
+
+    [JsonPropertyName("education_requirements")]
+    public string? EducationRequirements { get; set; }
+
+    [JsonPropertyName("benefits")]
+    public List<string> Benefits { get; set; } = new();
+
+    [JsonPropertyName("application_deadline")]
+    public string? ApplicationDeadline { get; set; }
+
+    [JsonPropertyName("contact_email")]
+    public string? ContactEmail { get; set; }
+
+    [JsonPropertyName("source_url")]
+    public string? SourceUrl { get; set; }
+
+    [JsonPropertyName("languages")]
+    public List<string> Languages { get; set; } = new();
+
+    [JsonPropertyName("overall_confidence")]
+    public double OverallConfidence { get; set; }
+
+    [JsonPropertyName("field_confidences")]
+    public Dictionary<string, double>? FieldConfidences { get; set; }
+}
 
 // Search Agent
 public class SearchInput

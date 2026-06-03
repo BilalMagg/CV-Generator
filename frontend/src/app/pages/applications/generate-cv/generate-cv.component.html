@@ -204,11 +204,11 @@
       @for (step of (status()?.steps ?? defaultSteps); track step.step) {
         <div
           class="step-card"
-          [class.clickable]="step.status === 'completed' || step.status === 'failed'"
+          [class.clickable]="result() != null"
           [class.active]="step.status === 'running'"
           [class.done]="step.status === 'completed'"
           [class.failed]="step.status === 'failed'"
-          (click)="openStepDetail(step.step)"
+          (click)="result() != null && openStepDetail(step.step)"
         >
           <div class="step-card-left">
             @if (step.status === 'completed') {
@@ -458,53 +458,62 @@
             @case (0) {
               <div class="step-detail-section">
                 <div class="detail-grid">
-                  @if (data.job_role ?? data.JobRole) {
-                    <div class="detail-field"><span class="detail-label">Job Role</span><span class="detail-val strong">{{ data.job_role ?? data.JobRole }}</span></div>
+                  @if (data.job_role) {
+                    <div class="detail-field"><span class="detail-label">Job Role</span><span class="detail-val strong">{{ data.job_role }}</span></div>
                   }
-                  @if (data.enterprise_name ?? data.EnterpriseName) {
-                    <div class="detail-field"><span class="detail-label">Company</span><span class="detail-val">{{ data.enterprise_name ?? data.EnterpriseName }}</span></div>
+                  @if (data.enterprise_name) {
+                    <div class="detail-field"><span class="detail-label">Company</span><span class="detail-val">{{ data.enterprise_name }}</span></div>
                   }
-                  @if (data.required_experience_years ?? data.RequiredExperienceYears) {
-                    <div class="detail-field"><span class="detail-label">Experience Required</span><span class="detail-val">{{ data.required_experience_years ?? data.RequiredExperienceYears }} years</span></div>
+                  @if (data.enterprise_description) {
+                    <div class="detail-field"><span class="detail-label">About</span><span class="detail-val">{{ data.enterprise_description }}</span></div>
                   }
-                  @if (data.seniority_level ?? data.SeniorityLevel) {
-                    <div class="detail-field"><span class="detail-label">Seniority</span><span class="detail-val">{{ data.seniority_level ?? data.SeniorityLevel }}</span></div>
+                  @if (data.required_experience_years != null) {
+                    <div class="detail-field"><span class="detail-label">Experience Required</span><span class="detail-val">{{ data.required_experience_years }} years</span></div>
                   }
-                  @if (data.employment_type ?? data.EmploymentType) {
-                    <div class="detail-field"><span class="detail-label">Employment</span><span class="detail-val">{{ data.employment_type ?? data.EmploymentType }}</span></div>
+                  @if (data.seniority_level) {
+                    <div class="detail-field"><span class="detail-label">Seniority</span><span class="detail-val">{{ data.seniority_level }}</span></div>
                   }
-                  @if (data.location_type ?? data.LocationType) {
-                    <div class="detail-field"><span class="detail-label">Location</span><span class="detail-val">{{ data.location_type ?? data.LocationType }}</span></div>
+                  @if (data.employment_type) {
+                    <div class="detail-field"><span class="detail-label">Employment</span><span class="detail-val">{{ data.employment_type }}</span></div>
+                  }
+                  @if (data.location) {
+                    <div class="detail-field"><span class="detail-label">Location</span><span class="detail-val">{{ data.location }}</span></div>
+                  }
+                  @if (data.location_type) {
+                    <div class="detail-field"><span class="detail-label">Location Type</span><span class="detail-val">{{ data.location_type }}</span></div>
+                  }
+                  @if (data.salary_range) {
+                    <div class="detail-field"><span class="detail-label">Salary</span><span class="detail-val">{{ data.salary_range }} @if (data.currency) { {{ data.currency }} }</span></div>
+                  }
+                  @if (data.education_requirements) {
+                    <div class="detail-field"><span class="detail-label">Education</span><span class="detail-val">{{ data.education_requirements }}</span></div>
+                  }
+                  @if (data.contact_email) {
+                    <div class="detail-field"><span class="detail-label">Contact</span><span class="detail-val">{{ data.contact_email }}</span></div>
+                  }
+                  @if (data.application_deadline) {
+                    <div class="detail-field"><span class="detail-label">Deadline</span><span class="detail-val">{{ data.application_deadline }}</span></div>
                   }
                 </div>
-                @let skills = data.extracted_skills ?? data.ExtractedSkills;
-                @if (skills?.length) {
+                @let reqSkills = data.required_skills;
+                @if (reqSkills?.length) {
                   <div class="detail-block">
-                    <h4 class="detail-block-title"><i class="ti ti-code"></i> Skills ({{ skills.length }})</h4>
+                    <h4 class="detail-block-title"><i class="ti ti-code"></i> Required Skills ({{ reqSkills.length }})</h4>
                     <div class="chip-list">
-                      @for (s of skills; track s) { <span class="chip">{{ s }}</span> }
+                      @for (s of reqSkills; track s) { <span class="chip">{{ s }}</span> }
                     </div>
                   </div>
                 }
-                @let kw = data.keywords ?? data.Keywords;
-                @if (kw?.length) {
+                @let soft = data.soft_skills;
+                @if (soft?.length) {
                   <div class="detail-block">
-                    <h4 class="detail-block-title"><i class="ti ti-hash"></i> Keywords ({{ kw.length }})</h4>
+                    <h4 class="detail-block-title"><i class="ti ti-user"></i> Soft Skills ({{ soft.length }})</h4>
                     <div class="chip-list">
-                      @for (k of kw; track k) { <span class="chip chip-alt">{{ k }}</span> }
+                      @for (s of soft; track s) { <span class="chip chip-alt">{{ s }}</span> }
                     </div>
                   </div>
                 }
-                @let resp = data.responsibilities ?? data.Responsibilities;
-                @if (resp?.length) {
-                  <div class="detail-block">
-                    <h4 class="detail-block-title"><i class="ti ti-list-check"></i> Responsibilities</h4>
-                    <ul class="detail-list">
-                      @for (r of resp; track r) { <li>{{ r }}</li> }
-                    </ul>
-                  </div>
-                }
-                @let certs = data.certifications ?? data.Certifications;
+                @let certs = data.certifications;
                 @if (certs?.length) {
                   <div class="detail-block">
                     <h4 class="detail-block-title"><i class="ti ti-certificate"></i> Certifications</h4>
@@ -513,7 +522,7 @@
                     </div>
                   </div>
                 }
-                @let langs = data.languages ?? data.Languages;
+                @let langs = data.languages;
                 @if (langs?.length) {
                   <div class="detail-block">
                     <h4 class="detail-block-title"><i class="ti ti-language"></i> Languages</h4>
@@ -522,11 +531,44 @@
                     </div>
                   </div>
                 }
-                @if (data.confidence_score ?? data.ConfidenceScore != null) {
+                @let benefits = data.benefits;
+                @if (benefits?.length) {
                   <div class="detail-block">
-                    <h4 class="detail-block-title">Confidence Score</h4>
-                    <div class="detail-bar-track"><div class="detail-bar-fill" [style.width.%]="(data.confidence_score ?? data.ConfidenceScore) * 100"></div></div>
-                    <span class="detail-bar-label">{{ ((data.confidence_score ?? data.ConfidenceScore) * 100).toFixed(0) }}%</span>
+                    <h4 class="detail-block-title"><i class="ti ti-gift"></i> Benefits</h4>
+                    <div class="chip-list">
+                      @for (b of benefits; track b) { <span class="chip chip-success">{{ b }}</span> }
+                    </div>
+                  </div>
+                }
+                @let kw = data.keywords;
+                @if (kw?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-hash"></i> Keywords ({{ kw.length }})</h4>
+                    <div class="chip-list">
+                      @for (k of kw; track k) { <span class="chip chip-alt">{{ k }}</span> }
+                    </div>
+                  </div>
+                }
+                @let resp = data.responsibilities;
+                @if (resp?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-list-check"></i> Responsibilities</h4>
+                    <ul class="detail-list">
+                      @for (r of resp; track r) { <li>{{ r }}</li> }
+                    </ul>
+                  </div>
+                }
+                @if (data.overall_confidence != null) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title">Extraction Confidence</h4>
+                    <div class="detail-bar-track"><div class="detail-bar-fill" [style.width.%]="data.overall_confidence * 100"></div></div>
+                    <span class="detail-bar-label">{{ (data.overall_confidence * 100).toFixed(0) }}%</span>
+                  </div>
+                }
+                @if (data.raw_description) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-file-text"></i> Raw Description</h4>
+                    <div class="raw-desc-text">{{ data.raw_description }}</div>
                   </div>
                 }
               </div>
@@ -682,6 +724,10 @@
               </div>
             }
           }
+          <details class="raw-data-toggle">
+            <summary><i class="ti ti-code"></i> Raw Data</summary>
+            <pre class="raw-json">{{ jsonStringify(data) }}</pre>
+          </details>
         }
       </div>
     </div>

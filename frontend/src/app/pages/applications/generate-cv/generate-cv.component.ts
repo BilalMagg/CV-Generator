@@ -198,6 +198,7 @@ export class GenerateCvComponent implements OnInit, OnDestroy {
           this.stopPolling();
           this.stopElapsedTimer();
           this.error.set(s.error_message || `Run ${s.status}`);
+          try { const r = await this.cvService.getResult(runId); this.result.set(r); } catch {}
         }
       } catch {
         this.stopPolling();

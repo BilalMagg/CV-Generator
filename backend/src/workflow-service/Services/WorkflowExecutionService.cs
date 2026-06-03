@@ -83,6 +83,11 @@ public class WorkflowExecutionService
             await ExecuteStepAsync(run, 1, ct, async () =>
             {
                 var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
+                if (jobData != null)
+                {
+                    if (jobData.ExtractedSkills.Count == 0 && jobData.RequiredSkills.Count > 0)
+                        jobData.ExtractedSkills = jobData.RequiredSkills;
+                }
                 var result = await _searchAgent.MatchAsync(
                     new SearchInput { UserId = run.UserId, JobRequirements = jobData ?? new() }, ct);
                 run.SearchResult = JsonSerializer.Serialize(result);
