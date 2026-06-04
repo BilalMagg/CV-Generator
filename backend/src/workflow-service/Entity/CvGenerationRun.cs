@@ -19,6 +19,18 @@ public class CvGenerationRun
     [MaxLength(300)]
     public string? RecipientEmail { get; set; }
 
+    [MaxLength(50)]
+    public string? TemplateId { get; set; }
+
+    [MaxLength(10)]
+    public string? Language { get; set; }
+
+    [MaxLength(30)]
+    public string? Tone { get; set; }
+
+    [MaxLength(300)]
+    public string? EmailSubject { get; set; }
+
     [MaxLength(20)]
     public string Status { get; set; } = "pending";
 

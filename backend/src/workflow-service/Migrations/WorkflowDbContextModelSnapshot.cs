@@ -126,6 +126,10 @@ namespace WorkflowService.Migrations
                     b.Property<string>("DeliveryResult")
                         .HasColumnType("text");
 
+                    b.Property<string>("EmailSubject")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("text");
 
@@ -135,6 +139,10 @@ namespace WorkflowService.Migrations
                     b.Property<string>("JobDescription")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("OptimizationResult")
                         .HasColumnType("text");
@@ -156,6 +164,14 @@ namespace WorkflowService.Migrations
 
                     b.Property<string>("StepStatuses")
                         .HasColumnType("text");
+
+                    b.Property<string>("TemplateId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Tone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");

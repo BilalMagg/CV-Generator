@@ -1,6 +1,6 @@
-# CV Generator
+# Propel
 
-A full-stack, AI-powered platform for generating tailored CVs, tracking job applications, and managing your career portfolio. Built with microservices architecture, event-driven communication, and an intelligent AI agent pipeline.
+> **Formerly CV Generator** — A full-stack, AI-powered platform for generating tailored CVs, tracking job applications, and managing your career portfolio. Built with microservices architecture, event-driven communication, and an intelligent AI agent pipeline.
 
 ## Features
 

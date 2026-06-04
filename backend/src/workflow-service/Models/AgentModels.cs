@@ -13,7 +13,7 @@ public class JobRequirements
     public List<string> ExtractedSkills { get; set; } = new();
 
     [JsonPropertyName("required_experience_years")]
-    public int RequiredExperienceYears { get; set; }
+    public int? RequiredExperienceYears { get; set; }
 
     [JsonPropertyName("keywords")]
     public List<string> Keywords { get; set; } = new();
@@ -60,7 +60,59 @@ public class ExtractorInput
     public string Language { get; set; } = "en";
 }
 
-public class ExtractorOutput : JobRequirements { }
+public class ExtractorOutput : JobRequirements
+{
+    [JsonPropertyName("enterprise_name")]
+    public string? EnterpriseName { get; set; }
+
+    [JsonPropertyName("enterprise_description")]
+    public string? EnterpriseDescription { get; set; }
+
+    [JsonPropertyName("enterprise_logo_url")]
+    public string? EnterpriseLogoUrl { get; set; }
+
+    [JsonPropertyName("raw_description")]
+    public string? RawDescription { get; set; }
+
+    [JsonPropertyName("required_skills")]
+    public List<string> RequiredSkills { get; set; } = new();
+
+    [JsonPropertyName("soft_skills")]
+    public List<string> SoftSkills { get; set; } = new();
+
+    [JsonPropertyName("location")]
+    public string? Location { get; set; }
+
+    [JsonPropertyName("salary_range")]
+    public string? SalaryRange { get; set; }
+
+    [JsonPropertyName("currency")]
+    public string? Currency { get; set; }
+
+    [JsonPropertyName("education_requirements")]
+    public string? EducationRequirements { get; set; }
+
+    [JsonPropertyName("benefits")]
+    public List<string> Benefits { get; set; } = new();
+
+    [JsonPropertyName("application_deadline")]
+    public string? ApplicationDeadline { get; set; }
+
+    [JsonPropertyName("contact_email")]
+    public string? ContactEmail { get; set; }
+
+    [JsonPropertyName("source_url")]
+    public string? SourceUrl { get; set; }
+
+    [JsonPropertyName("languages")]
+    public List<string> Languages { get; set; } = new();
+
+    [JsonPropertyName("overall_confidence")]
+    public double OverallConfidence { get; set; }
+
+    [JsonPropertyName("field_confidences")]
+    public Dictionary<string, double>? FieldConfidences { get; set; }
+}
 
 // Search Agent
 public class SearchInput
@@ -104,6 +156,9 @@ public class OptimizerInput
 
     [JsonPropertyName("user_focus")]
     public string? UserFocus { get; set; }
+
+    [JsonPropertyName("cv_content")]
+    public string? CvContent { get; set; }
 }
 
 public class OptimizerOutput
@@ -142,8 +197,8 @@ public class RenderedCV
     [JsonPropertyName("cv_code")]
     public string CvCode { get; set; } = string.Empty; // Using string to handle both text and base64 encoded bytes
 
-    [JsonPropertyName("template_type")]
-    public string TemplateType { get; set; } = string.Empty;
+    [JsonPropertyName("template_id")]
+    public string TemplateId { get; set; } = string.Empty;
 
     [JsonPropertyName("sections")]
     public List<dynamic>? Sections { get; set; }
@@ -199,8 +254,20 @@ public class GenerateCvRequest
     public string JobDescription { get; set; } = string.Empty;
 
     [JsonPropertyName("candidate_name")]
-    public string CandidateName { get; set; } = string.Empty;
+    public string? CandidateName { get; set; }
 
     [JsonPropertyName("recipient_email")]
-    public string RecipientEmail { get; set; } = string.Empty;
+    public string? RecipientEmail { get; set; }
+
+    [JsonPropertyName("template_id")]
+    public string? TemplateId { get; set; }
+
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
+
+    [JsonPropertyName("tone")]
+    public string? Tone { get; set; }
+
+    [JsonPropertyName("email_subject")]
+    public string? EmailSubject { get; set; }
 }

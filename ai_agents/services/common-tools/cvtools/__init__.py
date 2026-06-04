@@ -32,7 +32,10 @@ from cvtools.core.tools import (
     upload_pdf,
     download_pdf,
     get_template_object,
+    ensure_bucket,
     ensure_templates_bucket,
+    init_minio_storage,
+    DEFAULT_BUCKET,
     TEMPLATES_BUCKET,
 )
 
@@ -69,6 +72,9 @@ __all__ = [
     "upload_pdf",
     "download_pdf",
     "get_template_object",
+    "ensure_bucket",
     "ensure_templates_bucket",
+    "init_minio_storage",
+    "DEFAULT_BUCKET",
     "TEMPLATES_BUCKET",
 ]

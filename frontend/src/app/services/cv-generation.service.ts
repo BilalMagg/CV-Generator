@@ -6,6 +6,7 @@ import {
   CvGenerationStatus,
   CvGenerationResult,
   CvGenerationSubmitResponse,
+  CVProfile,
 } from '@app/models/cv-generation.models';
 
 @Injectable({ providedIn: 'root' })
@@ -17,6 +18,11 @@ export class CvGenerationService {
     jobDescription: string;
     candidateName?: string;
     recipientEmail?: string;
+    templateId?: string;
+    language?: string;
+    tone?: string;
+    emailSubject?: string;
+    url?: string;
   }): Promise<string> {
     const userId = this.auth.currentUser()?.userId;
     const body: Record<string, any> = {
@@ -25,6 +31,10 @@ export class CvGenerationService {
     };
     if (params.candidateName) body['candidate_name'] = params.candidateName;
     if (params.recipientEmail) body['recipient_email'] = params.recipientEmail;
+    if (params.templateId) body['template_id'] = params.templateId;
+    if (params.language) body['language'] = params.language;
+    if (params.tone) body['tone'] = params.tone;
+    if (params.emailSubject) body['email_subject'] = params.emailSubject;
 
     const res = await this.http.post<ApiResponse<CvGenerationSubmitResponse>>(
       '/api/workflows/generate-cv',
@@ -52,5 +62,14 @@ export class CvGenerationService {
       `/api/workflows/generate-cv/${runId}/cancel`,
       {},
     );
+  }
+
+  async fetchProfiles(): Promise<CVProfile[]> {
+    try {
+      const res = await this.http.get<ApiResponse<CVProfile[]>>('/api/user-content/cvprofiles');
+      return res.data ?? [];
+    } catch {
+      return [];
+    }
   }
 }

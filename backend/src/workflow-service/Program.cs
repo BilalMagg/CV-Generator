@@ -4,6 +4,8 @@ using WorkflowService.AgentClients;
 using WorkflowService.Entity;
 using WorkflowService.Services;
 
+Console.WriteLine("[CV_GEN_2026-06-03] Starting WorkflowService with CvGenerationBackgroundService registration...");
+
 var builder = WebApplication.CreateBuilder(args);
 
 var httpPort = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "8084");
@@ -28,8 +30,12 @@ builder.Services.AddGrpc();
 builder.Services.AddHttpClient();
 
 // Background job queue for CV generation
-builder.Services.AddHostedService<CvGenerationBackgroundService>();
+builder.Services.AddSingleton<CvGenerationBackgroundService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CvGenerationBackgroundService>());
 builder.Services.AddScoped<WorkflowExecutionService>();
+
+// Kafka consumer for incremental vector sync from user-content-service events
+builder.Services.AddHostedService<VectorSyncKafkaConsumer>();
 
 // New Strongly-Typed Agent SDK Clients — URLs from env vars
 var jobExtractorUrl = Environment.GetEnvironmentVariable("JOB_EXTRACTOR_URL") ?? "http://cv-job-extractor:8001/api/v1/";
