@@ -74,6 +74,10 @@ class RenderedCV(BaseModel):
     cv_code : str | bytes
     template_id: str
     sections : Optional[List[CVSection]]
+    pdf_url: Optional[str] = Field(
+        default=None,
+        description="URL of the rendered CV PDF stored in MinIO object storage.",
+    )
 
 
 # class TemplateOutput(BaseModel):

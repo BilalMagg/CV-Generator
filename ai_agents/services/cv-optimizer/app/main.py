@@ -1,13 +1,26 @@
 import shutil
 import os
 import re
+import tempfile
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI, UploadFile, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from app import optimize_CV, OptimizerInput, OptimizerOutput
 from app.tool import calculate_ats_score
 
 app = FastAPI()
+
+DRAFT_CV_HTML = """<!DOCTYPE html><html><body>
+<h1>{candidate_name}</h1>
+<h2>Professional Summary</h2>
+<p>Experienced professional seeking new opportunities.</p>
+<h2>Experience</h2>
+<p>Details to be optimized based on job requirements.</p>
+<h2>Skills</h2>
+<ul>{skills}</ul>
+<h2>Education</h2>
+<p>Relevant qualifications.</p>
+</body></html>"""
 
 @app.get("/api/v1/health")
 async def health_check():
@@ -61,6 +74,43 @@ async def score_endpoint(
         "total_keywords_count": len(job_keywords),
         "report": report.strip()
     }
+
+@app.post("/api/v1/optimize")
+async def optimize_json_endpoint(input_data: OptimizerInput):
+    # Use cv_content from template agent if provided, otherwise generate a draft
+    if input_data.cv_content:
+        cv_body = input_data.cv_content
+        suffix = ".html"
+    else:
+        skills_html = "\n".join(f"<li>{s}</li>" for s in ["Communication", "Problem Solving", "Teamwork"])
+        cv_body = DRAFT_CV_HTML.format(candidate_name=input_data.candidate_name, skills=skills_html)
+        suffix = ".html"
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False) as f:
+        f.write(cv_body)
+        temp_path = f.name
+
+    try:
+        result_dict = optimize_CV(
+            temp_path,
+            input_data.job_data,
+            input_data.candidate_name,
+            input_data.session_id,
+            input_data.user_focus
+        )
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+    output = OptimizerOutput(**result_dict)
+    return JSONResponse(
+        content=output.model_dump(),
+        headers={
+            "X-ATS-Score-Before": str(output.ats_score_before),
+            "X-ATS-Score-After": str(output.ats_score_after),
+            "X-Improvement": str(output.improvement)
+        }
+    )
 
 @app.post("/optimize")
 async def optimize_endpoint(

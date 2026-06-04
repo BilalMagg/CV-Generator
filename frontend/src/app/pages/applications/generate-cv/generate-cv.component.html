@@ -1,79 +1,161 @@
-<!-- ===================== FORM STATE ===================== -->
+<!-- ===================== STATE 1: FORM ===================== -->
 @if (state() === 'form') {
 <div class="gen-page">
   <div class="gen-header">
     <div class="gen-header-main">
       <span class="ai-badge">
-        <i class="ti ti-sparkles" style="font-size:12px"></i>
+        <i class="ti ti-sparkles"></i>
         AI {{ appName }}
       </span>
       <h1 class="gen-title">Tailor a CV in seconds.</h1>
-      <p class="gen-sub">Paste any job description. We'll match it against your profile and generate a tailored CV.</p>
+      <p class="gen-sub">Paste a job description, provide a URL, or upload a file. We'll match it against your profile and generate a tailored CV.</p>
     </div>
     <button class="history-btn" (click)="goToHistory()">History</button>
   </div>
 
   <div class="gen-layout">
+    <!-- Left panel -->
     <div class="left-panel">
       <div class="card">
-        <div class="card-top">
-          <div class="card-top-left">
-            <h2 class="card-title">Paste the job description</h2>
-            <p class="card-sub">From any company. We'll handle the rest.</p>
-          </div>
-          <div class="card-top-btns">
-            <button class="helper-btn" (click)="useSample()">Use sample</button>
-          </div>
+        <div class="input-tabs">
+          <button
+            class="input-tab"
+            [class.active]="inputTab() === 'paste'"
+            (click)="inputTab.set('paste')"
+          ><i class="ti ti-article"></i> Paste</button>
+          <button
+            class="input-tab"
+            [class.active]="inputTab() === 'url'"
+            (click)="inputTab.set('url')"
+          ><i class="ti ti-link"></i> URL</button>
+          <button
+            class="input-tab"
+            [class.active]="inputTab() === 'file'"
+            (click)="inputTab.set('file')"
+          ><i class="ti ti-file"></i> File</button>
         </div>
-        <textarea
-          class="jd-textarea"
-          placeholder="Paste a job description here…"
-          [value]="jobDescription()"
-          (input)="jobDescription.set($any($event.target).value)"
-        ></textarea>
-      </div>
 
-      <div class="card">
-        <h2 class="card-title" style="margin-bottom:12px">Your details</h2>
-        <div class="inline-fields">
-          <div class="field">
-            <label class="field-label">Full name</label>
-            <input
-              class="field-input"
-              type="text"
-              placeholder="Your name"
-              [value]="candidateName()"
-              (input)="candidateName.set($any($event.target).value)"
-            />
+        @if (inputTab() === 'paste') {
+          <div class="card-top" style="margin-top:14px">
+            <div class="card-top-left">
+              <h2 class="card-title">Paste the job description</h2>
+              <p class="card-sub">From any company. We'll handle the rest.</p>
+            </div>
+            <div class="card-top-btns">
+              <button class="helper-btn" (click)="useSample()">Use sample</button>
+            </div>
           </div>
-          <div class="field">
-            <label class="field-label">Email (for delivery)</label>
-            <input
-              class="field-input"
-              type="email"
-              placeholder="you@example.com"
-              [value]="recipientEmail()"
-              (input)="recipientEmail.set($any($event.target).value)"
-              [disabled]="!sendEmail()"
-            />
+          <textarea
+            class="jd-textarea"
+            placeholder="Paste a job description here…"
+            [value]="jobDescription()"
+            (input)="jobDescription.set($any($event.target).value)"
+          ></textarea>
+        }
+
+        @if (inputTab() === 'url') {
+          <div class="card-top" style="margin-top:14px">
+            <div class="card-top-left">
+              <h2 class="card-title">Enter a job posting URL</h2>
+              <p class="card-sub">We'll fetch the job description automatically.</p>
+            </div>
           </div>
-        </div>
+          <input
+            class="url-input"
+            type="url"
+            placeholder="https://example.com/jobs/senior-designer"
+            [value]="jobUrl()"
+            (input)="jobUrl.set($any($event.target).value)"
+          />
+        }
+
+        @if (inputTab() === 'file') {
+          <div class="card-top" style="margin-top:14px">
+            <div class="card-top-left">
+              <h2 class="card-title">Upload a job description file</h2>
+              <p class="card-sub">Supports PDF, DOCX, and TXT files.</p>
+            </div>
+          </div>
+          <div class="file-upload-area">
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt"
+              (change)="onFileSelected($event)"
+              class="file-input"
+              id="jd-file-input"
+            />
+            <label for="jd-file-input" class="file-label">
+              @if (selectedFileName()) {
+                <span><i class="ti ti-file-text"></i> {{ selectedFileName() }}</span>
+              } @else {
+                <span><i class="ti ti-upload"></i> Click to choose a file</span>
+              }
+            </label>
+          </div>
+        }
       </div>
     </div>
 
+    <!-- Right panel -->
     <div class="right-panel">
       <div class="card settings-card">
-        <h3 class="settings-title">Options</h3>
+        <h3 class="settings-title">CV Profile</h3>
+        <select class="field-select" [value]="selectedProfileId() ?? ''" (change)="selectedProfileId.set($any($event.target).value || null)">
+          <option value="">Default profile</option>
+          @for (p of profiles(); track p.id) {
+            <option [value]="p.id">{{ p.title }}</option>
+          }
+        </select>
 
+        <h3 class="settings-title" style="margin-top:12px">Template</h3>
+        <select class="field-select" [value]="selectedTemplate()" (change)="selectedTemplate.set($any($event.target).value)">
+          @for (t of TEMPLATES; track t.id) {
+            <option [value]="t.id">{{ t.label }}</option>
+          }
+        </select>
+
+        <h3 class="settings-title" style="margin-top:12px">Tone</h3>
+        <select class="field-select" [value]="selectedTone()" (change)="selectedTone.set($any($event.target).value)">
+          @for (t of TONES; track t) {
+            <option [value]="t">{{ t }}</option>
+          }
+        </select>
+
+        <h3 class="settings-title" style="margin-top:12px">Language</h3>
+        <select class="field-select" [value]="selectedLanguage()" (change)="selectedLanguage.set($any($event.target).value)">
+          @for (l of LANGUAGES; track l.code) {
+            <option [value]="l.code">{{ l.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="card">
         <div class="checkbox-row">
           <label class="checkbox-label">
             <input type="checkbox" [checked]="sendEmail()" (change)="sendEmail.set($any($event.target).checked)" />
             <span class="checkbox-text">
-              <strong>Email me the finished CV</strong>
-              <span class="checkbox-caption">PDF delivered to your inbox.</span>
+              <strong>Send CV via email</strong>
             </span>
           </label>
         </div>
+        @if (sendEmail()) {
+          <div class="email-fields">
+            <input
+              class="field-input"
+              type="email"
+              placeholder="recipient@example.com"
+              [value]="recipientEmail()"
+              (input)="recipientEmail.set($any($event.target).value)"
+            />
+            <input
+              class="field-input"
+              type="text"
+              placeholder="Subject (optional)"
+              [value]="emailSubject()"
+              (input)="emailSubject.set($any($event.target).value)"
+            />
+          </div>
+        }
       </div>
 
       <div class="card">
@@ -91,8 +173,12 @@
         <div class="error-banner">{{ error() }}</div>
       }
 
-      <button class="generate-btn" [disabled]="!jobDescription().trim()" (click)="generate()">
-        <i class="ti ti-sparkles" style="font-size:14px"></i>
+      <button
+        class="generate-btn"
+        [disabled]="(inputTab() === 'paste' && !jobDescription().trim()) || (inputTab() === 'url' && !jobUrl().trim())"
+        (click)="generate()"
+      >
+        <i class="ti ti-sparkles"></i>
         Generate CV
       </button>
     </div>
@@ -100,276 +186,598 @@
 </div>
 }
 
-<!-- ===================== PROGRESS STATE ===================== -->
+<!-- ===================== STATE 2: PROGRESS ===================== -->
 @if (state() === 'progress') {
 <div class="gen-page progress-page">
   <div class="progress-header">
     <span class="ai-badge">
-      <i class="ti ti-sparkles" style="font-size:12px"></i>
+      <i class="ti ti-sparkles"></i>
       AI {{ appName }}
     </span>
-    <h1 class="gen-title">Generating your CV…</h1>
-    <p class="gen-sub">Our agents are working through each step. This takes about 10–20 seconds.</p>
+    <h1 class="gen-title">Generating Your Tailored CV...</h1>
+    <div class="progress-timer">{{ formatElapsed(elapsedSeconds()) }}</div>
   </div>
 
-  <div class="step-timeline">
-    @for (step of (status()?.steps ?? defaultSteps); track step.step) {
-      <div class="step-row" [class.active]="step.status === 'running'" [class.done]="step.status === 'completed'" [class.failed]="step.status === 'failed'">
-        <div class="step-indicator">
-          @if (step.status === 'completed') {
-            <div class="step-dot done"><i class="ti ti-check"></i></div>
-          } @else if (step.status === 'running') {
-            <div class="step-dot active"><div class="pulse-ring"></div><i class="ti ti-refresh"></i></div>
-          } @else if (step.status === 'failed') {
-            <div class="step-dot failed"><i class="ti ti-x"></i></div>
-          } @else {
-            <div class="step-dot pending"><i class="{{ stepIcon(step.name) }}"></i></div>
-          }
-          <div class="step-line" [class.line-done]="step.status === 'completed'"></div>
-        </div>
-        <div class="step-body">
-          <div class="step-name">{{ step.name }}</div>
-          <div class="step-meta">
-            @if (step.status === 'running') {
-              <span class="step-badge running">In progress</span>
-            } @else if (step.status === 'completed') {
-              <span class="step-badge done">Done</span>
-              @if (step.duration_ms != null) {
-                <span class="step-duration">{{ formatDuration(step.duration_ms) }}</span>
-              }
+  <div class="progress-layout">
+    <!-- Left: Step timeline -->
+    <div class="progress-steps">
+      @for (step of (status()?.steps ?? defaultSteps); track step.step) {
+        <div
+          class="step-card"
+          [class.clickable]="result() != null"
+          [class.active]="step.status === 'running'"
+          [class.done]="step.status === 'completed'"
+          [class.failed]="step.status === 'failed'"
+          (click)="result() != null && openStepDetail(step.step)"
+        >
+          <div class="step-card-left">
+            @if (step.status === 'completed') {
+              <div class="step-icon done"><i class="ti ti-check"></i></div>
+            } @else if (step.status === 'running') {
+              <div class="step-icon running"><i class="ti ti-refresh"></i></div>
             } @else if (step.status === 'failed') {
-              <span class="step-badge failed">Failed</span>
-              @if (step.error) {
-                <span class="step-error">{{ step.error }}</span>
-              }
+              <div class="step-icon failed"><i class="ti ti-x"></i></div>
             } @else {
-              <span class="step-badge pending">Pending</span>
+              <div class="step-icon pending"><i class="{{ STEP_ICONS[step.name] || 'ti ti-circle' }}"></i></div>
+            }
+          </div>
+          <div class="step-card-body">
+            <div class="step-card-top">
+              <span class="step-card-name">{{ step.name }}</span>
+              <span class="step-card-status">
+                @if (step.status === 'completed') {
+                  Done @if (step.duration_ms != null) { ({{ formatDuration(step.duration_ms) }}) }
+                } @else if (step.status === 'running') {
+                  Running...
+                } @else if (step.status === 'failed') {
+                  Failed
+                } @else {
+                  Pending
+                }
+              </span>
+            </div>
+            <div class="progress-bar-track">
+              <div
+                class="progress-bar-fill"
+                [style.width.%]="stepPercent(step)"
+                [class.animate]="step.status === 'running'"
+              ></div>
+            </div>
+            @if (step.error) {
+              <div class="step-error-text">{{ step.error }}</div>
             }
           </div>
         </div>
+      }
+    </div>
+
+    <!-- Right: Live metrics -->
+    <div class="progress-metrics">
+      <div class="metrics-card">
+        <h3 class="metrics-title">Live Metrics</h3>
+        <div class="metric-row">
+          <span class="metric-label">Match Score</span>
+          <span class="metric-value">{{ liveMatchScore() ?? '—' }}</span>
+          @if (liveMatchScore() != null) {
+            <div class="metric-bar"><div class="metric-bar-fill" [style.width.%]="liveMatchScore()!"></div></div>
+          }
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">ATS Score</span>
+          <span class="metric-value">{{ liveAtsScore() ?? '—' }}</span>
+        </div>
+        @if (liveGapSkills().length) {
+          <div class="metric-row">
+            <span class="metric-label">Gap Skills</span>
+            <div class="gap-tags">
+              @for (s of liveGapSkills(); track s) {
+                <span class="gap-tag">{{ s }}</span>
+              }
+            </div>
+          </div>
+        }
+        <div class="metric-row">
+          <span class="metric-label">Elapsed</span>
+          <span class="metric-value">{{ formatElapsed(elapsedSeconds()) }}</span>
+        </div>
       </div>
-    }
+      @if (error()) {
+        <div class="error-banner">{{ error() }}</div>
+      }
+      <button class="cancel-btn" (click)="cancelRun()">Cancel</button>
+    </div>
   </div>
-
-  @if (error()) {
-    <div class="error-banner">{{ error() }}</div>
-  }
-
-  <button class="cancel-btn" (click)="cancelRun()">Cancel</button>
 </div>
 }
 
-<!-- ===================== RESULTS STATE ===================== -->
+<!-- ===================== STATE 3: RESULTS ===================== -->
 @if (state() === 'results') {
 <div class="gen-page results-page">
-  <div class="results-header">
-    <div class="results-header-left">
-      <span class="ai-badge success">
-        <i class="ti ti-check" style="font-size:12px"></i>
-        Complete
-      </span>
-      <h1 class="gen-title">Your CV is ready</h1>
-      <p class="gen-sub">Review each section below. You can regenerate with modifications anytime.</p>
-    </div>
-    <div class="results-header-actions">
-      <button class="helper-btn" (click)="goBack()">New generation</button>
-      <button class="generate-btn regenerate-btn" (click)="openRegenerateModal()">
-        <i class="ti ti-refresh" style="font-size:14px"></i>
-        Regenerate
-      </button>
-    </div>
-  </div>
-
-  <div class="results-grid">
-    <!-- Extraction -->
-    @if (result()?.extraction; as extraction) {
-      <div class="result-card">
-        <div class="result-card-header">
-          <div class="result-card-title">
-            <i class="ti ti-file-search result-icon"></i>
-            <span>Job Extraction</span>
+  <div class="results-layout">
+    <!-- Left: PDF Preview -->
+    <div class="results-preview">
+      <div class="preview-header">
+        <h2 class="preview-title"><i class="ti ti-file-text"></i> CV Preview</h2>
+      </div>
+      <div class="preview-frame">
+        @if (result()?.render?.cv_code || result()?.render?.CvCode) {
+          <iframe
+            [src]="pdfPreviewUrl()"
+            class="pdf-iframe"
+            frameborder="0"
+          ></iframe>
+        } @else {
+          <div class="preview-placeholder">
+            <i class="ti ti-file-text" style="font-size:64px;color:var(--text-4)"></i>
+            <p>PDF preview will appear here.</p>
           </div>
-        </div>
-        <div class="result-card-body">
-          <div class="result-field"><label>Company</label><span>{{ extraction.enterprise_name || extraction.EnterpriseName || '—' }}</span></div>
-          <div class="result-field"><label>Role</label><span>{{ extraction.job_role || extraction.JobRole || '—' }}</span></div>
-          @if (extraction.required_skills?.length || extraction.RequiredSkills?.length) {
-            <div class="result-field"><label>Required Skills</label>
-              <div class="tag-list">
-                @for (s of (extraction.required_skills ?? extraction.RequiredSkills ?? []); track s) {
-                  <span class="tag">{{ s }}</span>
-                }
-              </div>
-            </div>
-          }
-          @if (extraction.responsibilities?.length) {
-            <div class="result-field"><label>Responsibilities</label>
-              <ul class="result-list">
-                @for (r of (extraction.responsibilities ?? extraction.Responsibilities ?? []); track r) {
-                  <li>{{ r }}</li>
-                }
-              </ul>
+        }
+      </div>
+    </div>
+
+    <!-- Right: Results + Actions -->
+    <div class="results-sidebar">
+      <div class="result-banner success">
+        <i class="ti ti-circle-check"></i> CV Generated Successfully
+      </div>
+
+      <!-- Pipeline Steps -->
+      <div class="result-card">
+        <h3 class="result-card-title">Pipeline Steps</h3>
+        <div class="steps-mini-list">
+          @for (step of (status()?.steps ?? defaultSteps); track step.step) {
+            <div class="step-mini-row" (click)="openStepDetail(step.step)">
+              <div class="step-mini-icon done"><i class="ti ti-check"></i></div>
+              <span class="step-mini-name">{{ step.name }}</span>
+              @if (step.duration_ms != null) {
+                <span class="step-mini-dur">{{ formatDuration(step.duration_ms) }}</span>
+              }
+              <i class="ti ti-chevron-right step-mini-arrow"></i>
             </div>
           }
         </div>
       </div>
-    }
 
-    <!-- Profile Match -->
-    @if (result()?.search; as search) {
+      <!-- Scores -->
       <div class="result-card">
-        <div class="result-card-header">
-          <div class="result-card-title">
-            <i class="ti ti-users result-icon"></i>
-            <span>Profile Matching</span>
+        <h3 class="result-card-title">Scores</h3>
+        @if (result()?.optimization; as opt) {
+          <div class="score-comparison">
+            <div class="score-row">
+              <span>ATS Before</span>
+              <span class="score-badge low">{{ opt.ats_score_before ?? opt.AtsScoreBefore ?? '?' }}</span>
+            </div>
+            <div class="score-row">
+              <span>ATS After</span>
+              <span class="score-badge high">{{ opt.ats_score_after ?? opt.AtsScoreAfter ?? '?' }}</span>
+            </div>
+            <div class="score-row">
+              <span>Improvement</span>
+              <span class="score-badge improvement">+{{ opt.improvement ?? opt.Improvement ?? 0 }}</span>
+            </div>
           </div>
-          @if (search.match_score != null || search.MatchScore != null) {
-            <div class="match-score">
-              <span class="score-value">{{ search.match_score ?? search.MatchScore }}</span>
-              <span class="score-label">match</span>
+        }
+        @if (result()?.search; as search) {
+          <div class="match-score-section">
+            <div class="match-score-header">
+              <span>Match Score</span>
+              <span class="match-score-value">{{ search.match_score ?? search.MatchScore ?? '?' }}%</span>
             </div>
-          }
-        </div>
-        <div class="result-card-body">
-          @if (search.matched_skills?.length || search.MatchedSkills?.length) {
-            <div class="result-field"><label>Matched Skills</label>
-              <div class="tag-list">
-                @for (s of (search.matched_skills ?? search.MatchedSkills ?? []); track s) {
-                  <span class="tag green">{{ s }}</span>
-                }
-              </div>
+            <div class="match-bar-track">
+              <div class="match-bar-fill" [style.width.%]="search.match_score ?? search.MatchScore ?? 0"></div>
             </div>
-          }
+          </div>
           @if (search.gap_skills?.length || search.GapSkills?.length) {
-            <div class="result-field"><label>Gap Skills</label>
-              <div class="tag-list">
+            <div class="gap-section">
+              <span class="gap-title">Gap Skills</span>
+              <div class="gap-tags">
                 @for (s of (search.gap_skills ?? search.GapSkills ?? []); track s) {
-                  <span class="tag orange">{{ s }}</span>
+                  <span class="gap-tag">{{ s }}</span>
                 }
               </div>
             </div>
           }
-          @if (search.matched_experiences?.length || search.MatchedExperiences?.length) {
-            <div class="result-field"><label>Matched Experiences</label>
-              <ul class="result-list">
-                @for (e of (search.matched_experiences ?? search.MatchedExperiences ?? []); track e) {
-                  <li>{{ e.title || e }}</li>
-                }
-              </ul>
+        }
+      </div>
+
+      <!-- Extraction summary -->
+      @if (result()?.extraction; as ext) {
+        <div class="result-card">
+          <h3 class="result-card-title">Extracted Job</h3>
+          <div class="extract-line"><span>Company</span><strong>{{ ext.enterprise_name ?? ext.EnterpriseName ?? '—' }}</strong></div>
+          <div class="extract-line"><span>Role</span><strong>{{ ext.job_role ?? ext.JobRole ?? '—' }}</strong></div>
+          @if (ext.required_skills?.length || ext.RequiredSkills?.length) {
+            <div class="extract-tags">
+              @for (s of (ext.required_skills ?? ext.RequiredSkills ?? []).slice(0,6); track s) {
+                <span class="tag">{{ s }}</span>
+              }
             </div>
           }
         </div>
-      </div>
-    }
+      }
 
-    <!-- Optimization -->
-    @if (result()?.optimization; as opt) {
-      <div class="result-card">
-        <div class="result-card-header">
-          <div class="result-card-title">
-            <i class="ti ti-sparkles result-icon"></i>
-            <span>CV Optimization</span>
-          </div>
-        </div>
-        <div class="result-card-body">
-          <div class="ats-scores">
-            <div class="ats-bar">
-              <label>Before</label>
-              <div class="bar-track">
-                <div class="bar-fill before" [style.width.%]="opt.ats_score_before ?? opt.AtsScoreBefore ?? 0"></div>
-              </div>
-              <span class="bar-value">{{ opt.ats_score_before ?? opt.AtsScoreBefore ?? '?' }}</span>
-            </div>
-            <div class="ats-bar">
-              <label>After</label>
-              <div class="bar-track">
-                <div class="bar-fill after" [style.width.%]="opt.ats_score_after ?? opt.AtsScoreAfter ?? 0"></div>
-              </div>
-              <span class="bar-value">{{ opt.ats_score_after ?? opt.AtsScoreAfter ?? '?' }}</span>
-            </div>
-            @if (opt.improvement != null || opt.Improvement != null) {
-              <div class="improvement">
-                +{{ opt.improvement ?? opt.Improvement }} points improvement
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- Render -->
-    @if (result()?.render; as render) {
-      <div class="result-card">
-        <div class="result-card-header">
-          <div class="result-card-title">
-            <i class="ti ti-template result-icon"></i>
-            <span>Rendered CV</span>
-          </div>
-        </div>
-        <div class="result-card-body">
-          <div class="render-preview">
-            <i class="ti ti-file-text" style="font-size:48px;color:var(--text-3)"></i>
-            <p>Your CV has been rendered as a PDF.</p>
-            <button class="helper-btn download-btn" (click)="goToHistory()">
-              <i class="ti ti-download" style="font-size:14px"></i>
-              View in History
-            </button>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- Delivery -->
-    @if (result()?.delivery; as delivery) {
-      <div class="result-card">
-        <div class="result-card-header">
-          <div class="result-card-title">
-            <i class="ti ti-mail result-icon"></i>
-            <span>Email Delivery</span>
-          </div>
+      <!-- Delivery status -->
+      @if (result()?.delivery; as delivery) {
+        <div class="result-card">
+          <h3 class="result-card-title">Delivery</h3>
           @if (delivery.success ?? delivery.Success) {
-            <span class="delivery-status success">Delivered</span>
-          } @else {
-            <span class="delivery-status failed">Failed</span>
-          }
-        </div>
-        <div class="result-card-body">
-          @if (delivery.success ?? delivery.Success) {
-            <div class="result-field"><label>Delivery ID</label><span>{{ delivery.delivery_id ?? delivery.DeliveryId ?? '—' }}</span></div>
-            @if (delivery.sent_at || delivery.SentAt) {
-              <div class="result-field"><label>Sent at</label><span>{{ delivery.sent_at ?? delivery.SentAt | date:'medium' }}</span></div>
-            }
-            @if (delivery.subject_used || delivery.SubjectUsed) {
-              <div class="result-field"><label>Subject</label><span>{{ delivery.subject_used ?? delivery.SubjectUsed }}</span></div>
+            <div class="delivery-status-row success">
+              <i class="ti ti-check-circle"></i> Delivered to {{ result()?.extraction?.recipient_email ?? 'recipient' }}
+            </div>
+            @if (delivery.delivery_id ?? delivery.DeliveryId) {
+              <div class="delivery-id">ID: {{ delivery.delivery_id ?? delivery.DeliveryId }}</div>
             }
           } @else {
-            <div class="result-field"><label>Error</label><span class="error-text">{{ delivery.error_message ?? delivery.ErrorMessage ?? 'Unknown error' }}</span></div>
+            <div class="delivery-status-row failed">
+              <i class="ti ti-alert-circle"></i> {{ delivery.error_message ?? delivery.ErrorMessage ?? 'Delivery failed' }}
+            </div>
           }
         </div>
+      }
+
+      <!-- Actions -->
+      <div class="actions-card">
+        <button class="action-btn primary" (click)="downloadPdf()">
+          <i class="ti ti-download"></i> Download PDF
+        </button>
+        <button class="action-btn" (click)="viewEditPage()">
+          <i class="ti ti-edit"></i> Edit Sections
+        </button>
+        <button class="action-btn" (click)="saveToApplications()">
+          <i class="ti ti-briefcase"></i> Save to Applications
+        </button>
+        <button class="action-btn accent" (click)="openRegeneratePanel()">
+          <i class="ti ti-refresh"></i> Regenerate
+        </button>
+        <button class="action-btn ghost" (click)="goBack()">
+          <i class="ti ti-plus"></i> New Generation
+        </button>
       </div>
-    }
+    </div>
   </div>
 </div>
 }
 
-<!-- ===================== REGENERATE MODAL ===================== -->
-@if (showRegenerateModal()) {
-  <div class="modal-overlay" (click)="closeRegenerateModal()">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h2 class="modal-title">Regenerate with modifications</h2>
-        <button class="modal-close" (click)="closeRegenerateModal()"><i class="ti ti-x"></i></button>
+<!-- ===================== STEP DETAIL MODAL ===================== -->
+@if (selectedStepIndex() != null) {
+  <div class="detail-overlay" (click)="closeStepDetail()">
+    <div class="detail-modal" (click)="$event.stopPropagation()">
+      <div class="detail-modal-header">
+        <h2 class="detail-modal-title">{{ (status()?.steps ?? defaultSteps)[selectedStepIndex()!]?.name ?? 'Step' }} Details</h2>
+        <button class="panel-close" (click)="closeStepDetail()"><i class="ti ti-x"></i></button>
       </div>
-      <p class="modal-sub">Tell us what you'd like to change. For example: "Make it more technical" or "Focus on leadership experience."</p>
-      <textarea
-        class="modal-textarea"
-        placeholder="Describe the changes you want…"
-        [value]="regenerateInput()"
-        (input)="regenerateInput.set($any($event.target).value)"
-      ></textarea>
-      <div class="modal-actions">
-        <button class="helper-btn" (click)="closeRegenerateModal()">Cancel</button>
-        <button class="generate-btn" (click)="regenerate()">Regenerate</button>
+      <div class="detail-modal-body">
+        @let data = stepDetailData(selectedStepIndex()!);
+        @if (!data || keysOf(data).length === 0) {
+          <div class="detail-empty">
+            <i class="ti ti-cloud-off"></i>
+            <p>No data available for this step yet.</p>
+          </div>
+        } @else {
+          @switch (selectedStepIndex()) {
+            @case (0) {
+              <div class="step-detail-section">
+                <div class="detail-grid">
+                  @if (data.job_role) {
+                    <div class="detail-field"><span class="detail-label">Job Role</span><span class="detail-val strong">{{ data.job_role }}</span></div>
+                  }
+                  @if (data.enterprise_name) {
+                    <div class="detail-field"><span class="detail-label">Company</span><span class="detail-val">{{ data.enterprise_name }}</span></div>
+                  }
+                  @if (data.enterprise_description) {
+                    <div class="detail-field"><span class="detail-label">About</span><span class="detail-val">{{ data.enterprise_description }}</span></div>
+                  }
+                  @if (data.required_experience_years != null) {
+                    <div class="detail-field"><span class="detail-label">Experience Required</span><span class="detail-val">{{ data.required_experience_years }} years</span></div>
+                  }
+                  @if (data.seniority_level) {
+                    <div class="detail-field"><span class="detail-label">Seniority</span><span class="detail-val">{{ data.seniority_level }}</span></div>
+                  }
+                  @if (data.employment_type) {
+                    <div class="detail-field"><span class="detail-label">Employment</span><span class="detail-val">{{ data.employment_type }}</span></div>
+                  }
+                  @if (data.location) {
+                    <div class="detail-field"><span class="detail-label">Location</span><span class="detail-val">{{ data.location }}</span></div>
+                  }
+                  @if (data.location_type) {
+                    <div class="detail-field"><span class="detail-label">Location Type</span><span class="detail-val">{{ data.location_type }}</span></div>
+                  }
+                  @if (data.salary_range) {
+                    <div class="detail-field"><span class="detail-label">Salary</span><span class="detail-val">{{ data.salary_range }} @if (data.currency) { {{ data.currency }} }</span></div>
+                  }
+                  @if (data.education_requirements) {
+                    <div class="detail-field"><span class="detail-label">Education</span><span class="detail-val">{{ data.education_requirements }}</span></div>
+                  }
+                  @if (data.contact_email) {
+                    <div class="detail-field"><span class="detail-label">Contact</span><span class="detail-val">{{ data.contact_email }}</span></div>
+                  }
+                  @if (data.application_deadline) {
+                    <div class="detail-field"><span class="detail-label">Deadline</span><span class="detail-val">{{ data.application_deadline }}</span></div>
+                  }
+                </div>
+                @let reqSkills = data.required_skills;
+                @if (reqSkills?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-code"></i> Required Skills ({{ reqSkills.length }})</h4>
+                    <div class="chip-list">
+                      @for (s of reqSkills; track s) { <span class="chip">{{ s }}</span> }
+                    </div>
+                  </div>
+                }
+                @let soft = data.soft_skills;
+                @if (soft?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-user"></i> Soft Skills ({{ soft.length }})</h4>
+                    <div class="chip-list">
+                      @for (s of soft; track s) { <span class="chip chip-alt">{{ s }}</span> }
+                    </div>
+                  </div>
+                }
+                @let certs = data.certifications;
+                @if (certs?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-certificate"></i> Certifications</h4>
+                    <div class="chip-list">
+                      @for (c of certs; track c) { <span class="chip chip-cert">{{ c }}</span> }
+                    </div>
+                  </div>
+                }
+                @let langs = data.languages;
+                @if (langs?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-language"></i> Languages</h4>
+                    <div class="chip-list">
+                      @for (l of langs; track l) { <span class="chip chip-alt">{{ l }}</span> }
+                    </div>
+                  </div>
+                }
+                @let benefits = data.benefits;
+                @if (benefits?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-gift"></i> Benefits</h4>
+                    <div class="chip-list">
+                      @for (b of benefits; track b) { <span class="chip chip-success">{{ b }}</span> }
+                    </div>
+                  </div>
+                }
+                @let kw = data.keywords;
+                @if (kw?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-hash"></i> Keywords ({{ kw.length }})</h4>
+                    <div class="chip-list">
+                      @for (k of kw; track k) { <span class="chip chip-alt">{{ k }}</span> }
+                    </div>
+                  </div>
+                }
+                @let resp = data.responsibilities;
+                @if (resp?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-list-check"></i> Responsibilities</h4>
+                    <ul class="detail-list">
+                      @for (r of resp; track r) { <li>{{ r }}</li> }
+                    </ul>
+                  </div>
+                }
+                @if (data.overall_confidence != null) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title">Extraction Confidence</h4>
+                    <div class="detail-bar-track"><div class="detail-bar-fill" [style.width.%]="data.overall_confidence * 100"></div></div>
+                    <span class="detail-bar-label">{{ (data.overall_confidence * 100).toFixed(0) }}%</span>
+                  </div>
+                }
+                @if (data.raw_description) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-file-text"></i> Raw Description</h4>
+                    <div class="raw-desc-text">{{ data.raw_description }}</div>
+                  </div>
+                }
+              </div>
+            }
+            @case (1) {
+              <div class="step-detail-section">
+                <div class="match-score-hero">
+                  <span class="match-score-hero-val">{{ (data.match_score ?? data.MatchScore ?? 0) * 100 }}%</span>
+                  <span class="match-score-hero-label">Match Score</span>
+                </div>
+                <div class="detail-bar-track hero-bar"><div class="detail-bar-fill hero-fill" [style.width.%]="(data.match_score ?? data.MatchScore ?? 0) * 100"></div></div>
+                @let gs = data.gap_skills ?? data.GapSkills;
+                @if (gs?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title warn"><i class="ti ti-alert-triangle"></i> Gap Skills ({{ gs.length }})</h4>
+                    <div class="chip-list">
+                      @for (s of gs; track s) { <span class="chip chip-warn">{{ s }}</span> }
+                    </div>
+                  </div>
+                }
+                @let matchedSkills = data.matched_skills ?? data.MatchedSkills;
+                @if (matchedSkills?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-star"></i> Matched Skills ({{ matchedSkills.length }})</h4>
+                    <div class="chip-list">
+                      @for (s of matchedSkills; track s) {
+                        <span class="chip chip-success">{{ isObject(s) ? (s.name ?? s.Name ?? jsonStringify(s)) : s }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @let matchedExps = data.matched_experiences ?? data.MatchedExperiences;
+                @if (matchedExps?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-briefcase"></i> Matched Experiences ({{ matchedExps.length }})</h4>
+                    <div class="item-cards">
+                      @for (e of matchedExps; track e) {
+                        <div class="item-card">
+                          <strong>{{ e.title ?? e.Title ?? 'Experience' }}</strong>
+                          @if (e.company ?? e.Company) { <span class="item-sub">{{ e.company ?? e.Company }}</span> }
+                          @if (e.description ?? e.Description) { <p class="item-desc">{{ e.description ?? e.Description }}</p> }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+                @let matchedProjs = data.matched_projects ?? data.MatchedProjects;
+                @if (matchedProjs?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-devices"></i> Matched Projects ({{ matchedProjs.length }})</h4>
+                    <div class="item-cards">
+                      @for (p of matchedProjs; track p) {
+                        <div class="item-card">
+                          <strong>{{ p.title ?? p.Title ?? 'Project' }}</strong>
+                          @if (p.description ?? p.Description) { <p class="item-desc">{{ p.description ?? p.Description }}</p> }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+            @case (2) {
+              <div class="step-detail-section">
+                <div class="ats-comparison">
+                  <div class="ats-side">
+                    <span class="ats-label">Before</span>
+                    <span class="ats-val low">{{ data.ats_score_before ?? data.AtsScoreBefore ?? 0 }}</span>
+                    <div class="detail-bar-track"><div class="detail-bar-fill ats-low" [style.width.%]="data.ats_score_before ?? data.AtsScoreBefore ?? 0"></div></div>
+                  </div>
+                  <div class="ats-arrow"><i class="ti ti-arrow-right"></i></div>
+                  <div class="ats-side">
+                    <span class="ats-label">After</span>
+                    <span class="ats-val high">{{ data.ats_score_after ?? data.AtsScoreAfter ?? 0 }}</span>
+                    <div class="detail-bar-track"><div class="detail-bar-fill ats-high" [style.width.%]="data.ats_score_after ?? data.AtsScoreAfter ?? 0"></div></div>
+                  </div>
+                </div>
+                @let impr = data.improvement ?? data.Improvement;
+                @if (impr != null) {
+                  <div class="improvement-badge positive">
+                    <i class="ti ti-trending-up"></i> +{{ impr }} point{{ impr !== 1 ? 's' : '' }}
+                  </div>
+                }
+                @let fp = data.file_path ?? data.FilePath;
+                @if (fp) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title">Output File</h4>
+                    <code class="file-path">{{ fp }}</code>
+                  </div>
+                }
+              </div>
+            }
+            @case (3) {
+              <div class="step-detail-section">
+                @let cvCode = data.cv_code ?? data.CvCode;
+                @if (cvCode) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-file-text"></i> CV Code</h4>
+                    <pre class="code-block">{{ cvCode.length > 2000 ? cvCode.slice(0,2000) + '...' : cvCode }}</pre>
+                  </div>
+                }
+                @let tt = data.template_type ?? data.TemplateType;
+                @if (tt) {
+                  <div class="detail-field"><span class="detail-label">Template</span><span class="detail-val">{{ tt }}</span></div>
+                }
+                @let sections = data.sections ?? data.Sections;
+                @if (sections?.length) {
+                  <div class="detail-block">
+                    <h4 class="detail-block-title"><i class="ti ti-layers"></i> Sections ({{ sections.length }})</h4>
+                    <div class="chip-list">
+                      @for (s of sections; track s) { <span class="chip">{{ isObject(s) ? (s.name ?? s.Name ?? jsonStringify(s)) : s }}</span> }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+            @case (4) {
+              <div class="step-detail-section">
+                <div class="delivery-hero" [class.success]="data.success ?? data.Success" [class.failed]="!(data.success ?? data.Success)">
+                  <i class="ti ti-{{ (data.success ?? data.Success) ? 'circle-check' : 'alert-circle' }}"></i>
+                  <span>{{ (data.success ?? data.Success) ? 'Delivered' : 'Failed' }}</span>
+                </div>
+                <div class="detail-grid">
+                  @if (data.recipient_email ?? data.RecipientEmail) {
+                    <div class="detail-field"><span class="detail-label">Recipient</span><span class="detail-val">{{ data.recipient_email ?? data.RecipientEmail }}</span></div>
+                  }
+                  @if (data.subject_used ?? data.SubjectUsed) {
+                    <div class="detail-field"><span class="detail-label">Subject</span><span class="detail-val">{{ data.subject_used ?? data.SubjectUsed }}</span></div>
+                  }
+                  @if (data.delivery_id ?? data.DeliveryId) {
+                    <div class="detail-field"><span class="detail-label">Delivery ID</span><span class="detail-val mono">{{ data.delivery_id ?? data.DeliveryId }}</span></div>
+                  }
+                  @if (data.sent_at ?? data.SentAt) {
+                    <div class="detail-field"><span class="detail-label">Sent At</span><span class="detail-val">{{ data.sent_at ?? data.SentAt }}</span></div>
+                  }
+                  @if (data.error_message ?? data.ErrorMessage) {
+                    <div class="detail-field error"><span class="detail-label">Error</span><span class="detail-val">{{ data.error_message ?? data.ErrorMessage }}</span></div>
+                  }
+                </div>
+              </div>
+            }
+            @default {
+              <div class="step-detail-section generic-detail">
+                @for (key of keysOf(data); track key) {
+                  @let val = data[key];
+                  @if (val != null) {
+                    <div class="detail-field">
+                      <span class="detail-label">{{ key }}</span>
+                      <span class="detail-val">{{ isObject(val) || isArray(val) ? jsonStringify(val) : val }}</span>
+                    </div>
+                  }
+                }
+              </div>
+            }
+          }
+          <details class="raw-data-toggle">
+            <summary><i class="ti ti-code"></i> Raw Data</summary>
+            <pre class="raw-json">{{ jsonStringify(data) }}</pre>
+          </details>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ===================== REGENERATE SIDE PANEL ===================== -->
+@if (showRegeneratePanel()) {
+  <div class="panel-overlay" (click)="closeRegeneratePanel()">
+    <div class="regenerate-panel" (click)="$event.stopPropagation()">
+      <div class="panel-header">
+        <h2 class="panel-title">Regenerate with modifications</h2>
+        <button class="panel-close" (click)="closeRegeneratePanel()"><i class="ti ti-x"></i></button>
+      </div>
+
+      <div class="panel-body">
+        <div class="panel-field">
+          <label>Job Description</label>
+          <textarea
+            class="panel-textarea"
+            [value]="regenerateJobDesc()"
+            (input)="regenerateJobDesc.set($any($event.target).value)"
+          ></textarea>
+        </div>
+
+        <div class="panel-field">
+          <label>Tone</label>
+          <select class="panel-select" [value]="regenerateTone()" (change)="regenerateTone.set($any($event.target).value)">
+            @for (t of TONES; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="panel-field">
+          <label>Focus instructions (optional)</label>
+          <textarea
+            class="panel-textarea"
+            placeholder="e.g. Emphasize leadership experience, focus on AI/ML skills..."
+            [value]="regenerateFocus()"
+            (input)="regenerateFocus.set($any($event.target).value)"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="panel-footer">
+        <button class="helper-btn" (click)="closeRegeneratePanel()">Cancel</button>
+        <button class="generate-btn" (click)="regenerate()">
+          <i class="ti ti-refresh"></i> Regenerate
+        </button>
       </div>
     </div>
   </div>

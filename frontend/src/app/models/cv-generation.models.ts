@@ -37,6 +37,53 @@ export interface ApiResponse<T> {
   data?: T;
 }
 
+export interface CVProfile {
+  id: string;
+  title: string;
+  summary?: string;
+}
+
+export interface EditCvSection {
+  summary: string;
+  experiences: EditExperience[];
+  skills: string[];
+  projects: EditProject[];
+}
+
+export interface EditExperience {
+  company: string;
+  title: string;
+  description: string;
+  bullets: string[];
+}
+
+export interface EditProject {
+  name: string;
+  description: string;
+  url?: string;
+}
+
+export type InputTab = 'paste' | 'url' | 'file';
+export type PageState = 'form' | 'progress' | 'results';
+
+export const TONES = ['Confident', 'Warm', 'Technical', 'Concise'] as const;
+export const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'fr', label: 'French' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'de', label: 'German' },
+  { code: 'nl', label: 'Dutch' },
+  { code: 'it', label: 'Italian' },
+  { code: 'pt', label: 'Portuguese' },
+] as const;
+
+export const TEMPLATES = [
+  { id: 'default', label: 'Default' },
+  { id: 'modern', label: 'Modern' },
+  { id: 'classic', label: 'Classic' },
+  { id: 'minimal', label: 'Minimal' },
+] as const;
+
 export const STEP_ICONS: Record<string, string> = {
   'Job Extraction': 'ti ti-file-search',
   'Profile Matching': 'ti ti-users',

@@ -7,33 +7,43 @@ from typing import List, Dict, Any
 from app.schemas import SearchInput, SearchOutput
 from app.core import backend_client
 from cvtools.core.llm import get_llm as _get_base_llm
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
+from google import genai
+
+_genai_client: genai.Client | None = None
+
+def _get_genai_client() -> genai.Client:
+    global _genai_client
+    if _genai_client is None:
+        _genai_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+    return _genai_client
+
+def _embed_text(text: str) -> List[float]:
+    client = _get_genai_client()
+    response = client.models.embed_content(
+        model=os.getenv("EMBEDDING_MODEL", "gemini-embedding-001"),
+        contents=text
+    )
+    return response.embeddings[0].values
 
 def get_llm():
     provider = os.getenv("LLM_PROVIDER") or "google"
     model = os.getenv("LLM_MODEL") or "gemini-1.5-flash"
     return _get_base_llm(provider=provider, model=model, temperature=0)
 
-def get_embeddings():
-    model_name = os.getenv("EMBEDDING_MODEL", "models/embedding-001")
-    return GoogleGenerativeAIEmbeddings(model=model_name)
-
 async def sync_user_data_to_vector_db(user_id: str, experiences, projects, skills):
     """
     Checks if the C# Vector Database has the user's embeddings. 
     If not, it fetches them, embeds them, and syncs them via HTTP.
     """
-    embeddings_model = get_embeddings()
     chunks = []
     
     for exp in experiences:
         content = f"Experience: {exp.title}"
         if exp.company: content += f" at {exp.company}"
         if exp.description: content += f". {exp.description}"
-        # Generate the embedding vector
-        vector = embeddings_model.embed_query(content)
+        vector = _embed_text(content)
         chunks.append({
             "sourceType": "experience",
             "sourceId": str(exp.id),
@@ -45,7 +55,7 @@ async def sync_user_data_to_vector_db(user_id: str, experiences, projects, skill
         content = f"Project: {proj.title}"
         if proj.description: content += f". {proj.description}"
         if proj.achievements: content += f". Achievements: {proj.achievements}"
-        vector = embeddings_model.embed_query(content)
+        vector = _embed_text(content)
         chunks.append({
             "sourceType": "project",
             "sourceId": str(proj.id),
@@ -56,7 +66,7 @@ async def sync_user_data_to_vector_db(user_id: str, experiences, projects, skill
     for skill in skills:
         content = f"Skill: {skill.name}"
         if skill.level: content += f" (Level: {skill.level})"
-        vector = embeddings_model.embed_query(content)
+        vector = _embed_text(content)
         chunks.append({
             "sourceType": "skill",
             "sourceId": str(skill.id),
@@ -85,8 +95,7 @@ async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
     job_reqs = input_data.job_requirements
     query_text = f"Role: {job_reqs.job_role}. Skills: {', '.join(job_reqs.extracted_skills)}. Keywords: {', '.join(job_reqs.keywords)}"
     
-    embeddings_model = get_embeddings()
-    query_vector = embeddings_model.embed_query(query_text)
+    query_vector = _embed_text(query_text)
     
     # 4. Perform highly optimized BMO Hybrid Search in the C# Database
     search_results = await backend_client.search_vectors(input_data.user_id, query_text, query_vector, limit=15)
