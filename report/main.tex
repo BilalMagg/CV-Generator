@@ -5,7 +5,9 @@
 
 \begin{document}
 
-\frontmatter
+\include{chapters/00_cover}
+
+\pagenumbering{roman}
 \include{chapters/00_remerciments}
 \include{chapters/00_resume}
 
@@ -13,14 +15,14 @@
 \listoffigures
 \listoftables
 
-\mainmatter
+\cleardoublepage
+\pagenumbering{arabic}
 \include{chapters/01_introduction_generale}
 \include{chapters/02_chapitre1_contexte}
 \include{chapters/03_chapitre2_analyse}
 \include{chapters/04_chapitre3_realisation}
 \include{chapters/05_conclusion}
 
-\backmatter
 \nocite{*}
 \bibliographystyle{plainnat-fr}
 \bibliography{references}

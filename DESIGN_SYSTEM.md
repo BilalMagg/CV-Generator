@@ -1,6 +1,6 @@
-# Driftly — Design System
+# Propel — Design System
 
-> **App Name:** Driftly  
+> **App Name:** Propel  
 > **Stack:** Angular 21 · SCSS · OKLCH color space  
 > **Last updated:** 2026-05-22
 
@@ -10,7 +10,7 @@
 
 | Token | Value |
 |---|---|
-| App name | **Driftly** |
+| App name | **Propel** |
 | Tagline | *Tailor a CV in eleven seconds.* |
 | Logo mark | Star/sparkle SVG icon on dark background |
 | Plan badge | `Pro` — small pill next to brand name in sidebar |
@@ -180,7 +180,7 @@ Main content pages use `padding: 40px 48px` (or similar) for inner content breat
 
 ### Sidebar Structure (top → bottom)
 
-1. **Brand row** — Logo icon + "Driftly" name + "Pro" badge + chevron dropdown
+1. **Brand row** — Logo icon + "Propel" name + "Pro" badge + chevron dropdown
 2. **Search bar** — Full-width button, magnifier icon, placeholder "Search…", `⌘K` keycap badge
 3. **Main nav** — Vertical list of navigation items
 4. **LIBRARY eyebrow** — Section label in small caps
@@ -209,7 +209,7 @@ Main content pages use `padding: 40px 48px` (or similar) for inner content breat
 
 ### Header Structure
 
-Left: Breadcrumb — `Driftly > Page Name` (simple text path)  
+Left: Breadcrumb — `Propel > Page Name` (simple text path)  
 Right: `⌘ Help` · Bell icon (notification dot) · `● Signed in` status pill
 
 ---
@@ -396,7 +396,7 @@ Active tab has dark/solid background. Right side has action buttons.
 ### Analytics (`/applications/analytics`)
 
 **Page header:**
-- Breadcrumb: `Driftly > Analytics`
+- Breadcrumb: `Propel > Analytics`
 - Badge pill: `Analytics`
 - H1: `Your search, by the numbers`
 - Subtext: `See what's working, where you're getting traction, and where to push harder.`

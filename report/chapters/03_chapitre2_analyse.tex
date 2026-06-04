@@ -4,27 +4,116 @@
 \section{Introduction}
 \label{sec:analyse:intro}
 
+Ce chapitre présente l'analyse approfondie du système \projectname{}. Nous commençons par une étude des solutions existantes, suivie de l'identification des besoins fonctionnels et non fonctionnels. Ensuite, nous identifions les acteurs du système avant de présenter les différents diagrammes de modélisation.
+
 \section{Étude de l'existant}
 \label{sec:analyse:existant}
 
-% Avantages et limites des solutions existantes
+Plusieurs solutions de création de CV existent sur le marché. Le tableau suivant présente une comparaison des principales solutions :
+
+\begin{table}[H]
+\centering
+\caption{Comparaison des solutions existantes}
+\label{tab:comparaison}
+\begin{tabularx}{\textwidth}{lXXXX}
+\toprule
+\textbf{Solution} & \textbf{CV personnalisé} & \textbf{IA} & \textbf{Suivi candidatures} & \textbf{Open Source} \\
+\midrule
+\projectname{} (notre solution) & Oui & Oui & Oui & Oui \\
+Canva & Partiel & Non & Non & Non \\
+Zety & Modèles fixes & Non & Non & Non \\
+Novoresume & Modèles fixes & Non & Non & Non \\
+Rezi & Oui & Oui & Non & Non \\
+Enhancv & Partiel & Oui & Non & Non \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Les solutions existantes présentent plusieurs limitations :
+\begin{itemize}
+    \item \textbf{Personnalisation limitée :} La plupart des outils offrent des modèles fixes sans adaptation réelle au contenu de l'offre d'emploi.
+    \item \textbf{Absence de suivi intégré :} Aucune solution ne combine la génération de CV avec le suivi des candidatures dans une plateforme unifiée.
+    \item \textbf{Coût :} Les solutions avancées sont payantes (abonnements mensuels).
+    \item \textbf{Optimisation ATS limitée :} Peu d'outils optimisent réellement le CV pour passer les filtres des systèmes ATS.
+\end{itemize}
+
+\projectname{} se distingue en offrant une solution complète, gratuite et open source, combinant génération IA de CV, optimisation ATS et suivi de candidatures.
 
 \section{Étude des besoins fonctionnels}
 \label{sec:analyse:fonctionnels}
 
+Les besoins fonctionnels identifiés pour le système \projectname{} sont les suivants :
+
+\begin{table}[H]
+\centering
+\caption{Besoins fonctionnels du système}
+\label{tab:besoins-fonctionnels}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{ID} & \textbf{Description} \\
+\midrule
+BF01 & L'utilisateur doit pouvoir s'authentifier via Keycloak (email, Google, GitHub) \\
+BF02 & L'utilisateur doit pouvoir gérer son portfolio (projets, compétences, expériences, formations) \\
+BF03 & L'utilisateur doit pouvoir soumettre une offre d'emploi pour générer un CV personnalisé \\
+BF04 & Le système doit extraire les informations clés de l'offre d'emploi via un agent IA \\
+BF05 & Le système doit rechercher les compétences pertinentes dans le profil de l'utilisateur via RAG \\
+BF06 & Le système doit générer un CV formaté selon un template optimisé ATS \\
+BF07 & Le système doit optimiser le contenu du CV pour maximiser la compatibilité ATS \\
+BF08 & Le système doit envoyer le CV généré par email à l'utilisateur \\
+BF09 & L'utilisateur doit pouvoir suivre ses candidatures (vue Kanban, liste, calendrier) \\
+BF10 & L'utilisateur doit pouvoir visualiser des statistiques et des graphiques sur ses candidatures \\
+BF11 & Le système doit crawler automatiquement des offres d'emploi depuis des plateformes externes \\
+BF12 & L'utilisateur doit recevoir des notifications temps réel sur l'état de ses candidatures \\
+BF13 & L'utilisateur doit pouvoir gérer plusieurs versions de CV \\
+BF14 & Le système doit exporter les CV au format PDF \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 \section{Étude des besoins non fonctionnels}
 \label{sec:analyse:non-fonctionnels}
 
-% Performance, sécurité, disponibilité, ergonomie, maintenabilité
+Les besoins non fonctionnels identifiés sont :
+
+\begin{itemize}
+    \item \textbf{Performance :} La génération d'un CV ne doit pas excéder quelques secondes. Les temps de réponse de l'API doivent être optimisés.
+    \item \textbf{Sécurité :} L'authentification doit être centralisée via Keycloak avec support OAuth2 et OpenID Connect. Les communications doivent être chiffrées (HTTPS). Les vulnérabilités doivent être scannées via Trivy et OWASP ZAP.
+    \item \textbf{Disponibilité :} Le système doit être résilient grâce à une architecture en microservices et une orchestration Docker. Les services critiques doivent pouvoir redémarrer automatiquement.
+    \item \textbf{Maintenabilité :} Le code source doit être organisé en modules séparés, versionné avec Git, et suivre les principes SOLID. La qualité du code est surveillée via SonarCloud.
+    \item \textbf{Évolutivité :} L'architecture microservices permet de faire évoluer chaque service indépendamment. L'utilisation de Kafka permet un couplage faible entre les services.
+    \item \textbf{Ergonomie :} L'interface utilisateur doit être intuitive, responsive et suivre une charte graphique cohérente (design system Propel).
+    \item \textbf{Portabilité :} L'ensemble de l'application doit être conteneurisée avec Docker pour garantir un déploiement reproductible sur n'importe quel environnement.
+\end{itemize}
 
 \section{Identification des acteurs}
 \label{sec:analyse:acteurs}
+
+L'analyse du système \projectname{} permet d'identifier les acteurs suivants :
+
+\begin{table}[H]
+\centering
+\caption{Identification des acteurs du système}
+\label{tab:acteurs}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Acteur} & \textbf{Description} \\
+\midrule
+Utilisateur & Candidat cherchant à générer des CV personnalisés et suivre ses candidatures \\
+Système d'authentification & Keycloak gère l'authentification et l'autorisation via OAuth2/OpenID Connect \\
+Pipeline IA & Ensemble d'agents intelligents qui traitent les offres d'emploi et génèrent les CV \\
+Système de messagerie & Kafka assure la communication asynchrone entre les microservices \\
+Administrateur & Gère la configuration du système et supervise le déploiement \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \section{Modélisation du système}
 \label{sec:analyse:modelisation}
 
 \subsection{Diagramme de cas d'utilisation}
 \label{subsec:analyse:uc}
+
+Le diagramme de cas d'utilisation présente les interactions entre les acteurs et les fonctionnalités du système.
 
 \begin{figure}[H]
 \centering
@@ -36,6 +125,8 @@
 \subsection{Diagramme de classes}
 \label{subsec:analyse:classes}
 
+Le diagramme de classes illustre la structure statique du système, montrant les entités principales et leurs relations.
+
 \begin{figure}[H]
 \centering
 % \includegraphics[width=\textwidth]{images/diagramme-classes.png}
@@ -46,17 +137,19 @@
 \subsection{Diagramme de séquence}
 \label{subsec:analyse:sequence}
 
-% Optionnel
+Le diagramme de séquence ci-dessous illustre le flux de génération d'un CV, depuis la soumission d'une offre d'emploi jusqu'à la réception du CV par email.
 
 \begin{figure}[H]
 \centering
 % \includegraphics[width=\textwidth]{images/diagramme-sequence.png}
-\caption{Diagramme de séquence}
+\caption{Diagramme de séquence du processus de génération de CV}
 \label{fig:sequence}
 \end{figure}
 
 \subsection{Modèle relationnel de la base de données}
 \label{subsec:analyse:bdd}
+
+L'architecture microservices du projet implique l'utilisation de plusieurs bases de données PostgreSQL, une par service. Chaque base de données est spécialisée pour les besoins de son service : utilisateurs, contenu utilisateur, CV, candidatures, offres d'emploi, workflow, notifications.
 
 \begin{figure}[H]
 \centering
@@ -67,3 +160,5 @@
 
 \section{Conclusion}
 \label{sec:analyse:conclusion}
+
+Ce chapitre a présenté l'analyse complète du système \projectname{}, incluant l'étude de l'existant, les besoins fonctionnels et non fonctionnels, l'identification des acteurs et la modélisation. Le chapitre suivant détaillera la réalisation technique du projet.
