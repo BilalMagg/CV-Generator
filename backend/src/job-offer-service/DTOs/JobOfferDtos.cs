@@ -178,3 +178,14 @@ public record TriggerCrawlResponseDto(
     string Location,
     int ResultLimit
 );
+
+/// <summary>Crawl history item returned by GET /crawls.</summary>
+public record CrawlHistoryDto(
+    Guid SearchId,
+    string Keyword,
+    string? Location,
+    string Status,
+    int ExpectedCount,
+    int ProcessedCount,
+    DateTime CreatedAt
+);

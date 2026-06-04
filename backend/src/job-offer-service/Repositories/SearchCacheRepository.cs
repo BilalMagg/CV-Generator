@@ -14,6 +14,7 @@ public interface ISearchCacheRepository
     Task<SearchCache> CreateAsync(SearchCache cache);
     Task<SearchCache> UpdateAsync(SearchCache cache);
     Task<bool> IncrementProcessedCountAsync(Guid searchId);
+    Task<List<SearchCache>> GetCrawlsByUserIdAsync(Guid userId);
 }
 
 public class SearchCacheRepository : ISearchCacheRepository
@@ -75,5 +76,14 @@ public class SearchCacheRepository : ISearchCacheRepository
                 .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
 
         return rows > 0;
+    }
+
+    public async Task<List<SearchCache>> GetCrawlsByUserIdAsync(Guid userId)
+    {
+        return await _db.SearchCaches
+            .Where(s => s.UserId == userId)
+            .OrderByDescending(s => s.CreatedAt)
+            .Take(50)
+            .ToListAsync();
     }
 }

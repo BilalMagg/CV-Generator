@@ -178,7 +178,7 @@ public class ContactService : IContactService
         {
             using var client = _httpClientFactory.CreateClient();
             var response = await client.GetAsync(
-                $"http://cv-job-offer-service:8086/api/v1/job-offers?userId={userId}&page=1&pageSize=500");
+                $"http://cv-job-offer-service:8086/api/job-offers?userId={userId}&page=1&pageSize=500");
             if (!response.IsSuccessStatusCode) return 0;
 
             var json = await response.Content.ReadAsStringAsync();

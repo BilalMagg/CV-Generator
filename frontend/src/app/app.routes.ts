@@ -27,6 +27,7 @@ import { AgentGuideComponent } from './pages/agents-hub/agent-guide/agent-guide.
 import { JobExtractorWorkspaceComponent } from './pages/agents-hub/job-extractor-workspace/job-extractor-workspace.component';
 import { ExtractionResultComponent } from './pages/agents-hub/extraction-result/extraction-result.component';
 import { AgentConfigComponent } from './pages/agents-hub/agent-config/agent-config.component';
+import { JobCrawlerWorkspaceComponent } from './pages/agents-hub/job-crawler-workspace/job-crawler-workspace.component';
 import { PersonalInfoComponent } from './pages/personal-info/personal-info.component';
 import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
 import { EntityListComponent } from './pages/entity-list/entity-list.component';
@@ -69,6 +70,7 @@ export const routes: Routes = [
   { path: 'agents-hub/job-extractor', component: JobExtractorWorkspaceComponent, canActivate: [authGuard] },
   { path: 'agents-hub/job-extractor/result/:id', component: ExtractionResultComponent, canActivate: [authGuard] },
   { path: 'agents-hub/job-extractor/config', component: AgentConfigComponent, canActivate: [authGuard] },
+  { path: 'agents-hub/job-crawler', component: JobCrawlerWorkspaceComponent, canActivate: [authGuard] },
   {
     path: 'my-career',
     component: MyCvComponent,

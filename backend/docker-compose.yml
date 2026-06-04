@@ -115,6 +115,7 @@ services:
       - TEMPLATE_AGENT_URL=http://${TEMPLATE_AGENT_HOST:-cv-template-agent}:${TEMPLATE_AGENT_PORT:-8003}/api/v1/
       - CV_OPTIMIZER_URL=http://${CV_OPTIMIZER_HOST:-cv-optimizer}:${CV_OPTIMIZER_PORT:-8004}/api/v1/
       - CONTACT_AGENT_URL=http://${CONTACT_AGENT_HOST:-cv-contact-agent}:${CONTACT_AGENT_PORT:-8005}/api/v1/
+      - JOB_CRAWLER_URL=http://${JOB_CRAWLER_HOST:-cv-job-crawler}:${JOB_CRAWLER_PORT:-8006}/api/v1/
     depends_on:
       workflow-db: { condition: service_healthy }
     networks:

@@ -17,7 +17,7 @@ using FluentValidation;
 namespace JobOfferService.Controllers;
 
 [ApiController]
-[Route("api/v1/job-offers")]
+[Route("api/job-offers")]
 // [Authorize] // Uncomment this if the service requires JWT authentication
 public class JobOffersController : ControllerBase
 {
@@ -111,7 +111,7 @@ public class JobOffersController : ControllerBase
         var createdId = await _service.SubmitRawJobOfferAsync(dto);
         _logger.LogInformation("Successfully submitted raw job offer with ID {Id}", createdId);
         
-        return Created($"/api/v1/job-offers/{createdId}", ApiResponse<Guid>.Created(createdId));
+        return Created($"/api/job-offers/{createdId}", ApiResponse<Guid>.Created(createdId));
     }
 
     /// <summary>
@@ -205,7 +205,7 @@ public class JobOffersController : ControllerBase
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // CRAWLER PIPELINE — POST /api/v1/job-offers/from-crawler
+    // CRAWLER PIPELINE — POST /api/job-offers/from-crawler
     // Called by the Python job-extractor using ExtractedJobDto (same DTO, same validator).
     // The 3 optional crawler fields (SearchId, Source, OverallConfidence) drive the
     // upsert logic and SignalR push; they are ignored by the normal /{id}/extracted flow.
@@ -313,11 +313,11 @@ public class JobOffersController : ControllerBase
             return Ok(ApiResponse<Guid>.Ok(jobId));
         }
 
-        return Created($"/api/v1/job-offers/{jobId}", ApiResponse<Guid>.Created(jobId));
+        return Created($"/api/job-offers/{jobId}", ApiResponse<Guid>.Created(jobId));
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // TRIGGER CRAWL  —  POST /api/v1/job-offers/crawl
+    // TRIGGER CRAWL  —  POST /api/job-offers/crawl
     // ─────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -378,6 +378,7 @@ public class JobOffersController : ControllerBase
         await _searchCacheRepo.CreateAsync(new JobOfferService.Entities.SearchCache
         {
             SearchId = searchId,
+            UserId   = dto.UserId,
             Keyword  = dto.Keyword,
             Location = dto.Location,
             Status   = JobOfferService.Entities.SearchStatus.Pending,
@@ -406,6 +407,32 @@ public class JobOffersController : ControllerBase
             Location: dto.Location,
             ResultLimit: dto.ResultLimit
         )));
+    }
+
+    // ── CRAWL HISTORY  —  GET /api/job-offers/crawls ────────────────────
+
+    /// <summary>
+    /// Returns crawl history for a user — past searches with status and counts.
+    /// </summary>
+    [HttpGet("crawls")]
+    [ProducesResponseType(typeof(ApiResponse<List<CrawlHistoryDto>>), 200)]
+    public async Task<IActionResult> GetCrawlHistory([FromQuery] Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return BadRequest(ApiResponse<object>.Error("userId query parameter is required."));
+
+        var crawls = await _searchCacheRepo.GetCrawlsByUserIdAsync(userId);
+        var dtos = crawls.Select(c => new CrawlHistoryDto(
+            c.SearchId,
+            c.Keyword,
+            c.Location,
+            c.Status.ToString(),
+            c.ExpectedCount,
+            c.ProcessedCount,
+            c.CreatedAt
+        )).ToList();
+
+        return Ok(ApiResponse<List<CrawlHistoryDto>>.Ok(dtos));
     }
 
     // ── Job Hash Generator ────────────────────────────────────────────────────

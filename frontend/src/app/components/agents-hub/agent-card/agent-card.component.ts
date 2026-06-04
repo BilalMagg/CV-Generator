@@ -23,6 +23,7 @@ export class AgentCardComponent {
 
   private readonly workspaceRoutes: Record<string, string> = {
     'job-extractor': '/agents-hub/job-extractor',
+    'job-crawler': '/agents-hub/job-crawler',
   };
 
   private sizeMap: Record<string, string> = {

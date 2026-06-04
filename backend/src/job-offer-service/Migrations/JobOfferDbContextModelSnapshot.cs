@@ -208,6 +208,9 @@ namespace job_offer_service.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("SearchId");
 
                     b.HasIndex("Keyword", "CrawledDate");
