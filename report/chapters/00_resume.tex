@@ -29,4 +29,8 @@ This project presents the design and development of \projectname{}, an intellige
 \chapter*{Liste des acronymes}
 \addcontentsline{toc}{chapter}{Liste des acronymes}
 
-\printglossary[type=\acronymtype, title={}]
+\glsaddall
+\begingroup
+\renewcommand{\glossarysection}[2][]{}
+\printglossary[type=\acronymtype, title={}, nogroupskip]
+\endgroup
