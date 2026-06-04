@@ -20,13 +20,16 @@ def _get_genai_client() -> genai.Client:
     return _genai_client
 
 def _embed_text(text: str) -> List[float]:
+    return _embed_texts([text])[0]
+
+def _embed_texts(texts: List[str]) -> List[List[float]]:
     client = _get_genai_client()
     response = client.models.embed_content(
         model=os.getenv("EMBEDDING_MODEL", "gemini-embedding-001"),
-        contents=text,
+        contents=texts,
         config={"output_dimensionality": 768}
     )
-    return response.embeddings[0].values
+    return [e.values for e in response.embeddings]
 
 def get_llm():
     provider = os.getenv("LLM_PROVIDER") or "google"
@@ -34,46 +37,46 @@ def get_llm():
     return _get_base_llm(provider=provider, model=model, temperature=0)
 
 async def sync_user_data_to_vector_db(user_id: str, experiences, projects, skills):
-    """
-    Checks if the C# Vector Database has the user's embeddings. 
-    If not, it fetches them, embeds them, and syncs them via HTTP.
-    """
     chunks = []
-    
+
+    exp_texts = []
     for exp in experiences:
         content = f"Experience: {exp.title}"
         if exp.company: content += f" at {exp.company}"
         if exp.description: content += f". {exp.description}"
-        vector = _embed_text(content)
-        chunks.append({
-            "sourceType": "experience",
-            "sourceId": str(exp.id),
-            "content": content,
-            "embedding": vector
-        })
-        
+        exp_texts.append(content)
+
+    proj_texts = []
     for proj in projects:
         content = f"Project: {proj.title}"
         if proj.description: content += f". {proj.description}"
         if proj.achievements: content += f". Achievements: {proj.achievements}"
-        vector = _embed_text(content)
-        chunks.append({
-            "sourceType": "project",
-            "sourceId": str(proj.id),
-            "content": content,
-            "embedding": vector
-        })
-        
+        proj_texts.append(content)
+
+    skill_texts = []
     for skill in skills:
         content = f"Skill: {skill.name}"
         if skill.level: content += f" (Level: {skill.level})"
-        vector = _embed_text(content)
-        chunks.append({
-            "sourceType": "skill",
-            "sourceId": str(skill.id),
-            "content": content,
-            "embedding": vector
-        })
+        skill_texts.append(content)
+
+    all_texts = exp_texts + proj_texts + skill_texts
+    if not all_texts:
+        return
+
+    all_vectors = _embed_texts(all_texts)
+    idx = 0
+
+    for i, exp in enumerate(experiences):
+        chunks.append({"sourceType": "experience", "sourceId": str(exp.id), "content": exp_texts[i], "embedding": all_vectors[idx]})
+        idx += 1
+
+    for i, proj in enumerate(projects):
+        chunks.append({"sourceType": "project", "sourceId": str(proj.id), "content": proj_texts[i], "embedding": all_vectors[idx]})
+        idx += 1
+
+    for i, skill in enumerate(skills):
+        chunks.append({"sourceType": "skill", "sourceId": str(skill.id), "content": skill_texts[i], "embedding": all_vectors[idx]})
+        idx += 1
 
     if chunks:
         await backend_client.sync_vectors(user_id, chunks)
@@ -101,7 +104,7 @@ async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
     # 4. Perform highly optimized BMO Hybrid Search in the C# Database
     search_results = await backend_client.search_vectors(input_data.user_id, query_text, query_vector, limit=15)
     
-    # Map the search results back to the structured content for the LLM context
+    # Build context with both retrieved chunks and full skill inventory
     context_chunks = []
     for res in search_results:
         source_id = res.get("sourceId")
@@ -120,25 +123,30 @@ async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
             
         if content:
             context_chunks.append(f"- {source_type.upper()} (ID: {source_id}): {content}")
-            
+
+    user_skill_names = [s.name for s in skills]
     context = "\n".join(context_chunks)
 
-    # 5. LLM Reasoning using BMO explicit context formatting
+    # 5. LLM Reasoning with strict cross-referencing
     prompt = ChatPromptTemplate.from_template("""
-    You are a matching agent in a multi-agent CV generator.
-    
+    You are a strict matching agent in a multi-agent CV generator.
+
     JOB REQUIREMENTS:
     {job_reqs}
 
-    --- RELEVANT CONTEXT FROM CANDIDATE PROFILE ---
+    CANDIDATE SKILLS INVENTORY (complete list):
+    {user_skills}
+
+    --- RETRIEVED CONTEXT FROM CANDIDATE PROFILE ---
     {cv_context}
     -----------------------------------------------
 
-    TASK:
-    Analyze the candidate data against the job requirements.
-    Identify which specific experiences, projects, and skills match the job.
-    Also identify any missing critical skills (gap skills) from the job requirements.
-    Provide an overall match score between 0.0 and 1.0.
+    MATCHING RULES (strictly follow these):
+    1. A skill ID should ONLY be in matched_skill_ids if the skill NAME appears in the job's extracted_skills list.
+    2. An experience ID should ONLY be in matched_experience_ids if the person's title/description clearly relates to the job role or required skills.
+    3. A project ID should ONLY be in matched_project_ids if the project description clearly relates to the job requirements.
+    4. gap_skills MUST include every skill from extracted_skills that is NOT present in the CANDIDATE SKILLS INVENTORY.
+    5. match_score should reflect the proportion of required skills the candidate has: 1.0 = all skills present, 0.5 = half, 0.0 = none.
 
     Output a JSON object with this exact structure:
     {{
@@ -148,7 +156,7 @@ async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
         "gap_skills": ["skill1", "skill2"],
         "match_score": 0.85
     }}
-    Only include IDs that are exactly present in the RELEVANT CONTEXT.
+    Only include IDs that are exactly present in the RETRIEVED CONTEXT.
     """)
 
     chain = prompt | get_llm() | JsonOutputParser()
@@ -157,15 +165,15 @@ async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
         if not context.strip():
             result = {"matched_experience_ids": [], "matched_project_ids": [], "matched_skill_ids": [], "gap_skills": job_reqs.extracted_skills, "match_score": 0.0}
         else:
-            result = chain.invoke({"job_reqs": job_reqs.model_dump_json(), "cv_context": context})
+            result = chain.invoke({"job_reqs": job_reqs.model_dump_json(), "user_skills": ", ".join(user_skill_names), "cv_context": context})
     except Exception as e:
         print(f"LLM matching failed: {e}")
         return SearchOutput(
-            matched_skills=skills,
-            matched_experiences=experiences,
-            matched_projects=projects,
-            gap_skills=[],
-            match_score=0.5
+            matched_skills=[],
+            matched_experiences=[],
+            matched_projects=[],
+            gap_skills=job_reqs.extracted_skills,
+            match_score=0.0
         )
 
     matched_exp_ids = set(result.get("matched_experience_ids", []))
