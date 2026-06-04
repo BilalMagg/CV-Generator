@@ -1,0 +1,6 @@
+{
+  "title": "Follow up with Stripe recruiter",
+  "message": "Send a polite check-in if no reply by EOD.",
+  "reminderOffset": "OneDay",
+  "daysFromNow": 7
+}

@@ -1,0 +1,38 @@
+{
+  "experiences": {
+    "company": "Acme Corp",
+    "title": "Full-Stack Engineer",
+    "status": "Completed",
+    "startDate": "2023-02-01",
+    "endDate": "2025-08-31",
+    "description": "Built and shipped the new billing platform. Owned end-to-end delivery from spec to production rollout."
+  },
+  "projects": {
+    "title": "Open-Source CV Builder",
+    "description": "A small Angular + .NET tool for generating tailored CVs.",
+    "role": "Maintainer",
+    "status": "Ongoing",
+    "startDate": "2025-01-15",
+    "endDate": "",
+    "repositoryUrl": "https://github.com/example/cv-builder",
+    "demoUrl": "https://cv.example.dev",
+    "skillsJson": "Angular, .NET, PostgreSQL"
+  },
+  "skills": {
+    "name": "TypeScript",
+    "category": "Frontend",
+    "level": "Advanced",
+    "yearsOfExperience": 5
+  },
+  "educations": {
+    "institutionName": "ENSIAS",
+    "degreeType": "Engineering Degree",
+    "fieldOfStudy": "Software Engineering",
+    "specialization": "Web & Mobile Engineering",
+    "startDate": "2020-09-01",
+    "endDate": "2025-07-01",
+    "status": "Completed",
+    "city": "Rabat",
+    "DiplomaFileUrl": ""
+  }
+}

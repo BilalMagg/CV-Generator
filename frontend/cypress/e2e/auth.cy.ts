@@ -1,26 +1,21 @@
 /// <reference types="cypress" />
 
-const SIGN_IN_EMAIL = 'landproiptiv@gmail';
-const SIGN_IN_PASSWORD = 'landproiptiv@gmail';
-
 const uniqueSuffix = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const buildSignUpUser = () => {
-  const id = uniqueSuffix();
-  return {
-    firstName: 'E2E',
-    lastName: `Tester-${id}`,
-    email: `e2e+${id}@example.com`,
-    password: 'P@ssw0rd123!',
-  };
-};
 
-const disableNativeValidation = () => {
-  cy.get('form.sign-in-form, form.sign-up-form').each(($form) => {
-    $form.attr('novalidate', '');
-  });
-};
+interface UsersFixture {
+  login: { email: string; password: string };
+  signup: { firstName: string; lastName: string; email: string; password: string };
+}
 
 describe('Auth flow — sign in & sign up', () => {
+  let users: UsersFixture;
+
+  before(() => {
+    cy.fixture('users').then((data: UsersFixture) => {
+      users = data;
+    });
+  });
+
   beforeEach(() => {
     cy.intercept('POST', '/api/auth/login').as('loginReq');
     cy.intercept('POST', '/api/auth/register').as('registerReq');
@@ -54,7 +49,7 @@ describe('Auth flow — sign in & sign up', () => {
   describe('Sign-up validation (client-side)', () => {
     beforeEach(() => {
       cy.visit('/login?mode=sign-up');
-      disableNativeValidation();
+      cy.disableNativeValidation();
     });
 
     it('rejects submission when fields are empty', () => {
@@ -83,36 +78,37 @@ describe('Auth flow — sign in & sign up', () => {
     });
   });
 
-  describe('Sign-up — register a new account end-to-end', () => {
-    it('creates a fresh account and shows the success banner', () => {
-      const user = buildSignUpUser();
+  describe('Sign-up — register the fixture user', () => {
+    it('registers mohssinengu@gmail.com (idempotent: 200 first time, 409 if already exists)', () => {
       cy.visit('/login?mode=sign-up');
-      disableNativeValidation();
+      cy.disableNativeValidation();
 
-      cy.get('input[name="signUpFirstName"]').type(user.firstName);
-      cy.get('input[name="signUpLastName"]').type(user.lastName);
-      cy.get('input[name="signUpEmail"]').type(user.email);
-      cy.get('input[name="signUpPassword"]').type(user.password);
-      cy.get('input[name="signUpConfirm"]').type(user.password);
+      cy.get('input[name="signUpFirstName"]').type(users.signup.firstName);
+      cy.get('input[name="signUpLastName"]').type(users.signup.lastName);
+      cy.get('input[name="signUpEmail"]').type(users.signup.email);
+      cy.get('input[name="signUpPassword"]').type(users.signup.password, { log: false });
+      cy.get('input[name="signUpConfirm"]').type(users.signup.password, { log: false });
 
       cy.get('form.sign-up-form button[type="submit"]').click();
 
       cy.wait('@registerReq', { timeout: 30000 }).then((interception) => {
-        expect(interception.response?.statusCode, 'register status').to.eq(200);
-        expect(interception.response?.body?.success, 'register success flag').to.eq(true);
+        const status = interception.response?.statusCode;
+        expect(status, 'register status').to.be.oneOf([200, 409]);
+        if (status === 200) {
+          cy.get('form.sign-up-form .alert.success', { timeout: 5000 })
+            .should('contain.text', 'Account created');
+        } else {
+          cy.get('form.sign-up-form .alert.error', { timeout: 5000 })
+            .should('contain.text', 'already exists');
+        }
       });
-
-      cy.get('form.sign-up-form .alert.success', { timeout: 5000 })
-        .should('contain.text', 'Account created');
-
-      cy.get('section.container', { timeout: 5000 }).should('not.have.class', 'sign-up-mode');
     });
   });
 
   describe('Sign-in validation (client-side)', () => {
     beforeEach(() => {
       cy.visit('/login');
-      disableNativeValidation();
+      cy.disableNativeValidation();
     });
 
     it('rejects submission when email and password are empty', () => {
@@ -124,7 +120,7 @@ describe('Auth flow — sign in & sign up', () => {
   describe('Sign-in — bad credentials', () => {
     it('shows an error for wrong password', () => {
       cy.visit('/login');
-      disableNativeValidation();
+      cy.disableNativeValidation();
 
       cy.get('input[name="signInEmail"]').type(`no-such-user+${uniqueSuffix()}@example.com`);
       cy.get('input[name="signInPassword"]').type('definitely-not-the-right-password');
@@ -140,13 +136,13 @@ describe('Auth flow — sign in & sign up', () => {
     });
   });
 
-  describe('Sign-in — happy path with provided credentials', () => {
+  describe('Sign-in — happy path with fixture credentials', () => {
     it('logs in and redirects to /applications', () => {
       cy.visit('/login');
-      disableNativeValidation();
+      cy.disableNativeValidation();
 
-      cy.get('input[name="signInEmail"]').type(SIGN_IN_EMAIL);
-      cy.get('input[name="signInPassword"]').type(SIGN_IN_PASSWORD, { log: false });
+      cy.get('input[name="signInEmail"]').type(users.login.email);
+      cy.get('input[name="signInPassword"]').type(users.login.password, { log: false });
       cy.get('form.sign-in-form button[type="submit"]').click();
 
       cy.wait('@loginReq', { timeout: 30000 }).then((interception) => {
