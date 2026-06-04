@@ -86,6 +86,37 @@ async def get_user_skills(user_id: UUID) -> List[SkillResponse]:
     return []
 
 
+async def _get_single(path: str) -> dict | None:
+    client = get_client()
+    try:
+        response = await client.get(path)
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        body = response.json()
+        if not body.get("success"):
+            logger.warning(f"Backend error on GET {path}: {body.get('message')}")
+            return None
+        return body.get("data") or None
+    except Exception as e:
+        logger.warning(f"Failed to GET {path}: {str(e)}")
+        return None
+
+
+async def get_experience(experience_id: UUID) -> ExperienceResponse | None:
+    data = await _get_single(f"/api/user-content/experiences/{experience_id}")
+    if data:
+        return ExperienceResponse.model_validate(data)
+    return None
+
+
+async def get_project(project_id: UUID) -> ProjectResponse | None:
+    data = await _get_single(f"/api/user-content/projects/{project_id}")
+    if data:
+        return ProjectResponse.model_validate(data)
+    return None
+
+
 async def get_workflow(workflow_id: UUID) -> WorkflowResponse:
     data = await _get(f"/api/workflows/{workflow_id}")
     return WorkflowResponse.model_validate(data)

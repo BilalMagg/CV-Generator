@@ -1,15 +1,15 @@
-"""
-Search (Hybrid RAG) agent — matches user data with job requirements using remote Vector DB.
-"""
 import os
-import json
-from typing import List, Dict, Any
+import asyncio
+from typing import List
 from app.schemas import SearchInput, SearchOutput
 from app.core import backend_client
 from cvtools.core.llm import get_llm as _get_base_llm
+from cvtools.models.user_model import ExperienceResponse, ProjectResponse, SkillResponse
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from google import genai
+
+print("[SEARCH-AGENT v2] job_role defaults to empty string, _get_single handles 404 silently")
 
 _genai_client: genai.Client | None = None
 
@@ -33,47 +33,32 @@ def _embed_texts(texts: List[str]) -> List[List[float]]:
 
 def get_llm():
     provider = os.getenv("LLM_PROVIDER") or "google"
-    model = os.getenv("LLM_MODEL") or "gemini-1.5-flash"
+    model = os.getenv("LLM_MODEL") or "gemini-2.0-flash"
     return _get_base_llm(provider=provider, model=model, temperature=0)
 
-async def sync_user_data_to_vector_db(user_id: str, experiences, projects, skills):
+async def _initial_sync(user_id: str):
+    print(f"Performing initial vector sync for user {user_id}...")
+    experiences = await backend_client.get_user_experiences(user_id)
+    projects = await backend_client.get_user_projects(user_id)
+    skills = await backend_client.get_user_skills(user_id)
+
     chunks = []
-
-    exp_texts = []
-    for exp in experiences:
-        content = f"Experience: {exp.title}"
-        if exp.company: content += f" at {exp.company}"
-        if exp.description: content += f". {exp.description}"
-        exp_texts.append(content)
-
-    proj_texts = []
-    for proj in projects:
-        content = f"Project: {proj.title}"
-        if proj.description: content += f". {proj.description}"
-        if proj.achievements: content += f". Achievements: {proj.achievements}"
-        proj_texts.append(content)
-
-    skill_texts = []
-    for skill in skills:
-        content = f"Skill: {skill.name}"
-        if skill.level: content += f" (Level: {skill.level})"
-        skill_texts.append(content)
+    exp_texts = [f"Experience: {e.title}" + (f" at {e.company}" if e.company else "") + (f". {e.description}" if e.description else "") for e in experiences]
+    proj_texts = [f"Project: {p.title}" + (f". {p.description}" if p.description else "") + (f". Achievements: {p.achievements}" if p.achievements else "") for p in projects]
+    skill_texts = [f"Skill: {s.name}" + (f" (Level: {s.level})" if s.level else "") for s in skills]
 
     all_texts = exp_texts + proj_texts + skill_texts
     if not all_texts:
-        return
+        return experiences, projects, skills
 
     all_vectors = _embed_texts(all_texts)
     idx = 0
-
     for i, exp in enumerate(experiences):
         chunks.append({"sourceType": "experience", "sourceId": str(exp.id), "content": exp_texts[i], "embedding": all_vectors[idx]})
         idx += 1
-
     for i, proj in enumerate(projects):
         chunks.append({"sourceType": "project", "sourceId": str(proj.id), "content": proj_texts[i], "embedding": all_vectors[idx]})
         idx += 1
-
     for i, skill in enumerate(skills):
         chunks.append({"sourceType": "skill", "sourceId": str(skill.id), "content": skill_texts[i], "embedding": all_vectors[idx]})
         idx += 1
@@ -81,50 +66,41 @@ async def sync_user_data_to_vector_db(user_id: str, experiences, projects, skill
     if chunks:
         await backend_client.sync_vectors(user_id, chunks)
 
+    return experiences, projects, skills
+
 async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
     user_id_str = str(input_data.user_id)
+    print(f"[MATCH] user={user_id_str[:8]} job_role='{input_data.job_requirements.job_role}' skills={input_data.job_requirements.extracted_skills}")
 
-    # 1. Fetch original structured data
-    experiences = await backend_client.get_user_experiences(input_data.user_id)
-    projects = await backend_client.get_user_projects(input_data.user_id)
+    # 1. Skills are needed for gap analysis
     skills = await backend_client.get_user_skills(input_data.user_id)
+    user_skill_names = [s.name for s in skills]
 
-    # 2. Sync to Vector DB if necessary
+    # 2. Check if vectors exist — only sync once if missing
     has_vectors = await backend_client.check_vectors_status(input_data.user_id)
     if not has_vectors:
-        print(f"Syncing vectors for user {user_id_str}...")
-        await sync_user_data_to_vector_db(input_data.user_id, experiences, projects, skills)
-    
+        all_experiences, all_projects, _ = await _initial_sync(input_data.user_id)
+    else:
+        all_experiences = []
+        all_projects = []
+
     # 3. Generate query vector from Job Requirements
     job_reqs = input_data.job_requirements
-    query_text = f"Role: {job_reqs.job_role}. Skills: {', '.join(job_reqs.extracted_skills)}. Keywords: {', '.join(job_reqs.keywords)}"
-    
+    query_text = f"Role: {job_reqs.job_role or 'Unknown'}. Skills: {', '.join(job_reqs.extracted_skills)}. Keywords: {', '.join(job_reqs.keywords)}"
+
     query_vector = _embed_text(query_text)
-    
-    # 4. Perform highly optimized BMO Hybrid Search in the C# Database
+
+    # 4. Search — results now include Content directly
     search_results = await backend_client.search_vectors(input_data.user_id, query_text, query_vector, limit=15)
-    
-    # Build context with both retrieved chunks and full skill inventory
+
     context_chunks = []
     for res in search_results:
         source_id = res.get("sourceId")
         source_type = res.get("sourceType")
-        
-        content = ""
-        if source_type == "experience":
-            item = next((e for e in experiences if str(e.id) == source_id), None)
-            if item: content = f"{item.title} at {item.company}. {item.description}"
-        elif source_type == "project":
-            item = next((p for p in projects if str(p.id) == source_id), None)
-            if item: content = f"{item.title}. {item.description}"
-        elif source_type == "skill":
-            item = next((s for s in skills if str(s.id) == source_id), None)
-            if item: content = f"{item.name} ({item.level})"
-            
+        content = res.get("content", "")
         if content:
             context_chunks.append(f"- {source_type.upper()} (ID: {source_id}): {content}")
 
-    user_skill_names = [s.name for s in skills]
     context = "\n".join(context_chunks)
 
     # 5. LLM Reasoning with strict cross-referencing
@@ -160,7 +136,7 @@ async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
     """)
 
     chain = prompt | get_llm() | JsonOutputParser()
-    
+
     try:
         if not context.strip():
             result = {"matched_experience_ids": [], "matched_project_ids": [], "matched_skill_ids": [], "gap_skills": job_reqs.extracted_skills, "match_score": 0.0}
@@ -180,8 +156,18 @@ async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
     matched_proj_ids = set(result.get("matched_project_ids", []))
     matched_skill_ids = set(result.get("matched_skill_ids", []))
 
-    final_experiences = [e for e in experiences if str(e.id) in matched_exp_ids]
-    final_projects = [p for p in projects if str(p.id) in matched_proj_ids]
+    # 6. Build final result objects
+    if not has_vectors:
+        final_experiences = [e for e in all_experiences if str(e.id) in matched_exp_ids]
+        final_projects = [p for p in all_projects if str(p.id) in matched_proj_ids]
+    else:
+        exp_fetches = [backend_client.get_experience(uid) for uid in matched_exp_ids]
+        proj_fetches = [backend_client.get_project(uid) for uid in matched_proj_ids]
+        fetched = await asyncio.gather(*exp_fetches, *proj_fetches)
+        n_exp = len(matched_exp_ids)
+        final_experiences = [r for r in fetched[:n_exp] if r is not None]
+        final_projects = [r for r in fetched[n_exp:] if r is not None]
+
     final_skills = [s for s in skills if str(s.id) in matched_skill_ids]
 
     return SearchOutput(
