@@ -53,11 +53,11 @@ async def _get(path: str) -> dict | list:
         body = response.json()
         if not body.get("success"):
             logger.warning(f"Backend error on GET {path}: {body.get('message')}")
-            return []
-        return body.get("data") or []
+            return {}
+        return body.get("data") or {}
     except Exception as e:
         logger.error(f"Failed to GET {path}: {str(e)}")
-        return []
+        return {}
 
 
 async def get_user(user_id: UUID) -> UserResponse:
@@ -66,21 +66,24 @@ async def get_user(user_id: UUID) -> UserResponse:
 
 
 async def get_user_experiences(user_id: UUID) -> List[ExperienceResponse]:
-    data = await _get("/api/experiences")
-    all_items = [ExperienceResponse.model_validate(item) for item in data]
-    return [e for e in all_items if e.user_id == user_id]
+    data = await _get(f"/api/user-content/experiences?userId={user_id}")
+    if isinstance(data, list):
+        return [ExperienceResponse.model_validate(item) for item in data]
+    return []
 
 
 async def get_user_projects(user_id: UUID) -> List[ProjectResponse]:
-    data = await _get("/api/projects")
-    all_items = [ProjectResponse.model_validate(item) for item in data]
-    return [p for p in all_items if p.user_id == user_id]
+    data = await _get(f"/api/user-content/projects?userId={user_id}")
+    if isinstance(data, list):
+        return [ProjectResponse.model_validate(item) for item in data]
+    return []
 
 
 async def get_user_skills(user_id: UUID) -> List[SkillResponse]:
-    data = await _get("/api/skills")
-    all_items = [SkillResponse.model_validate(item) for item in data]
-    return [s for s in all_items if s.user_id == user_id]
+    data = await _get(f"/api/user-content/skills?userId={user_id}")
+    if isinstance(data, list):
+        return [SkillResponse.model_validate(item) for item in data]
+    return []
 
 
 async def get_workflow(workflow_id: UUID) -> WorkflowResponse:

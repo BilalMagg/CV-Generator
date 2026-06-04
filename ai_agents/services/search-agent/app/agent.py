@@ -23,7 +23,8 @@ def _embed_text(text: str) -> List[float]:
     client = _get_genai_client()
     response = client.models.embed_content(
         model=os.getenv("EMBEDDING_MODEL", "gemini-embedding-001"),
-        contents=text
+        contents=text,
+        config={"output_dimensionality": 768}
     )
     return response.embeddings[0].values
 
