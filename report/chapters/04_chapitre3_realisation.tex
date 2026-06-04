@@ -15,12 +15,31 @@ Ce chapitre présente la réalisation technique du projet \projectname{}. Nous d
 \subsubsection{Infrastructure matérielle}
 \label{subsubsec:realisation:materielle}
 
-Le projet s'appuie sur une infrastructure hybride combinant environnement local et cloud. L'infrastructure locale est provisionnée à l'aide de Terraform avec le provider VMware Workstation, permettant de déployer des machines virtuelles de manière reproductible pour les environnements de développement et de test.
+Le projet s'appuie sur une infrastructure locale déployée sur des machines virtuelles VMware Workstation, provisionnées via Terraform. Chaque membre de l'équipe est responsable de VMs dédiées selon la répartition des services.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/deployment_local.png}
+\caption{Architecture de déploiement locale — Répartition des VMs par membre}
+\label{fig:deployment-local}
+\end{figure}
+
+La répartition des VMs est la suivante :
 \begin{itemize}
-    \item \textbf{Environnement local :} VMs VMware Workstation provisionnées via Terraform (2 CPU, 2 Go RAM par VM) pour le développement et les tests.
-    \item \textbf{Environnement de production :} Déploiement sur conteneurs Docker orchestrés via Docker Compose, avec possibilité d'extension vers une infrastructure cloud.
+    \item \textbf{Bilal (3 VMs) :} Frontend + Gateway, Services applicatifs (User, Content, Application, Notification), Agents IA (Extractor, Contact, Template).
+    \item \textbf{Somia (2 VMs) :} Service Workflow avec base pgvector, Agents IA (Optimizer, Search, Crawler).
+    \item \textbf{Nourelhouda (1 VM) :} Infrastructure transverse (Keycloak, Kafka, MinIO).
+    \item \textbf{Mouhssine (1 VM) :} Service CV et Service Offres d'Emploi.
+    \item \textbf{Salman (1 VM) :} Monitoring (Prometheus, Grafana).
 \end{itemize}
+
+Chaque VM dispose de 2 CPU et 2 Go de RAM, et les services communiquent entre VMs via le réseau partagé Docker.
+
+\subsubsection{Infrastructure cloud}
+\label{subsubsec:realisation:cloud}
+
+\textit{Cette section sera complétée une fois l'infrastructure cloud finalisée.}
+% À remplir : déploiement cloud scalable, load balancer, services managés
 
 \subsubsection{Environnement de déploiement}
 \label{subsubsec:realisation:deploiement}
@@ -42,7 +61,7 @@ L'architecture logicielle de \projectname{} est une architecture en \textbf{micr
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/architecture-logicielle.png}
+\includegraphics[width=\textwidth]{images/system-architecture.png}
 \caption{Architecture logicielle du système}
 \label{fig:archi-logicielle}
 \end{figure}
@@ -212,6 +231,27 @@ Le backend est composé de 7 microservices .NET, chacun responsable d'un domaine
 \end{itemize}
 
 La passerelle API (\textbf{YARP}) est un service .NET dédié qui agit comme point d'entrée unique. Elle gère l'authentification, le routage vers les microservices et la publication d'événements Kafka.
+
+La communication événementielle est assurée par \textbf{Apache Kafka} en mode KRaft. Le diagramme ci-dessous illustre les principaux événements échangés entre les services via Kafka.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/user-created-event-flow.png}
+\caption{Flux des événements Kafka — Publications et consommations}
+\label{fig:event-flow}
+\end{figure}
+
+\subsection{Pipeline de génération de CV}
+\label{subsec:realisation:pipeline-cv}
+
+Le \textbf{Workflow Service} orchestre le pipeline de génération de CV, composé de 5 agents IA agissant en séquence. Chaque agent traite une étape spécifique du flux de travail.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/cv-generation-flow.png}
+\caption{ Pipeline de génération de CV — De l'offre d'emploi à l'envoi par email}
+\label{fig:pipeline-cv}
+\end{figure}
 
 \subsection{Développement Frontend}
 \label{subsec:realisation:frontend}

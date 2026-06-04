@@ -134,28 +134,105 @@ Le diagramme de classes illustre la structure statique du système, montrant les
 \label{fig:classes}
 \end{figure}
 
-\subsection{Diagramme de séquence}
+\subsection{Diagramme de séquence — Flux d'authentification}
 \label{subsec:analyse:sequence}
 
-Le diagramme de séquence ci-dessous illustre le flux de génération d'un CV, depuis la soumission d'une offre d'emploi jusqu'à la réception du CV par email.
+Le diagramme de séquence ci-dessous illustre le flux d'authentification via Keycloak avec le protocole OpenID Connect (OIDC). L'utilisateur est redirigé vers Keycloak pour s'authentifier, reçoit un code d'autorisation, puis l'API Gateway échange ce code contre des jetons JWT. Un cookie de session (\texttt{cv\_session}) est créé pour maintenir la session. Lors de l'inscription, un événement \texttt{user.registered} est publié sur Kafka pour notifier les autres services.
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/diagramme-sequence.png}
-\caption{Diagramme de séquence du processus de génération de CV}
-\label{fig:sequence}
+\includegraphics[width=\textwidth]{images/auth-flow.png}
+\caption{Diagramme de séquence — Flux d'authentification OIDC}
+\label{fig:auth-flow}
 \end{figure}
 
 \subsection{Modèle relationnel de la base de données}
 \label{subsec:analyse:bdd}
 
-L'architecture microservices du projet implique l'utilisation de plusieurs bases de données PostgreSQL, une par service. Chaque base de données est spécialisée pour les besoins de son service : utilisateurs, contenu utilisateur, CV, candidatures, offres d'emploi, workflow, notifications.
+L'architecture microservices du projet implique l'utilisation de plusieurs bases de données PostgreSQL 16, une par service. Chaque base de données est spécialisée pour les besoins de son service. L'extension pgvector est utilisée pour le support des recherches vectorielles dans les bases concernées par le pipeline IA.
+
+\subsubsection*{Base Utilisateurs (user-db)}
+\label{subsubsec:bdd:user}
+
+La base utilisateurs centralise les informations personnelles et professionnelles des candidats. Elle contient une table principale \texttt{users} qui stocke le profil complet de chaque utilisateur : nom, email, titre professionnel, prétentions salariales, préférences de localisation, et données JSON pour le profil IA.
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/modele-relationnel.png}
-\caption{Modèle relationnel de la base de données}
-\label{fig:modele-relationnel}
+\includegraphics[width=0.8\textwidth]{images/user-db.png}
+\caption{Modèle relationnel — Base Utilisateurs}
+\label{fig:user-db}
+\end{figure}
+
+\subsubsection*{Base Contenu Utilisateur (content-db)}
+\label{subsubsec:bdd:content}
+
+Cette base gère l'ensemble du portfolio utilisateur. Elle contient 11 tables permettant de gérer les projets, compétences, expériences professionnelles, formations, certifications, langues, centres d'intérêt, hackathons, liens sociaux, profils CV et activités académiques. Chaque table est reliée à un utilisateur via une clé étrangère \texttt{userId}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/user-content-db.png}
+\caption{Modèle relationnel — Base Contenu Utilisateur}
+\label{fig:user-content-db}
+\end{figure}
+
+\subsubsection*{Base Candidatures (application-db)}
+\label{subsubsec:bdd:application}
+
+La base candidatures assure le suivi des candidatures des utilisateurs. Elle est composée de trois tables : \texttt{applications} (candidatures avec statut, entreprise, poste), \texttt{applicationStatusHistory} (historique des changements de statut) et \texttt{applicationConfigurations} (préférences de l'utilisateur pour le module).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/application-db.png}
+\caption{Modèle relationnel — Base Candidatures}
+\label{fig:application-db}
+\end{figure}
+
+\subsubsection*{Base Workflow (workflow-db)}
+\label{subsubsec:bdd:workflow}
+
+La base workflow est la plus complexe, car elle pilote le pipeline de génération de CV. Elle contient les tables \texttt{workflows} (définition des pipelines), \texttt{cvGenerationRuns} (traces d'exécution avec résultats de chaque étape), \texttt{agents} (configuration des agents IA), \texttt{agentDocumentChunks} (documents vectorisés pour le RAG), \texttt{jobExtractions} (extractions d'offres), ainsi que des entités miroir du contenu utilisateur optimisées pour la recherche vectorielle : \texttt{workflowProjects}, \texttt{workflowSkills} et \texttt{workflowExperiences}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/workflow-db.png}
+\caption{Modèle relationnel — Base Workflow}
+\label{fig:workflow-db}
+\end{figure}
+
+\subsubsection*{Base Offres d'Emploi (job-offer-db)}
+\label{subsubsec:bdd:job-offer}
+
+Cette base stocke les offres d'emploi collectées par l'agent de crawling. Elle comprend \texttt{jobOffers} (offres avec description vectorisée), \texttt{jobSkills} (compétences requises), \texttt{jobResponsibilities} (responsabilités), \texttt{jobBenefits} (avantages), \texttt{searchCaches} (cache des recherches) et \texttt{userQuotas} (quotas de crawling par utilisateur).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/job-offer-db.png}
+\caption{Modèle relationnel — Base Offres d'Emploi}
+\label{fig:job-offer-db}
+\end{figure}
+
+\subsubsection*{Base CV (cv-db)}
+\label{subsubsec:bdd:cv}
+
+La base CV gère les curriculum vitae et leurs versions. Elle contient \texttt{cvs} (CV avec template associé), \texttt{cvVersions} (versions avec contenu JSON et fichiers PDF générés) et \texttt{cvSections} (sections ordonnancées de chaque version).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/cv-db.png}
+\caption{Modèle relationnel — Base CV}
+\label{fig:cv-db}
+\end{figure}
+
+\subsubsection*{Base Notifications (notification-db)}
+\label{subsubsec:bdd:notification}
+
+Cette base gère l'ensemble du système de notifications et de messagerie. Elle comprend \texttt{notifications} (notifications in-app et email), \texttt{notificationPreferences} (préférences utilisateur), \texttt{reminders} (rappels planifiés), \texttt{contacts} (carnet d'adresses), \texttt{emailMessages} (historique des emails), \texttt{emailSchedules} (campagnes planifiées) et \texttt{gmailConnections} (connexions Gmail pour l'envoi d'emails).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/notification-db.png}
+\caption{Modèle relationnel — Base Notifications}
+\label{fig:notification-db}
 \end{figure}
 
 \section{Conclusion}
