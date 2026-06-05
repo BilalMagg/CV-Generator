@@ -21,8 +21,15 @@ tests/performance/
 
 1. **k6** installed (`winget install GrafanaLabs.k6` or `choco install k6`).
    Verify with `k6 version`.
-2. The stack must be running locally (`.\dev.ps1` from the repo root), so the
-   gateway is reachable on `http://localhost:8080`.
+2. **Start the TEST stack, not the dev stack** — k6 will happily write to whatever
+   gateway is on `http://localhost:8080`, so make sure the test gateway is the
+   one running:
+   ```powershell
+   .\dev.ps1 -Stop          # if dev was running
+   .\dev.test.ps1           # spins up infra + wipes test DBs + starts services
+                            #   pointed at *_test_db and cv-realm-test realm
+   ```
+   See `tests/scripts/README.md` for the full test-stack workflow.
 
 ## Running
 

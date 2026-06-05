@@ -1,0 +1,110 @@
+{
+  "id": "cv-realm-test",
+  "realm": "cv-realm-test",
+  "displayName": "CV Generator (Test)",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 3600,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "offlineSessionMaxLifespan": 5184000,
+  "users": [
+    {
+      "id": "00000000-0000-0000-0000-0000000000a1",
+      "username": "testuser",
+      "email": "test@example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user"
+      ],
+      "attributes": {
+        "userId": [
+          "00000000-0000-0000-0000-0000000000a1"
+        ]
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Regular user role",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "cv-realm-test"
+      },
+      {
+        "name": "admin",
+        "description": "Administrator role",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "cv-realm-test"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "id": "cv-gateway-test",
+      "clientId": "cv-gateway",
+      "name": "API Gateway",
+      "description": "Backend API Gateway client (test realm)",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "change-me-in-production",
+      "redirectUris": [
+        "http://localhost:8080/api/auth/callback",
+        "http://localhost:8080/*",
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080",
+        "http://localhost:4200"
+      ],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "attributes": {
+        "access.token.lifespan": "3600",
+        "post.logout.redirect.uris": "http://localhost:8080/*\nhttp://localhost:4200/*"
+      }
+    },
+    {
+      "id": "cv-frontend-test",
+      "clientId": "cv-frontend",
+      "name": "Angular Frontend",
+      "description": "Frontend SPA client (test realm)",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "redirectUris": [
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200"
+      ],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "attributes": {
+        "access.token.lifespan": "3600",
+        "post.logout.redirect.uris": "http://localhost:4200/*",
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ]
+}
