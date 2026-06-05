@@ -115,8 +115,11 @@ services:
       - TEMPLATE_AGENT_URL=http://${TEMPLATE_AGENT_HOST:-cv-template-agent}:${TEMPLATE_AGENT_PORT:-8003}/api/v1/
       - CV_OPTIMIZER_URL=http://${CV_OPTIMIZER_HOST:-cv-optimizer}:${CV_OPTIMIZER_PORT:-8004}/api/v1/
       - CONTACT_AGENT_URL=http://${CONTACT_AGENT_HOST:-cv-contact-agent}:${CONTACT_AGENT_PORT:-8005}/api/v1/
+      - Kafka__BootstrapServers=${KAFKA_HOST:-kafka}:${KAFKA_PORT:-9092}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     depends_on:
       workflow-db: { condition: service_healthy }
+      kafka: { condition: service_started }
     networks:
       - cv-network
 

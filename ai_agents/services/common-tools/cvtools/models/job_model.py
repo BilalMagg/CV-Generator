@@ -25,7 +25,7 @@ class JobRequest(BaseModel):
 
 
 class JobRequirements(BaseModel):
-    job_role: str
+    job_role: Optional[str] = ""
     extracted_skills: List[str] = Field(default_factory=list)
     required_experience_years: Optional[int] = None
     keywords: List[str] = Field(default_factory=list)
