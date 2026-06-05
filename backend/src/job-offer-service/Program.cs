@@ -47,6 +47,7 @@ builder.Services.AddSignalR();
 
 // 8. Kafka background workers
 builder.Services.AddHostedService<CrawlSummaryConsumer>();
+builder.Services.AddHostedService<CrawlTimeoutService>();
 
 // 9. Auth (JWT from gateway/keycloak)
 builder.Services.AddAuthentication("Bearer")

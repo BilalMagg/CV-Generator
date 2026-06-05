@@ -17,6 +17,8 @@ public interface ISearchCacheRepository
     Task<bool> IncrementProcessedCountAsync(Guid searchId);
     Task<List<SearchCache>> GetCrawlsByUserIdAsync(Guid userId);
     Task<CrawlPollResponseDto?> GetCrawlJobsAsync(Guid searchId);
+    Task CreateSearchJobMatchAsync(Guid searchId, Guid jobOfferId);
+    Task MarkAsFailedAsync(Guid searchId);
 }
 
 public class SearchCacheRepository : ISearchCacheRepository
@@ -87,6 +89,34 @@ public class SearchCacheRepository : ISearchCacheRepository
             .OrderByDescending(s => s.CreatedAt)
             .Take(50)
             .ToListAsync();
+    }
+
+    public async Task CreateSearchJobMatchAsync(Guid searchId, Guid jobOfferId)
+    {
+        _db.SearchJobMatches.Add(new SearchJobMatch
+        {
+            Id = Guid.NewGuid(),
+            SearchId = searchId,
+            JobId = jobOfferId,
+            CreatedAt = DateTime.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+        _logger.LogInformation(
+            "Linked search {SearchId} to job {JobId}", searchId, jobOfferId);
+    }
+
+    public async Task MarkAsFailedAsync(Guid searchId)
+    {
+        var cache = await _db.SearchCaches.FindAsync(searchId);
+        if (cache is null)
+        {
+            _logger.LogWarning("MarkAsFailed: search {SearchId} not found", searchId);
+            return;
+        }
+        cache.Status = SearchStatus.Failed;
+        cache.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Search {SearchId} marked as Failed", searchId);
     }
 
     public async Task<CrawlPollResponseDto?> GetCrawlJobsAsync(Guid searchId)

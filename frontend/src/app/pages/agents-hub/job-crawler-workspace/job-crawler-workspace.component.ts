@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { CrawlerService } from '@app/services/crawler.service';
 import { CrawlJob, CrawlHistoryItem } from '@app/models/crawler.types';
 
@@ -14,6 +14,7 @@ import { CrawlJob, CrawlHistoryItem } from '@app/models/crawler.types';
 })
 export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
   private readonly crawlerService = inject(CrawlerService);
+  private readonly router = inject(Router);
 
   keyword = '';
   location = '';
@@ -27,6 +28,12 @@ export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
   history: CrawlHistoryItem[] = [];
   totalCrawls = 0;
   totalJobsFound = 0;
+
+  showWarning = false;
+  crawlTimeout = false;
+  private pollStartTime = 0;
+  private readonly WARNING_MS = 120_000;
+  private readonly TIMEOUT_MS = 300_000;
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -52,8 +59,7 @@ export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
     this.clearPolling();
 
     try {
-      const userId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
-      const response = await this.crawlerService.triggerCrawl(userId, {
+      const response = await this.crawlerService.triggerCrawl({
         keyword: this.keyword,
         location: this.location,
         resultLimit: this.resultLimit,
@@ -61,15 +67,34 @@ export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
 
       this.currentSearchId = response.searchId;
       this.searchStatus = 'running';
+      this.showWarning = false;
+      this.crawlTimeout = false;
+      this.pollStartTime = Date.now();
 
       this.pollTimer = setInterval(async () => {
         try {
+          const elapsed = Date.now() - this.pollStartTime;
+
+          if (elapsed >= this.TIMEOUT_MS) {
+            this.clearPolling();
+            this.crawlTimeout = true;
+            this.showWarning = false;
+            this.searchStatus = 'completed';
+            this.loadHistory();
+            return;
+          }
+
+          if (elapsed >= this.WARNING_MS) {
+            this.showWarning = true;
+          }
+
           const result = await this.crawlerService.pollCrawlResults(this.currentSearchId!);
           this.jobs = result.jobs;
           this.totalJobsFound = this.jobs.length;
           this.searchStatus = result.status === 'Completed' ? 'completed' : 'running';
           if (result.status === 'Completed' || result.status === 'Failed') {
             this.clearPolling();
+            this.showWarning = false;
             this.loadHistory();
           }
         } catch {
@@ -94,8 +119,8 @@ export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
 
   private async loadHistory(): Promise<void> {
     try {
-      const userId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
-      this.history = await this.crawlerService.getHistory(userId);
+      this.history = await this.crawlerService.getHistory();
+      console.log(this.history)
       this.totalCrawls = this.history.length;
     } catch {
       this.history = [];
@@ -123,5 +148,9 @@ export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
       case 'Failed': return 'status-failed';
       default: return '';
     }
+  }
+
+  viewJob(jobId: string): void {
+    this.router.navigate(['/agents-hub/job-crawler/result', jobId]);
   }
 }

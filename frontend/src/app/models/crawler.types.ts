@@ -46,3 +46,59 @@ export interface ApiResponse<T> {
   data?: T;
   message?: string;
 }
+
+export interface JobOfferSummary {
+  id: string;
+  userId: string;
+  enterpriseName: string;
+  jobRole: string;
+  location: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface JobOfferList {
+  items: JobOfferSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface JobSkillDetail {
+  id: string;
+  name: string;
+  type: string;
+  isMandatory: boolean;
+}
+
+export interface JobResponsibilityDetail {
+  id: string;
+  description: string;
+}
+
+export interface JobBenefitDetail {
+  id: string;
+  description: string;
+}
+
+export interface JobOfferDetail {
+  id: string;
+  userId: string;
+  enterpriseName: string;
+  enterpriseDescription: string | null;
+  jobRole: string;
+  rawDescription: string;
+  requiredExperienceYears: number | null;
+  seniorityLevel: string | null;
+  employmentType: string | null;
+  location: string | null;
+  locationType: string | null;
+  educationRequirements: string | null;
+  sourceUrl: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  skills: JobSkillDetail[];
+  responsibilities: JobResponsibilityDetail[];
+  benefits: JobBenefitDetail[];
+}

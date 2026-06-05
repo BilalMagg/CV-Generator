@@ -47,8 +47,6 @@ public class VectorSearchController : ControllerBase
     {
         var queryVector = new Vector(req.QueryVector);
         
-        // BMO 70/30 Hybrid Search combining semantic similarity and exact keyword match.
-        // It uses FromSqlRaw to execute the PostgreSQL specific operations securely.
         var sqlQuery = @"
             SELECT *
             FROM ""AgentDocumentChunks""
@@ -61,7 +59,7 @@ public class VectorSearchController : ControllerBase
 
         var results = await _db.AgentDocumentChunks
             .FromSqlRaw(sqlQuery, queryVector, req.QueryText, req.UserId, req.Limit)
-            .Select(x => new VectorSearchResult(x.SourceId, x.SourceType))
+            .Select(x => new VectorSearchResult(x.SourceId, x.SourceType, x.Content))
             .ToListAsync();
 
         return Ok(ApiResponse<List<VectorSearchResult>>.Ok(results));
@@ -79,4 +77,4 @@ public record SyncVectorsRequest(Guid UserId, List<DocumentChunkDto> Chunks);
 public record DocumentChunkDto(string SourceType, Guid SourceId, string Content, float[] Embedding);
 
 public record VectorSearchRequest(Guid UserId, string QueryText, float[] QueryVector, int Limit = 15);
-public record VectorSearchResult(Guid SourceId, string SourceType);
+public record VectorSearchResult(Guid SourceId, string SourceType, string Content);

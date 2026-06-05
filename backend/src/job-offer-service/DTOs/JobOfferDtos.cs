@@ -107,7 +107,6 @@ public record ExtractedJobDto(
     string EnterpriseName,
     string? EnterpriseDescription,
     string JobRole,
-    string RawDescription,
     List<string> Responsibilities,
     List<string> RequiredSkills,
     List<string> SoftSkills,
@@ -120,6 +119,7 @@ public record ExtractedJobDto(
     List<string> Benefits,
     string? SourceUrl,
     // ── Crawler-only fields (null when posted from the manual flow) ──────────────
+    string RawDescription = "",
     Guid? SearchId = null,
     string? Source = null,
     double? OverallConfidence = null

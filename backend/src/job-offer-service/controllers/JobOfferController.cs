@@ -79,6 +79,22 @@ public class JobOffersController : ControllerBase
     /// <summary>
     /// Retrieves the full details of a specific job offer, including extracted skills.
     /// </summary>
+    /// <summary>
+    /// Retrieves ALL job offers (no userId filter) — paginated.
+    /// </summary>
+    [HttpGet("all")]
+    [ProducesResponseType(typeof(ApiResponse<JobOfferListDto>), 200)]
+    public async Task<IActionResult> GetAllJobs(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+        var result = await _service.GetAllJobsAsync(page, pageSize);
+        return Ok(ApiResponse<JobOfferListDto>.Ok(result));
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<JobOfferDetailDto>), 200)]
     [ProducesResponseType(typeof(ApiResponse<object>), 404)]
@@ -280,11 +296,14 @@ public class JobOffersController : ControllerBase
             _logger.LogInformation("Upsert: inserted new job {Id} (hash={Hash})", jobId, hash);
         }
 
-        // ── 3. Batch Counting + SignalR (crawler pipeline only) ─────────────────
+        // ── 3. Link search → job via search_job_matches ────────────────────
         if (dto.SearchId.HasValue)
         {
             var searchId = dto.SearchId.Value;
 
+            await _searchCacheRepo.CreateSearchJobMatchAsync(searchId, jobId);
+
+            // ── 4. Batch Counting + SignalR (crawler pipeline only) ───────
             await _searchCacheRepo.IncrementProcessedCountAsync(searchId);
 
             await _hub.Clients.Group(searchId.ToString()).SendAsync("JobArrived", new JobArrivedDto(
@@ -416,10 +435,11 @@ public class JobOffersController : ControllerBase
     /// </summary>
     [HttpGet("crawls")]
     [ProducesResponseType(typeof(ApiResponse<List<CrawlHistoryDto>>), 200)]
-    public async Task<IActionResult> GetCrawlHistory([FromQuery] Guid userId)
+    public async Task<IActionResult> GetCrawlHistory()
     {
-        if (userId == Guid.Empty)
-            return BadRequest(ApiResponse<object>.Error("userId query parameter is required."));
+        var userIdStr = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            return BadRequest(ApiResponse<object>.Error("User ID not found in request header."));
 
         var crawls = await _searchCacheRepo.GetCrawlsByUserIdAsync(userId);
         var dtos = crawls.Select(c => new CrawlHistoryDto(
@@ -450,6 +470,20 @@ public class JobOffersController : ControllerBase
         if (result is null)
             return NotFound(ApiResponse<object>.Error("Search not found."));
         return Ok(ApiResponse<CrawlPollResponseDto>.Ok(result));
+    }
+
+    // ── CRAWL FAIL  —  POST /api/job-offers/crawls/{searchId}/fail ─────────
+
+    /// <summary>
+    /// Marks a crawl search as Failed (called by the timeout service or manually).
+    /// </summary>
+    [HttpPost("crawls/{searchId}/fail")]
+    [ProducesResponseType(typeof(ApiResponse<string>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<IActionResult> FailCrawl(Guid searchId)
+    {
+        await _searchCacheRepo.MarkAsFailedAsync(searchId);
+        return Ok(ApiResponse<string>.Ok("Search marked as Failed."));
     }
 
     // ── Job Hash Generator ────────────────────────────────────────────────────

@@ -117,8 +117,11 @@ services:
       - CONTACT_AGENT_URL=http://${CONTACT_AGENT_HOST:-cv-contact-agent}:${CONTACT_AGENT_PORT:-8005}/api/v1/
       - JOB_CRAWLER_URL=http://${JOB_CRAWLER_HOST:-cv-job-crawler}:${JOB_CRAWLER_PORT:-8006}/api/v1/
       - JOB_OFFER_SERVICE_URL=http://${JOB_OFFER_SERVICE_HOST:-cv-job-offer-service}:${JOB_OFFER_SERVICE_PORT:-8086}
+      - Kafka__BootstrapServers=${KAFKA_HOST:-kafka}:${KAFKA_PORT:-9092}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     depends_on:
       workflow-db: { condition: service_healthy }
+      kafka: { condition: service_started }
     networks:
       - cv-network
 

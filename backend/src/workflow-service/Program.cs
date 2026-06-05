@@ -30,10 +30,12 @@ builder.Services.AddGrpc();
 builder.Services.AddHttpClient();
 
 // Background job queue for CV generation
-// Register as singleton so [FromServices] injection in controllers works
 builder.Services.AddSingleton<CvGenerationBackgroundService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CvGenerationBackgroundService>());
 builder.Services.AddScoped<WorkflowExecutionService>();
+
+// Kafka consumer for incremental vector sync from user-content-service events
+builder.Services.AddHostedService<VectorSyncKafkaConsumer>();
 
 // New Strongly-Typed Agent SDK Clients — URLs from env vars
 var jobExtractorUrl = Environment.GetEnvironmentVariable("JOB_EXTRACTOR_URL") ?? "http://cv-job-extractor:8001/api/v1/";

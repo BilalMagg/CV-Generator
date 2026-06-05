@@ -43,7 +43,7 @@
             }
           </button>
           @if (currentSearchId) {
-            <span class="status-badge" [class]="searchStatus">
+            <span class="status-badge" [class.running]="searchStatus === 'running'" [class.completed]="searchStatus === 'completed'">
               {{ searchStatus === 'running' ? 'Searching...' : searchStatus === 'completed' ? 'Completed' : '' }}
             </span>
           }
@@ -59,27 +59,48 @@
         </div>
       }
 
+      <!-- Polling warning (2 min) -->
+      @if (showWarning) {
+        <div class="warning-banner">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 2L2 22h20L12 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4M12 18v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Crawl is taking longer than expected...
+          <button class="retry-btn" (click)="showWarning = false">Dismiss</button>
+        </div>
+      }
+
+      <!-- Polling timeout (5 min) -->
+      @if (crawlTimeout) {
+        <div class="timeout-banner">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M12 6v6l4 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Crawl timed out after 5 minutes. Results may be incomplete.
+        </div>
+      }
+
       <!-- Results -->
       @if (jobs.length > 0) {
         <div class="results-section">
           <h3 class="section-title">Results ({{ jobs.length }})</h3>
           <div class="jobs-list">
             @for (job of jobs; track job.jobId) {
-              <div class="job-item">
-                <div class="job-source">{{ job.source | slice:0:2 | uppercase }}</div>
+              <div class="job-card" (click)="viewJob(job.jobId)">
+                <div class="job-source">{{ (job.source || '??') | slice:0:2 | uppercase }}</div>
                 <div class="job-body">
                   <span class="job-title">{{ job.title }}</span>
                   <span class="job-company">{{ job.company }}</span>
-                  <span class="job-meta">{{ job.location }}{{ job.location && job.source ? ' · ' : '' }}{{ job.source }}</span>
                 </div>
-                @if (job.confidence) {
-                  <span class="conf-badge" [class.high]="job.confidence >= 0.8" [class.mid]="job.confidence >= 0.5 && job.confidence < 0.8" [class.low]="job.confidence < 0.5">
-                    {{ (job.confidence * 100).toFixed(0) }}%
-                  </span>
-                }
+                <span class="view-link">View &rarr;</span>
               </div>
             }
           </div>
+        </div>
+      }
+
+      <!-- Empty state -->
+      @if (searchStatus === 'completed' && jobs.length === 0) {
+        <div class="empty-results">
+          <svg viewBox="0 0 24 24" fill="none" width="32" height="32"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.3"/><path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <p>No jobs found</p>
+          <span>Try different keywords or location</span>
         </div>
       }
     </div>
@@ -97,7 +118,7 @@
           <div class="history-list">
             @for (item of history; track item.searchId) {
               <div class="history-item">
-                <span class="status-dot" [class]="statusClass(item.status)"></span>
+                <span [class]="'status-dot ' + statusClass(item.status)"></span>
                 <div class="history-body">
                   <span class="history-keyword">{{ item.keyword }}</span>
                   <span class="history-meta">{{ item.location }} · {{ item.processedCount }}/{{ item.expectedCount }} jobs</span>
