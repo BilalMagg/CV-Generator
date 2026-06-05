@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using JobOfferService.Entities;
+using JobOfferService.DTOs;
 
 namespace JobOfferService.Repositories;
 
@@ -15,6 +16,7 @@ public interface ISearchCacheRepository
     Task<SearchCache> UpdateAsync(SearchCache cache);
     Task<bool> IncrementProcessedCountAsync(Guid searchId);
     Task<List<SearchCache>> GetCrawlsByUserIdAsync(Guid userId);
+    Task<CrawlPollResponseDto?> GetCrawlJobsAsync(Guid searchId);
 }
 
 public class SearchCacheRepository : ISearchCacheRepository
@@ -85,5 +87,26 @@ public class SearchCacheRepository : ISearchCacheRepository
             .OrderByDescending(s => s.CreatedAt)
             .Take(50)
             .ToListAsync();
+    }
+
+    public async Task<CrawlPollResponseDto?> GetCrawlJobsAsync(Guid searchId)
+    {
+        var cache = await _db.SearchCaches.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SearchId == searchId);
+        if (cache is null) return null;
+
+        var jobs = await _db.Database.SqlQueryRaw<CrawlJobDto>(
+            @"SELECT j.""Id"" AS JobId, j.""JobRole"" AS Title, j.""EnterpriseName"" AS Company,
+                     j.""Location"", COALESCE(j.""SourceUrl"", '') AS JobUrl, 0.0 AS Confidence
+              FROM ""search_job_matches"" m
+              JOIN ""job_offers"" j ON m.""JobId"" = j.""Id""
+              WHERE m.""SearchId"" = {0}",
+            searchId
+        ).ToListAsync();
+
+        return new CrawlPollResponseDto(
+            cache.SearchId, cache.Status.ToString(), cache.Keyword,
+            cache.Location, cache.ExpectedCount, cache.ProcessedCount, jobs
+        );
     }
 }

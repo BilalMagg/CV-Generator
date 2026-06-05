@@ -42,6 +42,7 @@ var templateAgentUrl = Environment.GetEnvironmentVariable("TEMPLATE_AGENT_URL") 
 var cvOptimizerUrl = Environment.GetEnvironmentVariable("CV_OPTIMIZER_URL") ?? "http://cv-optimizer:8004/api/v1/";
 var contactAgentUrl = Environment.GetEnvironmentVariable("CONTACT_AGENT_URL") ?? "http://cv-contact-agent:8005/api/v1/";
 var jobCrawlerUrl = Environment.GetEnvironmentVariable("JOB_CRAWLER_URL") ?? "http://cv-job-crawler:8006/api/v1/";
+var jobOfferServiceUrl = Environment.GetEnvironmentVariable("JOB_OFFER_SERVICE_URL") ?? "http://cv-job-offer-service:8086";
 
 builder.Services.AddHttpClient<IJobExtractorClient, JobExtractorClient>(client =>
 {
@@ -71,6 +72,11 @@ builder.Services.AddHttpClient<IContactAgentClient, ContactAgentClient>(client =
 builder.Services.AddHttpClient<WorkflowService.AgentClients.IJobCrawlerClient, WorkflowService.AgentClients.JobCrawlerClient>(client =>
 {
     client.BaseAddress = new Uri(jobCrawlerUrl);
+});
+
+builder.Services.AddHttpClient<IJobOfferServiceClient, JobOfferServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(jobOfferServiceUrl);
 });
 
 builder.Services.AddControllers();

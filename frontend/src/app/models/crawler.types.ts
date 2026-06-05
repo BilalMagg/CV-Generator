@@ -31,6 +31,16 @@ export interface CrawlHistoryItem {
   createdAt: string;
 }
 
+export interface CrawlPollResponse {
+  searchId: string;
+  status: string;
+  keyword: string;
+  location: string | null;
+  expectedCount: number;
+  processedCount: number;
+  jobs: CrawlJob[];
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;

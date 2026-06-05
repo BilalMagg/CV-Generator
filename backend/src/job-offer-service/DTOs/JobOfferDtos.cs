@@ -189,3 +189,22 @@ public record CrawlHistoryDto(
     int ProcessedCount,
     DateTime CreatedAt
 );
+
+public record CrawlJobDto(
+    Guid JobId,
+    string Title,
+    string Company,
+    string? Location,
+    string JobUrl,
+    double Confidence
+);
+
+public record CrawlPollResponseDto(
+    Guid SearchId,
+    string Status,
+    string Keyword,
+    string? Location,
+    int ExpectedCount,
+    int ProcessedCount,
+    List<CrawlJobDto> Jobs
+);

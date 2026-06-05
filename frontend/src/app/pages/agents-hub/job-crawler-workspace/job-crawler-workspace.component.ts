@@ -1,9 +1,8 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CrawlerService } from '@app/services/crawler.service';
-import { SignalRService } from '@app/services/signalr.service';
 import { CrawlJob, CrawlHistoryItem } from '@app/models/crawler.types';
 
 @Component({
@@ -15,8 +14,6 @@ import { CrawlJob, CrawlHistoryItem } from '@app/models/crawler.types';
 })
 export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
   private readonly crawlerService = inject(CrawlerService);
-  private readonly signalR = inject(SignalRService);
-  private readonly cdr = inject(ChangeDetectorRef);
 
   keyword = '';
   location = '';
@@ -31,17 +28,14 @@ export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
   totalCrawls = 0;
   totalJobsFound = 0;
 
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
   ngOnInit(): void {
     this.loadHistory();
   }
 
   ngOnDestroy(): void {
-    this.signalR.offJobArrived();
-    this.signalR.offSearchFinished();
-    if (this.currentSearchId) {
-      this.signalR.leaveGroup(this.currentSearchId);
-    }
-    this.signalR.disconnect();
+    this.clearPolling();
   }
 
   get canTrigger(): boolean {
@@ -55,6 +49,7 @@ export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
     this.jobs = [];
     this.currentSearchId = null;
     this.searchStatus = 'idle';
+    this.clearPolling();
 
     try {
       const userId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
@@ -67,32 +62,33 @@ export class JobCrawlerWorkspaceComponent implements OnInit, OnDestroy {
       this.currentSearchId = response.searchId;
       this.searchStatus = 'running';
 
-      await this.signalR.connect();
-      await this.signalR.joinGroup(response.searchId);
+      this.pollTimer = setInterval(async () => {
+        try {
+          const result = await this.crawlerService.pollCrawlResults(this.currentSearchId!);
+          this.jobs = result.jobs;
+          this.totalJobsFound = this.jobs.length;
+          this.searchStatus = result.status === 'Completed' ? 'completed' : 'running';
+          if (result.status === 'Completed' || result.status === 'Failed') {
+            this.clearPolling();
+            this.loadHistory();
+          }
+        } catch {
+          this.clearPolling();
+          this.error = 'Polling failed';
+        }
+      }, 2000);
 
-      this.signalR.onJobArrived((job: any) => {
-        this.jobs.push({
-          jobId: job.jobId,
-          title: job.title ?? 'Unknown',
-          company: job.company ?? 'Unknown',
-          location: job.location ?? '',
-          source: job.source ?? '',
-          jobUrl: job.jobUrl ?? '',
-          confidence: job.confidence ?? 0,
-        });
-        this.totalJobsFound = this.jobs.length;
-        this.cdr.detectChanges();
-      });
-
-      this.signalR.onSearchFinished((data: any) => {
-        this.searchStatus = 'completed';
-        this.loadHistory();
-        this.cdr.detectChanges();
-      });
     } catch (err: any) {
       this.error = err.message ?? 'Failed to trigger crawl';
     } finally {
       this.loading = false;
+    }
+  }
+
+  private clearPolling(): void {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
     }
   }
 

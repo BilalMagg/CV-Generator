@@ -435,6 +435,23 @@ public class JobOffersController : ControllerBase
         return Ok(ApiResponse<List<CrawlHistoryDto>>.Ok(dtos));
     }
 
+    // ── CRAWL POLL  —  GET /api/v1/job-offers/crawls/{searchId} ──────
+
+    /// <summary>
+    /// Returns the current status and matched jobs for a crawl session.
+    /// Used by the frontend for polling (every 2s) instead of SignalR.
+    /// </summary>
+    [HttpGet("crawls/{searchId}")]
+    [ProducesResponseType(typeof(ApiResponse<CrawlPollResponseDto>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<IActionResult> GetCrawlJobs(Guid searchId)
+    {
+        var result = await _searchCacheRepo.GetCrawlJobsAsync(searchId);
+        if (result is null)
+            return NotFound(ApiResponse<object>.Error("Search not found."));
+        return Ok(ApiResponse<CrawlPollResponseDto>.Ok(result));
+    }
+
     // ── Job Hash Generator ────────────────────────────────────────────────────
     private static string ComputeJobHash(string? role, string? company, string? location)
     {
