@@ -95,6 +95,10 @@ public class WorkflowsController : ControllerBase
             JobDescription = request.JobDescription,
             CandidateName = request.CandidateName,
             RecipientEmail = request.RecipientEmail,
+            TemplateId = request.TemplateId,
+            Language = request.Language,
+            Tone = request.Tone,
+            EmailSubject = request.EmailSubject,
             Status = "pending",
             CreatedAt = DateTime.UtcNow
         };
@@ -137,8 +141,8 @@ public class WorkflowsController : ControllerBase
         var run = await _db.CvGenerationRuns.FindAsync(runId);
         if (run == null) return NotFound(ApiResponse<object>.Error("Run not found"));
 
-        if (run.Status != "completed")
-            return BadRequest(ApiResponse<object>.Error("Run has not completed yet. Current status: " + run.Status));
+        if (run.Status is "pending" or "running")
+            return BadRequest(ApiResponse<object>.Error("Run is still in progress. Current status: " + run.Status));
 
         var response = new CvGenerationResultResponse
         {

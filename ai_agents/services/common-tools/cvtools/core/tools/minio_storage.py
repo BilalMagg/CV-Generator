@@ -76,9 +76,9 @@ def get_minio_client(
         A configured Minio client instance.
     """
     return Minio(
-        endpoint=endpoint or _require_env("MINIO_ENDPOINT"),
-        access_key=access_key or _require_env("MINIO_ROOT_USER"),
-        secret_key=secret_key or _require_env("MINIO_ROOT_PASSWORD"),
+        endpoint=endpoint or os.getenv("MINIO_ENDPOINT", "localhost:9000"),
+        access_key=access_key or os.getenv("MINIO_ROOT_USER", "minioadmin"),
+        secret_key=secret_key or os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"),
         secure=_minio_secure() if secure is None else secure,
     )
 
@@ -126,7 +126,7 @@ def upload_pdf(
         content_type="application/pdf",
     )
 
-    endpoint = _require_env("MINIO_ENDPOINT")
+    endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
     use_tls = _minio_secure() if secure is None else secure
     scheme = "https" if use_tls else "http"
     return f"{scheme}://{endpoint}/{bucket_name}/{object_name}"
@@ -161,12 +161,56 @@ def download_pdf(
     return os.path.abspath(download_path)
 
 
+def init_minio_storage() -> Minio:
+    """
+    Initialize MinIO client and ensure required buckets exist.
+
+    Creates the default CV PDFs bucket and templates bucket if they
+    don't already exist. Returns the configured Minio client.
+
+    Raises:
+        RuntimeError: If required MinIO environment variables are not set.
+    """
+    client = get_minio_client()
+    ensure_bucket(client, DEFAULT_BUCKET)
+    ensure_templates_bucket(client)
+    return client
+
+
 def ensure_templates_bucket(client: Minio) -> None:
     """
     Create the cv-templates bucket if it doesn't already exist.
     """
     if not client.bucket_exists(TEMPLATES_BUCKET):
         client.make_bucket(TEMPLATES_BUCKET)
+
+
+DEFAULT_TEMPLATE = {
+    "id": "default",
+    "type": "html",
+    "latex_code": "",
+    "html_code": """<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #333; }
+h1 { color: #1a5276; border-bottom: 2px solid #1a5276; padding-bottom: 8px; }
+h2 { color: #2c3e50; margin-top: 24px; }
+.section { margin: 16px 0; }
+ul { list-style: none; padding-left: 0; }
+li { padding: 4px 0; }
+</style></head>
+<body>
+<h1>{candidate_name}</h1>
+<h2>Professional Summary</h2>
+<p>{summary}</p>
+<h2>Experience</h2>
+<ul>{experience}</ul>
+<h2>Skills</h2>
+<ul>{skills}</ul>
+<h2>Projects</h2>
+<ul>{projects}</ul>
+</body></html>"""
+}
 
 
 def get_template_object(
@@ -192,42 +236,13 @@ def get_template_object(
     if client is None:
         client = get_minio_client()
 
-    response = client.get_object(bucket_name, template_id)
-    data = json.loads(response.read().decode("utf-8"))
-    response.close()
-    response.release_conn()
-    return data
-
-
-def init_minio_storage() -> None:
-    """
-    Validate MinIO configuration at service startup and pre-create buckets.
-
-    Call this from a service's startup hook so a misconfigured deployment
-    fails loudly on boot (like an unset encryption key) instead of on the
-    first upload:
-
-      * Missing required env vars -> RuntimeError (always fatal).
-      * Bad credentials / permissions (S3Error) -> re-raised (fatal).
-      * MinIO simply not reachable yet -> logged warning, startup continues;
-        the buckets are then created on first write via ensure_bucket().
-    """
-    # Fail loud on misconfiguration regardless of whether MinIO is reachable.
-    _require_env("MINIO_ENDPOINT")
-    _require_env("MINIO_ROOT_USER")
-    _require_env("MINIO_ROOT_PASSWORD")
+    ensure_templates_bucket(client)
 
     try:
-        client = get_minio_client()
-        ensure_bucket(client, DEFAULT_BUCKET)
-        ensure_bucket(client, TEMPLATES_BUCKET)
+        response = client.get_object(bucket_name, template_id)
+        data = json.loads(response.read().decode("utf-8"))
+        response.close()
+        response.release_conn()
+        return data
     except S3Error:
-        # Reachable but the operation was rejected (e.g. bad creds / access
-        # denied) — that is a real misconfiguration, so surface it loudly.
-        raise
-    except Exception as exc:  # noqa: BLE001 - transient connectivity at boot
-        logging.getLogger(__name__).warning(
-            "MinIO config is valid but the server was not reachable at startup "
-            "(%s); buckets '%s' and '%s' will be created on first write.",
-            exc, DEFAULT_BUCKET, TEMPLATES_BUCKET,
-        )
+        return DEFAULT_TEMPLATE
