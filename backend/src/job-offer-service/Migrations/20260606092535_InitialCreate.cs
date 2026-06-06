@@ -33,6 +33,9 @@ namespace job_offer_service.Migrations
                     LocationType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     EducationRequirements = table.Column<string>(type: "text", nullable: true),
                     SourceUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    JobHash = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    LastSeenAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
@@ -40,6 +43,52 @@ namespace job_offer_service.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_job_offers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "search_caches",
+                columns: table => new
+                {
+                    SearchId = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Keyword = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Location = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    CrawledDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    ExpectedCount = table.Column<int>(type: "integer", nullable: false),
+                    ProcessedCount = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_search_caches", x => x.SearchId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "search_job_matches",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    SearchId = table.Column<Guid>(type: "uuid", nullable: false),
+                    JobId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_search_job_matches", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_quotas",
+                columns: table => new
+                {
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    LastCrawlDate = table.Column<DateOnly>(type: "date", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_user_quotas", x => x.UserId);
                 });
 
             migrationBuilder.CreateTable(
@@ -107,6 +156,13 @@ namespace job_offer_service.Migrations
                 column: "JobOfferId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_job_offers_JobHash",
+                table: "job_offers",
+                column: "JobHash",
+                unique: true,
+                filter: "\"JobHash\" IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_job_responsibilities_JobOfferId",
                 table: "job_responsibilities",
                 column: "JobOfferId");
@@ -115,6 +171,21 @@ namespace job_offer_service.Migrations
                 name: "IX_job_skills_JobOfferId",
                 table: "job_skills",
                 column: "JobOfferId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_search_caches_Keyword_CrawledDate",
+                table: "search_caches",
+                columns: new[] { "Keyword", "CrawledDate" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_search_job_matches_JobId",
+                table: "search_job_matches",
+                column: "JobId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_search_job_matches_SearchId",
+                table: "search_job_matches",
+                column: "SearchId");
         }
 
         /// <inheritdoc />
@@ -128,6 +199,15 @@ namespace job_offer_service.Migrations
 
             migrationBuilder.DropTable(
                 name: "job_skills");
+
+            migrationBuilder.DropTable(
+                name: "search_caches");
+
+            migrationBuilder.DropTable(
+                name: "search_job_matches");
+
+            migrationBuilder.DropTable(
+                name: "user_quotas");
 
             migrationBuilder.DropTable(
                 name: "job_offers");

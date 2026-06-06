@@ -26,8 +26,12 @@ import { MyCvComponent } from './pages/my-cv/my-cv.component';
 import { AgentsHubComponent } from './pages/agents-hub/agents-hub.component';
 import { AgentGuideComponent } from './pages/agents-hub/agent-guide/agent-guide.component';
 import { JobExtractorWorkspaceComponent } from './pages/agents-hub/job-extractor-workspace/job-extractor-workspace.component';
+import { SearchAgentWorkspaceComponent } from './pages/agents-hub/search-agent-workspace/search-agent-workspace.component';
 import { ExtractionResultComponent } from './pages/agents-hub/extraction-result/extraction-result.component';
 import { AgentConfigComponent } from './pages/agents-hub/agent-config/agent-config.component';
+import { JobCrawlerWorkspaceComponent } from './pages/agents-hub/job-crawler-workspace/job-crawler-workspace.component';
+import { JobCrawlerResultComponent } from './pages/agents-hub/job-crawler-result/job-crawler-result.component';
+import { JobOffersComponent } from './pages/job-offers/job-offers.component';
 import { PersonalInfoComponent } from './pages/personal-info/personal-info.component';
 import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
 import { EntityListComponent } from './pages/entity-list/entity-list.component';
@@ -69,8 +73,12 @@ export const routes: Routes = [
   },  { path: 'agents-hub', component: AgentsHubComponent, canActivate: [authGuard] },
   { path: 'agents-hub/guide/:id', component: AgentGuideComponent, canActivate: [authGuard] },
   { path: 'agents-hub/job-extractor', component: JobExtractorWorkspaceComponent, canActivate: [authGuard] },
+  { path: 'agents-hub/search-agent', component: SearchAgentWorkspaceComponent, canActivate: [authGuard] },
   { path: 'agents-hub/job-extractor/result/:id', component: ExtractionResultComponent, canActivate: [authGuard] },
   { path: 'agents-hub/job-extractor/config', component: AgentConfigComponent, canActivate: [authGuard] },
+  { path: 'agents-hub/job-crawler', component: JobCrawlerWorkspaceComponent, canActivate: [authGuard] },
+  { path: 'agents-hub/job-crawler/result/:id', component: JobCrawlerResultComponent, canActivate: [authGuard] },
+  { path: 'job-offers', component: JobOffersComponent, canActivate: [authGuard] },
   {
     path: 'my-career',
     component: MyCvComponent,

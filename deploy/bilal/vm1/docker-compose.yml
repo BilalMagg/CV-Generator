@@ -1,0 +1,47 @@
+name: bilal-vm1
+
+networks:
+  cv-network:
+    name: cv-network
+
+services:
+  frontend:
+    image: bilalmagg/frontend:latest
+    container_name: cv-frontend
+    networks:
+      - cv-network
+
+  api-gateway:
+    image: bilalmagg/api-gateway:latest
+    container_name: cv-api-gateway
+    networks:
+      - cv-network
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    volumes:
+      - /:/rootfs:ro,rslave
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "7010:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro

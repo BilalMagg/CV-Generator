@@ -15,6 +15,7 @@ public class AgentHealthController : ControllerBase
     private readonly ITemplateAgentClient _templateAgent;
     private readonly ICvOptimizerClient _cvOptimizer;
     private readonly IContactAgentClient _contactAgent;
+    private readonly IJobCrawlerClient _jobCrawler;
     private readonly ILogger<AgentHealthController> _logger;
 
     public AgentHealthController(
@@ -23,6 +24,7 @@ public class AgentHealthController : ControllerBase
         ITemplateAgentClient templateAgent,
         ICvOptimizerClient cvOptimizer,
         IContactAgentClient contactAgent,
+        IJobCrawlerClient jobCrawler,
         ILogger<AgentHealthController> logger)
     {
         _jobExtractor = jobExtractor;
@@ -30,6 +32,7 @@ public class AgentHealthController : ControllerBase
         _templateAgent = templateAgent;
         _cvOptimizer = cvOptimizer;
         _contactAgent = contactAgent;
+        _jobCrawler = jobCrawler;
         _logger = logger;
     }
 
@@ -38,11 +41,12 @@ public class AgentHealthController : ControllerBase
     {
         var healthTasks = new Dictionary<string, Func<Task<AgentHealthStatus>>>
         {
-            ["jobExtractor"]  = () => CheckAgentHealthAsync("Job Extractor", ct => _jobExtractor.CheckHealthAsync(ct)),
-            ["searchAgent"]   = () => CheckAgentHealthAsync("Search Agent", ct => _searchAgent.CheckHealthAsync(ct)),
-            ["templateAgent"] = () => CheckAgentHealthAsync("Template Agent", ct => _templateAgent.CheckHealthAsync(ct)),
-            ["cvOptimizer"]   = () => CheckAgentHealthAsync("CV Optimizer", ct => _cvOptimizer.CheckHealthAsync(ct)),
-            ["contactAgent"]  = () => CheckAgentHealthAsync("Contact Agent", ct => _contactAgent.CheckHealthAsync(ct)),
+            ["jobExtractor"]  = () => CheckAgentHealthAsync("Job Extractor", _jobExtractor.CheckHealthAsync),
+            ["searchAgent"]   = () => CheckAgentHealthAsync("Search Agent", _searchAgent.CheckHealthAsync),
+            ["templateAgent"] = () => CheckAgentHealthAsync("Template Agent", _templateAgent.CheckHealthAsync),
+            ["cvOptimizer"]   = () => CheckAgentHealthAsync("CV Optimizer", _cvOptimizer.CheckHealthAsync),
+            ["contactAgent"]  = () => CheckAgentHealthAsync("Contact Agent", _contactAgent.CheckHealthAsync),
+            ["jobCrawler"]    = () => CheckAgentHealthAsync("Job Crawler", _jobCrawler.CheckHealthAsync),
         };
 
         var tasks = healthTasks.ToDictionary(kv => kv.Key, kv => kv.Value());

@@ -22,7 +22,11 @@ export class AgentHealthService {
   private readonly http = inject(HttpService);
 
   async checkHealth(): Promise<Record<string, AgentHealthStatus>> {
-    const response = await this.http.get<HealthCheckResponse>('/api/workflows/agents/health');
-    return response.data ?? {};
+    try {
+      const response = await this.http.get<HealthCheckResponse>('/api/workflows/agents/health');
+      return response.data ?? {};
+    } catch {
+      return {};
+    }
   }
 }

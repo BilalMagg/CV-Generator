@@ -113,24 +113,67 @@ Administrateur & Gère la configuration du système et supervise le déploiement
 \subsection{Diagramme de cas d'utilisation}
 \label{subsec:analyse:uc}
 
-Le diagramme de cas d'utilisation présente les interactions entre les acteurs et les fonctionnalités du système.
+Les diagrammes de cas d'utilisation ci-dessous présentent les interactions entre l'utilisateur et les différentes fonctionnalités du système. Cinq diagrammes couvrent les principaux modules de l'application.
+
+\paragraph{Authentification}
+L'utilisateur peut créer un compte, se connecter et se déconnecter du système.
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/diagramme-cas-utilisation.png}
-\caption{Diagramme de cas d'utilisation}
-\label{fig:uc}
+\includegraphics[width=0.5\textwidth]{images/use-cases/auth.png}
+\caption{Cas d'utilisation — Authentification}
+\label{fig:uc-auth}
+\end{figure}
+
+\paragraph{Gestion du profil}
+L'utilisateur peut gérer l'ensemble de ses données personnelles et professionnelles : informations de profil, projets, compétences, expériences, formations, certifications, langues, liens sociaux et profils CV. Tous ces cas nécessitent une authentification préalable.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/use-cases/profile-management.png}
+\caption{Cas d'utilisation — Gestion du profil}
+\label{fig:uc-profile}
+\end{figure}
+
+\paragraph{Génération de CV}
+L'utilisateur peut générer un CV personnalisé à partir d'une offre d'emploi, choisir un template, définir le ton du contenu, exporter le CV au format PDF et consulter l'historique des générations. Le système d'IA intervient comme acteur secondaire dans le processus de génération.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/use-cases/cv-generation.png}
+\caption{Cas d'utilisation — Génération de CV}
+\label{fig:uc-cv}
+\end{figure}
+
+\paragraph{Suivi des candidatures}
+L'utilisateur peut ajouter une candidature, mettre à jour son statut, visualiser le tableau Kanban, consulter les analyses statistiques et le calendrier des événements.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/use-cases/application-tracking.png}
+\caption{Cas d'utilisation — Suivi des candidatures}
+\label{fig:uc-applications}
+\end{figure}
+
+\paragraph{Offres d'emploi et notifications}
+L'utilisateur peut parcourir les offres d'emploi, déclencher un crawling en direct, configurer ses notifications, planifier des rappels et programmer des envois d'emails.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/use-cases/jobs-notification.png}
+\caption{Cas d'utilisation — Offres d'emploi et notifications}
+\label{fig:uc-jobs}
 \end{figure}
 
 \subsection{Diagramme de classes}
 \label{subsec:analyse:classes}
 
-Le diagramme de classes illustre la structure statique du système, montrant les entités principales et leurs relations.
+Le diagramme de classes ci-dessous illustre les relations entre les entités principales du système, organisées par base de données. Chaque package coloré représente un microservice et sa base de données associée. Les relations montrent les dépendances inter-services, comme les références de l'utilisateur vers les contenus, candidatures et CV, ou les liens entre une candidature et une version de CV.
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/diagramme-classes.png}
-\caption{Diagramme de classes}
+\includegraphics[width=\textwidth]{images/class-diagram.png}
+\caption{Diagramme de classes — Relations inter-services}
 \label{fig:classes}
 \end{figure}
 
@@ -149,24 +192,42 @@ Le diagramme de séquence ci-dessous illustre le flux d'authentification via Key
 \subsection{Modèle relationnel de la base de données}
 \label{subsec:analyse:bdd}
 
-L'architecture microservices du projet implique l'utilisation de plusieurs bases de données PostgreSQL 16, une par service. Chaque base de données est spécialisée pour les besoins de son service. L'extension pgvector est utilisée pour le support des recherches vectorielles dans les bases concernées par le pipeline IA.
+L'architecture microservices du projet implique l'utilisation de plusieurs bases de données PostgreSQL 16, une par service. Chaque base de données est spécialisée pour les besoins de son service et réside dans un conteneur Docker dédié. L'extension pgvector est utilisée pour le support des recherches vectorielles dans les bases concernées par le pipeline IA.
 
-\subsubsection*{Base Utilisateurs (user-db)}
+\subsubsection*{Base Utilisateurs (user-db — port 5433)}
 \label{subsubsec:bdd:user}
 
-La base utilisateurs centralise les informations personnelles et professionnelles des candidats. Elle contient une table principale \texttt{users} qui stocke le profil complet de chaque utilisateur : nom, email, titre professionnel, prétentions salariales, préférences de localisation, et données JSON pour le profil IA.
+La base utilisateurs centralise les informations personnelles et professionnelles des candidats.
+
+\begin{itemize}
+    \item \texttt{users} : Table principale contenant le profil complet de chaque utilisateur. Les attributs incluent \texttt{keycloakId} (identifiant de synchronisation avec Keycloak), \texttt{headline} (titre professionnel), \texttt{desiredSalaryMin/desiredSalaryMax} (prétentions salariales), \texttt{requiresVisaSponsorship}, \texttt{noticePeriod} (préavis), \texttt{employmentTypes} (types d'emploi souhaités), \texttt{remotePreference} (préférence de télétravail), \texttt{willingToRelocate} (mobilité géographique). Des colonnes JSON permettent de stocker des données flexibles : \texttt{preferencesJson} et \texttt{aiProfileDataJson} (profil généré par l'IA).
+\end{itemize}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{images/user-db.png}
+\includegraphics[width=0.55\textwidth]{images/user-db.png}
 \caption{Modèle relationnel — Base Utilisateurs}
 \label{fig:user-db}
 \end{figure}
 
-\subsubsection*{Base Contenu Utilisateur (content-db)}
+\subsubsection*{Base Contenu Utilisateur (content-db — port 5434)}
 \label{subsubsec:bdd:content}
 
-Cette base gère l'ensemble du portfolio utilisateur. Elle contient 11 tables permettant de gérer les projets, compétences, expériences professionnelles, formations, certifications, langues, centres d'intérêt, hackathons, liens sociaux, profils CV et activités académiques. Chaque table est reliée à un utilisateur via une clé étrangère \texttt{userId}.
+Cette base gère l'ensemble du portfolio de l'utilisateur. Chaque table est reliée à l'utilisateur via une clé étrangère \texttt{userId}.
+
+\begin{itemize}
+    \item \texttt{projects} : Projets réalisés. L'attribut \texttt{skillsJson} stocke les compétences associées sous forme JSON. \texttt{repositoryUrl} et \texttt{demoUrl} pointent vers les sources et démonstrations.
+    \item \texttt{skills} : Compétences avec \texttt{category} (langage, framework, outil), \texttt{level} (débutant, intermédiaire, avancé, expert) et \texttt{yearsOfExperience}.
+    \item \texttt{experiences} : Expériences professionnelles avec \texttt{company} et \texttt{status} (en cours, terminée).
+    \item \texttt{educations} : Formations avec \texttt{degreeType} (licence, master, doctorat), \texttt{fieldOfStudy} et \texttt{specialization}. \texttt{diplomaFileUrl} stocke le lien vers le fichier du diplôme.
+    \item \texttt{certifications} : Certifications avec \texttt{issuingOrganization} et \texttt{credentialUrl}.
+    \item \texttt{languages} : Langues avec \texttt{level} (A1 à C2).
+    \item \texttt{interests} : Centres d'intérêt.
+    \item \texttt{hackathons} : Participations à des hackathons avec \texttt{role}, \texttt{result} et \texttt{description}.
+    \item \texttt{socialLinks} : Liens vers les réseaux sociaux (\texttt{platform}, \texttt{url}).
+    \item \texttt{cvProfiles} : Profils de CV avec \texttt{summary} (résumé personnel) et \texttt{title}.
+    \item \texttt{academicActivities} : Activités académiques (projets scolaires, publications) avec période.
+\end{itemize}
 
 \begin{figure}[H]
 \centering
@@ -175,10 +236,16 @@ Cette base gère l'ensemble du portfolio utilisateur. Elle contient 11 tables pe
 \label{fig:user-content-db}
 \end{figure}
 
-\subsubsection*{Base Candidatures (application-db)}
+\subsubsection*{Base Candidatures (application-db — port 5436)}
 \label{subsubsec:bdd:application}
 
-La base candidatures assure le suivi des candidatures des utilisateurs. Elle est composée de trois tables : \texttt{applications} (candidatures avec statut, entreprise, poste), \texttt{applicationStatusHistory} (historique des changements de statut) et \texttt{applicationConfigurations} (préférences de l'utilisateur pour le module).
+Cette base assure le suivi des candidatures des utilisateurs.
+
+\begin{itemize}
+    \item \texttt{applications} : Candidatures avec \texttt{candidateId}, \texttt{cvVersionId} et \texttt{jobOfferId} comme clés étrangères. \texttt{companyName} et \texttt{positionTitle} décrivent le poste visé. \texttt{status} peut prendre les valeurs : \texttt{saved}, \texttt{applied}, \texttt{interview}, \texttt{offer}, \texttt{rejected}. \texttt{offerSource} indique la provenance de l'offre. \texttt{isSaved} permet de marquer une candidature comme favorite.
+    \item \texttt{applicationStatusHistory} : Historique des changements de statut. \texttt{oldStatus} et \texttt{newStatus} tracent chaque transition. \texttt{changedBy} enregistre l'acteur (utilisateur ou système) et \texttt{comment} permet d'ajouter une note.
+    \item \texttt{applicationConfigurations} : Préférences utilisateur pour le module. \texttt{showReminders} active les rappels, \texttt{selectedStatuses} filtre les statuts affichés.
+\end{itemize}
 
 \begin{figure}[H]
 \centering
@@ -187,10 +254,19 @@ La base candidatures assure le suivi des candidatures des utilisateurs. Elle est
 \label{fig:application-db}
 \end{figure}
 
-\subsubsection*{Base Workflow (workflow-db)}
+\subsubsection*{Base Workflow (workflow-db — port 5435)}
 \label{subsubsec:bdd:workflow}
 
-La base workflow est la plus complexe, car elle pilote le pipeline de génération de CV. Elle contient les tables \texttt{workflows} (définition des pipelines), \texttt{cvGenerationRuns} (traces d'exécution avec résultats de chaque étape), \texttt{agents} (configuration des agents IA), \texttt{agentDocumentChunks} (documents vectorisés pour le RAG), \texttt{jobExtractions} (extractions d'offres), ainsi que des entités miroir du contenu utilisateur optimisées pour la recherche vectorielle : \texttt{workflowProjects}, \texttt{workflowSkills} et \texttt{workflowExperiences}.
+La base workflow est la plus complexe. Elle pilote le pipeline de génération de CV et utilise pgvector pour les recherches vectorielles.
+
+\begin{itemize}
+    \item \texttt{workflows} : Définition des pipelines. \texttt{definitionJson} contient la configuration du workflow au format JSON. \texttt{isActive} active ou désactive le pipeline.
+    \item \texttt{cvGenerationRuns} : Traces d'exécution de chaque génération de CV. \texttt{jobDescription} stocke le texte brut de l'offre. \texttt{status} suit l'état (\texttt{pending}, \texttt{running}, \texttt{completed}, \texttt{failed}, \texttt{cancelled}). \texttt{stepStatuses} est un champ JSON contenant l'état de chaque étape. Les résultats des agents sont stockés dans des colonnes dédiées : \texttt{extractionResult}, \texttt{searchResult}, \texttt{renderResult}, \texttt{optimizationResult}, \texttt{deliveryResult}.
+    \item \texttt{agents} : Configuration des agents IA. \texttt{agentId} est un identifiant unique (ex: \texttt{job-extractor}). \texttt{sortOrder} détermine l'ordre d'exécution dans le pipeline. \texttt{backgroundGradient} est utilisé pour l'affichage dans l'interface.
+    \item \texttt{agentDocumentChunks} : Stockage des documents vectorisés pour le RAG. \texttt{sourceId} et \texttt{sourceType} identifient l'entité source. \texttt{embedding} est un vecteur pgvector utilisé pour la recherche sémantique. \texttt{searchVector} est un tsvector pour la recherche full-text.
+    \item \texttt{jobExtractions} : Extractions d'offres d'emploi. \texttt{inputType} distingue le texte saisi de l'URL. \texttt{confidence} est un score de confiance de l'extraction. \texttt{outputJson} contient le résultat structuré.
+    \item \texttt{workflowProjects}, \texttt{workflowSkills}, \texttt{workflowExperiences} : Entités miroir du contenu utilisateur, optimisées pour la recherche vectorielle avec des champs \texttt{embedding} et \texttt{aiSummaryJson}.
+\end{itemize}
 
 \begin{figure}[H]
 \centering
@@ -199,10 +275,19 @@ La base workflow est la plus complexe, car elle pilote le pipeline de générati
 \label{fig:workflow-db}
 \end{figure}
 
-\subsubsection*{Base Offres d'Emploi (job-offer-db)}
+\subsubsection*{Base Offres d'Emploi (job-offer-db — port 5437)}
 \label{subsubsec:bdd:job-offer}
 
-Cette base stocke les offres d'emploi collectées par l'agent de crawling. Elle comprend \texttt{jobOffers} (offres avec description vectorisée), \texttt{jobSkills} (compétences requises), \texttt{jobResponsibilities} (responsabilités), \texttt{jobBenefits} (avantages), \texttt{searchCaches} (cache des recherches) et \texttt{userQuotas} (quotas de crawling par utilisateur).
+Cette base stocke les offres d'emploi collectées par l'agent de crawling et enrichies par l'agent d'extraction.
+
+\begin{itemize}
+    \item \texttt{jobOffers} : Offres d'emploi. \texttt{jobHash} est un hash unique de l'offre pour éviter les doublons lors du crawling. \texttt{sourceUrl} est l'URL d'origine. \texttt{rawDescription} stocke la description brute. \texttt{descriptionVector} est un vecteur pgvector pour le matching avec le profil utilisateur. \texttt{locationType} distingue \texttt{remote}, \texttt{onsite} et \texttt{hybrid}. \texttt{employmentType} (\texttt{full-time}, \texttt{part-time}, \texttt{contract}) et \texttt{seniorityLevel} (\texttt{junior}, \texttt{mid}, \texttt{senior}, \texttt{lead}) qualifient le poste.
+    \item \texttt{jobSkills} : Compétences requises pour le poste. \texttt{type} distingue les compétences \texttt{required} et \texttt{preferred}. \texttt{isMandatory} indique si la compétence est obligatoire.
+    \item \texttt{jobResponsibilities} : Liste des responsabilités du poste.
+    \item \texttt{jobBenefits} : Avantages proposés par l'entreprise.
+    \item \texttt{searchCaches} : Cache des recherches de crawling. \texttt{keyword} et \texttt{location} définissent la recherche. \texttt{status} suit l'avancement. \texttt{expectedCount} et \texttt{processedCount} permettent de suivre le nombre d'offres traitées.
+    \item \texttt{userQuotas} : Quotas de crawling par utilisateur. \texttt{lastCrawlDate} enregistre la dernière date d'utilisation.
+\end{itemize}
 
 \begin{figure}[H]
 \centering
@@ -211,10 +296,16 @@ Cette base stocke les offres d'emploi collectées par l'agent de crawling. Elle 
 \label{fig:job-offer-db}
 \end{figure}
 
-\subsubsection*{Base CV (cv-db)}
+\subsubsection*{Base CV (cv-db — port 5439)}
 \label{subsubsec:bdd:cv}
 
-La base CV gère les curriculum vitae et leurs versions. Elle contient \texttt{cvs} (CV avec template associé), \texttt{cvVersions} (versions avec contenu JSON et fichiers PDF générés) et \texttt{cvSections} (sections ordonnancées de chaque version).
+La base CV gère les curriculum vitae et leurs versions successives.
+
+\begin{itemize}
+    \item \texttt{cvs} : CV avec \texttt{templateId} (identifiant du template utilisé) et \texttt{isActive} (CV actif par défaut).
+    \item \texttt{cvVersions} : Versions d'un CV. \texttt{versionNumber} est un numéro incrémental. \texttt{contentJson} stocke le contenu complet du CV au format JSON structuré. \texttt{fileUrl} et \texttt{pdfUrl} pointent respectivement vers le fichier source et le PDF généré stockés dans MinIO.
+    \item \texttt{cvSections} : Sections d'une version de CV. \texttt{sectionType} définit le type (\texttt{education}, \texttt{experience}, \texttt{skills}, \texttt{projects}, \texttt{certifications}, \texttt{languages}). \texttt{contentJson} contient les données de la section. \texttt{displayOrder} détermine l'ordre d'affichage.
+\end{itemize}
 
 \begin{figure}[H]
 \centering
@@ -223,10 +314,20 @@ La base CV gère les curriculum vitae et leurs versions. Elle contient \texttt{c
 \label{fig:cv-db}
 \end{figure}
 
-\subsubsection*{Base Notifications (notification-db)}
+\subsubsection*{Base Notifications (notification-db — port 5438)}
 \label{subsubsec:bdd:notification}
 
-Cette base gère l'ensemble du système de notifications et de messagerie. Elle comprend \texttt{notifications} (notifications in-app et email), \texttt{notificationPreferences} (préférences utilisateur), \texttt{reminders} (rappels planifiés), \texttt{contacts} (carnet d'adresses), \texttt{emailMessages} (historique des emails), \texttt{emailSchedules} (campagnes planifiées) et \texttt{gmailConnections} (connexions Gmail pour l'envoi d'emails).
+Cette base gère l'ensemble du système de notifications, de rappels et de messagerie.
+
+\begin{itemize}
+    \item \texttt{notifications} : Notifications in-app et email. \texttt{type} définit la catégorie (\texttt{application\_update}, \texttt{cv\_ready}, \texttt{reminder}, \texttt{welcome}). \texttt{channel} détermine le mode (\texttt{email}, \texttt{in-app}). \texttt{isRead} et \texttt{isSent} tracent l'état. \texttt{errorMessage} enregistre les échecs d'envoi.
+    \item \texttt{notificationPreferences} : Préférences de notification par utilisateur. \texttt{enableEmail} et \texttt{enableInApp} activent les canaux. \texttt{applicationUpdates}, \texttt{cvUpdates}, \texttt{reminders}, \texttt{weeklyDigest} activent les catégories. \texttt{defaultReminderDaysBefore} définit le délai de rappel par défaut.
+    \item \texttt{reminders} : Rappels planifiés. \texttt{eventDate} est la date de l'événement, \texttt{reminderAt} est la date du rappel. \texttt{reminderOffset} définit le décalage (ex: \texttt{1d}, \texttt{2h}). \texttt{status} suit l'état (\texttt{pending}, \texttt{sent}, \texttt{cancelled}).
+    \item \texttt{contacts} : Carnet d'adresses. \texttt{source} indique la provenance (manuel, import Gmail). \texttt{isFavorite} permet de marquer les contacts favoris. \texttt{avatarBase64} stocke l'avatar encodé.
+    \item \texttt{emailMessages} : Historique des emails envoyés. \texttt{provider} indique le fournisseur (MailKit, Gmail API). \texttt{status} suit la délivrabilité. \texttt{contactId} relie l'email à un contact. \texttt{scheduleId} permet de lier à une campagne planifiée.
+    \item \texttt{emailSchedules} : Campagnes d'emails planifiées. \texttt{cronExpression} définit la récurrence. \texttt{recipientIds} stocke les destinataires. \texttt{isActive} active ou désactive la campagne.
+    \item \texttt{gmailConnections} : Connexions Gmail des utilisateurs. \texttt{encryptedAccessToken} et \texttt{encryptedRefreshToken} stockent les jetons OAuth chiffrés. \texttt{isRevoked} indique si la connexion a été révoquée.
+\end{itemize}
 
 \begin{figure}[H]
 \centering
