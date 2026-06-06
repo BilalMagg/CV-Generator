@@ -208,11 +208,38 @@ namespace job_offer_service.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("SearchId");
 
                     b.HasIndex("Keyword", "CrawledDate");
 
                     b.ToTable("search_caches");
+                });
+
+            modelBuilder.Entity("JobOfferService.Entities.SearchJobMatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SearchId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("SearchId");
+
+                    b.ToTable("search_job_matches");
                 });
 
             modelBuilder.Entity("JobOfferService.Entities.UserQuota", b =>

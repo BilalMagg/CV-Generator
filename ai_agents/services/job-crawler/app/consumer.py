@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone
 
 from confluent_kafka import KafkaError
 
@@ -29,6 +30,16 @@ logger = logging.getLogger(__name__)
 
 # Set to False by the lifespan shutdown handler to exit the loop cleanly.
 _running: bool = True
+
+# Exposed via GET /status for observability.
+crawl_state: dict = {
+    "status": "idle",          # "idle" | "running"
+    "last_search_id": None,
+    "last_run_at": None,
+    "last_keyword": None,
+    "total_jobs_found": 0,
+    "total_jobs_published": 0,
+}
 
 
 def _stop_consumer() -> None:
@@ -88,6 +99,8 @@ async def consume_loop() -> None:
             trigger.result_limit,
         )
 
+        crawl_state.update(status="running", last_search_id=str(trigger.search_id), last_keyword=trigger.keyword)
+
         # ── 3. Scrape (blocking call dispatched to thread pool) ───────────────
         results_per_site = max(1, trigger.result_limit // 2)
         rows = await asyncio.to_thread(
@@ -97,6 +110,7 @@ async def consume_loop() -> None:
             results_per_site,
         )
 
+        crawl_state["total_jobs_found"] = len(rows)
         logger.info(
             "Scrape complete | search_id=%s total_jobs_found=%d",
             trigger.search_id,
@@ -126,6 +140,7 @@ async def consume_loop() -> None:
                 )
 
         flush_producer()
+        crawl_state["total_jobs_published"] = published
         logger.info(
             "Pushed %d jobs to topic '%s' | search_id=%s",
             published,
@@ -134,8 +149,6 @@ async def consume_loop() -> None:
         )
 
         # ── 5. Batch Counting Pattern — publish crawl-summary ─────────────────
-        # The .NET SearchCache Kafka consumer reads this to set ExpectedCount
-        # and transition the search status from Pending → Extracting.
         produce_message(settings.SUMMARY_TOPIC, {
             "search_id": str(trigger.search_id),
             "total_found": published,
@@ -147,8 +160,10 @@ async def consume_loop() -> None:
             published,
         )
 
-        # ── 6. Commit offset — only after ALL messages are produced ───────────
+        # ── 6. Commit offset ──────────────────────────────────────────────────
         await asyncio.to_thread(_commit)
         logger.info("Offset committed | search_id=%s", trigger.search_id)
+
+        crawl_state.update(status="idle", last_run_at=datetime.now(timezone.utc).isoformat())
 
     logger.info("Consumer loop exited cleanly.")

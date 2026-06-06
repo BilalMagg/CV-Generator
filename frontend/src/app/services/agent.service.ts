@@ -24,13 +24,17 @@ export class AgentService {
   private readonly http = inject(HttpService);
 
   async getAgents(): Promise<Agent[]> {
-    const response = await this.http.get<ApiResponse<AgentDto[]>>('/api/agents');
-    return (response.data ?? []).map(dto => ({
-      id: dto.agentId,
-      name: dto.name,
-      role: dto.role,
-      background: dto.backgroundGradient,
-      status: 'active' as const,
-    }));
+    try {
+      const response = await this.http.get<ApiResponse<AgentDto[]>>('/api/agents');
+      return (response.data ?? []).map(dto => ({
+        id: dto.agentId,
+        name: dto.name,
+        role: dto.role,
+        background: dto.backgroundGradient,
+        status: 'active' as const,
+      }));
+    } catch {
+      return [];
+    }
   }
 }

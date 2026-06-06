@@ -13,6 +13,7 @@ public class JobOfferDbContext : DbContext
     public DbSet<JobBenefit> JobBenefits { get; set; }
     public DbSet<SearchCache> SearchCaches { get; set; }
     public DbSet<UserQuota> UserQuotas { get; set; }
+    public DbSet<SearchJobMatch> SearchJobMatches { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,6 +42,13 @@ public class JobOfferDbContext : DbContext
         modelBuilder.Entity<UserQuota>(entity =>
         {
             entity.HasKey(u => u.UserId);
+        });
+
+        modelBuilder.Entity<SearchJobMatch>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.HasIndex(m => m.SearchId);
+            entity.HasIndex(m => m.JobId);
         });
     }
 }
