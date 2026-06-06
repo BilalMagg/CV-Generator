@@ -29,9 +29,6 @@ public class ExtractedJobValidator : AbstractValidator<ExtractedJobDto>
         RuleFor(x => x.JobRole)
             .NotEmpty().WithMessage("Job role is required")
             .MaximumLength(150).WithMessage("Job role cannot exceed 150 characters");
-
-        RuleFor(x => x.RawDescription)
-            .NotEmpty().WithMessage("Raw description cannot be empty");
             
         // Ensure lists aren't null (they can be empty, but not null)
         RuleFor(x => x.RequiredSkills).NotNull();
