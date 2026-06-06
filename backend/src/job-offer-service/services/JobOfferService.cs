@@ -15,6 +15,7 @@ public interface IJobOfferService
     // Read Operations
     Task<JobOfferDetailDto?> GetByIdAsync(Guid id);
     Task<JobOfferListDto> GetAllAsync(Guid userId, int page, int pageSize);
+    Task<JobOfferListDto> GetAllJobsAsync(int page, int pageSize);
     Task<JobOfferStatisticsDto> GetStatisticsAsync(Guid userId);
 }
 
@@ -131,6 +132,25 @@ public class JobOfferService : IJobOfferService
     }
 
     // 4. GET ALL (Summary view for the dashboard)
+
+    public async Task<JobOfferListDto> GetAllJobsAsync(int page, int pageSize)
+    {
+        var total = await _repository.GetTotalCountAsync(null);
+        var jobs = await _repository.GetAllAsync(null, page, pageSize);
+
+        var items = jobs.Select(job => new JobOfferSummaryDto(
+            Id: job.Id,
+            UserId: job.UserId,
+            EnterpriseName: job.EnterpriseName,
+            JobRole: job.JobRole,
+            Location: job.Location,
+            Status: job.Status.ToString(),
+            CreatedAt: job.CreatedAt
+        )).ToList();
+
+        return new JobOfferListDto(items, total, page, pageSize);
+    }
+
     public async Task<JobOfferListDto> GetAllAsync(Guid userId, int page, int pageSize)
     {
         var total = await _repository.GetTotalCountAsync(userId);

@@ -2,9 +2,9 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { HttpErrorResponse } from '@angular/common/http';
 import { ExtractionService } from '@app/services/extraction.service';
 import { ExtractionHistoryItem } from '@app/models/extraction.types';
+import { extractError } from '@app/shared/error-utils';
 
 type InputMethod = 'text' | 'file' | 'url' | 'offer';
 
@@ -80,7 +80,7 @@ export class JobExtractorWorkspaceComponent implements OnInit {
         state: { output }
       });
     } catch (err) {
-      this.error = this.extractError(err);
+      this.error = extractError(err, 'Extraction failed');
     } finally {
       this.loading = false;
     }
@@ -103,16 +103,6 @@ export class JobExtractorWorkspaceComponent implements OnInit {
     if (score >= 0.8) return 'high';
     if (score >= 0.5) return 'mid';
     return 'low';
-  }
-
-  private extractError(err: unknown): string {
-    if (err instanceof HttpErrorResponse) {
-      if (err.error?.message) return err.error.message;
-      if (err.status === 0) return 'Network error — check your connection';
-      if (err.status >= 500) return 'Server error — try again later';
-      return err.error?.message || err.message || 'Extraction failed';
-    }
-    return err instanceof Error ? err.message : 'Extraction failed';
   }
 
   methodIcon(method: string): string {

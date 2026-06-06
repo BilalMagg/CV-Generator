@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
 import { APP_NAME } from '@app/app-name';
+import { extractError } from '@app/shared/error-utils';
 
 @Component({
   selector: 'app-login',
@@ -22,62 +23,61 @@ export class LoginComponent {
     (this.route.snapshot.queryParamMap.get('mode') as 'sign-in' | 'sign-up') || 'sign-in'
   );
 
-  // Sign-in
   signInEmail = '';
   signInPassword = '';
-  signInLoading = false;
-  signInError = '';
+  signInLoading = signal(false);
+  signInError = signal('');
 
-  // Sign-up
   signUpFirstName = '';
   signUpLastName = '';
   signUpEmail = '';
   signUpPassword = '';
   signUpConfirm = '';
-  signUpLoading = false;
-  signUpError = '';
-  signUpSuccess = '';
+  signUpLoading = signal(false);
+  signUpError = signal('');
+  signUpSuccess = signal('');
 
   toggleMode(): void {
     this.mode.update(m => m === 'sign-in' ? 'sign-up' : 'sign-in');
-    this.signInError = '';
-    this.signUpError = '';
-    this.signUpSuccess = '';
+    this.signInError.set('');
+    this.signUpError.set('');
+    this.signUpSuccess.set('');
   }
 
   async onSignIn(): Promise<void> {
-    this.signInError = '';
+    this.signInError.set('');
     if (!this.signInEmail || !this.signInPassword) {
-      this.signInError = 'Please enter your email and password';
+      this.signInError.set('Please enter your email and password');
       return;
     }
-    this.signInLoading = true;
+    this.signInLoading.set(true);
     try {
       await this.authService.loginWithCredentials(this.signInEmail, this.signInPassword);
       document.body.classList.remove('page-revealed');
       window.location.href = '/applications';
     } catch (err) {
-      this.signInError = err instanceof Error ? err.message : 'Login failed';
-      this.signInLoading = false;
+      this.signInError.set(extractError(err));
+    } finally {
+      this.signInLoading.set(false);
     }
   }
 
   async onSignUp(): Promise<void> {
-    this.signUpError = '';
-    this.signUpSuccess = '';
+    this.signUpError.set('');
+    this.signUpSuccess.set('');
     if (!this.signUpFirstName || !this.signUpLastName || !this.signUpEmail || !this.signUpPassword) {
-      this.signUpError = 'All fields are required';
+      this.signUpError.set('All fields are required');
       return;
     }
     if (this.signUpPassword.length < 8) {
-      this.signUpError = 'Password must be at least 8 characters';
+      this.signUpError.set('Password must be at least 8 characters');
       return;
     }
     if (this.signUpPassword !== this.signUpConfirm) {
-      this.signUpError = 'Passwords do not match';
+      this.signUpError.set('Passwords do not match');
       return;
     }
-    this.signUpLoading = true;
+    this.signUpLoading.set(true);
     try {
       const result = await this.authService.register({
         firstName: this.signUpFirstName,
@@ -86,15 +86,15 @@ export class LoginComponent {
         password: this.signUpPassword,
       });
       if (result.success) {
-        this.signUpSuccess = 'Account created! Redirecting to login...';
+        this.signUpSuccess.set('Account created! Redirecting to login...');
         setTimeout(() => this.mode.set('sign-in'), 1500);
       } else {
-        this.signUpError = result.message || 'Registration failed';
+        this.signUpError.set(result.message || 'Registration failed');
       }
     } catch (err) {
-      this.signUpError = err instanceof Error ? err.message : 'Registration failed';
+      this.signUpError.set(err instanceof Error ? err.message : 'Registration failed');
     } finally {
-      this.signUpLoading = false;
+      this.signUpLoading.set(false);
     }
   }
 

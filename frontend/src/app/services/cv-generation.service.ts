@@ -40,21 +40,24 @@ export class CvGenerationService {
       '/api/workflows/generate-cv',
       body,
     );
-    return res.data!.run_id;
+    if (!res.data?.run_id) throw new Error('Failed to start CV generation');
+    return res.data.run_id;
   }
 
   async getStatus(runId: string): Promise<CvGenerationStatus> {
     const res = await this.http.get<ApiResponse<CvGenerationStatus>>(
       `/api/workflows/generate-cv/${runId}/status`,
     );
-    return res.data!;
+    if (!res.data) throw new Error('Status not available');
+    return res.data;
   }
 
   async getResult(runId: string): Promise<CvGenerationResult> {
     const res = await this.http.get<ApiResponse<CvGenerationResult>>(
       `/api/workflows/generate-cv/${runId}/result`,
     );
-    return res.data!;
+    if (!res.data) throw new Error('Result not available');
+    return res.data;
   }
 
   async cancel(runId: string): Promise<void> {

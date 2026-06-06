@@ -4,12 +4,13 @@ import { Router, RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './layout/header/header.component';
 import { SidebarComponent } from './layout/sidebar/sidebar.component';
 import { RevealOverlayComponent } from './pages/reveal-overlay/reveal-overlay.component';
+import { ToastComponent } from './shared/components/toast/toast.component';
 import { APP_NAME } from './app-name';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, HeaderComponent, SidebarComponent, RevealOverlayComponent],
+  imports: [RouterOutlet, HeaderComponent, SidebarComponent, RevealOverlayComponent, ToastComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

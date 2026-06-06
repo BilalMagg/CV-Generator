@@ -107,7 +107,6 @@ public record ExtractedJobDto(
     string EnterpriseName,
     string? EnterpriseDescription,
     string JobRole,
-    string RawDescription,
     List<string> Responsibilities,
     List<string> RequiredSkills,
     List<string> SoftSkills,
@@ -120,6 +119,7 @@ public record ExtractedJobDto(
     List<string> Benefits,
     string? SourceUrl,
     // ── Crawler-only fields (null when posted from the manual flow) ──────────────
+    string RawDescription = "",
     Guid? SearchId = null,
     string? Source = null,
     double? OverallConfidence = null
@@ -177,4 +177,34 @@ public record TriggerCrawlResponseDto(
     string Keyword,
     string Location,
     int ResultLimit
+);
+
+/// <summary>Crawl history item returned by GET /crawls.</summary>
+public record CrawlHistoryDto(
+    Guid SearchId,
+    string Keyword,
+    string? Location,
+    string Status,
+    int ExpectedCount,
+    int ProcessedCount,
+    DateTime CreatedAt
+);
+
+public record CrawlJobDto(
+    Guid JobId,
+    string Title,
+    string Company,
+    string? Location,
+    string JobUrl,
+    double Confidence
+);
+
+public record CrawlPollResponseDto(
+    Guid SearchId,
+    string Status,
+    string Keyword,
+    string? Location,
+    int ExpectedCount,
+    int ProcessedCount,
+    List<CrawlJobDto> Jobs
 );
