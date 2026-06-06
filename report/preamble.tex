@@ -50,8 +50,11 @@
 \newcommand{\teamname}{\textbf{CV\_Generator}}
 
 % --- Acronyms ---
-\usepackage[acronym]{glossaries}
+\usepackage[acronym, nonumberlist, toc]{glossaries}
 \makeglossaries
+% Suppress the internal heading printglossary normally inserts
+% (we provide our own \chapter* title in 00_resume.tex)
+\renewcommand*{\glossarysection}[2][]{}
 
 \newacronym{ci}{CI}{Continuous Integration}
 \newacronym{cd}{CD}{Continuous Deployment}
