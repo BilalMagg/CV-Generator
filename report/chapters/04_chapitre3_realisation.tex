@@ -358,6 +358,285 @@ Le système \projectname{} offre les fonctionnalités principales suivantes :
 
 % À remplir : description des démonstrations du fonctionnement de l'application
 
+\section{Assurance Qualité}
+\label{sec:realisation:qa}
+
+L'assurance qualité du projet \projectname{} repose sur une stratégie de tests à plusieurs niveaux : tests unitaires, tests d'intégration, tests bout en bout (E2E) et tests de performance. Cette approche garantit la fiabilité de chaque composant isolément, la cohérence des interactions entre services, la conformité des parcours utilisateur, et la tenue en charge du système sous conditions réelles.
+
+\membreCinq{} est responsable de cette couverture de tests, en charge de l'outillage Cypress pour les tests E2E et k6 pour les tests de performance.
+
+% -------------------------------------------------------
+\subsection{Tests Unitaires}
+\label{subsec:realisation:tests-unitaires}
+
+Les tests unitaires visent à vérifier le comportement de chaque unité de code de manière isolée, en remplaçant les dépendances externes par des mocks.
+
+\subsubsection{Tests unitaires des agents IA — pytest}
+\label{subsubsec:realisation:tests-agents}
+
+L'agent de contact (\texttt{contact-agent}) dispose d'une suite de \textbf{43 tests pytest} répartis en quatre modules :
+
+\begin{itemize}
+    \item \textbf{test\_tools.py (19 tests) :} Teste les quatre outils LangGraph de l'agent de manière indépendante.
+    \begin{itemize}
+        \item \texttt{extract\_cv\_text} — 8 cas : tri par ordre de section, liste vide, JSON invalide, sections sans contenu, présence de plusieurs sections, champs \texttt{order} manquants, contenu avec espaces, section unique.
+        \item \texttt{generate\_email\_subject} — 2 cas : retour d'un objet ligne d'objet, vérification que le prompt contient bien les informations de l'offre (LLM mocké via \texttt{unittest.mock}).
+        \item \texttt{generate\_email\_body} — 3 cas : retour du corps de l'email, présence de toutes les entrées dans le prompt, gestion d'un \texttt{hint} vide.
+        \item \texttt{send\_email\_with\_cv} — 6 cas : envoi réussi sans PDF, identifiants manquants, échec d'authentification SMTP, envoi avec URL PDF valide, échec de téléchargement PDF, fichier PDF local introuvable (SMTP mocké via \texttt{smtplib}).
+    \end{itemize}
+
+    \item \textbf{test\_agent.py (7 tests) :} Teste l'orchestration LangGraph de la fonction \texttt{deliver\_cv()}.
+    \begin{itemize}
+        \item \texttt{deliver\_cv()} — 4 cas : livraison réussie, livraison échouée, génération de l'ID de livraison lorsqu'absent, gestion d'une URL PDF nulle.
+        \item \texttt{\_extract\_tool\_output()} — 3 cas : recherche d'un outil par nom, retour de \texttt{N/A} si introuvable, suppression des espaces.
+    \end{itemize}
+
+    \item \textbf{test\_schemas.py (12 tests) :} Valide les schémas Pydantic \texttt{ContactInput} et \texttt{ContactOutput}.
+    \begin{itemize}
+        \item \texttt{ContactInput} — 8 cas : entrée valide, avec \texttt{cover\_letter\_hint}, avec URL PDF, champs obligatoires manquants (\texttt{job\_title}, \texttt{recipient\_email}, \texttt{optimized\_cv}), sections CV vides, valeurs limites du score ATS (0, 100, $-1$, 101).
+        \item \texttt{ContactOutput} — 4 cas : sortie réussie, sortie échouée, génération automatique de \texttt{sent\_at}, champ \texttt{delivery\_id} manquant.
+    \end{itemize}
+
+    \item \textbf{test\_integration.py (5 tests) :} Teste l'endpoint FastAPI \texttt{/deliver} via le client ASGI (agent mocké).
+    \begin{itemize}
+        \item 4 tests avec agent mocké : succès, échec, erreur de validation (422), et endpoint \texttt{/health}.
+        \item 1 test live (marqué \texttt{@pytest.mark.live}, exécuté uniquement avec \texttt{--run-live}) : envoi réel d'un email de démonstration.
+    \end{itemize}
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+% \includegraphics[width=\textwidth]{images/pytest-results.png}
+\caption{Résultats de l'exécution des tests pytest — contact-agent}
+\label{fig:pytest-results}
+\end{figure}
+
+\subsubsection{Tests unitaires du backend .NET — xUnit}
+\label{subsubsec:realisation:tests-dotnet}
+
+Le projet \texttt{ApplicationService.Tests} contient \textbf{15 tests xUnit} organisés en trois classes, utilisant \textbf{NSubstitute} pour les mocks et \textbf{FluentValidation.TestHelper} pour les validateurs :
+
+\begin{itemize}
+    \item \textbf{ApplicationsControllerTests (4 tests) :} Teste les cas aux limites du contrôleur REST.
+    \begin{itemize}
+        \item \texttt{GetAll} retourne 200 avec la liste des candidatures.
+        \item \texttt{GetById} retourne 404 lorsque la candidature appartient à un autre utilisateur.
+        \item \texttt{Create} retourne 201 avec l'ID de candidat forcé.
+        \item \texttt{GetAll} retourne 401 lorsqu'aucun utilisateur n'est authentifié.
+    \end{itemize}
+
+    \item \textbf{ApplicationServiceImplTests (5 tests) :} Teste la logique métier du service.
+    \begin{itemize}
+        \item \texttt{GetAllAsync} retourne des résultats paginés correctement.
+        \item \texttt{CreateAsync} publie un événement Kafka à la création.
+        \item \texttt{UpdateStatusAsync} retourne \texttt{null} si la candidature est introuvable.
+        \item \texttt{DeleteAsync} retourne \texttt{false} si la candidature est introuvable.
+        \item \texttt{GetStatisticsAsync} calcule correctement les compteurs par statut.
+    \end{itemize}
+
+    \item \textbf{CreateApplicationValidatorTests (6 tests) :} Teste les règles de validation FluentValidation.
+    \begin{itemize}
+        \item Passage réussi lorsque tous les champs sont valides.
+        \item Échec si \texttt{CandidateId} est vide (GUID vide).
+        \item Échec si \texttt{CompanyName} est vide ou dépasse 200 caractères.
+        \item Échec si \texttt{PositionTitle} est vide ou dépasse 150 caractères.
+    \end{itemize}
+\end{itemize}
+
+La fixture \texttt{DatabaseFixture.cs} utilise \textbf{Testcontainers.PostgreSql} pour démarrer une vraie base de données PostgreSQL dans un conteneur Docker lors des tests nécessitant de vraies interactions avec la base.
+
+\begin{figure}[H]
+\centering
+% \includegraphics[width=\textwidth]{images/xunit-results.png}
+\caption{Résultats de l'exécution des tests xUnit — ApplicationService}
+\label{fig:xunit-results}
+\end{figure}
+
+\subsubsection{Tests unitaires du frontend Angular — Vitest}
+\label{subsubsec:realisation:tests-vitest}
+
+Le frontend Angular comprend \textbf{5 fichiers de spécifications Vitest} couvrant les composants principaux :
+
+\begin{itemize}
+    \item \texttt{app.spec.ts} — Initialisation du composant racine.
+    \item \texttt{header.component.spec.ts} — Composant d'en-tête.
+    \item \texttt{sidebar.component.spec.ts} — Composant de barre latérale.
+    \item \texttt{home.component.spec.ts} — Page d'accueil.
+    \item \texttt{login.component.spec.ts} — Page de connexion.
+\end{itemize}
+
+Ces tests vérifient la création et l'initialisation correcte de chaque composant Angular de manière isolée.
+
+% -------------------------------------------------------
+\subsection{Tests d'Intégration}
+\label{subsec:realisation:tests-integration}
+
+Les tests d'intégration vérifient la coopération entre plusieurs composants réels : couche HTTP, logique métier, base de données et messagerie.
+
+\subsubsection{Tests d'intégration des agents IA}
+\label{subsubsec:realisation:integration-agents}
+
+Le module \texttt{test\_integration.py} de l'agent de contact utilise le client ASGI de \textbf{FastAPI} (via \texttt{httpx.AsyncClient}) pour tester l'application complète sans démarrer de serveur HTTP réel :
+
+\begin{itemize}
+    \item \textbf{TestDeliverEndpoint (4 tests) :} L'agent est mocké, mais la couche de routing FastAPI, la validation Pydantic et la gestion des codes HTTP sont entièrement réelles.
+    \begin{itemize}
+        \item Succès de la livraison — réponse 200 avec \texttt{delivery\_id} et \texttt{sent\_at}.
+        \item Échec de la livraison — réponse 200 avec \texttt{success: false}.
+        \item Erreur de validation — réponse 422 sur payload invalide.
+        \item Endpoint \texttt{/health} — réponse 200 avec statut \texttt{ok}.
+    \end{itemize}
+    \item \textbf{TestLiveEmail (1 test optionnel) :} Envoi réel d'un email en appelant le vrai LLM Groq et le vrai serveur SMTP, déclenché uniquement avec \texttt{pytest --run-live}.
+\end{itemize}
+
+\subsubsection{Tests d'intégration du backend .NET}
+\label{subsubsec:realisation:integration-dotnet}
+
+Le projet \texttt{ApplicationService.Tests} utilise \textbf{Testcontainers.PostgreSql} pour les scénarios nécessitant une vraie base de données. La classe \texttt{DatabaseFixture} démarre un conteneur PostgreSQL éphémère en début de suite de tests et le détruit à la fin. Cette approche garantit que les tests ne se contentent pas de mocker les requêtes mais valident réellement le comportement de \textbf{Entity Framework Core} face à PostgreSQL — migrations incluses.
+
+\begin{figure}[H]
+\centering
+% \includegraphics[width=\textwidth]{images/integration-test-results.png}
+\caption{Résultats des tests d'intégration — Testcontainers + FastAPI TestClient}
+\label{fig:integration-results}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Tests End-to-End (E2E) — Cypress}
+\label{subsec:realisation:tests-e2e}
+
+Les tests E2E simulent des scénarios utilisateurs complets à travers l'interface Angular, en interagissant avec la vraie API déployée sur une base de données de test dédiée.
+
+\subsubsection{Infrastructure et configuration}
+\label{subsubsec:realisation:e2e-infra}
+
+L'outillage E2E repose sur \textbf{Cypress} avec les éléments suivants :
+
+\begin{itemize}
+    \item \textbf{Fixtures JSON :} \texttt{users.json}, \texttt{application.json}, \texttt{career.json}, \texttt{profile.json}, \texttt{reminder.json} — fournissent des données de test déterministes pour chaque scénario.
+    \item \textbf{Commandes personnalisées} (\texttt{support/commands.ts}) :
+    \begin{itemize}
+        \item \texttt{cy.login(email, password)} — envoie \texttt{POST /api/auth/login} et valide la session.
+        \item \texttt{cy.loginAsUser()} — utilise les identifiants de \texttt{users.json} pour se connecter rapidement avant chaque test.
+        \item \texttt{cy.disableNativeValidation()} — désactive la validation HTML5 native pour tester la validation applicative.
+    \end{itemize}
+    \item \textbf{Interception réseau :} \texttt{cy.intercept()} alias les requêtes HTTP (\texttt{@loginReq}, \texttt{@createApp}, etc.) et \texttt{cy.wait()} valide les codes de réponse et les corps renvoyés par l'API.
+\end{itemize}
+
+\subsubsection{Couverture des scénarios}
+\label{subsubsec:realisation:e2e-scenarios}
+
+La suite E2E totalise \textbf{24 tests} répartis en 6 fichiers de spécifications :
+
+\begin{table}[H]
+\centering
+\caption{Fichiers de spécifications Cypress et couverture}
+\label{tab:cypress-specs}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Fichier} & \textbf{Tests} & \textbf{Parcours couverts} \\
+\midrule
+smoke.cy.ts & 2 & Chargement des pages \texttt{/} et \texttt{/login}, présence du branding \\
+auth.cy.ts & 10 & Rendu de la page de connexion, bascule inscription/connexion, validation côté client, inscription (idempotente : 200 ou 409), connexion avec mauvais identifiants (401), connexion réussie et redirection vers \texttt{/applications} \\
+application-create.cy.ts & 2 & Validation des champs obligatoires, création d'une candidature et navigation vers la page de détail \\
+reminder-create.cy.ts & 3 & Ouverture du modal rappel, validation des champs manquants, création d'un rappel et affichage du bandeau de succès \\
+my-career.cy.ts & 4 & Ajout d'une entrée par type : expériences, projets, compétences, formations \\
+personal-info.cy.ts & 3 & Chargement de la page profil, mise à jour des informations et bandeau de succès, ajout d'un titre professionnel \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/e2e_interface.png}
+\caption{Interface Cypress — Exécution de la suite E2E avec 24 tests passants}
+\label{fig:cypress-runner}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/auth-e2e.png}
+\caption{Détail du fichier \texttt{auth.cy.ts} — Scénarios d'authentification}
+\label{fig:cypress-auth}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Tests de Performance — k6}
+\label{subsec:realisation:tests-performance}
+
+Les tests de performance mesurent le comportement du système sous charge pour détecter les goulots d'étranglement avant la mise en production.
+
+\subsubsection{Infrastructure et configuration}
+\label{subsubsec:realisation:perf-infra}
+
+L'outillage repose sur \textbf{k6} (Grafana) avec une architecture modulaire :
+
+\begin{itemize}
+    \item \textbf{config/env.js :} Centralise l'URL de base (\texttt{http://localhost:8080} par défaut, configurable via \texttt{BASE\_URL}), la carte des endpoints et les identifiants de l'utilisateur seedé (\texttt{testuser/test1234}).
+    \item \textbf{lib/helpers.js :} Fournit \texttt{buildUser(runId, vu, iter)} pour générer des emails uniques par VU et itération (\texttt{perf\_\{timestamp\}\_v\{vu\}\_i\{iter\}@cvgen-loadtest.local}), ainsi que les en-têtes JSON communs.
+    \item \textbf{lib/auth.js :} Fournit \texttt{loginAs(email, password)} qui effectue \texttt{POST /api/auth/login} et maintient le cookie de session par VU pour les scénarios authentifiés.
+\end{itemize}
+
+L'infrastructure de test utilise une \textbf{base de données de test dédiée} et un \textbf{realm Keycloak isolé} pour ne pas polluer les données de développement.
+
+\subsubsection{Scénarios de charge}
+\label{subsubsec:realisation:perf-scenarios}
+
+Six scénarios couvrent les chemins critiques de l'application :
+
+\begin{table}[H]
+\centering
+\caption{Scénarios k6 et seuils de performance}
+\label{tab:k6-scenarios}
+\begin{tabularx}{\textwidth}{lllX}
+\toprule
+\textbf{Scénario} & \textbf{VUs} & \textbf{Iter.} & \textbf{Seuils (p95)} \\
+\midrule
+register.js & 10 & 10 & \texttt{p95 < 10000ms}, taux succès > 90\% \\
+login.js & 10 & 50 & \texttt{p95 < 5000ms}, taux succès > 90\% \\
+me.js & 10 & 20 & \texttt{p95 < 500ms}, taux succès > 95\% \\
+applications-list.js & 10 & 10 & \texttt{p95 < 1500ms}, taux succès > 95\% \\
+cvprofiles-create.js & 10 & 5 & \texttt{p95 < 2000ms}, taux succès > 90\% \\
+journey.js & 10 & 1 & taux succès > 90\% (par étape) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Les scénarios ont été conçus pour tester des aspects différents :
+
+\begin{itemize}
+    \item \textbf{register.js :} Mesure la latence de création d'utilisateur dans Keycloak et la publication de l'événement Kafka vers le User Service.
+    \item \textbf{login.js :} Mesure le débit du token endpoint Keycloak sous charge concurrente (50 connexions partagées entre 10 VUs).
+    \item \textbf{me.js :} Mesure la performance du chemin de validation de cookie sans appel en amont (seuil le plus strict : p95 < 500ms).
+    \item \textbf{applications-list.js :} Mesure la planification de requêtes SQL complexes avec combinaisons aléatoires de filtres (\texttt{statuses}, \texttt{search}, \texttt{appliedFrom}, \texttt{appliedTo}) — permet de détecter les index manquants.
+    \item \textbf{cvprofiles-create.js :} Mesure la latence d'écriture PostgreSQL combinée à la publication Kafka — permet d'isoler le goulot d'étranglement par comparaison avec \texttt{register.js}.
+    \item \textbf{journey.js :} Exécute le parcours utilisateur complet (inscription → connexion → validation de session → création de profil CV → liste de candidatures) en parallèle sur 10 VUs. Ce scénario révèle les problèmes d'intégration invisibles aux tests d'endpoint unique : lag du consommateur Kafka, problèmes de cookie \texttt{SameSite}, et désynchronisation d'état entre services.
+\end{itemize}
+
+Chaque scénario définit des \textbf{métriques personnalisées k6} (\texttt{Rate} et \texttt{Counter}) pour le taux de succès et les erreurs par catégorie (4xx, 5xx, conflits), permettant une analyse fine des résultats.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/tests-performance-scenarios-register.js.png}
+\caption{Sortie k6 — Scénario \texttt{register.js} : création d'utilisateurs sous charge (10 VUs)}
+\label{fig:k6-register}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/tests-performance-scenarios-login.png}
+\caption{Sortie k6 — Scénario \texttt{login.js} avec métriques et seuils}
+\label{fig:k6-login}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/tests-performance-scenarios-me.png}
+\caption{Sortie k6 — Scénario \texttt{me.js} : validation du cookie de session (p95 < 500ms)}
+\label{fig:k6-me}
+\end{figure}
+
+% -------------------------------------------------------
 \section{Conclusion}
 \label{sec:realisation:conclusion}
 

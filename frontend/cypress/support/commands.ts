@@ -1,43 +1,64 @@
-// ***********************************************
-// This example namespace declaration will help
-// with Intellisense and code completion in your
-// IDE or Text Editor.
-// ***********************************************
-// declare namespace Cypress {
-//   interface Chainable<Subject = any> {
-//     customCommand(param: any): typeof customCommand;
-//   }
-// }
-//
-// function customCommand(param: any): void {
-//   console.warn(param);
-// }
-//
-// NOTE: You can use it like so:
-// Cypress.Commands.add('customCommand', customCommand);
-//
-// ***********************************************
-// This example commands.js shows you how to
-// create various custom commands and overwrite
-// existing commands.
-//
-// For more comprehensive examples of custom
-// commands please read more here:
-// https://on.cypress.io/custom-commands
-// ***********************************************
-//
-//
-// -- This is a parent command --
-// Cypress.Commands.add("login", (email, password) => { ... })
-//
-//
-// -- This is a child command --
-// Cypress.Commands.add("drag", { prevSubject: 'element'}, (subject, options) => { ... })
-//
-//
-// -- This is a dual command --
-// Cypress.Commands.add("dismiss", { prevSubject: 'optional'}, (subject, options) => { ... })
-//
-//
-// -- This will overwrite an existing command --
-// Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
+/// <reference types="cypress" />
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Log in via POST /api/auth/login. Sets the auth cookie on the test browser.
+       * Use in beforeEach for any spec that needs an authenticated session.
+       */
+      login(email: string, password: string): Chainable<void>;
+
+      /**
+       * Reads credentials from cypress/fixtures/users.json (login user) and signs in.
+       */
+      loginAsUser(): Chainable<void>;
+
+      /**
+       * Disables native HTML5 validation on every form on the current page so that
+       * the app's own validation logic is what we test.
+       */
+      disableNativeValidation(): Chainable<void>;
+    }
+  }
+}
+
+Cypress.Commands.add('login', (email: string, password: string) => {
+  cy.session(
+    [email, password],
+    () => {
+      cy.request({
+        method: 'POST',
+        url: '/api/auth/login',
+        body: { email, password },
+        failOnStatusCode: false,
+      }).then((res) => {
+        expect(res.status, `login(${email}) status`).to.eq(200);
+        expect(res.body?.success, `login(${email}) success flag`).to.eq(true);
+      });
+    },
+    {
+      validate() {
+        cy.request({
+          url: '/api/auth/me',
+          failOnStatusCode: false,
+        }).its('status').should('eq', 200);
+      },
+    }
+  );
+});
+
+Cypress.Commands.add('loginAsUser', () => {
+  cy.fixture('users').then((users) => {
+    cy.login(users.login.email, users.login.password);
+  });
+});
+
+Cypress.Commands.add('disableNativeValidation', () => {
+  cy.get('form').each(($form) => {
+    $form.attr('novalidate', '');
+  });
+});
+
+export {};

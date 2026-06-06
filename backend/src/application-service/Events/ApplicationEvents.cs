@@ -18,6 +18,9 @@ public record ApplicationCreatedEvent : ApplicationEvent
 public record ApplicationStatusUpdatedEvent : ApplicationEvent
 {
     public Guid ApplicationId { get; init; }
+    public Guid CandidateId { get; init; }
+    public string CompanyName { get; init; } = "";
+    public string PositionTitle { get; init; } = "";
     public string OldStatus { get; init; } = "";
     public string NewStatus { get; init; } = "";
     public string? ChangedBy { get; init; }

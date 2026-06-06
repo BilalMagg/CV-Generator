@@ -1,0 +1,18 @@
+{
+  "firstName": "Mohssine",
+  "lastName": "Engu",
+  "headline": "Senior Full-Stack Engineer | 5+ years in SaaS",
+  "phoneNumber": "+212 600-000000",
+  "birthDate": "1999-04-15",
+  "city": "Casablanca",
+  "country": "Morocco",
+  "authorizedCountry": "Morocco",
+  "noticePeriod": "1 month",
+  "desiredJobTitle": "Staff Software Engineer",
+  "desiredSalaryMin": 80000,
+  "desiredSalaryMax": 130000,
+  "bio": "Engineer focused on building reliable, scalable systems. Comfortable across the stack — Angular, .NET, PostgreSQL, Kafka.",
+  "employmentTypeToToggle": "Full-time",
+  "remotePreference": "Remote",
+  "willingToRelocate": "Yes"
+}

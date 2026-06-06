@@ -47,6 +47,11 @@ node_modules/
 # Coverage
 coverage/
 
+# Local dev/test launcher runtime state (dev.ps1, dev.test.ps1)
+.dev.pids
+.dev.test.pids
+.test-mode
+
 
 *__pycache__/
 *build/

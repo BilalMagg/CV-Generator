@@ -145,6 +145,9 @@ public class ApplicationServiceImpl : IApplicationService
         var evt = new ApplicationStatusUpdatedEvent
         {
             ApplicationId = app.Id,
+            CandidateId = app.CandidateId,
+            CompanyName = app.CompanyName,
+            PositionTitle = app.PositionTitle,
             OldStatus = oldStatus.ToString(),
             NewStatus = newStatus.ToString(),
             ChangedBy = userId,

@@ -93,10 +93,17 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
-    var pending = db.Database.GetPendingMigrations().ToList();
-    Log.Information("Pending migrations: {Count} → {Migrations}", pending.Count, pending);
-    db.Database.Migrate();
-    Log.Information("Database migration completed successfully.");
+    try
+    {
+        var pending = db.Database.GetPendingMigrations().ToList();
+        Log.Information("Pending migrations: {Count} → {Migrations}", pending.Count, pending);
+        db.Database.Migrate();
+        Log.Information("Database migration completed successfully.");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Migration failed — service will start, retry manually if schema is missing");
+    }
 }
 
 // ── Hangfire Dashboard + Recurring Jobs ───────────────────────────────────
