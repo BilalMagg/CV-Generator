@@ -10,6 +10,9 @@ using JobOfferService.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8086";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // 1. Database (Configured with pgvector via the DbContext)
 builder.Services.AddDbContext<JobOfferDbContext>(options =>
 {
@@ -44,6 +47,7 @@ builder.Services.AddSignalR();
 
 // 8. Kafka background workers
 builder.Services.AddHostedService<CrawlSummaryConsumer>();
+builder.Services.AddHostedService<CrawlTimeoutService>();
 
 // 9. Auth (JWT from gateway/keycloak)
 builder.Services.AddAuthentication("Bearer")

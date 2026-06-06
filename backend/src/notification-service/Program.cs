@@ -1,8 +1,14 @@
+using CommonProtos.Application;
+using CommonProtos.User;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Application.Interfaces;
 using NotificationService.Application.Services;
+using NotificationService.Grpc;
+using NotificationService.Infrastructure.Auth;
+using NotificationService.Infrastructure.GrpcClients;
 using NotificationService.Infrastructure.Messaging;
 using NotificationService.Infrastructure.Persistence;
 using NotificationService.Jobs;
@@ -11,6 +17,9 @@ using Serilog;
 DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8087";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // ── Serilog ────────────────────────────────────────────────────────────────
 Log.Logger = new LoggerConfiguration()
@@ -25,14 +34,40 @@ builder.Services.AddDbContext<NotificationDbContext>(options =>
 
 // ── Core Services ──────────────────────────────────────────────────────────
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IAesEncryptionService, AesEncryptionService>();
+builder.Services.AddScoped<IGmailAuthService, GmailAuthService>();
+builder.Services.AddScoped<IGmailSendService, GmailSendService>();
 builder.Services.AddScoped<ITemplateRenderer, TemplateRenderer>();
 builder.Services.AddScoped<INotificationService, NotificationService.Application.Services.NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
+builder.Services.AddScoped<IContactService, ContactService>();
+builder.Services.AddScoped<EmailScheduleService>();
 builder.Services.AddScoped<ReminderJob>();
 builder.Services.AddScoped<UserReminderJob>();
+builder.Services.AddScoped<EmailScheduleJob>();
+
+// ── HttpClient ─────────────────────────────────────────────────────────────
+builder.Services.AddHttpClient();
+
+// ── Kafka Consumers (Background Services) ──────────────────────────────────
+// ── gRPC Clients ───────────────────────────────────────────────────────────
+var userServiceUrl = Environment.GetEnvironmentVariable("USER_SERVICE_GRPC_URL")
+    ?? builder.Configuration["GrpcClients:UserService"]
+    ?? "http://cv-user-service:18082";
+builder.Services.AddGrpcClient<UserServiceGrpc.UserServiceGrpcClient>(o =>
+    o.Address = new Uri(userServiceUrl));
+builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
+
+var appServiceUrl = Environment.GetEnvironmentVariable("APPLICATION_SERVICE_GRPC_URL")
+    ?? builder.Configuration["GrpcClients:ApplicationService"]
+    ?? "http://cv-application-service:18085";
+builder.Services.AddGrpcClient<ApplicationServiceGrpc.ApplicationServiceGrpcClient>(o =>
+    o.Address = new Uri(appServiceUrl));
+builder.Services.AddScoped<IApplicationGrpcClientService, ApplicationGrpcClientService>();
 
 // ── Kafka Consumer (Background Service) ────────────────────────────────────
 builder.Services.AddHostedService<KafkaConsumerService>();
+builder.Services.AddHostedService<EmailSendRequestedConsumer>();
 
 // ── Hangfire (Background Jobs) ─────────────────────────────────────────────
 builder.Services.AddHangfire(config =>
@@ -41,6 +76,11 @@ builder.Services.AddHangfire(config =>
         o.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"));
     }));
 builder.Services.AddHangfireServer();
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+builder.Services.AddAuthentication(XUserIdAuthenticationHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, XUserIdAuthenticationHandler>(XUserIdAuthenticationHandler.SchemeName, _ => { });
+builder.Services.AddAuthorization();
 
 // ── API ────────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
@@ -75,6 +115,15 @@ RecurringJob.AddOrUpdate<UserReminderJob>(
     job => job.ProcessAsync(),
     userReminderCron
 );
+
+RecurringJob.AddOrUpdate<EmailScheduleJob>(
+    "email-schedules",
+    job => job.ExecuteAsync(),
+    "*/5 * * * *"
+);
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {

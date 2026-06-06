@@ -17,5 +17,6 @@
     <Protobuf Include="content.proto" GrpcServices="Both" />
     <Protobuf Include="workflow.proto" GrpcServices="Both" />
     <Protobuf Include="cv.proto" GrpcServices="Both"/>
+    <Protobuf Include="application.proto" GrpcServices="Both"/>
   </ItemGroup>
 </Project>

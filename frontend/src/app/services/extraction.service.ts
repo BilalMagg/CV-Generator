@@ -43,8 +43,12 @@ export class ExtractionService {
   }
 
   async getHistory(agentId: string): Promise<ExtractionHistoryItem[]> {
-    const response = await this.http.get<ApiResponse<ExtractionHistoryItem[]>>('/api/workflows/job-extractions');
-    return response.data ?? [];
+    try {
+      const response = await this.http.get<ApiResponse<ExtractionHistoryItem[]>>('/api/workflows/job-extractions');
+      return response.data ?? [];
+    } catch {
+      return [];
+    }
   }
 
   async getConfig(agentId: string): Promise<AgentConfig> {

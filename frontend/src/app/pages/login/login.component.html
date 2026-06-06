@@ -6,8 +6,8 @@
       <form class="sign-in-form" (ngSubmit)="onSignIn()" #signInForm="ngForm">
         <h2>Sign in</h2>
 
-        @if (signInError) {
-          <div class="alert error">{{ signInError }}</div>
+        @if (signInError()) {
+          <div class="alert error">{{ signInError() }}</div>
         }
 
         <div class="input-field">
@@ -37,8 +37,8 @@
           />
         </div>
 
-        <button type="submit" class="btn btn-primary" [disabled]="signInLoading">
-          @if (signInLoading) {
+        <button type="submit" class="btn btn-primary" [disabled]="signInLoading()">
+          @if (signInLoading()) {
             <span class="spinner"></span> Signing in...
           } @else {
             Login
@@ -64,11 +64,11 @@
       <form class="sign-up-form" (ngSubmit)="onSignUp()" #signUpForm="ngForm">
         <h2>Sign Up</h2>
 
-        @if (signUpError) {
-          <div class="alert error">{{ signUpError }}</div>
+        @if (signUpError()) {
+          <div class="alert error">{{ signUpError() }}</div>
         }
-        @if (signUpSuccess) {
-          <div class="alert success">{{ signUpSuccess }}</div>
+        @if (signUpSuccess()) {
+          <div class="alert success">{{ signUpSuccess() }}</div>
         }
 
         <div class="input-field">
@@ -133,8 +133,8 @@
           />
         </div>
 
-        <button type="submit" class="btn btn-primary" [disabled]="signUpLoading">
-          @if (signUpLoading) {
+        <button type="submit" class="btn btn-primary" [disabled]="signUpLoading()">
+          @if (signUpLoading()) {
             <span class="spinner"></span> Creating account...
           } @else {
             Sign Up

@@ -4,8 +4,8 @@ namespace WorkflowService.AgentClients;
 
 public interface ISearchAgentClient
 {
-    Task<SearchOutput?> MatchAsync(SearchInput input);
-    Task<bool> CheckHealthAsync();
+    Task<SearchOutput?> MatchAsync(SearchInput input, CancellationToken cancellationToken = default);
+    Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default);
 }
 
 public class SearchAgentClient : ISearchAgentClient
@@ -17,18 +17,18 @@ public class SearchAgentClient : ISearchAgentClient
         _client = client;
     }
 
-    public async Task<SearchOutput?> MatchAsync(SearchInput input)
+    public async Task<SearchOutput?> MatchAsync(SearchInput input, CancellationToken cancellationToken = default)
     {
-        var response = await _client.PostAsJsonAsync("match", input);
+        var response = await _client.PostAsJsonAsync("match", input, cancellationToken: cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<SearchOutput>();
+        return await response.Content.ReadFromJsonAsync<SearchOutput>(cancellationToken: cancellationToken);
     }
 
-    public async Task<bool> CheckHealthAsync()
+    public async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await _client.GetAsync("health");
+            var response = await _client.GetAsync("health", cancellationToken);
             return response.IsSuccessStatusCode;
         }
         catch

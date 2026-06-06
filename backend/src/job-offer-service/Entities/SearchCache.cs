@@ -9,6 +9,8 @@ public class SearchCache
     [Key]
     public Guid SearchId { get; set; }
 
+    public Guid UserId { get; set; }
+
     [Required]
     [MaxLength(200)]
     public required string Keyword { get; set; }

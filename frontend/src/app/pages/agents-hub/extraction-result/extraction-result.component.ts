@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExtractionService } from '@app/services/extraction.service';
 import { ExtractorOutput } from '@app/models/extraction.types';
-import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, skip, takeUntil } from 'rxjs';
+import { extractError } from '@app/shared/error-utils';
 
 @Component({
   selector: 'app-extraction-result',
@@ -63,21 +63,11 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
     try {
       this.output = await this.extractionService.getExtraction(id);
     } catch (err) {
-      this.error = this.extractError(err);
+      this.error = extractError(err, 'Extraction failed');
     } finally {
       this.loading = false;
       this.cdr.detectChanges();
     }
-  }
-
-  private extractError(err: unknown): string {
-    if (err instanceof HttpErrorResponse) {
-      if (err.error?.message) return err.error.message;
-      if (err.status === 0) return 'Network error — check your connection';
-      if (err.status >= 500) return 'Server error — try again later';
-      return err.error?.message || err.message || 'Extraction failed';
-    }
-    return err instanceof Error ? err.message : 'Extraction failed';
   }
 
   get confidenceLabel(): string {

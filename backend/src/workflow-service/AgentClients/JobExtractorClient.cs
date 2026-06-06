@@ -5,9 +5,9 @@ namespace WorkflowService.AgentClients;
 
 public interface IJobExtractorClient
 {
-    Task<ExtractorOutput?> ExtractAsync(ExtractorInput input);
-    Task<ExtractionFullResult?> ExtractFullAsync(JobExtractionRequest request);
-    Task<bool> CheckHealthAsync();
+    Task<ExtractorOutput?> ExtractAsync(ExtractorInput input, CancellationToken cancellationToken = default);
+    Task<ExtractionFullResult?> ExtractFullAsync(JobExtractionRequest request, CancellationToken cancellationToken = default);
+    Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default);
 }
 
 public class JobExtractorClient : IJobExtractorClient
@@ -23,14 +23,14 @@ public class JobExtractorClient : IJobExtractorClient
         _client = client;
     }
 
-    public async Task<ExtractorOutput?> ExtractAsync(ExtractorInput input)
+    public async Task<ExtractorOutput?> ExtractAsync(ExtractorInput input, CancellationToken cancellationToken = default)
     {
-        var response = await _client.PostAsJsonAsync("extract", input);
+        var response = await _client.PostAsJsonAsync("extract", input, cancellationToken: cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<ExtractorOutput>();
+        return await response.Content.ReadFromJsonAsync<ExtractorOutput>(cancellationToken: cancellationToken);
     }
 
-    public async Task<ExtractionFullResult?> ExtractFullAsync(JobExtractionRequest request)
+    public async Task<ExtractionFullResult?> ExtractFullAsync(JobExtractionRequest request, CancellationToken cancellationToken = default)
     {
         var agentInput = new JobExtractorAgentRequest
         {
@@ -40,21 +40,21 @@ public class JobExtractorClient : IJobExtractorClient
             Language = request.Language,
         };
 
-        var response = await _client.PostAsJsonAsync("extract", agentInput);
+        var response = await _client.PostAsJsonAsync("extract", agentInput, cancellationToken: cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync();
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken: cancellationToken);
             throw new HttpRequestException(
                 $"Job extractor returned {(int)response.StatusCode}: {errorBody}");
         }
-        return await response.Content.ReadFromJsonAsync<ExtractionFullResult>(SnakeCaseOptions);
+        return await response.Content.ReadFromJsonAsync<ExtractionFullResult>(SnakeCaseOptions, cancellationToken: cancellationToken);
     }
 
-    public async Task<bool> CheckHealthAsync()
+    public async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await _client.GetAsync("health");
+            var response = await _client.GetAsync("health", cancellationToken);
             return response.IsSuccessStatusCode;
         }
         catch

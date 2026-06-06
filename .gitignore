@@ -61,6 +61,15 @@ coverage/
 terraform.tfstate*
 venv/
 
+# cloud deployment (infrastructure/cloud) — secrets, tfvars, and state must never be committed
+terraform.tfvars
+*.tfvars
+*.tfstate*
+infrastructure/cloud/ansible/group_vars/secrets.yml
+infrastructure/cloud/ansible/group_vars/all.generated.yml
+
 cv-generator.sln
 
 *.lscache
+
+.claude/

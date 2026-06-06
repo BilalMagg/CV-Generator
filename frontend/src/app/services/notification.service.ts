@@ -12,18 +12,17 @@ import { ApiResponse } from '../models/application.model';
 export class NotificationService {
   private readonly http = inject(HttpService);
 
-  getPreferences(userId: string): Promise<ApiResponse<NotificationPreference>> {
+  getPreferences(): Promise<ApiResponse<NotificationPreference>> {
     return this.http.get<ApiResponse<NotificationPreference>>(
-      `/api/notifications/${userId}/preferences`,
+      '/api/notifications/preferences',
     );
   }
 
   updatePreferences(
-    userId: string,
     dto: UpdateNotificationPreferenceDto,
   ): Promise<ApiResponse<NotificationPreference>> {
     return this.http.put<ApiResponse<NotificationPreference>>(
-      `/api/notifications/${userId}/preferences`,
+      '/api/notifications/preferences',
       dto,
     );
   }

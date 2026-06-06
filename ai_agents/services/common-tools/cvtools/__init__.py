@@ -23,6 +23,7 @@ from cvtools.core import (
     get_user_skills,
     get_workflow,
     get_llm,
+    list_providers,
 )
 from cvtools.core.tools import (
     html_to_pdf,
@@ -31,7 +32,10 @@ from cvtools.core.tools import (
     upload_pdf,
     download_pdf,
     get_template_object,
+    ensure_bucket,
     ensure_templates_bucket,
+    init_minio_storage,
+    DEFAULT_BUCKET,
     TEMPLATES_BUCKET,
 )
 
@@ -60,6 +64,7 @@ __all__ = [
     "get_user_skills",
     "get_workflow",
     "get_llm",
+    "list_providers",
     # tools
     "html_to_pdf",
     "latex_to_pdf",
@@ -67,6 +72,9 @@ __all__ = [
     "upload_pdf",
     "download_pdf",
     "get_template_object",
+    "ensure_bucket",
     "ensure_templates_bucket",
+    "init_minio_storage",
+    "DEFAULT_BUCKET",
     "TEMPLATES_BUCKET",
 ]

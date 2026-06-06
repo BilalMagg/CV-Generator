@@ -24,8 +24,8 @@ public class KafkaPublisher : IKafkaPublisher, IDisposable
         {
             BootstrapServers = bootstrapServers,
             Acks = Acks.Leader,
-            MessageTimeoutMs = 5000,
-            RequestTimeoutMs = 5000,
+            MessageTimeoutMs = 30000,
+            RequestTimeoutMs = 30000,
             RetryBackoffMs = 100,
         };
 
@@ -39,7 +39,7 @@ public class KafkaPublisher : IKafkaPublisher, IDisposable
             var message = new Message<string, string>
             {
                 Key = GetKey(evt),
-                Value = JsonSerializer.Serialize(evt),
+                Value = JsonSerializer.Serialize(evt, evt.GetType()),
                 Headers = new Headers
                 {
                     { "event-type", System.Text.Encoding.UTF8.GetBytes(typeof(T).Name) },

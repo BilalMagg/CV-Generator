@@ -1,12 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using WorkflowService;
+using WorkflowService.AgentClients;
+using WorkflowService.Entity;
+using WorkflowService.Services;
+
+Console.WriteLine("[CV_GEN_2026-06-03] Starting WorkflowService with CvGenerationBackgroundService registration...");
 
 var builder = WebApplication.CreateBuilder(args);
 
+var httpPort = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "8084");
+var grpcPort = int.Parse(Environment.GetEnvironmentVariable("GRPC_PORT") ?? "18084");
+
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(8084, o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1);
-    options.ListenAnyIP(18084, o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2);
+    options.ListenAnyIP(httpPort, o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1);
+    options.ListenAnyIP(grpcPort, o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2);
 });
 
 builder.Services.AddDbContext<WorkflowDbContext>(options =>
@@ -18,34 +26,59 @@ builder.Services.AddDbContext<WorkflowDbContext>(options =>
 builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddGrpc();
 
-// Old untyped client & generic service
+// Old untyped client
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<WorkflowService.Services.WorkflowExecutionService>();
 
-// New Strongly-Typed Agent SDK Clients
-builder.Services.AddHttpClient<WorkflowService.AgentClients.IJobExtractorClient, WorkflowService.AgentClients.JobExtractorClient>(client =>
+// Background job queue for CV generation
+builder.Services.AddSingleton<CvGenerationBackgroundService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CvGenerationBackgroundService>());
+builder.Services.AddScoped<WorkflowExecutionService>();
+
+// Kafka consumer for incremental vector sync from user-content-service events
+builder.Services.AddHostedService<VectorSyncKafkaConsumer>();
+
+// New Strongly-Typed Agent SDK Clients — URLs from env vars
+var jobExtractorUrl = Environment.GetEnvironmentVariable("JOB_EXTRACTOR_URL") ?? "http://cv-job-extractor:8001/api/v1/";
+var searchAgentUrl = Environment.GetEnvironmentVariable("SEARCH_AGENT_URL") ?? "http://cv-search-agent:8002/api/v1/";
+var templateAgentUrl = Environment.GetEnvironmentVariable("TEMPLATE_AGENT_URL") ?? "http://cv-template-agent:8003/api/v1/";
+var cvOptimizerUrl = Environment.GetEnvironmentVariable("CV_OPTIMIZER_URL") ?? "http://cv-optimizer:8004/api/v1/";
+var contactAgentUrl = Environment.GetEnvironmentVariable("CONTACT_AGENT_URL") ?? "http://cv-contact-agent:8005/api/v1/";
+var jobCrawlerUrl = Environment.GetEnvironmentVariable("JOB_CRAWLER_URL") ?? "http://cv-job-crawler:8006/api/v1/";
+var jobOfferServiceUrl = Environment.GetEnvironmentVariable("JOB_OFFER_SERVICE_URL") ?? "http://cv-job-offer-service:8086";
+
+builder.Services.AddHttpClient<IJobExtractorClient, JobExtractorClient>(client =>
 {
-    client.BaseAddress = new Uri("http://cv-job-extractor:8001/api/v1/");
+    client.BaseAddress = new Uri(jobExtractorUrl);
 });
 
-builder.Services.AddHttpClient<WorkflowService.AgentClients.ISearchAgentClient, WorkflowService.AgentClients.SearchAgentClient>(client =>
+builder.Services.AddHttpClient<ISearchAgentClient, SearchAgentClient>(client =>
 {
-    client.BaseAddress = new Uri("http://cv-search-agent:8002/api/v1/");
+    client.BaseAddress = new Uri(searchAgentUrl);
 });
 
-builder.Services.AddHttpClient<WorkflowService.AgentClients.ITemplateAgentClient, WorkflowService.AgentClients.TemplateAgentClient>(client =>
+builder.Services.AddHttpClient<ITemplateAgentClient, TemplateAgentClient>(client =>
 {
-    client.BaseAddress = new Uri("http://cv-template-agent:8003/api/v1/");
+    client.BaseAddress = new Uri(templateAgentUrl);
 });
 
-builder.Services.AddHttpClient<WorkflowService.AgentClients.ICvOptimizerClient, WorkflowService.AgentClients.CvOptimizerClient>(client =>
+builder.Services.AddHttpClient<ICvOptimizerClient, CvOptimizerClient>(client =>
 {
-    client.BaseAddress = new Uri("http://cv-optimizer:8004/api/v1/");
+    client.BaseAddress = new Uri(cvOptimizerUrl);
 });
 
-builder.Services.AddHttpClient<WorkflowService.AgentClients.IContactAgentClient, WorkflowService.AgentClients.ContactAgentClient>(client =>
+builder.Services.AddHttpClient<IContactAgentClient, ContactAgentClient>(client =>
 {
-    client.BaseAddress = new Uri("http://cv-contact-agent:8005/api/v1/");
+    client.BaseAddress = new Uri(contactAgentUrl);
+});
+
+builder.Services.AddHttpClient<WorkflowService.AgentClients.IJobCrawlerClient, WorkflowService.AgentClients.JobCrawlerClient>(client =>
+{
+    client.BaseAddress = new Uri(jobCrawlerUrl);
+});
+
+builder.Services.AddHttpClient<IJobOfferServiceClient, JobOfferServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(jobOfferServiceUrl);
 });
 
 builder.Services.AddControllers();
@@ -68,19 +101,26 @@ using (var scope = app.Services.CreateScope())
             await dbContext.Database.MigrateAsync();
         }
 
-        var seeded = await dbContext.Agents.AnyAsync();
-        if (!seeded)
+        var agentSeeds = new List<WorkflowService.Entity.AgentEntity>
         {
-            logger.LogInformation("Seeding agent definitions...");
-            dbContext.Agents.AddRange(
-                new WorkflowService.Entity.AgentEntity { AgentId = "job-extractor",  Name = "Job Extractor",  Role = "Job Description Parser",              BackgroundGradient = "linear-gradient(145deg, #0c2340 0%, #1a3a5c 50%, #2d6a9f 100%)", SortOrder = 1 },
-                new WorkflowService.Entity.AgentEntity { AgentId = "search-agent",   Name = "Search Agent",   Role = "Smart Application Search",           BackgroundGradient = "linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)", SortOrder = 2 },
-                new WorkflowService.Entity.AgentEntity { AgentId = "template-agent", Name = "Template Agent", Role = "CV & Resume Generator",              BackgroundGradient = "linear-gradient(145deg, #1b1b2f 0%, #2d1b4e 50%, #4a1942 100%)", SortOrder = 3 },
-                new WorkflowService.Entity.AgentEntity { AgentId = "cv-optimizer",   Name = "CV Optimizer",   Role = "Tailored CV Enhancer",               BackgroundGradient = "linear-gradient(145deg, #0d2818 0%, #1a3c2a 50%, #2d6b4a 100%)", SortOrder = 4 },
-                new WorkflowService.Entity.AgentEntity { AgentId = "contact-agent",  Name = "Contact Agent",  Role = "Application Delivery",               BackgroundGradient = "linear-gradient(145deg, #2d0a28 0%, #4a154b 50%, #7b2d6b 100%)", SortOrder = 5 }
-            );
-            await dbContext.SaveChangesAsync();
+            new WorkflowService.Entity.AgentEntity { AgentId = "job-extractor",  Name = "Job Extractor",  Role = "Job Description Parser",              BackgroundGradient = "linear-gradient(145deg, #0c2340 0%, #1a3a5c 50%, #2d6a9f 100%)", SortOrder = 1 },
+            new WorkflowService.Entity.AgentEntity { AgentId = "search-agent",   Name = "Search Agent",   Role = "Smart Application Search",           BackgroundGradient = "linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)", SortOrder = 2 },
+            new WorkflowService.Entity.AgentEntity { AgentId = "template-agent", Name = "Template Agent", Role = "CV & Resume Generator",              BackgroundGradient = "linear-gradient(145deg, #1b1b2f 0%, #2d1b4e 50%, #4a1942 100%)", SortOrder = 3 },
+            new WorkflowService.Entity.AgentEntity { AgentId = "cv-optimizer",   Name = "CV Optimizer",   Role = "Tailored CV Enhancer",               BackgroundGradient = "linear-gradient(145deg, #0d2818 0%, #1a3c2a 50%, #2d6b4a 100%)", SortOrder = 4 },
+            new WorkflowService.Entity.AgentEntity { AgentId = "contact-agent",  Name = "Contact Agent",  Role = "Application Delivery",               BackgroundGradient = "linear-gradient(145deg, #2d0a28 0%, #4a154b 50%, #7b2d6b 100%)", SortOrder = 5 },
+            new WorkflowService.Entity.AgentEntity { AgentId = "job-crawler",    Name = "Job Crawler",    Role = "Live Job Scraper",                   BackgroundGradient = "linear-gradient(145deg, #1a0a0a 0%, #3d1515 50%, #8b2020 100%)", SortOrder = 6 },
+        };
+
+        foreach (var agent in agentSeeds)
+        {
+            var exists = await dbContext.Agents.AnyAsync(a => a.AgentId == agent.AgentId);
+            if (!exists)
+            {
+                logger.LogInformation("Seeding agent: {AgentId}", agent.AgentId);
+                dbContext.Agents.Add(agent);
+            }
         }
+        await dbContext.SaveChangesAsync();
     }
     catch (Exception ex)
     {

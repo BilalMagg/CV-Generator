@@ -29,6 +29,8 @@ export class HeaderComponent {
     '/my-career':              'My Career',
     '/agents-hub':             'Agents Hub',
     '/agents-hub/guide':       'Agent Guide',
+    '/agents-hub/job-crawler': 'Job Crawler',
+    '/job-offers':             'Job Offers',
     '/settings':               'Settings',
   };
 

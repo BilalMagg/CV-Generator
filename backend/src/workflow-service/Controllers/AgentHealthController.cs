@@ -15,6 +15,7 @@ public class AgentHealthController : ControllerBase
     private readonly ITemplateAgentClient _templateAgent;
     private readonly ICvOptimizerClient _cvOptimizer;
     private readonly IContactAgentClient _contactAgent;
+    private readonly IJobCrawlerClient _jobCrawler;
     private readonly ILogger<AgentHealthController> _logger;
 
     public AgentHealthController(
@@ -23,6 +24,7 @@ public class AgentHealthController : ControllerBase
         ITemplateAgentClient templateAgent,
         ICvOptimizerClient cvOptimizer,
         IContactAgentClient contactAgent,
+        IJobCrawlerClient jobCrawler,
         ILogger<AgentHealthController> logger)
     {
         _jobExtractor = jobExtractor;
@@ -30,6 +32,7 @@ public class AgentHealthController : ControllerBase
         _templateAgent = templateAgent;
         _cvOptimizer = cvOptimizer;
         _contactAgent = contactAgent;
+        _jobCrawler = jobCrawler;
         _logger = logger;
     }
 
@@ -43,6 +46,7 @@ public class AgentHealthController : ControllerBase
             ["templateAgent"] = () => CheckAgentHealthAsync("Template Agent", _templateAgent.CheckHealthAsync),
             ["cvOptimizer"]   = () => CheckAgentHealthAsync("CV Optimizer", _cvOptimizer.CheckHealthAsync),
             ["contactAgent"]  = () => CheckAgentHealthAsync("Contact Agent", _contactAgent.CheckHealthAsync),
+            ["jobCrawler"]    = () => CheckAgentHealthAsync("Job Crawler", _jobCrawler.CheckHealthAsync),
         };
 
         var tasks = healthTasks.ToDictionary(kv => kv.Key, kv => kv.Value());
@@ -52,12 +56,12 @@ public class AgentHealthController : ControllerBase
         return Ok(ApiResponse<Dictionary<string, AgentHealthStatus>>.Ok(results));
     }
 
-    private async Task<AgentHealthStatus> CheckAgentHealthAsync(string agentName, Func<Task<bool>> healthCheck)
+    private async Task<AgentHealthStatus> CheckAgentHealthAsync(string agentName, Func<CancellationToken, Task<bool>> healthCheck)
     {
         var sw = Stopwatch.StartNew();
         try
         {
-            var healthy = await healthCheck();
+            var healthy = await healthCheck(CancellationToken.None);
             sw.Stop();
             return new AgentHealthStatus
             {

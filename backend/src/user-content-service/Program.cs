@@ -5,10 +5,13 @@ using UserContentService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var httpPort = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "8083");
+var grpcPort = int.Parse(Environment.GetEnvironmentVariable("GRPC_PORT") ?? "18083");
+
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(8083, o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1);
-    options.ListenAnyIP(18083, o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2);
+    options.ListenAnyIP(httpPort, o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1);
+    options.ListenAnyIP(grpcPort, o => o.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2);
 });
 
 builder.Services.AddDbContext<ContentDbContext>(options =>
