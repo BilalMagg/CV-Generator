@@ -53,6 +53,9 @@ locals {
         CV_SERVICE_PORT           = "8088"
         KAFKA_HOST                = "kafka"
         KAFKA_PORT                = "9092"
+        # Internal Kestrel bind port (GATEWAY_PORT is the public ALB port via the
+        # /cvgen/ext overlay, so the container must bind PORT, not GATEWAY_PORT).
+        PORT = "8080"
       }
       secrets = {
         # external_host overlay (ALB DNS / public ports) — set by Ansible

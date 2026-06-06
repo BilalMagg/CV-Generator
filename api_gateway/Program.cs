@@ -27,10 +27,14 @@ var keycloakClientId = Env("KEYCLOAK_CLIENT_ID", "cv-gateway");
 var keycloakClientSecret = Env("KEYCLOAK_CLIENT_SECRET", "change-me-in-production");
 
 var gatewayHost = Env("GATEWAY_HOST", "localhost");
-var gatewayPort = Env("GATEWAY_PORT", "8080");
+var gatewayPort = Env("GATEWAY_PORT", "8080");           // public-facing port (used for gatewayUrl below)
 var gatewayUrl = $"http://{gatewayHost}:{gatewayPort}";
 
-builder.WebHost.UseUrls($"http://0.0.0.0:{gatewayPort}");
+// Internal Kestrel bind port. Kept separate from GATEWAY_PORT because behind the
+// ALB the latter is the *public* port (80), while the container must listen on the
+// container/target-group port (8080). Defaults to 8080 so local/compose is unaffected.
+var listenPort = Env("PORT", "8080");
+builder.WebHost.UseUrls($"http://0.0.0.0:{listenPort}");
 
 var frontendHost = Env("FRONTEND_HOST", "localhost");
 var frontendPort = Env("FRONTEND_PORT", "4200");

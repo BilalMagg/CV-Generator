@@ -113,7 +113,7 @@ resource "aws_ecs_task_definition" "keycloak" {
       name      = "keycloak"
       image     = "${local.ecr_repo_urls["keycloak"]}:${var.image_tag}"
       essential = true
-      command   = ["start", "--optimized", "--import-realm"]
+      command   = ["start-dev","--import-realm"]
       portMappings = [
         { name = "keycloak", containerPort = 8080, protocol = "tcp" }
       ]
