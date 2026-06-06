@@ -12,8 +12,8 @@ using Pgvector;
 namespace job_offer_service.Migrations
 {
     [DbContext(typeof(JobOfferDbContext))]
-    [Migration("20260605110115_AddSearchJobMatches")]
-    partial class AddSearchJobMatches
+    [Migration("20260606092535_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
