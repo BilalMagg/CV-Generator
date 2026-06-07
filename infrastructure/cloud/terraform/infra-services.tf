@@ -67,6 +67,13 @@ resource "aws_ecs_service" "kafka" {
   task_definition = aws_ecs_task_definition.kafka.arn
   desired_count   = 1
 
+  # Pin to the EC2 capacity provider explicitly (avoids drift-driven replacement).
+  capacity_provider_strategy {
+    capacity_provider = aws_ecs_capacity_provider.main.name
+    weight            = 1
+    base              = 1
+  }
+
   network_configuration {
     subnets          = local.private_subnet_ids
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -113,7 +120,7 @@ resource "aws_ecs_task_definition" "keycloak" {
       name      = "keycloak"
       image     = "${local.ecr_repo_urls["keycloak"]}:${var.image_tag}"
       essential = true
-      command   = ["start-dev","--import-realm"]
+      command   = ["start-dev", "--import-realm"]
       portMappings = [
         { name = "keycloak", containerPort = 8080, protocol = "tcp" }
       ]
@@ -156,6 +163,13 @@ resource "aws_ecs_service" "keycloak" {
   cluster         = aws_ecs_cluster.main.arn
   task_definition = aws_ecs_task_definition.keycloak.arn
   desired_count   = 1
+
+  # Pin to the EC2 capacity provider explicitly (avoids drift-driven replacement).
+  capacity_provider_strategy {
+    capacity_provider = aws_ecs_capacity_provider.main.name
+    weight            = 1
+    base              = 1
+  }
 
   network_configuration {
     subnets          = local.private_subnet_ids

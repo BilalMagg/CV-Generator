@@ -54,6 +54,13 @@ resource "aws_ecs_service" "minio" {
   task_definition = aws_ecs_task_definition.minio.arn
   desired_count   = 1
 
+  # Pin to the EC2 capacity provider explicitly (avoids drift-driven replacement).
+  capacity_provider_strategy {
+    capacity_provider = aws_ecs_capacity_provider.main.name
+    weight            = 1
+    base              = 1
+  }
+
   network_configuration {
     subnets          = local.private_subnet_ids
     security_groups  = [aws_security_group.ecs_tasks.id]

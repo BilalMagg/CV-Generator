@@ -290,6 +290,7 @@ module "service" {
   alb_container_port   = each.value.alb_port
 
   cluster_arn                   = aws_ecs_cluster.main.arn
+  capacity_provider_name        = aws_ecs_capacity_provider.main.name
   execution_role_arn            = aws_iam_role.task_execution.arn
   task_role_arn                 = aws_iam_role.task.arn
   subnets                       = local.private_subnet_ids
