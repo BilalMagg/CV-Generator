@@ -80,7 +80,35 @@ La configuration des VMs après provisionnement est automatisée via \textbf{Ans
 \subsubsection{Infrastructure cloud}
 \label{subsubsec:realisation:cloud}
 
-\textit{Cette section sera complétée une fois l'infrastructure cloud finalisée.}
+Parallèlement à l'infrastructure locale, le projet \projectname{} a été conçu pour être déployé sur le cloud \textbf{AWS} via une approche \gls{iac} complète. L'infrastructure est intégralement définie dans le répertoire \texttt{infrastructure/cloud/} et se compose de deux couches : le provisionnement avec \textbf{Terraform} et le déploiement applicatif avec \textbf{Ansible}.
+
+\paragraph{Architecture réseau.} Un \gls{vpc} AWS héberge l'ensemble des ressources, avec deux sous-réseaux publics (ALB, NAT Gateway) et deux sous-réseaux privés (instances ECS, RDS). Une passerelle NAT unique assure la connectivité sortante des instances privées vers Internet (téléchargement d'images ECR, appels aux API LLM, envoi SMTP). Un \gls{alb} écoute sur le port 80 et achemine le trafic selon les règles suivantes :
+\begin{itemize}
+    \item \texttt{/api/*} $\rightarrow$ service \texttt{api-gateway} (port 8080) ;
+    \item \texttt{/realms/*}, \texttt{/resources/*}, \texttt{/admin/*} $\rightarrow$ service \texttt{keycloak} (port 8080) ;
+    \item tout autre chemin $\rightarrow$ service \texttt{frontend} (port 80).
+\end{itemize}
+
+\paragraph{Orchestration ECS.} Les services sont exécutés sur un cluster \textbf{Amazon ECS} avec le lancement \textbf{EC2} (type \texttt{m7i-flex.large}, 8~GiB), et non Fargate, conformément au cahier des charges. Un \gls{asg} couplé à un \texttt{capacity provider} gère le dimensionnement. Le mode réseau \texttt{awsvpc} est utilisé avec le \textbf{ENI trunking} activé, permettant à chaque instance d'accueillir une dizaine de tâches. La résolution de noms inter-services est assurée par \textbf{ECS Service Connect} via un espace de noms DNS privé (\texttt{cvgen.local}), remplaçant la résolution Docker Compose de l'environnement local.
+
+\paragraph{Registre d'images.} Chacun des 15 services applicatifs (frontend, passerelle API, 7 microservices .NET, 6 agents IA) ainsi que Keycloak possède son propre dépôt \textbf{ECR}. Les images sont construites et poussées par Ansible via la tâche \texttt{images}.
+
+\paragraph{Base de données.} Une instance unique \textbf{RDS PostgreSQL~16} (\texttt{db.t3.micro}) héberge l'ensemble des 8 bases de données (7 bases applicatives + \texttt{keycloak}). L'extension \textbf{pgvector} est activée sur les bases \texttt{workflow\_db} et \texttt{cv\_db} pour le \gls{rag}. La base est déployée en simple zone de disponibilité (single-AZ), sans accès public. Les 8 bases sont créées par Ansible via un tunnel SSM, car RDS ne crée qu'une seule base initiale au provisionnement.
+
+\paragraph{Gestion des secrets.} Les informations sensibles (mots de passe, clés API, chaînes de connexion) sont stockées dans \textbf{AWS SSM Parameter Store} et injectées dans les définitions de tâches ECS au lancement. Les variables dépendant du DNS public de l'ALB (adresses externes des services) sont d'abord créées par Terraform comme paramètres fictifs, puis écrasées par Ansible une fois le DNS connu.
+
+\paragraph{Services éphémères.} Par choix d'architecture (démo), \textbf{Kafka} (mode KRaft) et \textbf{MinIO} sont déployés avec un stockage éphémère — un redémarrage entraîne la perte des événements en transit et des CVs stockés, qui peuvent être régénérés facilement.
+
+\paragraph{Automatisation Ansible.} Le playbook Ansible (\texttt{playbook.yml}) orchestre le déploiement en plusieurs étapes :
+\begin{enumerate}
+    \item \textbf{images} : construction et push des images Docker vers ECR ;
+    \item \textbf{secrets} : écriture des paramètres SSM et mise à jour du DNS de l'ALB ;
+    \item \textbf{database} : création des 8 bases de données et activation de pgvector (via tunnel SSM vers RDS) ;
+    \item \textbf{deploy} : déploiement des définitions de tâches et services ECS ;
+    \item \textbf{smoketest} : validation du bon fonctionnement de chaque service.
+\end{enumerate}
+
+\paragraph{Taille \textit{free-plan}.} L'infrastructure est dimensionnée pour fonctionner dans les limites du programme \textbf{AWS Free Plan} (crédits 2025 jusqu'à 200~\$) : les instances EC2 (\texttt{m7i-flex.large}) et RDS (\texttt{db.t3.micro}) sont éligibles, de même que l'ALB. Les coûts récurrents les plus significatifs sont la passerelle NAT (environ 32~\$/mois) et les instances EC2, qui peuvent être arrêtées hors démonstration.
 
 \subsubsection{Environnement de déploiement}
 \label{subsubsec:realisation:deploiement}
@@ -379,10 +407,26 @@ Le cycle DevSecOps est appliqué à travers le pipeline CI/CD en six phases :
 
 \begin{enumerate}
     \item \textbf{Phase 1 - Static Checks :} Validation des fichiers Docker Compose, scan Trivy filesystem, analyse SonarCloud pour le frontend, le backend et les agents IA.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/sonar-job-sucess.png}
+\caption{Analyse SonarCloud réussie pour le projet}
+\label{fig:sonar-success}
+\end{figure}
+
     \item \textbf{Phase 2 - Component Tests :} Exécution des tests unitaires (.NET avec xUnit, Angular avec Vitest, Python avec pytest) et génération des rapports de couverture.
     \item \textbf{Phase 3 - Integration / E2E :} Tests d'intégration et tests E2E avec Cypress, suivis d'un scan de sécurité OWASP ZAP.
     \item \textbf{Phase 4 - Build \& Scan :} Construction des images Docker multi-stage, suivie d'un scan Trivy des images.
     \item \textbf{Phase 5 - Registry Push :} Publication des images validées vers GitHub Container Registry et DockerHub.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/services-dockerhub-after-pipeline-successed.png}
+\caption{Images des services publiées sur DockerHub après succès du pipeline}
+\label{fig:dockerhub-services}
+\end{figure}
+
     \item \textbf{Phase 6 - Deploy :} Déploiement de l'application sur l'environnement cible.
 \end{enumerate}
 
@@ -490,7 +534,6 @@ Les principales fonctionnalités du frontend incluent :
 \begin{itemize}
     \item Pages de connexion et d'inscription (Keycloak).
     \item Tableau de bord avec statistiques et graphiques.
-    \pagebreak
     \item Interface de génération de CV (saisie d'offre d'emploi).
     \item Vue Kanban pour le suivi des candidatures (drag-and-drop).
     \item Vue calendrier avec rappels.
@@ -580,8 +623,8 @@ Le pipeline CI/CD est implémenté avec \textbf{GitHub Actions} et comprend 6 ph
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/pipeline-cicd.png}
-\caption{Pipeline CI/CD}
+\includegraphics[width=0.85\textwidth]{images/github-action-success.png}
+\caption{Pipeline CI/CD — GitHub Actions (succès)}
 \label{fig:pipeline}
 \end{figure}
 
@@ -593,30 +636,30 @@ Le pipeline CI/CD est implémenté avec \textbf{GitHub Actions} et comprend 6 ph
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/screenshot-dashboard.png}
-\caption{Interface du tableau de bord}
+\includegraphics[width=0.85\textwidth]{images/demo/dashboard.png}
+\caption{Tableau de bord principal}
 \label{fig:dashboard}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/screenshot-generation.png}
-\caption{Interface de génération de CV}
-\label{fig:generation}
+\includegraphics[width=0.85\textwidth]{images/demo/my-career.png}
+\caption{Interface de gestion du portfolio et des compétences}
+\label{fig:portfolio}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/screenshot-kanban.png}
+\includegraphics[width=0.85\textwidth]{images/demo/kanban.png}
 \caption{Tableau Kanban de suivi des candidatures}
 \label{fig:kanban}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/screenshot-portfolio.png}
-\caption{Interface de gestion du portfolio}
-\label{fig:portfolio}
+\includegraphics[width=0.85\textwidth]{images/demo/agent-hub.png}
+\caption{Interface des agents IA pour la génération de CV}
+\label{fig:generation}
 \end{figure}
 
 \subsection{Fonctionnalités principales}
@@ -635,7 +678,43 @@ Le système \projectname{} offre les fonctionnalités principales suivantes :
 \subsection{Démonstrations du fonctionnement}
 \label{subsec:realisation:demo}
 
-% À remplir : description des démonstrations du fonctionnement de l'application
+Cette section présente une démonstration des principales interfaces de l'application \projectname{}.
+
+\subsubsection{Authentification et page d'accueil}
+
+L'application propose une page d'accueil présentant les fonctionnalités clés, accessible sans authentification. La connexion s'effectue via un formulaire sécurisé ou via les fournisseurs OAuth2 (Google, GitHub).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/demo/landing-page.png}
+\caption{Page d'accueil de \projectname{}}
+\label{fig:demo-landing}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/demo/login-page.png}
+\caption{Page de connexion}
+\label{fig:demo-login}
+\end{figure}
+
+\subsubsection{Gestion des candidatures et calendrier}
+
+Le module de suivi des candidatures offre une vue calendrier pour visualiser les événements importants (entretiens, relances, échéances). Une boîte de réception centralise les notifications et les échanges.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/demo/calendar.png}
+\caption{Vue calendrier des candidatures}
+\label{fig:demo-calendar}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/demo/mailbox.png}
+\caption{Boîte de réception des notifications}
+\label{fig:demo-mailbox}
+\end{figure}
 
 \section{Conclusion}
 \label{sec:realisation:conclusion}

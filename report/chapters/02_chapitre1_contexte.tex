@@ -51,15 +51,22 @@ Cette approche agile nous a permis de nous adapter aux défis techniques rencont
 
 L'équipe \teamname{} est composée de six membres, chacun occupant un rôle de développeur fullstack avec une responsabilité transverse spécifique. Cette organisation permet de couvrir l'ensemble du cycle de vie du développement logiciel, du code au déploiement en passant par la qualité et la sécurité.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/equipe.png}
+\caption{Présentation de l'équipe \teamname{}}
+\label{fig:equipe}
+\end{figure}
+
 \begin{table}[H]
 \centering
 \caption{Répartition des rôles au sein de l'équipe}
 \label{tab:roles}
-\begin{tabularx}{\textwidth}{lclX}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}Xc>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}X}
 \toprule
 \textbf{Rôle} & \textbf{Eff.} & \textbf{Intervenant} & \textbf{Remarque} \\
 \midrule
-Chef d'équipe / Responsable CI/CD & 1 & \membreUn & Coordination d'équipe, pipeline CI/CD, Dockerisation complète, validation des PR \\
+Développeur Fullstack – Chef d'équipe, CI/CD & 1 & \membreUn & Coordination d'équipe, pipeline CI/CD, Dockerisation complète, validation des PR \\
 Développeur Fullstack – Infra Cloud & 1 & \membreDeux & Déploiement cloud, environnement de production \\
 Développeur Fullstack – Infra Locale & 1 & \membreTrois & Terraform, provisionnement VMs locales, environnement de développement \\
 Développeur Fullstack – Sécurité & 1 & \membreQuatre & Keycloak SSO, OWASP ZAP, Trivy, authentification OAuth \\
@@ -90,7 +97,7 @@ Le projet a été planifié sur la durée du semestre avec des jalons clés corr
 \label{fig:gantt-reel}
 \end{figure}
 
-\includepdf[pages=2-, width=\textwidth, pagecommand={}]{images/gantt-reel.pdf}
+\includepdf[pages=2-, nup=1x2, width=\textwidth, pagecommand={}]{images/gantt-reel.pdf}
 
 \section{Conclusion}
 \label{sec:contexte:conclusion}
