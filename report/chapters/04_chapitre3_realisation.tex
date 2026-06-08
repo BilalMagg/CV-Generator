@@ -38,8 +38,96 @@ Chaque VM dispose de 2 CPU et 2 Go de RAM, et les services communiquent entre VM
 \subsubsection{Infrastructure cloud}
 \label{subsubsec:realisation:cloud}
 
-\textit{Cette section sera complétée une fois l'infrastructure cloud finalisée.}
-% À remplir : déploiement cloud scalable, load balancer, services managés
+L'infrastructure cloud de \projectname{} est déployée sur \textbf{Amazon Web Services (AWS)}, dans la région \texttt{us-east-1}, sous le préfixe \texttt{cvgen}. Elle repose sur deux outils complémentaires : \textbf{Terraform} pour le provisionnement de l'infrastructure en tant que code (\acrshort{iac}) et \textbf{Ansible} pour l'automatisation du déploiement applicatif. Le tableau suivant résume les principaux services AWS utilisés :
+
+\begin{table}[H]
+\centering
+\caption{Services AWS utilisés dans l'infrastructure cloud}
+\label{tab:aws-services}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Catégorie} & \textbf{Service AWS} & \textbf{Rôle} \\
+\midrule
+Réseau & VPC, Subnets, NAT Gateway, IGW & Isolement réseau, sous-réseaux publics et privés \\
+Exposition & Application Load Balancer (ALB) & Point d'entrée unique, routage \acrshort{http} par chemin \\
+Calcul & Amazon ECS sur EC2, Auto Scaling Group & Orchestration des 18 conteneurs applicatifs \\
+Base de données & Amazon RDS PostgreSQL 16 & 8 bases logiques partagées, extension pgvector \\
+Registre d'images & Amazon ECR & 16 dépôts d'images Docker (un par service) \\
+Secrets & AWS SSM Parameter Store & Injection sécurisée des secrets dans les conteneurs \\
+Logs & Amazon CloudWatch Logs & Centralisation des logs, rétention 7 jours \\
+Sécurité & IAM, Security Groups & Moindre privilège, isolation réseau par couche \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Topologie réseau}
+
+L'infrastructure est organisée autour d'un \textbf{VPC dédié} (\texttt{cvgen}, CIDR \texttt{10.20.0.0/16}) structuré en deux zones :
+
+\begin{itemize}
+    \item \textbf{Sous-réseau public :} héberge l'\textbf{Internet Gateway}, le \textbf{NAT Gateway} et l'\textbf{Application Load Balancer (ALB)}. Seul l'ALB est directement exposé à Internet sur le port 80.
+    \item \textbf{Sous-réseau privé :} héberge le \textbf{cluster ECS} et l'instance \textbf{RDS PostgreSQL}. Aucun service applicatif n'est accessible directement depuis Internet. Le NAT Gateway assure l'accès sortant vers Internet (pull ECR, appels aux APIs \acrshort{llm}, envoi SMTP).
+\end{itemize}
+
+L'ALB (\texttt{cvgen-alb}) route les requêtes entrantes selon les règles suivantes :
+
+\begin{itemize}
+    \item \texttt{/api/*} → \texttt{api-gateway} (port 8080) — passerelle \acrshort{yarp}
+    \item \texttt{/realms/*}, \texttt{/admin/*} → \texttt{keycloak} (port 8080) — authentification \acrshort{oidc}
+    \item Tout le reste → \texttt{frontend} (port 80) — Angular servi par Nginx
+\end{itemize}
+
+\paragraph{Cluster ECS — organisation des services}
+
+Le cluster \texttt{cvgen-cluster} fonctionne en \textbf{mode EC2} avec un Auto Scaling Group d'instances \texttt{m7i-flex.large} (2 vCPU, 8 Go de RAM). Le mode \textit{ENI trunking} permet d'héberger jusqu'à 10 tâches par instance. Les \textbf{18 services} du cluster sont organisés en quatre groupes fonctionnels :
+
+\begin{itemize}
+    \item \textbf{Edge Services :} \texttt{frontend}, \texttt{api-gateway}, \texttt{keycloak} — couche d'exposition directement derrière l'ALB.
+    \item \textbf{App Services :} \texttt{user-service}, \texttt{user-content-service}, \texttt{workflow-service}, \texttt{application-service}, \texttt{job-offer-service}, \texttt{notification-service}, \texttt{cv-service} — les 7 microservices .NET métier.
+    \item \textbf{AI Agents :} \texttt{job-extractor}, \texttt{search-agent}, \texttt{template-agent}, \texttt{cv-optimizer}, \texttt{contact-agent}, \texttt{job-crawler} — les 6 agents Python du pipeline de génération.
+    \item \textbf{Infra Services (éphémères) :} \texttt{kafka} et \texttt{minio} — messagerie et stockage objet, sans persistance de volume en cloud.
+\end{itemize}
+
+La communication interne entre tous ces services est assurée par \textbf{ECS Service Connect}, qui fournit un \acrshort{dns} privé (\texttt{cvgen.local}) permettant à chaque service d'en référencer un autre par nom (ex. : \texttt{kafka:9092}, \texttt{minio:9000}, \texttt{user-service:8082}).
+
+\paragraph{Flux de communication inter-services}
+
+L'architecture définit trois flux principaux illustrés dans le schéma ci-dessous :
+
+\begin{itemize}
+    \item \textbf{Fan-out de la passerelle :} l'\texttt{api-gateway} route les appels \acrshort{rest} vers chacun des 7 microservices .NET et effectue la validation des tokens \acrshort{jwt} auprès de \texttt{keycloak}.
+    \item \textbf{Orchestration du pipeline IA :} le \texttt{workflow-service} orchestre séquentiellement les 5 agents du pipeline de génération de CV (\texttt{job-extractor} → \texttt{search-agent} → \texttt{template-agent} → \texttt{cv-optimizer} → \texttt{contact-agent}).
+    \item \textbf{Événementiel Kafka :} \texttt{user-service}, \texttt{application-service}, \texttt{cv-service}, \texttt{notification-service} et \texttt{job-crawler} publient et consomment des événements via \texttt{kafka:9092}.
+\end{itemize}
+
+\paragraph{Persistance des données}
+
+Toutes les données applicatives sont centralisées dans une unique instance \textbf{Amazon RDS PostgreSQL 16} (\texttt{cvgen-postgres}, classe \texttt{db.t3.micro}), déployée en sous-réseau privé et inaccessible publiquement. Elle héberge \textbf{8 bases logiques} : une par microservice .NET et une pour Keycloak. L'extension \textbf{pgvector} est activée sur \texttt{workflow\_db} et \texttt{cv\_db} pour la recherche vectorielle du pipeline \acrshort{ia}. L'\texttt{cv-optimizer} est le seul agent à accéder directement à RDS via pgvector.
+
+Le stockage des fichiers \acrshort{pdf} et des templates CV est assuré par \textbf{MinIO} (buckets \texttt{cv-pdfs} et \texttt{cv-templates}), accessible par le \texttt{template-agent} via l'endpoint \texttt{minio:9000}.
+
+\paragraph{Sécurité et gestion des secrets}
+
+\begin{itemize}
+    \item \textbf{IAM :} chaque tâche ECS dispose d'un rôle IAM minimal (ECR pull, SSM read, CloudWatch Logs). Les instances EC2 ont un rôle dédié pour ECS et SSM Session Manager.
+    \item \textbf{SSM Parameter Store :} tous les secrets (chaînes de connexion, clés API \acrshort{llm}, mots de passe, DNS de l'ALB) sont injectés dans les conteneurs sous forme de paramètres chiffrés (\texttt{SecureString}). Terraform crée les paramètres avec des valeurs provisoires ; Ansible les remplace par les valeurs réelles lors du déploiement.
+    \item \textbf{Security Groups :} isolation par couche — ALB (port 80 public), instances ECS (ports internes uniquement), RDS (port 5432 accessible depuis ECS uniquement).
+\end{itemize}
+
+\paragraph{Provisionnement IaC — Terraform}
+
+L'ensemble de l'infrastructure est défini avec \textbf{Terraform} (provider AWS $\sim>$ 5.0), organisé en fichiers thématiques : \texttt{network.tf}, \texttt{ecs-cluster.tf}, \texttt{rds.tf}, \texttt{alb.tf}, \texttt{iam.tf}, \texttt{ssm.tf}, \texttt{ecr.tf}, \texttt{services.tf} et \texttt{infra-services.tf}. Un \textbf{module réutilisable} (\texttt{modules/service/}) factorise la définition des 15 services ECS applicatifs pour éviter la duplication de configuration.
+
+\paragraph{Automatisation du déploiement — Ansible}
+
+Le déploiement applicatif est automatisé via \textbf{Ansible} ($\geq$ 2.14), organisé en 4 rôles exécutés séquentiellement :
+
+\begin{enumerate}
+    \item \textbf{images :} construction et poussée des 16 images Docker vers ECR.
+    \item \textbf{database :} création des 8 bases PostgreSQL et activation de \texttt{pgvector} via tunnel SSM vers RDS.
+    \item \textbf{secrets\_overlay :} écriture des valeurs réelles dans SSM Parameter Store (clés API, mots de passe, DNS de l'ALB).
+    \item \textbf{deploy :} redémarrage forcé des services ECS (\texttt{force-new-deployment}) pour récupérer les nouvelles images depuis ECR.
+\end{enumerate}
 
 \subsubsection{Environnement de déploiement}
 \label{subsubsec:realisation:deploiement}
