@@ -34,4 +34,8 @@ COPY services/common-tools/cvtools/models/ ./app/models/
 
 COPY services/template-agent/app/ ./app/
 
+# Bundle the default CV templates so the service can seed them into MinIO on
+# startup (see app/main.py lifespan). Lands at /app/templates.
+COPY services/template-agent/templates/ ./templates/
+
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8003}

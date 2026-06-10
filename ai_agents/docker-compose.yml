@@ -79,6 +79,12 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    # Self-heal the MinIO cold-start race: init_minio_storage() + template
+    # auto-seed run at boot, so if this starts before MinIO is reachable it
+    # exits — restart retries until MinIO is up. (Startup ordering is also
+    # enforced at the root compose via depends_on; this keeps standalone runs
+    # robust too.)
+    restart: unless-stopped
     networks:
       - cv-network
 

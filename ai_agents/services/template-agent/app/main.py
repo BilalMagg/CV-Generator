@@ -3,10 +3,11 @@ Template Agent Service — renders CV sections from matched data.
 """
 from contextlib import asynccontextmanager
 import logging
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from cvtools import init_minio_storage
+from cvtools import init_minio_storage, seed_templates_from_dir
 
 from app.core.config import settings
 from app.routers import router
@@ -22,6 +23,14 @@ async def lifespan(app: FastAPI):
     # pre-create the buckets so a fresh MinIO volume works on first deploy.
     init_minio_storage()
     logger.info("MinIO object storage initialised")
+    # Seed the default CV templates (seed-if-missing) so a fresh MinIO volume
+    # has usable templates without a manual step. Best-effort: a seeding hiccup
+    # must not stop the service — render falls back to DEFAULT_TEMPLATE.
+    try:
+        seeded = seed_templates_from_dir(Path(__file__).resolve().parent.parent / "templates")
+        logger.info("Templates seeded: %s", seeded or "none (all present)")
+    except Exception:
+        logger.exception("Template seeding failed; continuing with DEFAULT_TEMPLATE fallback")
     yield
     logger.info("Template Agent service shutting down")
 
