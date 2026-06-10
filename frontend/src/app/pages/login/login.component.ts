@@ -37,6 +37,9 @@ export class LoginComponent {
   signUpError = signal('');
   signUpSuccess = signal('');
 
+  showPassword = signal(false);
+  togglePassword(): void { this.showPassword.update(v => !v); }
+
   toggleMode(): void {
     this.mode.update(m => m === 'sign-in' ? 'sign-up' : 'sign-in');
     this.signInError.set('');

@@ -1,177 +1,238 @@
-<section class="container" [class.sign-up-mode]="mode() === 'sign-up'">
-  <div class="forms-container">
-    <div class="signin-signup">
+<div class="login">
+  <div class="card">
 
-      <!-- Sign In -->
-      <form class="sign-in-form" (ngSubmit)="onSignIn()" #signInForm="ngForm">
-        <h2>Sign in</h2>
+    <!-- LEFT · BRAND PANEL -->
+    <section class="panel" aria-hidden="true">
+      <span class="blob a"></span>
+      <span class="blob b"></span>
 
-        @if (signInError()) {
-          <div class="alert error">{{ signInError() }}</div>
-        }
-
-        <div class="input-field">
-          <i class="ti ti-mail"></i>
-          <input
-            type="email"
-            name="signInEmail"
-            [(ngModel)]="signInEmail"
-            #signInEmailRef="ngModel"
-            required
-            email
-            placeholder="Email"
-            [class.input-error]="signInEmailRef.invalid && signInEmailRef.dirty"
-          />
-        </div>
-
-        <div class="input-field">
-          <i class="ti ti-lock"></i>
-          <input
-            type="password"
-            name="signInPassword"
-            [(ngModel)]="signInPassword"
-            #signInPasswordRef="ngModel"
-            required
-            placeholder="Password"
-            [class.input-error]="signInPasswordRef.invalid && signInPasswordRef.dirty"
-          />
-        </div>
-
-        <button type="submit" class="btn btn-primary" [disabled]="signInLoading()">
-          @if (signInLoading()) {
-            <span class="spinner"></span> Signing in...
-          } @else {
-            Login
-          }
-        </button>
-
-        <div class="social-text">Or sign in with</div>
-        <div class="social-media">
-          <button type="button" class="social-icon" (click)="signInWithProvider('google')" title="Sign in with Google">
-            <i class="ti ti-brand-google"></i>
-          </button>
-          <button type="button" class="social-icon" (click)="signInWithProvider('github')" title="Sign in with GitHub">
-            <i class="ti ti-brand-github"></i>
-          </button>
-        </div>
-
-        <p class="sso-text">
-          <button type="button" class="btn-link" (click)="signInWithSso()">Sign in with SSO &rarr;</button>
-        </p>
-      </form>
-
-      <!-- Sign Up -->
-      <form class="sign-up-form" (ngSubmit)="onSignUp()" #signUpForm="ngForm">
-        <h2>Sign Up</h2>
-
-        @if (signUpError()) {
-          <div class="alert error">{{ signUpError() }}</div>
-        }
-        @if (signUpSuccess()) {
-          <div class="alert success">{{ signUpSuccess() }}</div>
-        }
-
-        <div class="input-field">
-          <i class="ti ti-user"></i>
-          <input
-            type="text"
-            name="signUpFirstName"
-            [(ngModel)]="signUpFirstName"
-            #fnRef="ngModel"
-            required
-            placeholder="First Name"
-          />
-        </div>
-
-        <div class="input-field">
-          <i class="ti ti-user"></i>
-          <input
-            type="text"
-            name="signUpLastName"
-            [(ngModel)]="signUpLastName"
-            #lnRef="ngModel"
-            required
-            placeholder="Last Name"
-          />
-        </div>
-
-        <div class="input-field">
-          <i class="ti ti-mail"></i>
-          <input
-            type="email"
-            name="signUpEmail"
-            [(ngModel)]="signUpEmail"
-            #signUpEmailRef="ngModel"
-            required
-            email
-            placeholder="Email"
-          />
-        </div>
-
-        <div class="input-field">
-          <i class="ti ti-lock"></i>
-          <input
-            type="password"
-            name="signUpPassword"
-            [(ngModel)]="signUpPassword"
-            #signUpPassRef="ngModel"
-            required
-            minlength="8"
-            placeholder="Password (min 8 characters)"
-          />
-        </div>
-
-        <div class="input-field">
-          <i class="ti ti-lock"></i>
-          <input
-            type="password"
-            name="signUpConfirm"
-            [(ngModel)]="signUpConfirm"
-            #confirmRef="ngModel"
-            required
-            placeholder="Confirm Password"
-          />
-        </div>
-
-        <button type="submit" class="btn btn-primary" [disabled]="signUpLoading()">
-          @if (signUpLoading()) {
-            <span class="spinner"></span> Creating account...
-          } @else {
-            Sign Up
-          }
-        </button>
-
-        <div class="social-text">Or sign up with</div>
-        <div class="social-media">
-          <button type="button" class="social-icon" (click)="signInWithProvider('google')" title="Sign up with Google">
-            <i class="ti ti-brand-google"></i>
-          </button>
-          <button type="button" class="social-icon" (click)="signInWithProvider('github')" title="Sign up with GitHub">
-            <i class="ti ti-brand-github"></i>
-          </button>
-        </div>
-      </form>
-
-    </div>
-  </div>
-
-  <div class="panels-container">
-    <div class="panel left-panel">
-      <div class="content">
-        <h3>New here?</h3>
-        <p>Create your account and get started.</p>
-        <button type="button" class="btn transparent" (click)="toggleMode()">Sign Up</button>
+      <div class="panel-brand">
+        <span class="brand-mark">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z" fill="currentColor"/></svg>
+        </span>
+        <span class="brand-name">{{ appName }}</span>
       </div>
-      <img src="auth/image1.svg" class="image" alt="" />
-    </div>
 
-    <div class="panel right-panel">
-      <div class="content">
-        <h3>One of us?</h3>
-        <p>Sign in to your account.</p>
-        <button type="button" class="btn transparent" (click)="toggleMode()">Sign In</button>
+      <div class="float-doc">
+        <span class="bar m"></span>
+        <span class="bar s"></span>
+        <span class="bar m"></span>
+        <span class="bar s"></span>
+        <span class="chip">95% ATS</span>
       </div>
-      <img src="auth/image2.svg" class="image" alt="" />
-    </div>
+
+      <div class="mascot-wrap">
+        <div class="mascot-placeholder">Add the {{ appName }} mascot here<br>(transparent PNG / SVG)</div>
+      </div>
+
+      <div class="panel-foot">
+        <p class="tag">Tailor a CV in eleven seconds.</p>
+        <p class="sub">Paste a job description, get a tailored CV — and track every application in one calm workspace.</p>
+      </div>
+    </section>
+
+    <!-- RIGHT · FORM -->
+    <section class="form-side">
+      <div class="form-inner">
+
+        <!-- Mobile-only brand mark -->
+        <div class="form-brand">
+          <span class="brand-mark">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z" fill="currentColor"/></svg>
+          </span>
+          <span class="brand-name">{{ appName }}</span>
+        </div>
+
+        <!-- ===== SIGN IN ===== -->
+        @if (mode() === 'sign-in') {
+          <span class="eyebrow">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/></svg>
+            Welcome back
+          </span>
+          <h1 class="title">Log in to {{ appName }}</h1>
+          <p class="lead">Pick up where you left off — your pipeline, CVs, and follow-ups are waiting.</p>
+
+          @if (signInError()) {
+            <div class="alert error">{{ signInError() }}</div>
+          }
+
+          <form (ngSubmit)="onSignIn()" novalidate>
+            <div class="field">
+              <label class="label" for="email">Email</label>
+              <div class="input-wrap">
+                <span class="lead-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7l8 6 8-6"/></svg>
+                </span>
+                <input class="input" id="email" name="signInEmail" type="email"
+                  [(ngModel)]="signInEmail" placeholder="you@email.com"
+                  autocomplete="email" required />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="password">Password</label>
+              <div class="input-wrap">
+                <span class="lead-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                </span>
+                <input class="input" id="password" name="signInPassword"
+                  [type]="showPassword() ? 'text' : 'password'"
+                  [(ngModel)]="signInPassword" placeholder="••••••••"
+                  autocomplete="current-password" required />
+                <button type="button" class="toggle-eye" (click)="togglePassword()"
+                  [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+                  @if (showPassword()) {
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.9 17.9A10 10 0 0 1 12 19C5.5 19 2 12 2 12a17.6 17.6 0 0 1 2.1-3.1M9.9 4.24A9 9 0 0 1 12 4c6.5 0 10 7 10 7a17.7 17.7 0 0 1-1.67 2.68M3 3l18 18"/><circle cx="12" cy="12" r="3" clip-path="url(#cut)"/></svg>
+                  } @else {
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  }
+                </button>
+              </div>
+            </div>
+
+            <div class="row-between">
+              <label class="remember">
+                <input type="checkbox" name="remember" />
+                <span class="box">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>
+                </span>
+                Remember me
+              </label>
+              <a class="link" href="/forgot-password">Forgot password?</a>
+            </div>
+
+            <button class="btn-primary" type="submit" [disabled]="signInLoading()">
+              @if (signInLoading()) {
+                <span class="spinner"></span> Signing in…
+              } @else {
+                Log in
+              }
+            </button>
+          </form>
+
+          <div class="divider">or continue with</div>
+
+          <div class="socials">
+            <button class="social" type="button" (click)="signInWithProvider('google')" aria-label="Continue with Google">
+              <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2-1.9 3.3-4.7 3.3-7.9z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2.1v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.1a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3 .6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.1l3.6 2.8C6.6 7.3 9.1 5.4 12 5.4z"/></svg>
+              <span>Google</span>
+            </button>
+            <button class="social" type="button" (click)="signInWithProvider('github')" aria-label="Continue with GitHub">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0 1 12 6.8c.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0 0 22 12c0-5.52-4.48-10-10-10z"/></svg>
+              <span>GitHub</span>
+            </button>
+          </div>
+
+          <p class="sso-row">
+            <button type="button" class="btn-link" (click)="signInWithSso()">Sign in with SSO &rarr;</button>
+          </p>
+
+          <p class="signup">Don't have an account? <a (click)="toggleMode()" href="javascript:void(0)">Sign up here</a></p>
+        }
+
+        <!-- ===== SIGN UP ===== -->
+        @if (mode() === 'sign-up') {
+          <span class="eyebrow">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/></svg>
+            Join {{ appName }}
+          </span>
+          <h1 class="title">Create your account</h1>
+          <p class="lead">Start tailoring CVs and tracking every application in one workspace.</p>
+
+          @if (signUpError()) {
+            <div class="alert error">{{ signUpError() }}</div>
+          }
+          @if (signUpSuccess()) {
+            <div class="alert success">{{ signUpSuccess() }}</div>
+          }
+
+          <form (ngSubmit)="onSignUp()" novalidate>
+            <div class="field-row">
+              <div class="field">
+                <label class="label" for="firstName">First name</label>
+                <div class="input-wrap">
+                  <span class="lead-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                  </span>
+                  <input class="input" id="firstName" name="signUpFirstName" type="text"
+                    [(ngModel)]="signUpFirstName" placeholder="First name" required />
+                </div>
+              </div>
+              <div class="field">
+                <label class="label" for="lastName">Last name</label>
+                <div class="input-wrap">
+                  <span class="lead-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                  </span>
+                  <input class="input" id="lastName" name="signUpLastName" type="text"
+                    [(ngModel)]="signUpLastName" placeholder="Last name" required />
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="signUpEmail">Email</label>
+              <div class="input-wrap">
+                <span class="lead-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7l8 6 8-6"/></svg>
+                </span>
+                <input class="input" id="signUpEmail" name="signUpEmail" type="email"
+                  [(ngModel)]="signUpEmail" placeholder="you@email.com"
+                  autocomplete="email" required />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="signUpPassword">Password</label>
+              <div class="input-wrap">
+                <span class="lead-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                </span>
+                <input class="input" id="signUpPassword" name="signUpPassword" type="password"
+                  [(ngModel)]="signUpPassword" placeholder="Min 8 characters"
+                  autocomplete="new-password" required minlength="8" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="signUpConfirm">Confirm password</label>
+              <div class="input-wrap">
+                <span class="lead-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                </span>
+                <input class="input" id="signUpConfirm" name="signUpConfirm" type="password"
+                  [(ngModel)]="signUpConfirm" placeholder="Repeat password"
+                  autocomplete="new-password" required />
+              </div>
+            </div>
+
+            <button class="btn-primary" type="submit" [disabled]="signUpLoading()">
+              @if (signUpLoading()) {
+                <span class="spinner"></span> Creating account…
+              } @else {
+                Create account
+              }
+            </button>
+          </form>
+
+          <div class="divider">or sign up with</div>
+
+          <div class="socials">
+            <button class="social" type="button" (click)="signInWithProvider('google')" aria-label="Sign up with Google">
+              <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2-1.9 3.3-4.7 3.3-7.9z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2.1v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.1a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3 .6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.1l3.6 2.8C6.6 7.3 9.1 5.4 12 5.4z"/></svg>
+              <span>Google</span>
+            </button>
+            <button class="social" type="button" (click)="signInWithProvider('github')" aria-label="Sign up with GitHub">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0 1 12 6.8c.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0 0 22 12c0-5.52-4.48-10-10-10z"/></svg>
+              <span>GitHub</span>
+            </button>
+          </div>
+
+          <p class="signup">Already have an account? <a (click)="toggleMode()" href="javascript:void(0)">Log in</a></p>
+        }
+
+      </div>
+    </section>
+
   </div>
-</section>
+</div>
