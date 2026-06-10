@@ -8,12 +8,39 @@ services:
   frontend:
     image: bilalmagg/frontend:latest
     container_name: cv-frontend
+    ports:
+      - "4200:80"
+    environment:
+      - GATEWAY_HOST=cv-api-gateway
+      - GATEWAY_PORT=8080
+      - FRONTEND_HOST=localhost
+      - FRONTEND_PORT=4200
     networks:
       - cv-network
 
   api-gateway:
     image: bilalmagg/api-gateway:latest
     container_name: cv-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - KEYCLOAK_HOST=cv-keycloak
+      - KEYCLOAK_PORT=8080
+      - KEYCLOAK_EXTERNAL_HOST=localhost
+      - KEYCLOAK_EXTERNAL_PORT=9090
+      - KEYCLOAK_REALM=cv-realm
+      - KEYCLOAK_CLIENT_ID=cv-gateway
+      - KEYCLOAK_CLIENT_SECRET=change-me-in-production
+      - GATEWAY_HOST=cv-api-gateway
+      - GATEWAY_PORT=8080
+      - USER_SERVICE_HOST=cv-user-service
+      - USER_SERVICE_PORT=8082
+      - KEYCLOAK_ADMIN_USERNAME=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KAFKA_HOST=cv-kafka
+      - KAFKA_PORT=9092
+      - FRONTEND_HOST=localhost
+      - FRONTEND_PORT=4200
     networks:
       - cv-network
 
