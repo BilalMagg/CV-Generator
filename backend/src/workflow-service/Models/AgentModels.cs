@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace WorkflowService.Models;
@@ -202,6 +203,33 @@ public class RenderedCV
 
     [JsonPropertyName("sections")]
     public List<dynamic>? Sections { get; set; }
+
+    [JsonPropertyName("pdf_url")]
+    public string? PdfUrl { get; set; }
+
+    [JsonPropertyName("code_url")]
+    public string? CodeUrl { get; set; }
+}
+
+// Request for the direct template-render endpoint (api/workflows/template/render).
+// Carries user_id for context; when CvDraft is null the controller builds the
+// matched profile from the workflow DB using UserId.
+public class TemplateRenderRequest
+{
+    [JsonPropertyName("user_id")]
+    public Guid UserId { get; set; }
+
+    [JsonPropertyName("target_role")]
+    public string TargetRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("template_id")]
+    public string TemplateId { get; set; } = "default";
+
+    [JsonPropertyName("summary")]
+    public string? Summary { get; set; }
+
+    [JsonPropertyName("cv_draft")]
+    public JsonElement? CvDraft { get; set; }
 }
 
 // Contact Agent
