@@ -129,7 +129,7 @@ def upload_pdf(
         content_type="application/pdf",
     )
 
-    endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
+    endpoint = os.getenv("MINIO_PUBLIC_ENDPOINT") or os.getenv("MINIO_ENDPOINT", "localhost:9000")
     use_tls = _minio_secure() if secure is None else secure
     scheme = "https" if use_tls else "http"
     return f"{scheme}://{endpoint}/{bucket_name}/{object_name}"
@@ -174,7 +174,7 @@ def upload_code(
         content_type=content_type,
     )
 
-    endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
+    endpoint = os.getenv("MINIO_PUBLIC_ENDPOINT") or os.getenv("MINIO_ENDPOINT", "localhost:9000")
     use_tls = _minio_secure() if secure is None else secure
     scheme = "https" if use_tls else "http"
     return f"{scheme}://{endpoint}/{bucket_name}/{object_name}"

@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, signal, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import loader from '@monaco-editor/loader';
 import { RenderedCV } from '@app/services/template-agent.service';
 
@@ -15,13 +14,10 @@ export class TemplateAgentResultComponent implements OnInit, AfterViewInit, OnDe
   @ViewChild('editorContainer') editorContainerRef!: ElementRef<HTMLDivElement>;
 
   private readonly router = inject(Router);
-  private readonly sanitizer = inject(DomSanitizer);
 
   result: RenderedCV | null = null;
   targetRole = '';
 
-  safePdfUrl = signal<SafeResourceUrl | null>(null);
-  safeHtmlSrc = signal<SafeHtml | null>(null);
   copied = signal(false);
   editorReady = signal(false);
 
@@ -38,10 +34,6 @@ export class TemplateAgentResultComponent implements OnInit, AfterViewInit, OnDe
 
     this.result = state.result;
     this.targetRole = state.targetRole ?? '';
-
-    if (this.result.pdf_url) {
-      this.safePdfUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.result.pdf_url));
-    }
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -85,8 +77,7 @@ export class TemplateAgentResultComponent implements OnInit, AfterViewInit, OnDe
     setTimeout(() => this.copied.set(false), 2000);
   }
 
-  get previewType(): 'pdf' | 'html' | 'none' {
-    if (this.result?.pdf_url) return 'pdf';
+  get previewType(): 'html' | 'none' {
     if (this.result?.cv_code?.trimStart().startsWith('<')) return 'html';
     return 'none';
   }

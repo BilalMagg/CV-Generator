@@ -7,6 +7,45 @@ from cvtools import get_template_object, TEMPLATES_BUCKET
 from cvtools.models.cv_model import CVSection
 from app.schemas import TemplateInput
 
+_PREVIEW_IMAGE_EXTS = frozenset({".png", ".jpg", ".jpeg", ".webp", ".gif"})
+
+
+def _find_preview_key(template_id: str, all_keys: frozenset) -> str | None:
+    """
+    Return the MinIO key for this template's preview image, or None.
+    Searches the pre-fetched all_keys set — no extra stat_object calls.
+    Tolerates any naming the user chose when uploading to MinIO, as long
+    as the key starts with the template ID and has an image extension.
+    """
+    tid_lower = template_id.lower()
+    exact = [
+        f"{tid_lower}.preview",
+        f"{tid_lower}.preview.png",
+        f"{tid_lower}.preview.jpg",
+        f"{tid_lower}.preview.jpeg",
+        f"{tid_lower}.preview.webp",
+    ]
+    keys_lower = {k.lower(): k for k in all_keys}
+    for candidate in exact:
+        if candidate in keys_lower:
+            return keys_lower[candidate]
+    # Fallback: any image object whose name starts with the template id
+    for k_lower, k_orig in sorted(keys_lower.items()):
+        if k_lower.startswith(tid_lower) and any(k_lower.endswith(ext) for ext in _PREVIEW_IMAGE_EXTS):
+            return k_orig
+    return None
+
+
+def _is_template_object(name: str) -> bool:
+    """Return True if the MinIO object is a template (JSON), not a preview image."""
+    lower = name.lower()
+    if lower.endswith(".preview"):
+        return False
+    for ext in _PREVIEW_IMAGE_EXTS:
+        if lower.endswith(ext):
+            return False
+    return True
+
 #tools for data transformation
 def build_cv_data(input_data: TemplateInput) -> str:
     """Build CV data string from cv_draft. because LLMs understand NL better
@@ -152,12 +191,11 @@ def get_template_code(template_id: str) -> tuple[str, str]:
 def list_templates() -> list[dict]:
     """List all templates available in the cv-templates MinIO bucket."""
     from cvtools.core.tools.minio_storage import get_minio_client
-    from minio.error import S3Error
     try:
         client = get_minio_client()
-        # list only JSON template objects (skip .preview image objects)
         all_objects = list(client.list_objects(TEMPLATES_BUCKET))
-        template_ids = [obj.object_name for obj in all_objects if not obj.object_name.endswith(".preview")]
+        all_keys = frozenset(obj.object_name for obj in all_objects)
+        template_ids = [k for k in all_keys if _is_template_object(k)]
         result = []
         for tid in template_ids:
             try:
@@ -166,12 +204,8 @@ def list_templates() -> list[dict]:
             except Exception:
                 ttype = "latex"
             name = tid.replace("-", " ").replace("_", " ").title()
-            # check if preview image exists
-            try:
-                client.stat_object(TEMPLATES_BUCKET, f"{tid}.preview")
-                preview_url = f"/api/workflows/template/templates/{tid}/preview"
-            except S3Error:
-                preview_url = None
+            preview_key = _find_preview_key(tid, all_keys)
+            preview_url = f"/api/workflows/template/templates/{tid}/preview" if preview_key else None
             result.append({"id": tid, "name": name, "type": ttype, "preview_url": preview_url})
         return result
     except Exception:
@@ -182,13 +216,49 @@ def get_template_preview(template_id: str) -> tuple[bytes, str]:
     """Fetch preview image bytes and content-type from MinIO."""
     from cvtools.core.tools.minio_storage import get_minio_client
     client = get_minio_client()
-    preview_key = f"{template_id}.preview"
+    all_keys = frozenset(obj.object_name for obj in client.list_objects(TEMPLATES_BUCKET))
+    preview_key = _find_preview_key(template_id, all_keys)
+    if not preview_key:
+        raise FileNotFoundError(f"No preview found for template {template_id!r}")
     response = client.get_object(TEMPLATES_BUCKET, preview_key)
     data = response.read()
     response.close()
     response.release_conn()
     content_type = "image/png" if data[:4] == b'\x89PNG' else "image/jpeg"
     return data, content_type
+
+
+def seed_previews_from_dir(templates_dir, overwrite: bool = False) -> list[str]:
+    """Upload *.preview.png / *.preview.jpg files from templates_dir to MinIO as {stem}.preview objects."""
+    import io
+    import pathlib
+    from cvtools.core.tools.minio_storage import get_minio_client, ensure_bucket
+    from minio.error import S3Error
+    _PREVIEW_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+    client = get_minio_client()
+    ensure_bucket(client, TEMPLATES_BUCKET)
+    seeded: list[str] = []
+    for path in sorted(pathlib.Path(templates_dir).glob("*")):
+        if path.suffix.lower() not in _PREVIEW_EXTS:
+            continue
+        stem = path.stem  # e.g. "html_basic.preview"
+        if not stem.endswith(".preview"):
+            continue
+        object_key = stem  # MinIO key: "html_basic.preview"
+        if not overwrite:
+            try:
+                client.stat_object(TEMPLATES_BUCKET, object_key)
+                continue
+            except S3Error:
+                pass
+        data = path.read_bytes()
+        content_type = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
+        client.put_object(
+            TEMPLATES_BUCKET, object_key,
+            io.BytesIO(data), length=len(data), content_type=content_type,
+        )
+        seeded.append(object_key)
+    return seeded
 
 
 # i might add more tools that will be linked to the agent directly

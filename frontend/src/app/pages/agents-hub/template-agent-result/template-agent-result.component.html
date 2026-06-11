@@ -92,13 +92,7 @@
         </span>
       </div>
 
-      @if (previewType === 'pdf') {
-        <iframe
-          class="preview-frame"
-          [src]="safePdfUrl()"
-          title="CV Preview"
-        ></iframe>
-      } @else if (previewType === 'html') {
+      @if (previewType === 'html') {
         <iframe
           class="preview-frame"
           [srcdoc]="htmlSrcdoc"

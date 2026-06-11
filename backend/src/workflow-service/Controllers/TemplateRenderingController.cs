@@ -14,15 +14,18 @@ public class TemplateRenderingController : ControllerBase
     private readonly WorkflowDbContext _db;
     private readonly ITemplateAgentClient _templateAgent;
     private readonly ILogger<TemplateRenderingController> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public TemplateRenderingController(
         WorkflowDbContext db,
         ITemplateAgentClient templateAgent,
-        ILogger<TemplateRenderingController> logger)
+        ILogger<TemplateRenderingController> logger,
+        IHttpClientFactory httpClientFactory)
     {
         _db = db;
         _templateAgent = templateAgent;
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
     }
 
     // Render a CV by calling the template agent. The caller may supply cv_draft
@@ -51,6 +54,14 @@ public class TemplateRenderingController : ControllerBase
 
             if (result == null)
                 return StatusCode(502, ApiResponse<object>.Error("Template agent returned no result"));
+
+            // Rewrite internal MinIO URLs so the browser can download through the API gateway
+            if (!string.IsNullOrEmpty(result.PdfUrl))
+            {
+                var uri = new Uri(result.PdfUrl);
+                if (uri.Host == "minio")
+                    result.PdfUrl = $"/api/workflows/template/pdf?url={Uri.EscapeDataString(result.PdfUrl)}";
+            }
 
             _logger.LogInformation(
                 "Template render for user {UserId} (template {TemplateId}) completed: pdf={Pdf} code={Code}",
@@ -83,6 +94,24 @@ public class TemplateRenderingController : ControllerBase
         var (data, contentType) = await _templateAgent.GetTemplatePreviewAsync(id, ct);
         if (data == null) return NotFound();
         return File(data, contentType);
+    }
+
+    [HttpGet("pdf")]
+    public async Task<IActionResult> ProxyPdf([FromQuery] string url, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return BadRequest("url is required");
+        try
+        {
+            var http = _httpClientFactory.CreateClient();
+            var bytes = await http.GetByteArrayAsync(url, ct);
+            return File(bytes, "application/pdf", "cv.pdf");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PDF proxy failed for {Url}", url);
+            return StatusCode(502, "Could not fetch PDF");
+        }
     }
 
     [HttpGet("health")]

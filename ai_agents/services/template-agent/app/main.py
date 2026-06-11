@@ -11,6 +11,7 @@ from cvtools import init_minio_storage, seed_templates_from_dir
 
 from app.core.config import settings
 from app.routers import router
+from app.tools import seed_previews_from_dir
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,6 +32,11 @@ async def lifespan(app: FastAPI):
         logger.info("Templates seeded: %s", seeded or "none (all present)")
     except Exception:
         logger.exception("Template seeding failed; continuing with DEFAULT_TEMPLATE fallback")
+    try:
+        seeded_prev = seed_previews_from_dir(Path(__file__).resolve().parent.parent / "templates")
+        logger.info("Preview images seeded: %s", seeded_prev or "none (all present)")
+    except Exception:
+        logger.exception("Preview image seeding failed; continuing without previews")
     yield
     logger.info("Template Agent service shutting down")
 
