@@ -90,6 +90,10 @@
           <div class="aside-tabs">
             <button class="aside-tab" [class.active]="asideTab() === 'templates'" (click)="asideTab.set('templates')">Templates</button>
             <button class="aside-tab" [class.active]="asideTab() === 'attachments'" (click)="asideTab.set('attachments')">Attachments</button>
+            <button class="aside-tab" [class.active]="asideTab() === 'generate'" (click)="asideTab.set('generate')">
+              <svg viewBox="0 0 14 14" fill="none" width="11" height="11" stroke="currentColor" stroke-width="1.5" style="margin-right:4px"><path d="M7 1l1 3h3l-2.5 2 1 3L7 7.5 4.5 9l1-3L3 4h3L7 1z"/></svg>
+              Generate
+            </button>
           </div>
 
           @if (asideTab() === 'templates') {
@@ -122,6 +126,49 @@
                   }
                 </div>
               }
+            </div>
+          }
+
+          @if (asideTab() === 'generate') {
+            <div class="aside-body ai-generate-body">
+              <p class="ai-generate-hint">Fill in the job details and let the AI write your subject and message.</p>
+              <div class="ai-generate-field">
+                <label class="compose-label">Job Title <span class="ai-required">*</span></label>
+                <input class="compose-input" placeholder="e.g. Data Engineer" [ngModel]="aiJobTitle()" (ngModelChange)="aiJobTitle.set($event)" />
+              </div>
+              <div class="ai-generate-field">
+                <label class="compose-label">Company Name <span class="ai-required">*</span></label>
+                <input class="compose-input" placeholder="e.g. Acme Corp" [ngModel]="aiCompanyName()" (ngModelChange)="aiCompanyName.set($event)" />
+              </div>
+              <div class="ai-generate-field">
+                <label class="compose-label">Job Description <span class="ai-required">*</span></label>
+                <textarea class="compose-textarea ai-textarea" rows="5" placeholder="Paste the job description here…" [ngModel]="aiJobDesc()" (ngModelChange)="aiJobDesc.set($event)"></textarea>
+              </div>
+              <div class="ai-generate-field">
+                <label class="compose-label">About You <span class="ai-optional">(optional)</span></label>
+                <textarea class="compose-textarea ai-textarea" rows="3" placeholder="Paste key skills or a brief bio to personalise the email…" [ngModel]="aiCandidateContext()" (ngModelChange)="aiCandidateContext.set($event)"></textarea>
+              </div>
+              <div class="ai-generate-field">
+                <label class="compose-label">Tone / Focus Hint <span class="ai-optional">(optional)</span></label>
+                <textarea class="compose-textarea ai-textarea" rows="2" placeholder="e.g. Emphasise leadership experience" [ngModel]="aiHint()" (ngModelChange)="aiHint.set($event)"></textarea>
+              </div>
+              @if (aiError()) {
+                <div class="ai-error-banner">{{ aiError() }}</div>
+              }
+              @if (aiGenerated()) {
+                <div class="ai-success-banner">Subject and message filled in the compose form.</div>
+              }
+              <button
+                class="ai-generate-btn"
+                [disabled]="aiGenerating() || !aiJobTitle() || !aiCompanyName() || !aiJobDesc()"
+                (click)="generateEmail()">
+                @if (aiGenerating()) {
+                  <span class="ai-spinner"></span> Generating…
+                } @else {
+                  <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.5"><path d="M7 1l1 3h3l-2.5 2 1 3L7 7.5 4.5 9l1-3L3 4h3L7 1z"/></svg>
+                  Generate Email
+                }
+              </button>
             </div>
           }
         </div>

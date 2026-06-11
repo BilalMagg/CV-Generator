@@ -5,6 +5,7 @@ import { MailboxService } from '@app/services/mailbox.service';
 import {
   ContactDto, EmailMessageDto, EmailScheduleDto,
   MailboxStatsDto, SendEmailDto, ContactHistoryResponse,
+  GenerateEmailRequestDto,
 } from '@app/models/mailbox.model';
 
 type MailboxView = 'compose' | 'history' | 'contacts' | 'schedules' | 'settings';
@@ -102,10 +103,20 @@ export class MailboxComponent implements OnInit {
   gmailEmail = signal('');
 
   // Compose aside
-  asideTab = signal<'templates' | 'attachments'>('templates');
+  asideTab = signal<'templates' | 'attachments' | 'generate'>('templates');
   templates = EMAIL_TEMPLATES;
   activeTemplate = signal<string | null>(null);
   attachments = signal<File[]>([]);
+
+  // AI email generation
+  aiJobTitle = signal('');
+  aiCompanyName = signal('');
+  aiJobDesc = signal('');
+  aiHint = signal('');
+  aiCandidateContext = signal('');
+  aiGenerating = signal(false);
+  aiError = signal<string | null>(null);
+  aiGenerated = signal(false);
 
   // Contact modal
   showContactModal = signal(false);
@@ -305,13 +316,59 @@ export class MailboxComponent implements OnInit {
         subject: this.composeSubject(),
         body: this.composeBody(),
       };
+      const files = this.attachments();
+      if (files.length > 0) {
+        dto.attachmentBase64 = await this.readFileAsBase64(files[0]);
+        dto.attachmentFileName = files[0].name;
+      }
       const res = await this.service.send(dto);
       if (res.success) {
         this.composeRecipients.set([]);
         this.composeSubject.set('');
         this.composeBody.set('');
+        this.attachments.set([]);
       }
     } catch {} finally { this.composeSending.set(false); }
+  }
+
+  private readFileAsBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async generateEmail() {
+    if (!this.aiJobTitle() || !this.aiCompanyName() || !this.aiJobDesc()) return;
+    this.aiGenerating.set(true);
+    this.aiError.set(null);
+    this.aiGenerated.set(false);
+    try {
+      const dto: GenerateEmailRequestDto = {
+        jobTitle: this.aiJobTitle(),
+        companyName: this.aiCompanyName(),
+        jobDescription: this.aiJobDesc(),
+        coverLetterHint: this.aiHint() || undefined,
+        candidateContext: this.aiCandidateContext() || undefined,
+      };
+      const res = await this.service.generateEmail(dto);
+      if (res.success && res.data) {
+        this.composeSubject.set(res.data.subject);
+        this.composeBody.set(res.data.body);
+        this.aiGenerated.set(true);
+      } else {
+        this.aiError.set('Generation failed. Please try again.');
+      }
+    } catch {
+      this.aiError.set('Could not reach the generation service.');
+    } finally {
+      this.aiGenerating.set(false);
+    }
   }
 
   async deleteContact(id: string) {

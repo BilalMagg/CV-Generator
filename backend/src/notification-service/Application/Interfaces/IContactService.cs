@@ -9,7 +9,7 @@ public interface IContactService
     Task<ContactDto> CreateContactAsync(Guid userId, CreateContactDto dto);
     Task<ContactDto?> UpdateContactAsync(Guid id, Guid userId, UpdateContactDto dto);
     Task<bool> DeleteContactAsync(Guid id, Guid userId);
-    Task<int> ImportCsvAsync(Guid userId, string csvContent);
+    Task<CsvImportResultDto> ImportCsvAsync(Guid userId, string csvContent);
     Task<int> ImportFromJobOffersAsync(Guid userId);
     Task<long> GetContactCountAsync(Guid userId);
     Task<ContactDto?> ToggleFavoriteAsync(Guid id, Guid userId);

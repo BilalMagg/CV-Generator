@@ -16,7 +16,7 @@ from langgraph.prebuilt import create_react_agent
 
 from langchain_core.messages import SystemMessage
 
-from app.schemas import ContactInput, ContactOutput
+from app.schemas import ContactInput, ContactOutput, GenerateEmailInput, GenerateEmailOutput
 from app.prompt import CONTACT_AGENT_SYSTEM_PROMPT
 from app.tools import (
     extract_cv_text,
@@ -105,6 +105,71 @@ async def deliver_cv(input_data: ContactInput) -> ContactOutput:
         subject_used=subject_used,
         error_message=None if success else final_text,
     )
+
+
+async def generate_email_content(input_data: GenerateEmailInput) -> GenerateEmailOutput:
+    """
+    Lightweight generation-only entry point — no email sending.
+    Calls the LLM directly (no LangGraph overhead) to produce subject + body.
+    """
+    provider = os.getenv("LLM_PROVIDER") or "groq"
+    llm = get_llm(provider=provider, model=settings.TOOL_MODEL, temperature=0.3)
+
+    # Step 1: generate subject
+    subject_prompt = (
+        f"Write ONE professional email subject line for a job application.\n"
+        f"Position : {input_data.job_title}\n"
+        f"Company  : {input_data.company_name}\n\n"
+        f"Rules:\n"
+        f"- Maximum 10 words\n"
+        f"- Do NOT add quotes, explanation, or extra lines\n"
+        f"- Return ONLY the subject line text\n"
+    )
+    subject = llm.invoke(subject_prompt).content.strip()
+
+    # Step 2: generate body
+    greeting = f"Dear {input_data.recipient_name}," if input_data.recipient_name else "Dear Hiring Manager,"
+    hint_block = (
+        f"\nCandidate's hint for tone/focus: {input_data.cover_letter_hint}\n"
+        if input_data.cover_letter_hint else ""
+    )
+    recipient_block = (
+        f"Recipient's current company: {input_data.recipient_company}\n"
+        if input_data.recipient_company else ""
+    )
+    cv_block = input_data.candidate_context or "No additional candidate context provided."
+
+    body_prompt = (
+        f"You are writing a job application email body on behalf of a candidate.\n"
+        f"This email will be sent to the HR department of the target company.\n\n"
+        f"Email subject    : {subject}\n"
+        f"{recipient_block}"
+        f"{hint_block}"
+        f"\nJob Description  :\n{input_data.job_description}\n\n"
+        f"Candidate Context:\n{cv_block}\n\n"
+        f"CRITICAL: You MUST use real newline characters (\\n) between every section.\n"
+        f"Do NOT write everything in one paragraph. Each block must be separated by a blank line.\n\n"
+        f"Write the email body using this EXACT structure:\n\n"
+        f"{greeting}\n\n"
+        f"[1 sentence: who you are, your studies/role, and what position you are applying for]\n\n"
+        f"[1 sentence: express motivation to join and contribute]\n\n"
+        f"My key skills relevant to this role include:\n"
+        f"- [Skill category]: [tools/technologies]\n"
+        f"- [Skill category]: [tools/technologies]\n"
+        f"- [Skill category]: [tools/technologies]\n\n"
+        f"Please find my CV attached for a detailed overview of my background.\n\n"
+        f"[1 sentence: availability for interview + thank you]\n\n"
+        f"Sincerely,\n"
+        f"[Full Name from candidate context, or 'Candidate']\n\n"
+        f"Rules:\n"
+        f"- Use real newlines between each block\n"
+        f"- Skills must be bullet lines starting with '-'\n"
+        f"- Do NOT put everything in one paragraph\n"
+        f"- Return ONLY the email body, nothing else\n"
+    )
+    body = llm.invoke(body_prompt).content.strip()
+
+    return GenerateEmailOutput(subject=subject, body=body)
 
 
 def _extract_tool_output(messages: list, tool_name: str) -> str:

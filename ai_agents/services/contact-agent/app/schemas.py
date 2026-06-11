@@ -40,3 +40,30 @@ class ContactOutput(BaseModel):
     sent_at: datetime              = Field(default_factory=datetime.utcnow)
     subject_used: str            = Field(..., description="The generated subject line that was sent")
     error_message: Optional[str]   = None
+
+
+class GenerateEmailInput(BaseModel):
+    job_title: str       = Field(..., description="e.g. 'Data Engineer'")
+    company_name: str    = Field(..., description="e.g. 'Acme Corp'")
+    job_description: str = Field(..., description="Full job description text")
+    cover_letter_hint: Optional[str] = Field(
+        default=None,
+        description="Optional user-provided direction for the email tone / key points"
+    )
+    candidate_context: Optional[str] = Field(
+        default=None,
+        description="Optional brief bio or key skills the candidate wants to highlight"
+    )
+    recipient_name: Optional[str] = Field(
+        default=None,
+        description="Recipient's name for personalised greeting (e.g. 'Sarah Johnson')"
+    )
+    recipient_company: Optional[str] = Field(
+        default=None,
+        description="Recipient's current company for personalised context"
+    )
+
+
+class GenerateEmailOutput(BaseModel):
+    subject: str = Field(..., description="Generated email subject line")
+    body: str    = Field(..., description="Generated email body")

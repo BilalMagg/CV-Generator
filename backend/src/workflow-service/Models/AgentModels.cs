@@ -244,6 +244,97 @@ public class ContactOutput
     public string? ErrorMessage { get; set; }
 }
 
+// Contact Agent — email generation (subject + body only, no sending)
+// No [JsonPropertyName] here — these are the controller-facing models
+// that receive camelCase JSON from Angular. Mapping to snake_case happens
+// inside ContactAgentClient before the Python call.
+public class GenerateEmailRequest
+{
+    public string JobTitle { get; set; } = string.Empty;
+    public string CompanyName { get; set; } = string.Empty;
+    public string JobDescription { get; set; } = string.Empty;
+    public string? CoverLetterHint { get; set; }
+    public string? CandidateContext { get; set; }
+}
+
+public class GenerateEmailResponse
+{
+    public string Subject { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+}
+
+// Internal model — snake_case for the Python contact-agent /generate endpoint
+internal class ContactAgentGenerateRequest
+{
+    [JsonPropertyName("job_title")]
+    public string JobTitle { get; set; } = string.Empty;
+
+    [JsonPropertyName("company_name")]
+    public string CompanyName { get; set; } = string.Empty;
+
+    [JsonPropertyName("job_description")]
+    public string JobDescription { get; set; } = string.Empty;
+
+    [JsonPropertyName("cover_letter_hint")]
+    public string? CoverLetterHint { get; set; }
+
+    [JsonPropertyName("candidate_context")]
+    public string? CandidateContext { get; set; }
+
+    [JsonPropertyName("recipient_name")]
+    public string? RecipientName { get; set; }
+
+    [JsonPropertyName("recipient_company")]
+    public string? RecipientCompany { get; set; }
+}
+
+internal class ContactAgentGenerateResponse
+{
+    [JsonPropertyName("subject")]
+    public string Subject { get; set; } = string.Empty;
+
+    [JsonPropertyName("body")]
+    public string Body { get; set; } = string.Empty;
+}
+
+// Bulk campaign generation — controller-facing (no [JsonPropertyName], Angular sends camelCase)
+public class BulkGenerateContactItem
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Company { get; set; }
+    public string? Position { get; set; }
+}
+
+public class BulkGenerateContactRequest
+{
+    public List<BulkGenerateContactItem> Contacts { get; set; } = new();
+    public string JobTitle { get; set; } = string.Empty;
+    public string CompanyName { get; set; } = string.Empty;
+    public string JobDescription { get; set; } = string.Empty;
+    public string? CoverLetterHint { get; set; }
+    public string? CandidateContext { get; set; }
+}
+
+public class BulkGenerateContactResult
+{
+    public string ContactId { get; set; } = string.Empty;
+    public string ContactName { get; set; } = string.Empty;
+    public string ContactEmail { get; set; } = string.Empty;
+    public string? Subject { get; set; }
+    public string? Body { get; set; }
+    public string? Error { get; set; }
+}
+
+public class BulkGenerateContactResponse
+{
+    public List<BulkGenerateContactResult> Results { get; set; } = new();
+    public int Total { get; set; }
+    public int Generated { get; set; }
+    public int Failed { get; set; }
+}
+
 // Orchestrator Feature Models
 public class GenerateCvRequest
 {

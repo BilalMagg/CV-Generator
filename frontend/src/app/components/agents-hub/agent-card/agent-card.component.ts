@@ -25,6 +25,7 @@ export class AgentCardComponent {
     'job-extractor': '/agents-hub/job-extractor',
     'search-agent': '/agents-hub/search-agent',
     'job-crawler': '/agents-hub/job-crawler',
+    'contact-agent': '/agents-hub/contact-agent',
   };
 
   private sizeMap: Record<string, string> = {

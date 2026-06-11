@@ -55,3 +55,10 @@ public class ContactListResponse
     public int Page { get; set; }
     public int PageSize { get; set; }
 }
+
+public class CsvImportResultDto
+{
+    public int Imported { get; set; }
+    public int Skipped { get; set; }   // duplicate emails
+    public int Invalid { get; set; }   // missing name or email
+}

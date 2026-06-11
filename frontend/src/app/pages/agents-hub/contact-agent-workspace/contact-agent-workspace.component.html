@@ -1,0 +1,621 @@
+<div class="workspace-page">
+
+  <!-- ── Header ───────────────────────────────────────────────── -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="breadcrumb">
+        <a routerLink="/agents-hub">Agents Hub</a>
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" class="chevron">
+          <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Contact Agent</span>
+      </div>
+      <h1 class="header-title">Contact Agent</h1>
+      <p class="header-sub">Generate personalised outreach campaigns and manage your contact list.</p>
+    </div>
+    <div class="header-right">
+      <a routerLink="/mailbox" class="header-link">
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+          <path d="M3 8l9 6 9-6M3 8v10a1 1 0 001 1h16a1 1 0 001-1V8M3 8a1 1 0 011-1h16a1 1 0 011 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Mailbox
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Main tabs: Campaign | Import Contacts ─────────────────── -->
+  <div class="sub-tabs">
+    <button class="sub-tab" [class.active]="mainTab() === 'campaign'" (click)="switchTab('campaign')">Campaign</button>
+    <button class="sub-tab" [class.active]="mainTab() === 'import'"   (click)="switchTab('import')">Import Contacts</button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- CAMPAIGN TAB                                                 -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  @if (mainTab() === 'campaign') {
+
+    <!-- Step progress bar -->
+    <div class="step-bar">
+      <div class="step-node" [class.active]="step() === 'select'"
+        [class.done]="step() === 'context' || step() === 'review'">
+        <span class="step-num">1</span>
+        <span class="step-lbl">Select Contacts</span>
+        @if (selectedIds().size > 0 && step() !== 'select') {
+          <span class="step-badge">{{ selectedIds().size }}</span>
+        }
+      </div>
+      <div class="step-line" [class.done]="step() === 'context' || step() === 'review'"></div>
+      <div class="step-node" [class.active]="step() === 'context'" [class.done]="step() === 'review'">
+        <span class="step-num">2</span>
+        <span class="step-lbl">Job Context</span>
+      </div>
+      <div class="step-line" [class.done]="step() === 'review'"></div>
+      <div class="step-node" [class.active]="step() === 'review'">
+        <span class="step-num">3</span>
+        <span class="step-lbl">Review &amp; Send</span>
+      </div>
+    </div>
+
+    <div class="main-content">
+
+      <!-- ── STEP 1: Select Contacts ─────────────────────────── -->
+      @if (step() === 'select') {
+        <div class="input-section">
+
+          <div class="toolbar">
+            <div class="search-wrap">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" width="14" height="14">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <input class="search-input" type="text" placeholder="Search by name, email, or company…"
+                [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" />
+            </div>
+            <label class="toggle-all">
+              <input type="checkbox" [checked]="allFilteredSelected()" (change)="toggleAll()" />
+              Select all
+            </label>
+          </div>
+
+          @if (loadingContacts()) {
+            <div class="loading-state"><span class="spinner"></span> Loading contacts…</div>
+          } @else if (contactsError()) {
+            <div class="error-banner">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              {{ contactsError() }}
+            </div>
+          } @else if (filteredContacts().length === 0) {
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" width="32" height="32"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <p>No contacts found. <a routerLink="/mailbox">Add in Mailbox</a> or <button class="link-btn" (click)="switchTab('import')">import from CSV</button>.</p>
+            </div>
+          } @else {
+            <div class="contact-grid">
+              @for (contact of filteredContacts(); track contact.id) {
+                <label class="contact-card" [class.selected]="selectedIds().has(contact.id)">
+                  <input type="checkbox" [checked]="selectedIds().has(contact.id)" (change)="toggleContact(contact.id)" class="sr-only" />
+                  <div class="contact-avatar">{{ getInitials(contact.name) }}</div>
+                  <div class="contact-info">
+                    <span class="contact-name">{{ contact.name }}</span>
+                    <span class="contact-meta">{{ contact.email }}</span>
+                    @if (contact.company) {
+                      <span class="contact-company">{{ contact.company }}</span>
+                    }
+                  </div>
+                  <div class="check-indicator">
+                    <svg viewBox="0 0 24 24" fill="none" width="12" height="12">
+                      <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                </label>
+              }
+            </div>
+          }
+
+          <div class="action-bar">
+            <span class="char-count">{{ selectedIds().size }} of {{ contacts().length }} selected</span>
+            <button class="extract-btn" [disabled]="selectedIds().size === 0" (click)="goToContext()">
+              Next: Job Context
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <aside class="aside-panel">
+          <div class="aside-section">
+            <h3 class="aside-title">Selected ({{ selectedIds().size }})</h3>
+            @if (selectedContacts().length === 0) {
+              <div class="empty-state small"><p>Tick contacts on the left to add them to this campaign.</p></div>
+            } @else {
+              <div class="recipient-list">
+                @for (c of selectedContacts(); track c.id) {
+                  <div class="recipient-item">
+                    <span class="rec-avatar">{{ getInitials(c.name) }}</span>
+                    <div class="rec-body">
+                      <span class="rec-name">{{ c.name }}</span>
+                      @if (c.company) { <span class="rec-meta">{{ c.company }}</span> }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          <div class="aside-section">
+            <h3 class="aside-title">Quick Stats</h3>
+            <div class="stat-row">
+              <div class="stat-item"><span class="stat-value">{{ contacts().length }}</span><span class="stat-label">Contacts</span></div>
+              <div class="stat-item"><span class="stat-value">{{ selectedIds().size }}</span><span class="stat-label">Selected</span></div>
+            </div>
+          </div>
+          <div class="aside-section">
+            <h3 class="aside-title">Quick Actions</h3>
+            <div class="action-list">
+              <button class="action-item" (click)="switchTab('import')">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Import from CSV
+              </button>
+              <a routerLink="/mailbox" class="action-item">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M3 8l9 6 9-6M3 8v10a1 1 0 001 1h16a1 1 0 001-1V8M3 8a1 1 0 011-1h16a1 1 0 011 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Open Mailbox
+              </a>
+              <a routerLink="/agents-hub" class="action-item">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/></svg>
+                All Agents
+              </a>
+            </div>
+          </div>
+        </aside>
+      }
+
+      <!-- ── STEP 2: Job Context ──────────────────────────────── -->
+      @if (step() === 'context') {
+        <div class="input-section">
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label class="field-label">Job Title <span class="req">*</span></label>
+              <input class="input" type="text" placeholder="e.g. Data Engineer"
+                [value]="jobTitle()" (input)="jobTitle.set($any($event.target).value)" />
+            </div>
+            <div class="form-field">
+              <label class="field-label">Company Name <span class="req">*</span></label>
+              <input class="input" type="text" placeholder="e.g. Acme Corp"
+                [value]="companyName()" (input)="companyName.set($any($event.target).value)" />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="field-label">Job Description <span class="req">*</span></label>
+            <textarea class="input-textarea" rows="8"
+              placeholder="Paste the full job description here…"
+              [value]="jobDescription()"
+              (input)="jobDescription.set($any($event.target).value)"></textarea>
+            <div class="char-count">{{ jobDescription().length }} chars</div>
+          </div>
+
+          <div class="form-field">
+            <label class="field-label">About You <span class="opt">(optional)</span></label>
+            <textarea class="input-textarea" rows="3"
+              placeholder="Paste key skills, experience, or a short bio the agent should highlight…"
+              [value]="candidateContext()"
+              (input)="candidateContext.set($any($event.target).value)"></textarea>
+          </div>
+
+          <div class="form-field">
+            <label class="field-label">Tone / Focus Hint <span class="opt">(optional)</span></label>
+            <textarea class="input-textarea" rows="2"
+              placeholder="e.g. 'Keep it concise and confident'"
+              [value]="coverLetterHint()"
+              (input)="coverLetterHint.set($any($event.target).value)"></textarea>
+          </div>
+
+          @if (generateError()) {
+            <div class="error-banner">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              {{ generateError() }}
+              <button class="retry-btn" (click)="generateError.set(null)">Dismiss</button>
+            </div>
+          }
+
+          <div class="action-bar">
+            <span class="char-count">Generating for {{ selectedIds().size }} recipient{{ selectedIds().size === 1 ? '' : 's' }}</span>
+            <button class="extract-btn" [class.loading]="generating()"
+              [disabled]="!canGenerate() || generating()" (click)="generate()">
+              @if (generating()) {
+                <span class="spinner"></span> Generating…
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                Generate {{ selectedIds().size }} Draft{{ selectedIds().size === 1 ? '' : 's' }}
+              }
+            </button>
+          </div>
+        </div>
+
+        <aside class="aside-panel">
+          <div class="aside-section">
+            <h3 class="aside-title">Recipients ({{ selectedContacts().length }})</h3>
+            <div class="recipient-list">
+              @for (c of selectedContacts(); track c.id) {
+                <div class="recipient-item">
+                  <span class="rec-avatar">{{ getInitials(c.name) }}</span>
+                  <div class="rec-body">
+                    <span class="rec-name">{{ c.name }}</span>
+                    @if (c.company) { <span class="rec-meta">{{ c.company }}</span> }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+          <div class="aside-section">
+            <h3 class="aside-title">Tips</h3>
+            <ul class="tip-list">
+              <li>More job description = more accurate emails</li>
+              <li>Add your skills in "About You" to personalise the body</li>
+              <li>Each draft will open with the recipient's name</li>
+            </ul>
+          </div>
+        </aside>
+      }
+
+      <!-- ── STEP 3: Review & Send ────────────────────────────── -->
+      @if (step() === 'review') {
+        <div class="input-section">
+
+          <div class="review-bar">
+            <span class="pill pill-ok">{{ readyCount() }} generated</span>
+            @if (failedDraftsCount() > 0) { <span class="pill pill-err">{{ failedDraftsCount() }} failed</span> }
+            @if (sentCount() > 0) { <span class="pill pill-sent">{{ sentCount() }} sent</span> }
+          </div>
+
+          @if (allSent()) {
+            <div class="success-banner">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              All emails sent and logged to your <a routerLink="/mailbox">Mailbox history</a>.
+            </div>
+          }
+          @if (scheduleSuccess()) {
+            <div class="success-banner">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Schedules created. View them in <a routerLink="/mailbox">Mailbox → Schedules</a>.
+            </div>
+          }
+
+          <div class="drafts-list">
+            @for (draft of drafts(); track draft.contactId; let i = $index) {
+              <div class="draft-card" [class.is-error]="!!draft.error" [class.is-sent]="draft.sent">
+                <div class="draft-header">
+                  <label class="draft-check">
+                    <input type="checkbox" [checked]="draft.selected"
+                      [disabled]="!!draft.error || draft.sent || sending()" (change)="toggleDraft(i)" />
+                  </label>
+                  <span class="draft-avatar">{{ getInitials(draft.contactName) }}</span>
+                  <div class="draft-recipient">
+                    <span class="draft-name">{{ draft.contactName }}</span>
+                    <span class="draft-email">{{ draft.contactEmail }}</span>
+                  </div>
+                  @if (draft.sent) { <span class="status-badge badge-sent">Sent ✓</span> }
+                  @else if (draft.sendError) { <span class="status-badge badge-err">Failed</span> }
+                </div>
+                @if (draft.error) {
+                  <div class="draft-gen-error">Generation failed: {{ draft.error }}</div>
+                } @else {
+                  <div class="draft-body">
+                    <div class="draft-field">
+                      <span class="draft-label">Subject</span>
+                      <input class="input draft-input" type="text" [value]="draft.subject"
+                        [disabled]="draft.sent || sending()"
+                        (input)="updateSubject(i, $any($event.target).value)" />
+                    </div>
+                    <div class="draft-field">
+                      <span class="draft-label">Body</span>
+                      <textarea class="input-textarea draft-textarea" rows="7" [value]="draft.body"
+                        [disabled]="draft.sent || sending()"
+                        (input)="updateBody(i, $any($event.target).value)"></textarea>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="action-bar">
+            <span class="char-count">{{ selectedDrafts().length }} of {{ readyCount() }} draft{{ readyCount() === 1 ? '' : 's' }} selected</span>
+            <div class="action-btns">
+              <button class="schedule-toggle-btn" (click)="toggleSchedule()" [class.active]="scheduleOpen()">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                Schedule
+              </button>
+              <button class="extract-btn" [class.loading]="sending()"
+                [disabled]="selectedDrafts().length === 0 || sending() || allSent()" (click)="sendCampaign()">
+                @if (sending()) { <span class="spinner"></span> Sending… }
+                @else if (allSent()) { All Sent ✓ }
+                @else {
+                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Send {{ selectedDrafts().length }} Email{{ selectedDrafts().length === 1 ? '' : 's' }}
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="aside-panel">
+          <div class="aside-section">
+            <h3 class="aside-title">Campaign Summary</h3>
+            <div class="stat-row">
+              <div class="stat-item"><span class="stat-value">{{ readyCount() }}</span><span class="stat-label">Drafts</span></div>
+              <div class="stat-item"><span class="stat-value">{{ sentCount() }}</span><span class="stat-label">Sent</span></div>
+            </div>
+            <div class="ctx-row"><span class="ctx-label">Role</span><span class="ctx-val">{{ jobTitle() }}</span></div>
+            <div class="ctx-row"><span class="ctx-label">Company</span><span class="ctx-val">{{ companyName() }}</span></div>
+          </div>
+
+          @if (scheduleOpen()) {
+            <div class="aside-section schedule-section">
+              <h3 class="aside-title">Schedule Campaign</h3>
+              <div class="sched-field">
+                <label class="field-label">Campaign Name</label>
+                <input class="input" type="text" [value]="scheduleName()" (input)="scheduleName.set($any($event.target).value)" />
+              </div>
+              <div class="sched-field">
+                <label class="field-label">Frequency</label>
+                <select class="select" [value]="scheduleFrequency()" (change)="scheduleFrequency.set($any($event.target).value)">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="custom">Custom (cron)</option>
+                </select>
+              </div>
+              @if (scheduleFrequency() === 'weekly') {
+                <div class="sched-field">
+                  <label class="field-label">Day of Week</label>
+                  <select class="select" [value]="scheduleDay()" (change)="scheduleDay.set($any($event.target).value)">
+                    <option value="1">Monday</option><option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option><option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                  </select>
+                </div>
+              }
+              @if (scheduleFrequency() === 'monthly') {
+                <div class="sched-field">
+                  <label class="field-label">Day of Month</label>
+                  <input class="input" type="number" min="1" max="28" [value]="scheduleDay()" (input)="scheduleDay.set($any($event.target).value)" />
+                </div>
+              }
+              @if (scheduleFrequency() !== 'custom') {
+                <div class="sched-field">
+                  <label class="field-label">Time (UTC)</label>
+                  <input class="input" type="time" [value]="scheduleTime()" (input)="scheduleTime.set($any($event.target).value)" />
+                </div>
+              }
+              @if (scheduleFrequency() === 'custom') {
+                <div class="sched-field">
+                  <label class="field-label">Cron Expression</label>
+                  <input class="input" type="text" placeholder="0 9 * * 1" [value]="scheduleCron()" (input)="scheduleCron.set($any($event.target).value)" />
+                </div>
+              }
+              <div class="cron-preview">
+                <span class="cron-label">Cron</span>
+                <code class="cron-code">{{ resolvedCron() || '—' }}</code>
+              </div>
+              @if (scheduleError()) { <div class="error-banner small">{{ scheduleError() }}</div> }
+              <button class="extract-btn full-width" [class.loading]="scheduling()"
+                [disabled]="scheduling() || selectedDrafts().length === 0" (click)="createSchedule()">
+                @if (scheduling()) { <span class="spinner"></span> Creating… }
+                @else { Schedule {{ selectedDrafts().length }} Email{{ selectedDrafts().length === 1 ? '' : 's' }} }
+              </button>
+            </div>
+          }
+
+          <div class="aside-section">
+            <h3 class="aside-title">Quick Actions</h3>
+            <div class="action-list">
+              <a routerLink="/mailbox" class="action-item">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M3 8l9 6 9-6M3 8v10a1 1 0 001 1h16a1 1 0 001-1V8M3 8a1 1 0 011-1h16a1 1 0 011 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                View Mailbox History
+              </a>
+              <a routerLink="/agents-hub" class="action-item">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/></svg>
+                All Agents
+              </a>
+            </div>
+          </div>
+        </aside>
+      }
+
+    </div>
+  }
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- IMPORT CONTACTS TAB                                          -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  @if (mainTab() === 'import') {
+    <div class="main-content">
+      <div class="input-section">
+
+        <!-- ── Step 1: Download the template ─────────────────── -->
+        <div class="import-block">
+          <div class="import-block-header">
+            <span class="import-num">1</span>
+            <div>
+              <div class="import-block-title">Download the template</div>
+              <div class="import-block-sub">Fill it with your contacts. Only <strong>name</strong> and <strong>email</strong> are required.</div>
+            </div>
+          </div>
+          <button class="outline-btn" (click)="downloadTemplate()">
+            <svg viewBox="0 0 24 24" fill="none" width="15" height="15">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Download contacts_template.csv
+          </button>
+        </div>
+
+        <!-- ── Step 2: Upload your CSV ───────────────────────── -->
+        <div class="import-block">
+          <div class="import-block-header">
+            <span class="import-num">2</span>
+            <div>
+              <div class="import-block-title">Upload your CSV file</div>
+              <div class="import-block-sub">The file must follow the exact column names shown in the template.</div>
+            </div>
+          </div>
+
+          @if (!csvFile()) {
+            <div class="drop-zone"
+              [class.drag-over]="csvDragOver()"
+              (dragover)="$event.preventDefault(); csvDragOver.set(true)"
+              (dragleave)="csvDragOver.set(false)"
+              (drop)="onCsvFileDrop($event)">
+              <input type="file" accept=".csv" class="file-input" (change)="onCsvFileSelected($event)" #csvInput />
+              <div class="drop-content" (click)="csvInput.click()">
+                <svg viewBox="0 0 24 24" fill="none" width="28" height="28" class="upload-icon">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <p class="drop-text">Drop your CSV here or <span class="drop-link">click to browse</span></p>
+                <p class="drop-hint">.csv files only</p>
+              </div>
+            </div>
+          } @else {
+            <div class="file-info">
+              <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                <path d="M14 3v6h6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              </svg>
+              <div class="file-details">
+                <span class="file-name">{{ csvFile()!.name }}</span>
+                <span class="file-size">{{ (csvFile()!.size / 1024).toFixed(1) }} KB</span>
+              </div>
+              <button class="file-remove" (click)="clearCsvFile()">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+          }
+
+          @if (csvParseError()) {
+            <div class="error-banner">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              {{ csvParseError() }}
+            </div>
+          }
+        </div>
+
+        <!-- ── Step 3: Preview & Import ──────────────────────── -->
+        @if (csvHasData()) {
+          <div class="import-block">
+            <div class="import-block-header">
+              <span class="import-num">3</span>
+              <div>
+                <div class="import-block-title">Preview &amp; Import</div>
+                <div class="import-block-sub">
+                  Showing first {{ csvPreviewDisplay().length }} of {{ csvPreviewRows().length }} rows.
+                </div>
+              </div>
+            </div>
+
+            <div class="preview-summary">
+              <span class="pill pill-ok">{{ csvValidCount() }} valid</span>
+              @if (csvInvalidCount() > 0) {
+                <span class="pill pill-err">{{ csvInvalidCount() }} invalid (missing name or email)</span>
+              }
+            </div>
+
+            <div class="preview-wrap">
+              <table class="preview-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Company</th>
+                    <th>Position</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of csvPreviewDisplay(); track $index) {
+                    <tr [class.row-invalid]="!row.valid">
+                      <td>{{ row.name || '—' }}</td>
+                      <td>{{ row.email || '—' }}</td>
+                      <td>{{ row.phone || '—' }}</td>
+                      <td>{{ row.company || '—' }}</td>
+                      <td>{{ row.position || '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="action-bar">
+              <span class="char-count">{{ csvValidCount() }} contact{{ csvValidCount() === 1 ? '' : 's' }} will be imported</span>
+              <button class="extract-btn" [class.loading]="importing()"
+                [disabled]="csvValidCount() === 0 || importing()" (click)="importContacts()">
+                @if (importing()) { <span class="spinner"></span> Importing… }
+                @else {
+                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Import {{ csvValidCount() }} Contact{{ csvValidCount() === 1 ? '' : 's' }}
+                }
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- ── Import result ─────────────────────────────────── -->
+        @if (importResult()) {
+          <div class="success-banner large">
+            <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div>
+              <strong>{{ importResult()!.imported }} contacts imported successfully.</strong>
+              @if (importResult()!.skipped > 0) {
+                <span> {{ importResult()!.skipped }} duplicate{{ importResult()!.skipped === 1 ? '' : 's' }} skipped.</span>
+              }
+              @if (importResult()!.invalid > 0) {
+                <span> {{ importResult()!.invalid }} row{{ importResult()!.invalid === 1 ? '' : 's' }} ignored (missing name or email).</span>
+              }
+              <br/><a (click)="switchTab('campaign')" class="result-link">Go to Campaign →</a>
+            </div>
+          </div>
+        }
+
+      </div>
+
+      <!-- Aside -->
+      <aside class="aside-panel">
+        <div class="aside-section">
+          <h3 class="aside-title">CSV Format</h3>
+          <table class="format-table">
+            <thead><tr><th>Column</th><th>Required</th></tr></thead>
+            <tbody>
+              <tr><td><code>name</code></td>     <td><span class="req-badge">Yes</span></td></tr>
+              <tr><td><code>email</code></td>    <td><span class="req-badge">Yes</span></td></tr>
+              <tr><td><code>phone</code></td>    <td><span class="opt-badge">No</span></td></tr>
+              <tr><td><code>company</code></td>  <td><span class="opt-badge">No</span></td></tr>
+              <tr><td><code>position</code></td> <td><span class="opt-badge">No</span></td></tr>
+              <tr><td><code>notes</code></td>    <td><span class="opt-badge">No</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="aside-section">
+          <h3 class="aside-title">Rules</h3>
+          <ul class="tip-list">
+            <li>First row must be the header</li>
+            <li>Columns can be in any order</li>
+            <li>Duplicate emails are skipped</li>
+            <li>Use quotes for values with commas</li>
+            <li>UTF-8 encoding recommended</li>
+          </ul>
+        </div>
+        <div class="aside-section">
+          <h3 class="aside-title">Quick Actions</h3>
+          <div class="action-list">
+            <button class="action-item" (click)="downloadTemplate()">
+              <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Download Template
+            </button>
+            <a routerLink="/mailbox" class="action-item">
+              <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M3 8l9 6 9-6M3 8v10a1 1 0 001 1h16a1 1 0 001-1V8M3 8a1 1 0 011-1h16a1 1 0 011 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Open Mailbox
+            </a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  }
+
+</div>

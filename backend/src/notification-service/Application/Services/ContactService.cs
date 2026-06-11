@@ -134,43 +134,105 @@ public class ContactService : IContactService
         return Map(c);
     }
 
-    public async Task<int> ImportCsvAsync(Guid userId, string csvContent)
+    public async Task<CsvImportResultDto> ImportCsvAsync(Guid userId, string csvContent)
     {
-        var lines = csvContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        if (lines.Length < 2) return 0;
+        var result = new CsvImportResultDto();
 
-        var headers = lines[0].Split(',').Select(h => h.Trim().ToLower()).ToList();
-        var nameIdx = headers.IndexOf("name");
-        var emailIdx = headers.IndexOf("email");
-        var companyIdx = headers.IndexOf("company");
+        // Normalise line endings and strip BOM
+        var normalized = csvContent.TrimStart('﻿').Replace("\r\n", "\n").Replace("\r", "\n");
+        var lines = normalized.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length < 2) return result;
+
+        var headers = SplitCsvLine(lines[0]).Select(h => h.ToLower()).ToList();
+        var nameIdx     = headers.IndexOf("name");
+        var emailIdx    = headers.IndexOf("email");
+        var phoneIdx    = headers.IndexOf("phone");
+        var companyIdx  = headers.IndexOf("company");
         var positionIdx = headers.IndexOf("position");
-        var phoneIdx = headers.IndexOf("phone");
+        var notesIdx    = headers.IndexOf("notes");
 
-        if (nameIdx < 0 || emailIdx < 0) return 0;
+        if (nameIdx < 0 || emailIdx < 0) return result;
+
+        // Load existing emails to skip duplicates
+        var existingEmails = await _db.Set<Contact>()
+            .Where(c => c.UserId == userId)
+            .Select(c => c.Email.ToLower())
+            .ToHashSetAsync();
 
         var contacts = new List<Contact>();
         foreach (var line in lines.Skip(1))
         {
-            var cols = line.Split(',').Select(c => c.Trim().Trim('"')).ToList();
-            if (cols.Count <= Math.Max(nameIdx, emailIdx)) continue;
+            var cols = SplitCsvLine(line);
+
+            var name  = nameIdx  < cols.Count ? cols[nameIdx].Trim()  : string.Empty;
+            var email = emailIdx < cols.Count ? cols[emailIdx].Trim() : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email))
+            {
+                result.Invalid++;
+                continue;
+            }
+
+            if (existingEmails.Contains(email.ToLower()))
+            {
+                result.Skipped++;
+                continue;
+            }
+
+            existingEmails.Add(email.ToLower());
 
             contacts.Add(new Contact
             {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Name = cols[nameIdx],
-                Email = cols[emailIdx],
-                Phone = phoneIdx >= 0 && cols.Count > phoneIdx ? cols[phoneIdx] : null,
-                Company = companyIdx >= 0 && cols.Count > companyIdx ? cols[companyIdx] : null,
-                Position = positionIdx >= 0 && cols.Count > positionIdx ? cols[positionIdx] : null,
-                Source = "csv"
+                Id       = Guid.NewGuid(),
+                UserId   = userId,
+                Name     = name,
+                Email    = email,
+                Phone    = phoneIdx    >= 0 && phoneIdx    < cols.Count ? NullIfEmpty(cols[phoneIdx])    : null,
+                Company  = companyIdx  >= 0 && companyIdx  < cols.Count ? NullIfEmpty(cols[companyIdx])  : null,
+                Position = positionIdx >= 0 && positionIdx < cols.Count ? NullIfEmpty(cols[positionIdx]) : null,
+                Notes    = notesIdx    >= 0 && notesIdx    < cols.Count ? NullIfEmpty(cols[notesIdx])    : null,
+                Source   = "csv"
             });
         }
 
-        _db.Set<Contact>().AddRange(contacts);
-        await _db.SaveChangesAsync();
-        return contacts.Count;
+        if (contacts.Count > 0)
+        {
+            _db.Set<Contact>().AddRange(contacts);
+            await _db.SaveChangesAsync();
+        }
+
+        result.Imported = contacts.Count;
+        return result;
     }
+
+    private static List<string> SplitCsvLine(string line)
+    {
+        var fields = new List<string>();
+        var current = new System.Text.StringBuilder();
+        bool inQuotes = false;
+
+        foreach (char c in line)
+        {
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                fields.Add(current.ToString().Trim());
+                current.Clear();
+            }
+            else
+            {
+                current.Append(c);
+            }
+        }
+        fields.Add(current.ToString().Trim());
+        return fields;
+    }
+
+    private static string? NullIfEmpty(string value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     public async Task<int> ImportFromJobOffersAsync(Guid userId)
     {

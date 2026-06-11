@@ -66,6 +66,8 @@ export interface SendEmailDto {
   recipientIds: string[];
   subject: string;
   body: string;
+  attachmentBase64?: string;
+  attachmentFileName?: string;
 }
 
 export interface EmailHistoryResponse {
@@ -118,4 +120,56 @@ export interface MailboxStatsDto {
   scheduledEmails: number;
   contacts: number;
   successRate: number;
+}
+
+export interface GenerateEmailRequestDto {
+  jobTitle: string;
+  companyName: string;
+  jobDescription: string;
+  coverLetterHint?: string;
+  candidateContext?: string;
+}
+
+export interface GenerateEmailResponseDto {
+  subject: string;
+  body: string;
+}
+
+export interface BulkGenerateContactItemDto {
+  id: string;
+  name: string;
+  email: string;
+  company?: string;
+  position?: string;
+}
+
+export interface BulkGenerateContactRequestDto {
+  contacts: BulkGenerateContactItemDto[];
+  jobTitle: string;
+  companyName: string;
+  jobDescription: string;
+  coverLetterHint?: string;
+  candidateContext?: string;
+}
+
+export interface BulkGenerateContactResultDto {
+  contactId: string;
+  contactName: string;
+  contactEmail: string;
+  subject?: string;
+  body?: string;
+  error?: string;
+}
+
+export interface BulkGenerateContactResponseDto {
+  results: BulkGenerateContactResultDto[];
+  total: number;
+  generated: number;
+  failed: number;
+}
+
+export interface CsvImportResultDto {
+  imported: number;
+  skipped: number;
+  invalid: number;
 }

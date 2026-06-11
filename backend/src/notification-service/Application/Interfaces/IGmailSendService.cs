@@ -2,5 +2,5 @@ namespace NotificationService.Application.Interfaces;
 
 public interface IGmailSendService
 {
-    Task SendWithAttachmentAsync(Guid userId, string to, string subject, string body, string? cvPdfUrl = null);
+    Task SendWithAttachmentAsync(Guid userId, string to, string subject, string body, string? cvPdfUrl = null, byte[]? attachmentBytes = null, string? attachmentFileName = null);
 }

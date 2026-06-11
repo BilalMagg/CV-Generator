@@ -185,6 +185,21 @@ public class MailboxController : BaseApiController
         var fromEmail = connection?.GmailAddress ?? "noreply@propel.com";
         var provider = connection is not null ? "gmail" : "smtp";
 
+        byte[]? attachBytes = null;
+        string? attachName = null;
+        if (!string.IsNullOrWhiteSpace(dto.AttachmentBase64))
+        {
+            try
+            {
+                attachBytes = Convert.FromBase64String(dto.AttachmentBase64);
+                attachName = string.IsNullOrWhiteSpace(dto.AttachmentFileName) ? "cv.pdf" : dto.AttachmentFileName;
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogWarning(ex, "Invalid base64 attachment data, sending without attachment");
+            }
+        }
+
         var sent = 0;
         var failed = 0;
 
@@ -192,7 +207,7 @@ public class MailboxController : BaseApiController
         {
             try
             {
-                await _gmailSendSvc.SendWithAttachmentAsync(userId, contact.Email, dto.Subject, dto.Body, null);
+                await _gmailSendSvc.SendWithAttachmentAsync(userId, contact.Email, dto.Subject, dto.Body, null, attachBytes, attachName);
 
                 _db.Set<EmailMessage>().Add(new EmailMessage
                 {

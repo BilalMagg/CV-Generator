@@ -65,9 +65,12 @@ public class ContactsController : BaseApiController
     [HttpPost("import-csv")]
     public async Task<IActionResult> ImportCsv([FromBody] ImportCsvDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.CsvContent))
+            return BadRequest(ApiResponse<object>.Error("csvContent is required"));
+
         var userId = GetUserId();
-        var count = await _contactSvc.ImportCsvAsync(userId, dto.CsvContent);
-        return Ok(ApiResponse<object>.Ok(new { imported = count }));
+        var result = await _contactSvc.ImportCsvAsync(userId, dto.CsvContent);
+        return Ok(ApiResponse<CsvImportResultDto>.Ok(result));
     }
 
     [HttpPost("import-from-offers")]

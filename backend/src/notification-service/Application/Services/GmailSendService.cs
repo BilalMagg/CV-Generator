@@ -40,7 +40,8 @@ public class GmailSendService : IGmailSendService
     }
 
     public async Task SendWithAttachmentAsync(
-        Guid userId, string to, string subject, string body, string? cvPdfUrl = null)
+        Guid userId, string to, string subject, string body, string? cvPdfUrl = null,
+        byte[]? attachmentBytes = null, string? attachmentFileName = null)
     {
         var connection = await _db.Set<Domain.Entities.GmailConnection>()
             .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsRevoked);
@@ -65,7 +66,13 @@ public class GmailSendService : IGmailSendService
 
         var bodyBuilder = new BodyBuilder { HtmlBody = body };
 
-        if (!string.IsNullOrWhiteSpace(cvPdfUrl))
+        if (attachmentBytes != null && attachmentBytes.Length > 0)
+        {
+            var fn = string.IsNullOrWhiteSpace(attachmentFileName) ? "cv.pdf" : attachmentFileName;
+            bodyBuilder.Attachments.Add(fn, attachmentBytes, ContentType.Parse("application/octet-stream"));
+            _logger.LogInformation("Attached file {FileName} ({Size} bytes)", fn, attachmentBytes.Length);
+        }
+        else if (!string.IsNullOrWhiteSpace(cvPdfUrl))
         {
             try
             {

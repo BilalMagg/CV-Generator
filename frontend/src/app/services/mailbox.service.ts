@@ -6,6 +6,9 @@ import {
   EmailMessageDto, SendEmailDto, EmailHistoryResponse,
   EmailScheduleDto, CreateScheduleDto, UpdateScheduleDto,
   MailboxStatsDto, ContactHistoryResponse,
+  GenerateEmailRequestDto, GenerateEmailResponseDto,
+  BulkGenerateContactRequestDto, BulkGenerateContactResponseDto,
+  CsvImportResultDto,
 } from '../models/mailbox.model';
 
 @Injectable({ providedIn: 'root' })
@@ -64,8 +67,8 @@ export class MailboxService {
     return this.http.patch<ApiResponse<ContactDto>>(`/api/contacts/${contactId}/favorite`, {});
   }
 
-  importCsv(csvContent: string): Promise<ApiResponse<ContactDto[]>> {
-    return this.http.post<ApiResponse<ContactDto[]>>('/api/contacts/import-csv', { csvContent });
+  importCsv(csvContent: string): Promise<ApiResponse<CsvImportResultDto>> {
+    return this.http.post<ApiResponse<CsvImportResultDto>>('/api/contacts/import-csv', { csvContent });
   }
 
   importFromOffers(): Promise<ApiResponse<ContactDto[]>> {
@@ -90,6 +93,14 @@ export class MailboxService {
 
   toggleSchedule(scheduleId: string): Promise<ApiResponse<EmailScheduleDto>> {
     return this.http.patch<ApiResponse<EmailScheduleDto>>(`/api/email-schedules/${scheduleId}/toggle`, {});
+  }
+
+  generateEmail(dto: GenerateEmailRequestDto): Promise<ApiResponse<GenerateEmailResponseDto>> {
+    return this.http.post<ApiResponse<GenerateEmailResponseDto>>('/api/workflows/contact-generate', dto);
+  }
+
+  generateBulk(dto: BulkGenerateContactRequestDto): Promise<ApiResponse<BulkGenerateContactResponseDto>> {
+    return this.http.post<ApiResponse<BulkGenerateContactResponseDto>>('/api/workflows/contact-generate/bulk', dto);
   }
 
   getGmailStatus(): Promise<{ connected: boolean; email?: string; connectedAt?: string }> {
