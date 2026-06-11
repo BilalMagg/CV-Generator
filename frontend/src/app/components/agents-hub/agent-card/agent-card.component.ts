@@ -22,9 +22,10 @@ export class AgentCardComponent {
   @Input({ required: true }) size!: string;
 
   private readonly workspaceRoutes: Record<string, string> = {
-    'job-extractor': '/agents-hub/job-extractor',
-    'search-agent': '/agents-hub/search-agent',
-    'job-crawler': '/agents-hub/job-crawler',
+    'job-extractor':   '/agents-hub/job-extractor',
+    'search-agent':    '/agents-hub/search-agent',
+    'job-crawler':     '/agents-hub/job-crawler',
+    'template-agent':  '/agents-hub/template-agent',
   };
 
   private sizeMap: Record<string, string> = {

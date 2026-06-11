@@ -1,0 +1,240 @@
+<div class="workspace-page">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="breadcrumb">
+        <a routerLink="/agents-hub">Agents Hub</a>
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" class="chevron">
+          <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Template Agent</span>
+      </div>
+      <h1 class="header-title">CV Template Agent</h1>
+      <p class="header-sub">Let AI pick the best template and render your CV from your stored career data</p>
+    </div>
+    <div class="header-right">
+      <a routerLink="/agents-hub" class="header-link">
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+          <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+          <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+          <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+          <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+        </svg>
+        All Agents
+      </a>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+
+    <!-- LEFT: form + result -->
+    <div class="input-section">
+
+      <div class="ai-badge">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+          <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/>
+        </svg>
+        Template Agent
+      </div>
+
+      <!-- Target role -->
+      <div class="field">
+        <label class="field-label" for="targetRole">
+          Target role
+          <span class="field-required">*</span>
+        </label>
+        <input
+          id="targetRole"
+          class="input"
+          type="text"
+          [(ngModel)]="targetRole"
+          placeholder="e.g. Software Engineer, Product Manager, Data Scientist…"
+          [disabled]="loading()"
+        />
+        <p class="field-hint">The agent will tailor your CV specifically for this role.</p>
+      </div>
+
+      <!-- Template style -->
+      <div class="field">
+        <label class="field-label">Template style</label>
+        <div class="pill-group">
+          @for (t of templates; track t.id) {
+            <button
+              type="button"
+              class="pill"
+              [class.active]="templateId === t.id"
+              [disabled]="loading()"
+              (click)="templateId = t.id"
+            >
+              {{ t.label }}
+            </button>
+          }
+        </div>
+        <p class="field-hint">
+          <strong>Auto</strong> lets the agent choose the best fit based on your role.
+        </p>
+      </div>
+
+      <!-- Optional summary -->
+      <div class="field">
+        <label class="field-label" for="summary">
+          Professional summary
+          <span class="field-optional">(optional)</span>
+        </label>
+        <textarea
+          id="summary"
+          class="input-textarea"
+          [(ngModel)]="summary"
+          rows="3"
+          placeholder="Override or provide a custom opening summary for the CV…"
+          [disabled]="loading()"
+        ></textarea>
+        <p class="field-hint">Leave blank to use a default summary generated for the target role.</p>
+      </div>
+
+      <!-- Error banner -->
+      @if (error()) {
+        <div class="error-banner">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          {{ error() }}
+          <button class="retry-btn" type="button" (click)="error.set('')">Dismiss</button>
+        </div>
+      }
+
+      <!-- Action bar -->
+      <div class="action-bar">
+        <button
+          class="render-btn"
+          type="button"
+          [disabled]="loading() || !targetRole.trim()"
+          (click)="onRender()"
+        >
+          @if (loading()) {
+            <span class="spinner"></span>
+            Rendering…
+          } @else {
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+              <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/>
+            </svg>
+            Render CV
+          }
+        </button>
+      </div>
+
+      <!-- Result card -->
+      @if (result()) {
+        <div class="result-card">
+          <div class="result-header">
+            <span class="badge-done">
+              <svg viewBox="0 0 24 24" fill="none" width="12" height="12">
+                <path d="M5 12l5 5L20 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Done
+            </span>
+            <span class="result-template-chip">{{ result()!.template_id }}</span>
+          </div>
+
+          @if (result()!.pdf_url || result()!.code_url) {
+            <div class="result-actions">
+              @if (result()!.pdf_url) {
+                <a [href]="result()!.pdf_url" target="_blank" rel="noopener" class="download-btn">
+                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+                    <path d="M12 4v12M8 12l4 4 4-4M4 20h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  Download PDF
+                </a>
+              }
+              @if (result()!.code_url) {
+                <a [href]="result()!.code_url" target="_blank" rel="noopener" class="code-btn">
+                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+                    <path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 6l-2 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  View Code
+                </a>
+              }
+            </div>
+          }
+
+          @if (result()!.cv_code && !result()!.pdf_url) {
+            <pre class="cv-code-preview">{{ result()!.cv_code }}</pre>
+          }
+        </div>
+      }
+
+    </div>
+
+    <!-- RIGHT: aside -->
+    <aside class="aside-panel">
+
+      <div class="aside-section">
+        <h3 class="aside-title">How it works</h3>
+        <ol class="steps-list">
+          <li class="step-item">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <strong>Enter your target role</strong>
+              <span>The agent tailors the CV content and keyword density for that specific position.</span>
+            </div>
+          </li>
+          <li class="step-item">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <strong>Agent fetches your data</strong>
+              <span>Your stored skills, experiences, and projects are pulled from your career profile.</span>
+            </div>
+          </li>
+          <li class="step-item">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <strong>Template is selected & rendered</strong>
+              <span>The best-matching layout is applied and a PDF (or code) is returned.</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="aside-section">
+        <h3 class="aside-title">Quick Actions</h3>
+        <div class="action-list">
+          <a routerLink="/my-career" class="action-item">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+              <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            Update your CV data
+          </a>
+          <a routerLink="/agents-hub" class="action-item">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+              <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+              <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+              <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+              <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+            All Agents
+          </a>
+          <a routerLink="/applications/generate" class="action-item">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+              <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/>
+            </svg>
+            Generate CV (AI)
+          </a>
+        </div>
+      </div>
+
+      <div class="aside-section">
+        <h3 class="aside-title">Tips</h3>
+        <ul class="tips-list">
+          <li>Keep your career data up to date for best results — add recent projects and skills in <a routerLink="/my-career">My Career</a>.</li>
+          <li>Use <strong>Auto</strong> template unless you have a specific format in mind.</li>
+          <li>The summary field is optional — the agent writes one if you leave it blank.</li>
+        </ul>
+      </div>
+
+    </aside>
+  </div>
+</div>
