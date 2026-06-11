@@ -35,11 +35,80 @@ La répartition des VMs est la suivante :
 
 Chaque VM dispose de 2 CPU et 2 Go de RAM, et les services communiquent entre VMs via le réseau partagé Docker.
 
+Le provisionnement des VMs est automatisé à l'aide de \textbf{Terraform} avec le provider VMware Workstation. Les scripts Terraform définissent la configuration de chaque VM (CPU, RAM, stockage) et sont versionnés dans le dépôt du projet.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/terraform-part1.png}
+\caption{Script Terraform — Définition des ressources VMs}
+\label{fig:terraform-part1}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/terraform-part2.png}
+\caption{Script Terraform — Configuration réseau et déploiement}
+\label{fig:terraform-part2}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/vms-created-image-virtualbox-result.png}
+\caption{Résultat du provisionnement — VMs créées}
+\label{fig:vms-result}
+\end{figure}
+
+\subsubsection{Automatisation avec Ansible}
+\label{subsubsec:realisation:ansible}
+
+La configuration des VMs après provisionnement est automatisée via \textbf{Ansible}. Les playbooks Ansible installent Docker, Docker Compose, pullent les images des services et assurent la configuration réseau de chaque VM.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/ansible-script.png}
+\caption{Playbook Ansible pour la configuration des VMs}
+\label{fig:ansible-script}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/ansible-execution-logs.png}
+\caption{Logs d'exécution d'Ansible}
+\label{fig:ansible-logs}
+\end{figure}
+
 \subsubsection{Infrastructure cloud}
 \label{subsubsec:realisation:cloud}
 
-\textit{Cette section sera complétée une fois l'infrastructure cloud finalisée.}
-% À remplir : déploiement cloud scalable, load balancer, services managés
+Parallèlement à l'infrastructure locale, le projet \projectname{} a été conçu pour être déployé sur le cloud \textbf{AWS} via une approche \gls{iac} complète. L'infrastructure est intégralement définie dans le répertoire \texttt{infrastructure/cloud/} et se compose de deux couches : le provisionnement avec \textbf{Terraform} et le déploiement applicatif avec \textbf{Ansible}.
+
+\paragraph{Architecture réseau.} Un \gls{vpc} AWS héberge l'ensemble des ressources, avec deux sous-réseaux publics (ALB, NAT Gateway) et deux sous-réseaux privés (instances ECS, RDS). Une passerelle NAT unique assure la connectivité sortante des instances privées vers Internet (téléchargement d'images ECR, appels aux API LLM, envoi SMTP). Un \gls{alb} écoute sur le port 80 et achemine le trafic selon les règles suivantes :
+\begin{itemize}
+    \item \texttt{/api/*} $\rightarrow$ service \texttt{api-gateway} (port 8080) ;
+    \item \texttt{/realms/*}, \texttt{/resources/*}, \texttt{/admin/*} $\rightarrow$ service \texttt{keycloak} (port 8080) ;
+    \item tout autre chemin $\rightarrow$ service \texttt{frontend} (port 80).
+\end{itemize}
+
+\paragraph{Orchestration ECS.} Les services sont exécutés sur un cluster \textbf{Amazon ECS} avec le lancement \textbf{EC2} (type \texttt{m7i-flex.large}, 8~GiB), et non Fargate, conformément au cahier des charges. Un \gls{asg} couplé à un \texttt{capacity provider} gère le dimensionnement. Le mode réseau \texttt{awsvpc} est utilisé avec le \textbf{ENI trunking} activé, permettant à chaque instance d'accueillir une dizaine de tâches. La résolution de noms inter-services est assurée par \textbf{ECS Service Connect} via un espace de noms DNS privé (\texttt{cvgen.local}), remplaçant la résolution Docker Compose de l'environnement local.
+
+\paragraph{Registre d'images.} Chacun des 15 services applicatifs (frontend, passerelle API, 7 microservices .NET, 6 agents IA) ainsi que Keycloak possède son propre dépôt \textbf{ECR}. Les images sont construites et poussées par Ansible via la tâche \texttt{images}.
+
+\paragraph{Base de données.} Une instance unique \textbf{RDS PostgreSQL~16} (\texttt{db.t3.micro}) héberge l'ensemble des 8 bases de données (7 bases applicatives + \texttt{keycloak}). L'extension \textbf{pgvector} est activée sur les bases \texttt{workflow\_db} et \texttt{cv\_db} pour le \gls{rag}. La base est déployée en simple zone de disponibilité (single-AZ), sans accès public. Les 8 bases sont créées par Ansible via un tunnel SSM, car RDS ne crée qu'une seule base initiale au provisionnement.
+
+\paragraph{Gestion des secrets.} Les informations sensibles (mots de passe, clés API, chaînes de connexion) sont stockées dans \textbf{AWS SSM Parameter Store} et injectées dans les définitions de tâches ECS au lancement. Les variables dépendant du DNS public de l'ALB (adresses externes des services) sont d'abord créées par Terraform comme paramètres fictifs, puis écrasées par Ansible une fois le DNS connu.
+
+\paragraph{Services éphémères.} Par choix d'architecture (démo), \textbf{Kafka} (mode KRaft) et \textbf{MinIO} sont déployés avec un stockage éphémère — un redémarrage entraîne la perte des événements en transit et des CVs stockés, qui peuvent être régénérés facilement.
+
+\paragraph{Automatisation Ansible.} Le playbook Ansible (\texttt{playbook.yml}) orchestre le déploiement en plusieurs étapes :
+\begin{enumerate}
+    \item \textbf{images} : construction et push des images Docker vers ECR ;
+    \item \textbf{secrets} : écriture des paramètres SSM et mise à jour du DNS de l'ALB ;
+    \item \textbf{database} : création des 8 bases de données et activation de pgvector (via tunnel SSM vers RDS) ;
+    \item \textbf{deploy} : déploiement des définitions de tâches et services ECS ;
+    \item \textbf{smoketest} : validation du bon fonctionnement de chaque service.
+\end{enumerate}
+
+\paragraph{Taille \textit{free-plan}.} L'infrastructure est dimensionnée pour fonctionner dans les limites du programme \textbf{AWS Free Plan} (crédits 2025 jusqu'à 200~\$) : les instances EC2 (\texttt{m7i-flex.large}) et RDS (\texttt{db.t3.micro}) sont éligibles, de même que l'ALB. Les coûts récurrents les plus significatifs sont la passerelle NAT (environ 32~\$/mois) et les instances EC2, qui peuvent être arrêtées hors démonstration.
 
 \subsubsection{Environnement de déploiement}
 \label{subsubsec:realisation:deploiement}
@@ -57,7 +126,7 @@ Tous les services partagent un réseau Docker commun (\texttt{cv-network}) pour 
 \subsection{Architecture logicielle}
 \label{subsec:realisation:archi-logicielle}
 
-L'architecture logicielle de \projectname{} est une architecture en \textbf{microservices} avec communication événementielle. Le schéma ci-dessous illustre l'architecture globale du système.
+L'architecture logicielle de \projectname{} suit un modèle en \textbf{microservices} avec communication événementielle. Le schéma ci-dessous illustre l'architecture globale du système.
 
 \begin{figure}[H]
 \centering
@@ -66,16 +135,194 @@ L'architecture logicielle de \projectname{} est une architecture en \textbf{micr
 \label{fig:archi-logicielle}
 \end{figure}
 
-L'architecture se compose des couches suivantes :
+Les sections suivantes détaillent chaque couche de l'architecture.
+
+\subsubsection{Architecture du Frontend}
+\label{subsubsec:realisation:archi-frontend}
+
+Le frontend est une application monopage (\gls{spa}) développée avec \textbf{Angular 21} en utilisant les \textbf{standalone components}. La gestion asynchrone est assurée par \textbf{RxJS} et la réactivité par les \textbf{Signals} d'Angular. L'interface utilise le design system \textbf{Propel} avec des couleurs en espace OKLCH. L'application est hébergée par un serveur \textbf{Nginx} servant les fichiers compilés.
+
+Le code source est organisé selon les bonnes pratiques Angular avec une séparation claire entre les \texttt{components}, \texttt{services}, \texttt{pipes} et \texttt{guards}. La structure des dossiers est présentée dans la capture ci-dessous.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{images/architecture/frontend-arch.png}
+\caption{Structure du projet Frontend Angular}
+\label{fig:frontend-arch}
+\end{figure}
+
+\subsubsection{Passerelle API (YARP)}
+\label{subsubsec:realisation:archi-gateway}
+
+La passerelle API est un service \textbf{ASP.NET Core 10} utilisant \gls{yarp} comme proxy inverse. Elle agit comme point d'entrée unique pour toutes les requêtes clientes et assure les responsabilités suivantes :
 
 \begin{itemize}
-    \item \textbf{Frontend (Angular)} : Application monopage (SPA) hébergée par Nginx, consommant l'API via la passerelle.
-    \item \textbf{Passerelle API (YARP)} : Proxy inverse .NET assurant le routage, l'authentification et la gestion des sessions. Publie les événements de connexion vers Kafka.
-    \item \textbf{Backend (.NET)} : 7 microservices indépendants, chacun avec sa propre base de données PostgreSQL. Ils communiquent via HTTP, gRPC et Kafka.
-    \item \textbf{Agents IA (Python)} : Pipeline de 6 agents FastAPI utilisant LangChain et LangGraph pour le traitement intelligent des CV.
-    \item \textbf{Messagerie (Kafka)} : Système de messagerie asynchrone en mode KRaft (sans Zookeeper) pour la communication événementielle entre services.
-    \item \textbf{Stockage objet (MinIO)} : Stockage S3-compatible pour les fichiers PDF générés.
-    \item \textbf{Authentification (Keycloak)} : Serveur d'authentification centralisé avec support OAuth2, OpenID Connect et fédération d'identités (Google, GitHub).
+    \item \textbf{Routage :} Redirection des requêtes vers le microservice approprié selon l'URL.
+    \item \textbf{Authentification :} Validation des tokens \gls{jwt}, gestion des sessions sécurisées par cookies.
+    \item \textbf{Événements :} Publication des événements de connexion/déconnexion vers \gls{kafka}.
+    \item \textbf{Sécurité :} Protection contre les attaques (\gls{xss}, injections, etc.).
+\end{itemize}
+
+\subsubsection{Architecture du Backend (Microservices .NET)}
+\label{subsubsec:realisation:archi-backend}
+
+Le backend est composé de 7 microservices indépendants développés en \textbf{ASP.NET Core 10}, chacun responsable d'un domaine métier spécifique avec sa propre base de données \textbf{PostgreSQL 16}. Cette architecture garantit un couplage faible et une évolutivité indépendante de chaque service.
+
+La communication entre microservices s'effectue via trois protocoles complémentaires :
+
+\begin{itemize}
+    \item \textbf{\gls{rest} :} Communication synchrone pour les opérations \gls{crud} entre services.
+    \item \textbf{\gls{grpc} :} Communication performante pour les échanges à faible latence (synchronisation utilisateur, récupération de détails).
+    \item \textbf{\gls{kafka} :} Communication asynchrone et événementielle pour le découplage temporel entre services.
+\end{itemize}
+
+Le diagramme ci-dessous illustre les interactions entre les différents services.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/architecture/communication-architecture.png}
+\caption{Communication inter-services — \gls{rest}, \gls{grpc} et \gls{kafka}}
+\label{fig:communication}
+\end{figure}
+
+La structure globale du backend est présentée ci-après.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/architecture/backend-arch.png}
+\caption{Structure du projet Backend \gls{dotnet}}
+\label{fig:backend-arch}
+\end{figure}
+
+\paragraph{User Service}
+\label{par:user-service}
+
+Le \textbf{User Service} gère le cycle de vie des utilisateurs : inscription, authentification, mise à jour des profils et synchronisation avec \textbf{Keycloak}. Il expose une \gls{grpc} pour permettre aux autres services de récupérer les informations utilisateur. Il consomme les événements \texttt{user.registered} depuis \gls{kafka} pour créer le profil local.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{images/architecture/user.png}
+\caption{Structure du User Service}
+\label{fig:user-service}
+\end{figure}
+
+\paragraph{User Content Service}
+\label{par:user-content-service}
+
+Le \textbf{User Content Service} gère le portfolio de l'utilisateur : projets, compétences, expériences professionnelles, formations, certifications, langues et réseaux sociaux. Il expose une \gls{rest} \gls{api} complète avec opérations \gls{crud} et est consommé par le frontend ainsi que par le \textbf{CV Service} pour la génération de CV.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{images/architecture/user-contetn.png}
+\caption{Structure du User Content Service}
+\label{fig:user-content-service}
+\end{figure}
+
+\paragraph{CV Service}
+\label{par:cv-service}
+
+Le \textbf{CV Service} est responsable de la création, du versionnement et de l'export des CV au format \gls{pdf}. Il gère également les templates de CV et communique avec le \textbf{Workflow Service} pour déclencher les pipelines de génération. Les fichiers \gls{pdf} générés sont stockés dans \textbf{MinIO}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{images/architecture/cv.png}
+\caption{Structure du CV Service}
+\label{fig:cv-service}
+\end{figure}
+
+\paragraph{Workflow Service}
+\label{par:workflow-service}
+
+Le \textbf{Workflow Service} orchestre le pipeline de génération de CV. Il reçoit les demandes de génération, appelle séquentiellement les 6 agents IA via \gls{http}, et publie les résultats sur \gls{kafka}. Il utilise une base \textbf{PostgreSQL} avec l'extension \textbf{pgvector} pour le support des recherches vectorielles utilisées par l'agent de matching \gls{rag}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{images/architecture/workflow.png}
+\caption{Structure du Workflow Service}
+\label{fig:workflow-service}
+\end{figure}
+
+\paragraph{Application Service}
+\label{par:application-service}
+
+Le \textbf{Application Service} gère le suivi des candidatures. Il permet de créer, modifier et suivre l'état des candidatures (vue Kanban, liste, calendrier). Il communique avec le \textbf{User Service} via \gls{grpc} pour valider les utilisateurs et publie des événements de changement d'état sur \gls{kafka}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{images/architecture/application.png}
+\caption{Structure du Application Service}
+\label{fig:application-service}
+\end{figure}
+
+\paragraph{Job Offer Service}
+\label{par:job-offer-service}
+
+Le \textbf{Job Offer Service} gère les offres d'emploi. Il expose des endpoints \gls{rest} pour le \gls{crud} des offres, déclenche le crawling automatique via un agent IA dédié, et utilise \textbf{SignalR} pour les notifications temps réel vers le frontend.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{images/architecture/job-offer.png}
+\caption{Structure du Job Offer Service}
+\label{fig:job-offer-service}
+\end{figure}
+
+\paragraph{Notification Service}
+\label{par:notification-service}
+
+Le \textbf{Notification Service} est responsable de l'envoi de notifications. Il consomme les événements \gls{kafka}, envoie des emails via \textbf{MailKit}, et gère les rappels planifiés avec \textbf{Hangfire}. Il assure la communication asynchrone avec les utilisateurs.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{images/architecture/notification.png}
+\caption{Structure du Notification Service}
+\label{fig:notification-service}
+\end{figure}
+
+\paragraph{Projets partagés}
+\label{par:shared-projects}
+
+En plus des 7 microservices, le backend inclut des projets partagés :
+
+\begin{itemize}
+    \item \textbf{Common :} Bibliothèque de classes partagées (DTOs, modèles, constantes) utilisée par l'ensemble des services.
+    \item \textbf{Common Protos :} Définitions des contrats \gls{grpc} (fichiers \texttt{.proto}) partagés entre les services.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\textwidth]{images/architecture/shared.png}
+\hfill
+\includegraphics[width=0.45\textwidth]{images/architecture/common-protos.png}
+\caption{Projets partagés — Common et Common Protos}
+\label{fig:shared-projects}
+\end{figure}
+
+\subsubsection{Agents IA (Python)}
+\label{subsubsec:realisation:archi-agents}
+
+Le pipeline d'agents IA est développé en \textbf{Python} avec \textbf{FastAPI}, \textbf{LangChain} et \textbf{LangGraph}. Il se compose de 6 agents spécialisés, chacun responsable d'une étape du processus de génération de CV :
+
+\begin{itemize}
+    \item \textbf{Extractor :} Analyse l'offre d'emploi saisie par l'utilisateur et extrait les informations clés (compétences requises, expérience, formation).
+    \item \textbf{Crawler :} Collecte automatiquement les offres d'emploi depuis des plateformes externes.
+    \item \textbf{Search :} Recherche les meilleures correspondances dans le portfolio de l'utilisateur.
+    \item \textbf{Optimizer :} Applique les techniques d'optimisation \gls{ats} pour maximiser la compatibilité du CV avec les systèmes de recrutement.
+    \item \textbf{Template :} Sélectionne et applique le template de CV le plus adapté au profil et au secteur visé.
+    \item \textbf{Contact :} Génère une lettre de motivation personnalisée adaptée à l'offre ciblée.
+\end{itemize}
+
+L'orchestrateur, intégré au \textbf{Workflow Service}, coordonne l'exécution séquentielle de ces agents et gère le flux de données entre chaque étape.
+
+\subsubsection{Infrastructure transverse}
+\label{subsubsec:realisation:archi-infra}
+
+L'infrastructure transverse regroupe les services communs à l'ensemble de l'application :
+
+\begin{itemize}
+    \item \textbf{\gls{kafka} (mode KRaft) :} Système de messagerie asynchrone pour la communication événementielle. Il permet le découplage temporel entre les services et alimente le pipeline de génération de CV.
+    \item \textbf{MinIO (\gls{s3}) :} Stockage d'objets compatible Amazon \gls{s3} pour les fichiers \gls{pdf} de CV générés et les templates.
+    \item \textbf{Keycloak :} Serveur d'authentification centralisé supportant \gls{oauth} 2.0 et \gls{oidc}. Il gère les identités des utilisateurs et propose la fédération d'identités (Google, GitHub).
+    \item \textbf{PostgreSQL 16 :} 8 bases de données indépendantes (une par microservice + une pour Keycloak), chacune avec l'extension \textbf{pgvector} pour les recherches vectorielles.
 \end{itemize}
 
 \subsection{Présentation des outils utilisés}
@@ -160,10 +407,26 @@ Le cycle DevSecOps est appliqué à travers le pipeline CI/CD en six phases :
 
 \begin{enumerate}
     \item \textbf{Phase 1 - Static Checks :} Validation des fichiers Docker Compose, scan Trivy filesystem, analyse SonarCloud pour le frontend, le backend et les agents IA.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/sonar-job-sucess.png}
+\caption{Analyse SonarCloud réussie pour le projet}
+\label{fig:sonar-success}
+\end{figure}
+
     \item \textbf{Phase 2 - Component Tests :} Exécution des tests unitaires (.NET avec xUnit, Angular avec Vitest, Python avec pytest) et génération des rapports de couverture.
     \item \textbf{Phase 3 - Integration / E2E :} Tests d'intégration et tests E2E avec Cypress, suivis d'un scan de sécurité OWASP ZAP.
     \item \textbf{Phase 4 - Build \& Scan :} Construction des images Docker multi-stage, suivie d'un scan Trivy des images.
     \item \textbf{Phase 5 - Registry Push :} Publication des images validées vers GitHub Container Registry et DockerHub.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/services-dockerhub-after-pipeline-successed.png}
+\caption{Images des services publiées sur DockerHub après succès du pipeline}
+\label{fig:dockerhub-services}
+\end{figure}
+
     \item \textbf{Phase 6 - Deploy :} Déploiement de l'application sur l'environnement cible.
 \end{enumerate}
 
@@ -241,6 +504,15 @@ La communication événementielle est assurée par \textbf{Apache Kafka} en mode
 \label{fig:event-flow}
 \end{figure}
 
+Les topics Kafka utilisés dans le projet sont visibles dans la capture ci-dessous.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/kafka-topics.png}
+\caption{Topics Kafka — user.registered, user.created, trigger-live-crawl}
+\label{fig:kafka-topics}
+\end{figure}
+
 \subsection{Pipeline de génération de CV}
 \label{subsec:realisation:pipeline-cv}
 
@@ -262,7 +534,6 @@ Les principales fonctionnalités du frontend incluent :
 \begin{itemize}
     \item Pages de connexion et d'inscription (Keycloak).
     \item Tableau de bord avec statistiques et graphiques.
-    \pagebreak
     \item Interface de génération de CV (saisie d'offre d'emploi).
     \item Vue Kanban pour le suivi des candidatures (drag-and-drop).
     \item Vue calendrier avec rappels.
@@ -274,6 +545,50 @@ Les principales fonctionnalités du frontend incluent :
 \label{subsec:realisation:bdd}
 
 L'architecture microservices implique l'utilisation de 8 bases de données \textbf{PostgreSQL 16} indépendantes, une par microservice, plus une pour Keycloak. Chaque base utilise l'extension \textbf{pgvector} pour le support des recherches vectorielles utilisées par l'agent de matching RAG.
+
+\subsection{Documentation des API}
+\label{subsec:realisation:api}
+
+Chaque microservice expose ses endpoints via une interface \textbf{Swagger UI} intégrée, facilitant le test et la documentation des API. Les captures ci-dessous présentent la documentation de chaque service.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{images/swagger/user-service.png}
+\includegraphics[width=0.49\textwidth]{images/swagger/user-content-service.png}
+\caption{Documentation Swagger — User Service et User Content Service}
+\label{fig:swagger-user}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{images/swagger/application-service.png}
+\includegraphics[width=0.49\textwidth]{images/swagger/workflow-service.png}
+\caption{Documentation Swagger — Application Service et Workflow Service}
+\label{fig:swagger-app-workflow}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{images/swagger/cv-service.png}
+\includegraphics[width=0.49\textwidth]{images/swagger/notification-service.png}
+\caption{Documentation Swagger — CV Service et Notification Service}
+\label{fig:swagger-cv-notif}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{images/swagger/job-offer-service.png}
+\includegraphics[width=0.49\textwidth]{images/swagger/job-offer-service1.png}
+\caption{Documentation Swagger — Job Offer Service}
+\label{fig:swagger-joboffer}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{images/swagger/job-offer-service2.png}
+\caption{Documentation Swagger — Job Offer Service (suite)}
+\label{fig:swagger-joboffer2}
+\end{figure}
 
 \section{Déploiement}
 \label{sec:realisation:deploiement}
@@ -294,6 +609,13 @@ Les images sont construites en deux étapes :
     \item \textbf{Runtime :} Image légère ne contenant que l'exécutable et ses dépendances.
 \end{enumerate}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/docker-desktop-container-running.png}
+\caption{Conteneurs Docker en cours d'exécution}
+\label{fig:docker-containers}
+\end{figure}
+
 \subsection{Pipeline CI/CD}
 \label{subsec:realisation:pipeline}
 
@@ -301,8 +623,8 @@ Le pipeline CI/CD est implémenté avec \textbf{GitHub Actions} et comprend 6 ph
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/pipeline-cicd.png}
-\caption{Pipeline CI/CD}
+\includegraphics[width=0.85\textwidth]{images/github-action-success.png}
+\caption{Pipeline CI/CD — GitHub Actions (succès)}
 \label{fig:pipeline}
 \end{figure}
 
@@ -314,30 +636,30 @@ Le pipeline CI/CD est implémenté avec \textbf{GitHub Actions} et comprend 6 ph
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/screenshot-dashboard.png}
-\caption{Interface du tableau de bord}
+\includegraphics[width=0.85\textwidth]{images/demo/dashboard.png}
+\caption{Tableau de bord principal}
 \label{fig:dashboard}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/screenshot-generation.png}
-\caption{Interface de génération de CV}
-\label{fig:generation}
+\includegraphics[width=0.85\textwidth]{images/demo/my-career.png}
+\caption{Interface de gestion du portfolio et des compétences}
+\label{fig:portfolio}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/screenshot-kanban.png}
+\includegraphics[width=0.85\textwidth]{images/demo/kanban.png}
 \caption{Tableau Kanban de suivi des candidatures}
 \label{fig:kanban}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-% \includegraphics[width=\textwidth]{images/screenshot-portfolio.png}
-\caption{Interface de gestion du portfolio}
-\label{fig:portfolio}
+\includegraphics[width=0.85\textwidth]{images/demo/agent-hub.png}
+\caption{Interface des agents IA pour la génération de CV}
+\label{fig:generation}
 \end{figure}
 
 \subsection{Fonctionnalités principales}
@@ -356,7 +678,43 @@ Le système \projectname{} offre les fonctionnalités principales suivantes :
 \subsection{Démonstrations du fonctionnement}
 \label{subsec:realisation:demo}
 
-% À remplir : description des démonstrations du fonctionnement de l'application
+Cette section présente une démonstration des principales interfaces de l'application \projectname{}.
+
+\subsubsection{Authentification et page d'accueil}
+
+L'application propose une page d'accueil présentant les fonctionnalités clés, accessible sans authentification. La connexion s'effectue via un formulaire sécurisé ou via les fournisseurs OAuth2 (Google, GitHub).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/demo/landing-page.png}
+\caption{Page d'accueil de \projectname{}}
+\label{fig:demo-landing}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/demo/login-page.png}
+\caption{Page de connexion}
+\label{fig:demo-login}
+\end{figure}
+
+\subsubsection{Gestion des candidatures et calendrier}
+
+Le module de suivi des candidatures offre une vue calendrier pour visualiser les événements importants (entretiens, relances, échéances). Une boîte de réception centralise les notifications et les échanges.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/demo/calendar.png}
+\caption{Vue calendrier des candidatures}
+\label{fig:demo-calendar}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{images/demo/mailbox.png}
+\caption{Boîte de réception des notifications}
+\label{fig:demo-mailbox}
+\end{figure}
 
 \section{Conclusion}
 \label{sec:realisation:conclusion}

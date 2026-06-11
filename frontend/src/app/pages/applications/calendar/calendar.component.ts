@@ -156,7 +156,7 @@ export class CalendarComponent implements OnInit {
     try {
       const user = this.authSvc.currentUser();
       if (user) {
-        const data = await this.reminderSvc.getUserReminders(user.userId);
+        const data = await this.reminderSvc.getUserReminders();
         this.remindersList.set(data);
       }
     } catch (e: any) {

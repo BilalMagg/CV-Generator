@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.angular/
+cypress/
+.git/
+.gitignore
+.editorconfig
+.prettierrc
+README.md
+sonar-project.properties
+mock-pages/
+proxy.conf.json
