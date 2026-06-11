@@ -53,6 +53,9 @@ locals {
         CV_SERVICE_PORT           = "8088"
         KAFKA_HOST                = "kafka"
         KAFKA_PORT                = "9092"
+        # Internal Kestrel bind port (GATEWAY_PORT is the public ALB port via the
+        # /cvgen/ext overlay, so the container must bind PORT, not GATEWAY_PORT).
+        PORT = "8080"
       }
       secrets = {
         # external_host overlay (ALB DNS / public ports) — set by Ansible
@@ -287,6 +290,7 @@ module "service" {
   alb_container_port   = each.value.alb_port
 
   cluster_arn                   = aws_ecs_cluster.main.arn
+  capacity_provider_name        = aws_ecs_capacity_provider.main.name
   execution_role_arn            = aws_iam_role.task_execution.arn
   task_role_arn                 = aws_iam_role.task.arn
   subnets                       = local.private_subnet_ids

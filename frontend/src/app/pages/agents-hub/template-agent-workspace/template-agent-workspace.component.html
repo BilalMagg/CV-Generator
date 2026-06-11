@@ -1,0 +1,245 @@
+<div class="workspace-page">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="breadcrumb">
+        <a routerLink="/agents-hub">Agents Hub</a>
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" class="chevron">
+          <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Template Agent</span>
+      </div>
+      <h1 class="header-title">CV Template Agent</h1>
+      <p class="header-sub">Render a tailored CV using your career data and a professional template</p>
+    </div>
+    <div class="header-right">
+      <a routerLink="/agents-hub" class="header-link">
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+          <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+          <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+          <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+          <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+        </svg>
+        All Agents
+      </a>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="steps-panel">
+
+      <!-- ── STEP 1: Choose template ── -->
+      <div class="step-section">
+        <div class="step-label">
+          <span class="step-num">1</span>
+          <span class="step-title">Choose a template</span>
+        </div>
+
+        @if (templatesLoading()) {
+          <div class="template-grid">
+            @for (i of [1,2,3,4,5,6]; track i) {
+              <div class="template-skeleton"></div>
+            }
+          </div>
+        } @else if (availableTemplates().length === 0) {
+          <p class="empty-hint">No templates available — check agent connection.</p>
+        } @else {
+          <div class="template-grid">
+            @for (tpl of availableTemplates(); track tpl.id) {
+              <button
+                type="button"
+                class="template-card"
+                [class.selected]="selectedTemplateId() === tpl.id"
+                [disabled]="loading()"
+                (click)="selectedTemplateId.set(tpl.id)"
+              >
+                <div class="template-preview">
+                  @if (tpl.previewUrl) {
+                    <img [src]="tpl.previewUrl" [alt]="tpl.name" class="preview-img" />
+                  } @else {
+                    <div class="preview-placeholder latex-placeholder">
+                      <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
+                        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                        <path d="M14 3v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                      </svg>
+                      <span class="preview-type-label">{{ tpl.type }}</span>
+                    </div>
+                  }
+                  @if (selectedTemplateId() === tpl.id) {
+                    <span class="selected-check">
+                      <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+                        <path d="M5 12l5 5L20 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </span>
+                  }
+                </div>
+                <div class="template-info">
+                  <span class="template-name">{{ tpl.name }}</span>
+                  <span class="template-type-badge">{{ tpl.type }}</span>
+                </div>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- ── STEP 2: Tone ── -->
+      <div class="step-section">
+        <div class="step-label">
+          <span class="step-num">2</span>
+          <span class="step-title">Tone</span>
+        </div>
+        <div class="tone-pills">
+          @for (t of tones; track t.id) {
+            <button
+              type="button"
+              class="tone-pill"
+              [class.active]="tone === t.id"
+              [disabled]="loading()"
+              (click)="tone = t.id"
+            >
+              {{ t.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- ── Advanced settings ── -->
+      <div class="step-section advanced-section">
+        <button class="advanced-toggle" type="button" (click)="showAdvanced = !showAdvanced">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          Advanced settings
+          <svg viewBox="0 0 24 24" fill="none" width="12" height="12" class="chevron-icon" [class.open]="showAdvanced">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        @if (showAdvanced) {
+          <div class="advanced-panel">
+            <div class="field">
+              <label class="field-label" for="manualRole">Target role</label>
+              <input
+                id="manualRole"
+                class="input"
+                type="text"
+                [(ngModel)]="manualRole"
+                placeholder="e.g. Software Engineer, Product Manager…"
+                [disabled]="loading()"
+              />
+              <p class="field-hint">Specify the target job role. Leave blank for a general-purpose CV.</p>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Error -->
+      @if (error()) {
+        <div class="error-banner">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          {{ error() }}
+          <button class="retry-btn" type="button" (click)="error.set('')">Dismiss</button>
+        </div>
+      }
+
+      <!-- Render button -->
+      <div class="action-bar">
+        <div class="action-hint">
+          The agent will use your stored skills, experiences &amp; projects — keep them up to date in
+          <a routerLink="/my-career" class="inline-link">My Career</a>.
+        </div>
+        <button
+          class="render-btn"
+          type="button"
+          [disabled]="!canSubmit()"
+          (click)="onRender()"
+        >
+          @if (loading()) {
+            <span class="spinner"></span>
+            Rendering…
+          } @else {
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+              <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/>
+            </svg>
+            Render CV
+          }
+        </button>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: aside -->
+    <aside class="aside-panel">
+
+      <div class="aside-section">
+        <h3 class="aside-title">How it works</h3>
+        <ol class="steps-list">
+          <li class="step-item">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <strong>Choose a template</strong>
+              <span>LaTeX or HTML, selected from your stored templates.</span>
+            </div>
+          </li>
+          <li class="step-item">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <strong>Set a tone</strong>
+              <span>Controls the language style of the generated content.</span>
+            </div>
+          </li>
+          <li class="step-item">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <strong>Optionally set a target role</strong>
+              <span>Open Advanced settings to specify a role. Defaults to general.</span>
+            </div>
+          </li>
+          <li class="step-item">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <strong>Review in the editor</strong>
+              <span>See the code and preview side by side, then download.</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="aside-section">
+        <h3 class="aside-title">Quick Actions</h3>
+        <div class="action-list">
+          <a routerLink="/my-career" class="action-item">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+              <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            Update career data
+          </a>
+          <a routerLink="/agents-hub/job-extractor" class="action-item">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+              <path d="M21 12H3M15 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Run Job Extractor
+          </a>
+          <a routerLink="/agents-hub" class="action-item">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+              <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+              <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+              <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+              <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+            All Agents
+          </a>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+</div>

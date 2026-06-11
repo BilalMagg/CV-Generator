@@ -5,9 +5,11 @@ Upload and retrieve files from MinIO (S3-compatible storage).
 Used by CV services to store generated PDF files and CV templates.
 """
 
+import io
 import json
 import logging
 import os
+import pathlib
 from typing import Optional
 
 from minio import Minio
@@ -19,6 +21,7 @@ from minio.error import S3Error
 # sane default here is safe and does not mask a misconfiguration.
 DEFAULT_BUCKET = os.getenv("MINIO_BUCKET", "cv-pdfs")  # generated CV PDFs
 TEMPLATES_BUCKET = os.getenv("MINIO_TEMPLATES_BUCKET", "cv-templates")  # CV templates
+CODE_BUCKET = os.getenv("MINIO_CODE_BUCKET", "cv-sources")  # rendered CV source code
 
 
 def _require_env(name: str) -> str:
@@ -126,7 +129,52 @@ def upload_pdf(
         content_type="application/pdf",
     )
 
-    endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
+    endpoint = os.getenv("MINIO_PUBLIC_ENDPOINT") or os.getenv("MINIO_ENDPOINT", "localhost:9000")
+    use_tls = _minio_secure() if secure is None else secure
+    scheme = "https" if use_tls else "http"
+    return f"{scheme}://{endpoint}/{bucket_name}/{object_name}"
+
+
+def upload_code(
+    code: str,
+    object_name: str,
+    bucket_name: str = CODE_BUCKET,
+    client: Optional[Minio] = None,
+    content_type: str = "text/plain",
+    secure: bool | None = None,
+) -> str:
+    """
+    Upload rendered CV source code (LaTeX/HTML) to MinIO and return its URL.
+
+    Unlike upload_pdf this stores an in-memory string directly, so the caller
+    does not need to write the source to a temp file first.
+
+    Args:
+        code:         The raw CV source code (LaTeX or HTML).
+        object_name:  Name of the object in MinIO (e.g. "default-abc123.tex").
+        bucket_name:  The MinIO bucket to upload to (default: cv-sources).
+        client:       An existing Minio client. If None, one will be created.
+        content_type: MIME type for the object (e.g. "text/x-tex", "text/html").
+        secure:       Whether to use HTTPS in the returned URL.
+
+    Returns:
+        The URL to access the uploaded source file.
+    """
+    if client is None:
+        client = get_minio_client()
+
+    ensure_bucket(client, bucket_name)
+
+    data = code.encode("utf-8")
+    client.put_object(
+        bucket_name,
+        object_name,
+        io.BytesIO(data),
+        length=len(data),
+        content_type=content_type,
+    )
+
+    endpoint = os.getenv("MINIO_PUBLIC_ENDPOINT") or os.getenv("MINIO_ENDPOINT", "localhost:9000")
     use_tls = _minio_secure() if secure is None else secure
     scheme = "https" if use_tls else "http"
     return f"{scheme}://{endpoint}/{bucket_name}/{object_name}"
@@ -174,6 +222,7 @@ def init_minio_storage() -> Minio:
     client = get_minio_client()
     ensure_bucket(client, DEFAULT_BUCKET)
     ensure_templates_bucket(client)
+    ensure_code_bucket(client)
     return client
 
 
@@ -183,6 +232,84 @@ def ensure_templates_bucket(client: Minio) -> None:
     """
     if not client.bucket_exists(TEMPLATES_BUCKET):
         client.make_bucket(TEMPLATES_BUCKET)
+
+
+def ensure_code_bucket(client: Minio) -> None:
+    """
+    Create the cv-sources bucket (rendered CV source code) if it doesn't exist.
+    """
+    if not client.bucket_exists(CODE_BUCKET):
+        client.make_bucket(CODE_BUCKET)
+
+
+# File extension -> (template type, JSON field) used when seeding templates.
+_TEMPLATE_EXT = {
+    ".tex": ("latex", "latex_code"),
+    ".html": ("html", "html_code"),
+    ".htm": ("html", "html_code"),
+}
+
+
+def seed_templates_from_dir(
+    templates_dir,
+    bucket_name: str = TEMPLATES_BUCKET,
+    client: Optional[Minio] = None,
+    overwrite: bool = False,
+) -> list[str]:
+    """
+    Seed a templates bucket from a local directory of .tex/.html files.
+
+    Each file becomes a template object keyed by its filename stem, with the
+    template type and code field inferred from the extension (.tex -> latex,
+    .html/.htm -> html). The stored JSON matches get_template_object's shape:
+    {"id", "type", "latex_code", "html_code"}.
+
+    Seed-if-missing by default (idempotent across restarts): an object that
+    already exists is left untouched unless overwrite=True. The directory is the
+    single source of truth, so no per-template spec is needed.
+
+    Args:
+        templates_dir: Path to the directory holding the template source files.
+        bucket_name:   Target bucket (default: cv-templates).
+        client:        An existing Minio client. If None, one will be created.
+        overwrite:     Re-upload even if the object already exists.
+
+    Returns:
+        The list of template ids that were uploaded this call.
+    """
+    if client is None:
+        client = get_minio_client()
+
+    ensure_bucket(client, bucket_name)
+
+    seeded: list[str] = []
+    for path in sorted(pathlib.Path(templates_dir).glob("*")):
+        meta = _TEMPLATE_EXT.get(path.suffix.lower())
+        if not meta:
+            continue
+        template_type, code_field = meta
+        template_id = path.stem
+
+        if not overwrite:
+            try:
+                client.stat_object(bucket_name, template_id)
+                continue  # already present — leave it alone
+            except S3Error:
+                pass
+
+        document = {"id": template_id, "type": template_type, "latex_code": "", "html_code": ""}
+        document[code_field] = path.read_text(encoding="utf-8")
+        data = json.dumps(document).encode("utf-8")
+        client.put_object(
+            bucket_name,
+            template_id,
+            io.BytesIO(data),
+            length=len(data),
+            content_type="application/json",
+        )
+        seeded.append(template_id)
+
+    return seeded
 
 
 DEFAULT_TEMPLATE = {

@@ -77,7 +77,15 @@ resource "aws_ecs_service" "this" {
   task_definition = aws_ecs_task_definition.this.arn
   desired_count   = var.desired_count
 
-  # Use the cluster's default capacity provider strategy (EC2 ASG).
+  # Pin to the EC2 ASG capacity provider explicitly. This mirrors the cluster
+  # default, but declaring it here prevents Terraform from reading the
+  # ECS-recorded strategy as drift and force-replacing the service on every apply.
+  capacity_provider_strategy {
+    capacity_provider = var.capacity_provider_name
+    weight            = 1
+    base              = 1
+  }
+
   network_configuration {
     subnets          = var.subnets
     security_groups  = var.security_groups

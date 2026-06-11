@@ -28,15 +28,20 @@ from cvtools.core import (
 from cvtools.core.tools import (
     html_to_pdf,
     latex_to_pdf,
+    extract_cv_code,
     get_minio_client,
     upload_pdf,
+    upload_code,
     download_pdf,
     get_template_object,
     ensure_bucket,
     ensure_templates_bucket,
+    ensure_code_bucket,
+    seed_templates_from_dir,
     init_minio_storage,
     DEFAULT_BUCKET,
     TEMPLATES_BUCKET,
+    CODE_BUCKET,
 )
 
 __all__ = [
@@ -68,13 +73,18 @@ __all__ = [
     # tools
     "html_to_pdf",
     "latex_to_pdf",
+    "extract_cv_code",
     "get_minio_client",
     "upload_pdf",
+    "upload_code",
     "download_pdf",
     "get_template_object",
     "ensure_bucket",
     "ensure_templates_bucket",
+    "ensure_code_bucket",
+    "seed_templates_from_dir",
     "init_minio_storage",
     "DEFAULT_BUCKET",
     "TEMPLATES_BUCKET",
+    "CODE_BUCKET",
 ]

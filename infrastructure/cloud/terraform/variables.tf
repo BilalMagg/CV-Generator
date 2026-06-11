@@ -70,19 +70,19 @@ variable "ecs_instance_type" {
 variable "ecs_min_size" {
   description = "Minimum number of ECS EC2 instances in the ASG."
   type        = number
-  default     = 1
+  default     = 5
 }
 
 variable "ecs_max_size" {
   description = "Maximum number of ECS EC2 instances in the ASG."
   type        = number
-  default     = 3
+  default     = 6
 }
 
 variable "ecs_desired_size" {
-  description = "Desired number of ECS EC2 instances in the ASG. 2x m7i-flex.large ~ 16 GiB / ~20 task-ENIs covers the 18 tasks."
+  description = "Desired number of ECS EC2 instances in the ASG. The ~18 tasks are CPU-bound and need ~5x m7i-flex.large to place (the original '2' under-provisioned and forced manual scaling to 5). Lower min once notification-service is fixed and real fit is confirmed."
   type        = number
-  default     = 2
+  default     = 5
 }
 
 variable "image_tag" {

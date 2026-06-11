@@ -78,6 +78,10 @@ class RenderedCV(BaseModel):
         default=None,
         description="URL of the rendered CV PDF stored in MinIO object storage.",
     )
+    code_url: Optional[str] = Field(
+        default=None,
+        description="URL of the rendered CV source code (.tex/.html) stored in MinIO object storage.",
+    )
 
 
 # class TemplateOutput(BaseModel):

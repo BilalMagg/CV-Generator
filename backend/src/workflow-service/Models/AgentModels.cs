@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace WorkflowService.Models;
@@ -177,6 +178,15 @@ public class OptimizerOutput
 }
 
 // Template Agent
+public class TemplateDefinition
+{
+    [JsonPropertyName("id")]          public string Id { get; set; } = "";
+    [JsonPropertyName("name")]        public string Name { get; set; } = "";
+    [JsonPropertyName("preview_url")] public string? PreviewUrl { get; set; }
+    [JsonPropertyName("type")]        public string Type { get; set; } = "latex";
+    [JsonPropertyName("description")] public string? Description { get; set; }
+}
+
 public class TemplateInput
 {
     [JsonPropertyName("cv_draft")]
@@ -190,6 +200,9 @@ public class TemplateInput
 
     [JsonPropertyName("target_role")]
     public string TargetRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("tone")]
+    public string? Tone { get; set; }
 }
 
 public class RenderedCV
@@ -202,6 +215,36 @@ public class RenderedCV
 
     [JsonPropertyName("sections")]
     public List<dynamic>? Sections { get; set; }
+
+    [JsonPropertyName("pdf_url")]
+    public string? PdfUrl { get; set; }
+
+    [JsonPropertyName("code_url")]
+    public string? CodeUrl { get; set; }
+}
+
+// Request for the direct template-render endpoint (api/workflows/template/render).
+// Carries user_id for context; when CvDraft is null the controller builds the
+// matched profile from the workflow DB using UserId.
+public class TemplateRenderRequest
+{
+    [JsonPropertyName("user_id")]
+    public Guid UserId { get; set; }
+
+    [JsonPropertyName("target_role")]
+    public string TargetRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("template_id")]
+    public string TemplateId { get; set; } = "default";
+
+    [JsonPropertyName("summary")]
+    public string? Summary { get; set; }
+
+    [JsonPropertyName("tone")]
+    public string? Tone { get; set; }
+
+    [JsonPropertyName("cv_draft")]
+    public JsonElement? CvDraft { get; set; }
 }
 
 // Contact Agent

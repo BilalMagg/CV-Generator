@@ -31,6 +31,8 @@ import { ExtractionResultComponent } from './pages/agents-hub/extraction-result/
 import { AgentConfigComponent } from './pages/agents-hub/agent-config/agent-config.component';
 import { JobCrawlerWorkspaceComponent } from './pages/agents-hub/job-crawler-workspace/job-crawler-workspace.component';
 import { JobCrawlerResultComponent } from './pages/agents-hub/job-crawler-result/job-crawler-result.component';
+import { TemplateAgentWorkspaceComponent } from './pages/agents-hub/template-agent-workspace/template-agent-workspace.component';
+import { TemplateAgentResultComponent } from './pages/agents-hub/template-agent-result/template-agent-result.component';
 import { JobOffersComponent } from './pages/job-offers/job-offers.component';
 import { PersonalInfoComponent } from './pages/personal-info/personal-info.component';
 import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
@@ -78,6 +80,8 @@ export const routes: Routes = [
   { path: 'agents-hub/job-extractor/config', component: AgentConfigComponent, canActivate: [authGuard] },
   { path: 'agents-hub/job-crawler', component: JobCrawlerWorkspaceComponent, canActivate: [authGuard] },
   { path: 'agents-hub/job-crawler/result/:id', component: JobCrawlerResultComponent, canActivate: [authGuard] },
+  { path: 'agents-hub/template-agent', component: TemplateAgentWorkspaceComponent, canActivate: [authGuard] },
+  { path: 'agents-hub/template-agent/result', component: TemplateAgentResultComponent, canActivate: [authGuard] },
   { path: 'job-offers', component: JobOffersComponent, canActivate: [authGuard] },
   {
     path: 'my-career',

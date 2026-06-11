@@ -7,6 +7,17 @@ include:
 
 services:
 
+  # ── Template agent ordering ──────────────────────────────────────────────────
+  # Merges with the definition in ai_agents/docker-compose.yml. The template
+  # agent seeds default CV templates into MinIO at startup, so it must wait for
+  # MinIO (defined in backend/docker-compose.yml) to be healthy first. This stub
+  # lives only here — adding it to the ai_agents file would break running that
+  # compose standalone (where `minio` is not defined).
+  template-agent:
+    depends_on:
+      minio:
+        condition: service_healthy
+
   # ── Frontend ─────────────────────────────────────────────────────────────────
   frontend:
     build:

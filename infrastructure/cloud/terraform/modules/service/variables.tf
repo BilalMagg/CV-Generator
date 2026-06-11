@@ -73,6 +73,11 @@ variable "region" {
   type = string
 }
 
+variable "capacity_provider_name" {
+  description = "ECS capacity provider to pin the service to (matches the cluster default). Declared explicitly so Terraform doesn't see the ECS-recorded strategy as drift and force-replace every service."
+  type        = string
+}
+
 variable "desired_count" {
   type    = number
   default = 1

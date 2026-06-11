@@ -15,10 +15,58 @@ Dependencies:
 """
 
 import os
+import re
 import subprocess
 import tempfile
 import uuid
 from pathlib import Path
+
+
+# Trailing ```json {...}``` block the LLM appends for the sections breakdown.
+_JSON_BLOCK_RE = re.compile(r"```json\s*\{[\s\S]*?\}\s*```", re.IGNORECASE)
+# Any markdown code fence opener/closer (```latex, ```html, ``` ...).
+_FENCE_RE = re.compile(r"^[ \t]*```[a-zA-Z]*[ \t]*$", re.MULTILINE)
+
+
+def extract_cv_code(raw_output: str, template_format: str) -> str:
+    """
+    Pull the clean, compilable CV source out of a raw LLM message.
+
+    The CV-generation prompt asks the model for raw code, but models routinely
+    wrap it in markdown fences, add a line of prose, and append a
+    ```json {...}``` sections block. WeasyPrint tolerates that junk, but
+    pdflatex does not — a stray ``` or prose before \\documentclass makes it
+    exit non-zero. This strips the noise and returns just the document.
+
+    Args:
+        raw_output:      The LLM message content.
+        template_format: "latex" or "html".
+
+    Returns:
+        The cleaned source ready to hand to latex_to_pdf / html_to_pdf.
+    """
+    text = raw_output or ""
+    # Drop the trailing sections JSON block and any markdown fences.
+    text = _JSON_BLOCK_RE.sub("", text)
+    text = _FENCE_RE.sub("", text)
+    text = text.strip()
+
+    if template_format == "latex":
+        start = text.find(r"\documentclass")
+        end = text.rfind(r"\end{document}")
+        if start != -1 and end != -1:
+            return text[start:end + len(r"\end{document}")].strip()
+        return text
+
+    # HTML
+    lowered = text.lower()
+    start = lowered.find("<!doctype")
+    if start == -1:
+        start = lowered.find("<html")
+    end = lowered.rfind("</html>")
+    if start != -1 and end != -1:
+        return text[start:end + len("</html>")].strip()
+    return text
 
 
 def html_to_pdf(html_content: str, output_path: str | None = None) -> str:
