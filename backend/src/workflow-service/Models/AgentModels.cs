@@ -178,6 +178,15 @@ public class OptimizerOutput
 }
 
 // Template Agent
+public class TemplateDefinition
+{
+    [JsonPropertyName("id")]          public string Id { get; set; } = "";
+    [JsonPropertyName("name")]        public string Name { get; set; } = "";
+    [JsonPropertyName("preview_url")] public string? PreviewUrl { get; set; }
+    [JsonPropertyName("type")]        public string Type { get; set; } = "latex";
+    [JsonPropertyName("description")] public string? Description { get; set; }
+}
+
 public class TemplateInput
 {
     [JsonPropertyName("cv_draft")]
@@ -191,6 +200,9 @@ public class TemplateInput
 
     [JsonPropertyName("target_role")]
     public string TargetRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("tone")]
+    public string? Tone { get; set; }
 }
 
 public class RenderedCV
@@ -227,6 +239,9 @@ public class TemplateRenderRequest
 
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
+
+    [JsonPropertyName("tone")]
+    public string? Tone { get; set; }
 
     [JsonPropertyName("cv_draft")]
     public JsonElement? CvDraft { get; set; }

@@ -1,11 +1,19 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpService } from './http.service';
 
+export interface TemplateDefinition {
+  id: string;
+  name: string;
+  previewUrl?: string;
+  type: 'latex' | 'html';
+  description?: string;
+}
+
 export interface TemplateRenderRequest {
   user_id: string;
   target_role: string;
   template_id?: string;
-  summary?: string;
+  tone?: string;
 }
 
 export interface RenderedCV {
@@ -25,6 +33,15 @@ interface ApiResponse<T> {
 @Injectable({ providedIn: 'root' })
 export class TemplateAgentService {
   private readonly http = inject(HttpService);
+
+  async getTemplates(): Promise<TemplateDefinition[]> {
+    try {
+      const res = await this.http.get<ApiResponse<TemplateDefinition[]>>('/api/workflows/template/templates');
+      return res.data ?? [];
+    } catch {
+      return [];
+    }
+  }
 
   async renderCV(params: TemplateRenderRequest): Promise<RenderedCV> {
     const res = await this.http.post<ApiResponse<RenderedCV>>('/api/workflows/template/render', params);

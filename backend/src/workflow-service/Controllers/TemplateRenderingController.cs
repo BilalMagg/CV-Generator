@@ -45,7 +45,8 @@ public class TemplateRenderingController : ControllerBase
             {
                 CvDraft = cvDraft,
                 TemplateId = string.IsNullOrWhiteSpace(request.TemplateId) ? "default" : request.TemplateId,
-                TargetRole = request.TargetRole
+                TargetRole = request.TargetRole,
+                Tone = request.Tone
             }, ct);
 
             if (result == null)
@@ -67,6 +68,13 @@ public class TemplateRenderingController : ControllerBase
             _logger.LogError(ex, "Template render failed");
             return StatusCode(500, ApiResponse<object>.Error("Render failed: " + ex.Message));
         }
+    }
+
+    [HttpGet("templates")]
+    public async Task<IActionResult> GetTemplates(CancellationToken ct)
+    {
+        var templates = await _templateAgent.GetTemplatesAsync(ct);
+        return Ok(ApiResponse<List<TemplateDefinition>>.Ok(templates));
     }
 
     [HttpGet("health")]

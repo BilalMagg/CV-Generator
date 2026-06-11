@@ -11,7 +11,7 @@
         <span>Template Agent</span>
       </div>
       <h1 class="header-title">CV Template Agent</h1>
-      <p class="header-sub">Let AI pick the best template and render your CV from your stored career data</p>
+      <p class="header-sub">Render a tailored CV using your career data and a professional template</p>
     </div>
     <div class="header-right">
       <a routerLink="/agents-hub" class="header-link">
@@ -28,73 +28,144 @@
 
   <!-- Main Content -->
   <div class="main-content">
+    <div class="steps-panel">
 
-    <!-- LEFT: form + result -->
-    <div class="input-section">
+      <!-- ── STEP 1: Job to target ── -->
+      <div class="step-section">
+        <div class="step-label">
+          <span class="step-num">1</span>
+          <span class="step-title">Job to target</span>
+        </div>
 
-      <div class="ai-badge">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
-          <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/>
-        </svg>
-        Template Agent
+        @if (historyLoading()) {
+          <div class="skeleton-row">
+            <div class="skeleton" style="height:40px; width:100%;"></div>
+          </div>
+        } @else if (extractionHistory().length > 0) {
+          <div class="picker-wrap">
+            <select class="select picker-select" [ngModel]="selectedExtractionId()" (ngModelChange)="selectedExtractionId.set($event)">
+              <option value="">— Enter role manually —</option>
+              @for (item of extractionHistory(); track item.id) {
+                <option [value]="item.id">
+                  {{ item.jobRole || 'Untitled role' }} · {{ item.companyName }} · {{ formatDate(item.createdAt) }}
+                </option>
+              }
+            </select>
+            <p class="field-hint">
+              From your Job Extractor history.
+              <a routerLink="/agents-hub/job-extractor" class="inline-link">Run new extraction →</a>
+            </p>
+          </div>
+        }
+
+        @if (!selectedExtraction()) {
+          <div class="field" [class.mt-small]="extractionHistory().length > 0">
+            <label class="field-label" for="manualRole">
+              {{ extractionHistory().length > 0 ? 'Or enter role manually' : 'Target role' }}
+              @if (extractionHistory().length === 0) { <span class="field-required">*</span> }
+            </label>
+            <input
+              id="manualRole"
+              class="input"
+              type="text"
+              [(ngModel)]="manualRole"
+              placeholder="e.g. Software Engineer, Product Manager…"
+              [disabled]="loading()"
+            />
+          </div>
+        }
+
+        @if (selectedExtraction()) {
+          <div class="selected-extraction-card">
+            <div class="ext-card-role">{{ selectedExtraction()!.jobRole || 'Untitled role' }}</div>
+            <div class="ext-card-meta">
+              {{ selectedExtraction()!.companyName }}
+              <span class="dot">·</span>
+              {{ formatDate(selectedExtraction()!.createdAt) }}
+            </div>
+          </div>
+        }
       </div>
 
-      <!-- Target role -->
-      <div class="field">
-        <label class="field-label" for="targetRole">
-          Target role
-          <span class="field-required">*</span>
-        </label>
-        <input
-          id="targetRole"
-          class="input"
-          type="text"
-          [(ngModel)]="targetRole"
-          placeholder="e.g. Software Engineer, Product Manager, Data Scientist…"
-          [disabled]="loading()"
-        />
-        <p class="field-hint">The agent will tailor your CV specifically for this role.</p>
+      <!-- ── STEP 2: Choose template ── -->
+      <div class="step-section">
+        <div class="step-label">
+          <span class="step-num">2</span>
+          <span class="step-title">Choose a template</span>
+        </div>
+
+        @if (templatesLoading()) {
+          <div class="template-grid">
+            @for (i of [1,2,3,4,5,6]; track i) {
+              <div class="template-skeleton"></div>
+            }
+          </div>
+        } @else if (availableTemplates().length === 0) {
+          <p class="empty-hint">No templates available — check agent connection.</p>
+        } @else {
+          <div class="template-grid">
+            @for (tpl of availableTemplates(); track tpl.id) {
+              <button
+                type="button"
+                class="template-card"
+                [class.selected]="selectedTemplateId === tpl.id"
+                [disabled]="loading()"
+                (click)="selectedTemplateId = tpl.id"
+              >
+                <div class="template-preview">
+                  @if (tpl.previewUrl) {
+                    <img [src]="tpl.previewUrl" [alt]="tpl.name" class="preview-img" />
+                  } @else {
+                    <div class="preview-placeholder">
+                      <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
+                        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                        <path d="M14 3v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                      </svg>
+                    </div>
+                  }
+                  @if (selectedTemplateId === tpl.id) {
+                    <span class="selected-check">
+                      <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+                        <path d="M5 12l5 5L20 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </span>
+                  }
+                </div>
+                <div class="template-info">
+                  <span class="template-name">{{ tpl.name }}</span>
+                  <span class="template-type-badge">{{ tpl.type }}</span>
+                </div>
+                @if (tpl.description) {
+                  <p class="template-desc">{{ tpl.description }}</p>
+                }
+              </button>
+            }
+          </div>
+        }
       </div>
 
-      <!-- Template style -->
-      <div class="field">
-        <label class="field-label">Template style</label>
-        <div class="pill-group">
-          @for (t of templates; track t.id) {
+      <!-- ── STEP 3: Tone ── -->
+      <div class="step-section">
+        <div class="step-label">
+          <span class="step-num">3</span>
+          <span class="step-title">Tone</span>
+        </div>
+        <div class="tone-pills">
+          @for (t of tones; track t.id) {
             <button
               type="button"
-              class="pill"
-              [class.active]="templateId === t.id"
+              class="tone-pill"
+              [class.active]="tone === t.id"
               [disabled]="loading()"
-              (click)="templateId = t.id"
+              (click)="tone = t.id"
             >
               {{ t.label }}
             </button>
           }
         </div>
-        <p class="field-hint">
-          <strong>Auto</strong> lets the agent choose the best fit based on your role.
-        </p>
       </div>
 
-      <!-- Optional summary -->
-      <div class="field">
-        <label class="field-label" for="summary">
-          Professional summary
-          <span class="field-optional">(optional)</span>
-        </label>
-        <textarea
-          id="summary"
-          class="input-textarea"
-          [(ngModel)]="summary"
-          rows="3"
-          placeholder="Override or provide a custom opening summary for the CV…"
-          [disabled]="loading()"
-        ></textarea>
-        <p class="field-hint">Leave blank to use a default summary generated for the target role.</p>
-      </div>
-
-      <!-- Error banner -->
+      <!-- Error -->
       @if (error()) {
         <div class="error-banner">
           <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
@@ -106,12 +177,16 @@
         </div>
       }
 
-      <!-- Action bar -->
+      <!-- Render button -->
       <div class="action-bar">
+        <div class="action-hint">
+          The agent will use your stored skills, experiences &amp; projects — keep them up to date in
+          <a routerLink="/my-career" class="inline-link">My Career</a>.
+        </div>
         <button
           class="render-btn"
           type="button"
-          [disabled]="loading() || !targetRole.trim()"
+          [disabled]="!canSubmit()"
           (click)="onRender()"
         >
           @if (loading()) {
@@ -126,46 +201,6 @@
         </button>
       </div>
 
-      <!-- Result card -->
-      @if (result()) {
-        <div class="result-card">
-          <div class="result-header">
-            <span class="badge-done">
-              <svg viewBox="0 0 24 24" fill="none" width="12" height="12">
-                <path d="M5 12l5 5L20 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              Done
-            </span>
-            <span class="result-template-chip">{{ result()!.template_id }}</span>
-          </div>
-
-          @if (result()!.pdf_url || result()!.code_url) {
-            <div class="result-actions">
-              @if (result()!.pdf_url) {
-                <a [href]="result()!.pdf_url" target="_blank" rel="noopener" class="download-btn">
-                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
-                    <path d="M12 4v12M8 12l4 4 4-4M4 20h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                  Download PDF
-                </a>
-              }
-              @if (result()!.code_url) {
-                <a [href]="result()!.code_url" target="_blank" rel="noopener" class="code-btn">
-                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
-                    <path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 6l-2 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                  View Code
-                </a>
-              }
-            </div>
-          }
-
-          @if (result()!.cv_code && !result()!.pdf_url) {
-            <pre class="cv-code-preview">{{ result()!.cv_code }}</pre>
-          }
-        </div>
-      }
-
     </div>
 
     <!-- RIGHT: aside -->
@@ -175,24 +210,31 @@
         <h3 class="aside-title">How it works</h3>
         <ol class="steps-list">
           <li class="step-item">
-            <span class="step-num">1</span>
+            <span class="step-dot"></span>
             <div class="step-body">
-              <strong>Enter your target role</strong>
-              <span>The agent tailors the CV content and keyword density for that specific position.</span>
+              <strong>Pick a job extraction</strong>
+              <span>The agent targets the exact role and requirements.</span>
             </div>
           </li>
           <li class="step-item">
-            <span class="step-num">2</span>
+            <span class="step-dot"></span>
             <div class="step-body">
-              <strong>Agent fetches your data</strong>
-              <span>Your stored skills, experiences, and projects are pulled from your career profile.</span>
+              <strong>Choose a template</strong>
+              <span>LaTeX or HTML, selected from your stored templates.</span>
             </div>
           </li>
           <li class="step-item">
-            <span class="step-num">3</span>
+            <span class="step-dot"></span>
             <div class="step-body">
-              <strong>Template is selected & rendered</strong>
-              <span>The best-matching layout is applied and a PDF (or code) is returned.</span>
+              <strong>Set a tone</strong>
+              <span>Controls the language style of the generated content.</span>
+            </div>
+          </li>
+          <li class="step-item">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <strong>Review in the editor</strong>
+              <span>See the code and preview side by side, then download.</span>
             </div>
           </li>
         </ol>
@@ -201,12 +243,18 @@
       <div class="aside-section">
         <h3 class="aside-title">Quick Actions</h3>
         <div class="action-list">
+          <a routerLink="/agents-hub/job-extractor" class="action-item">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+              <path d="M21 12H3M15 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Run Job Extractor
+          </a>
           <a routerLink="/my-career" class="action-item">
             <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
               <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/>
               <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
             </svg>
-            Update your CV data
+            Update career data
           </a>
           <a routerLink="/agents-hub" class="action-item">
             <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
@@ -217,22 +265,7 @@
             </svg>
             All Agents
           </a>
-          <a routerLink="/applications/generate" class="action-item">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-              <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/>
-            </svg>
-            Generate CV (AI)
-          </a>
         </div>
-      </div>
-
-      <div class="aside-section">
-        <h3 class="aside-title">Tips</h3>
-        <ul class="tips-list">
-          <li>Keep your career data up to date for best results — add recent projects and skills in <a routerLink="/my-career">My Career</a>.</li>
-          <li>Use <strong>Auto</strong> template unless you have a specific format in mind.</li>
-          <li>The summary field is optional — the agent writes one if you leave it blank.</li>
-        </ul>
       </div>
 
     </aside>
