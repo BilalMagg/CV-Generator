@@ -152,28 +152,43 @@ def get_template_code(template_id: str) -> tuple[str, str]:
 def list_templates() -> list[dict]:
     """List all templates available in the cv-templates MinIO bucket."""
     from cvtools.core.tools.minio_storage import get_minio_client
+    from minio.error import S3Error
     try:
         client = get_minio_client()
-        objects = list(client.list_objects(TEMPLATES_BUCKET))
+        # list only JSON template objects (skip .preview image objects)
+        all_objects = list(client.list_objects(TEMPLATES_BUCKET))
+        template_ids = [obj.object_name for obj in all_objects if not obj.object_name.endswith(".preview")]
         result = []
-        for obj in objects:
-            tid = obj.object_name
+        for tid in template_ids:
             try:
                 tpl = get_template(tid)
                 ttype = tpl.get("type", "latex")
             except Exception:
                 ttype = "latex"
             name = tid.replace("-", " ").replace("_", " ").title()
-            result.append({
-                "id": tid,
-                "name": name,
-                "type": ttype,
-                "preview_url": None,
-                "html_code": tpl.get("html_code", "") if ttype == "html" else "",
-            })
+            # check if preview image exists
+            try:
+                client.stat_object(TEMPLATES_BUCKET, f"{tid}.preview")
+                preview_url = f"/api/workflows/template/templates/{tid}/preview"
+            except S3Error:
+                preview_url = None
+            result.append({"id": tid, "name": name, "type": ttype, "preview_url": preview_url})
         return result
     except Exception:
         return []
+
+
+def get_template_preview(template_id: str) -> tuple[bytes, str]:
+    """Fetch preview image bytes and content-type from MinIO."""
+    from cvtools.core.tools.minio_storage import get_minio_client
+    client = get_minio_client()
+    preview_key = f"{template_id}.preview"
+    response = client.get_object(TEMPLATES_BUCKET, preview_key)
+    data = response.read()
+    response.close()
+    response.release_conn()
+    content_type = "image/png" if data[:4] == b'\x89PNG' else "image/jpeg"
+    return data, content_type
 
 
 # i might add more tools that will be linked to the agent directly

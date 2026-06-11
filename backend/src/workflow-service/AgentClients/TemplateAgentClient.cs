@@ -7,6 +7,7 @@ public interface ITemplateAgentClient
 {
     Task<RenderedCV?> RenderAsync(TemplateInput input, CancellationToken cancellationToken = default);
     Task<List<TemplateDefinition>> GetTemplatesAsync(CancellationToken cancellationToken = default);
+    Task<(byte[]? Data, string ContentType)> GetTemplatePreviewAsync(string templateId, CancellationToken cancellationToken = default);
     Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default);
 }
 
@@ -47,6 +48,22 @@ public class TemplateAgentClient : ITemplateAgentClient
         catch
         {
             return _fallbackTemplates;
+        }
+    }
+
+    public async Task<(byte[]? Data, string ContentType)> GetTemplatePreviewAsync(string templateId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _client.GetAsync($"templates/{templateId}/preview", cancellationToken);
+            if (!response.IsSuccessStatusCode) return (null, "");
+            var data = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            var contentType = response.Content.Headers.ContentType?.ToString() ?? "image/png";
+            return (data, contentType);
+        }
+        catch
+        {
+            return (null, "");
         }
     }
 

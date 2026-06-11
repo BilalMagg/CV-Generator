@@ -7,7 +7,6 @@ export interface TemplateDefinition {
   previewUrl?: string;
   type: 'latex' | 'html';
   description?: string;
-  html_code?: string;
 }
 
 export interface TemplateRenderRequest {

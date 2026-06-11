@@ -515,27 +515,6 @@
   &:hover { background: var(--bg-2); color: var(--accent); }
 }
 
-/* ── Template iframe preview ── */
-.preview-viewport {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  background: #fff;
-}
-
-.preview-iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 600%;
-  height: 600%;
-  transform: scale(calc(1/6));
-  transform-origin: 0 0;
-  pointer-events: none;
-  border: none;
-  background: #fff;
-}
-
 .latex-placeholder {
   flex-direction: column;
   gap: 6px;

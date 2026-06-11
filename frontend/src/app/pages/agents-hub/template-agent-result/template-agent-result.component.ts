@@ -87,7 +87,7 @@ export class TemplateAgentResultComponent implements OnInit, AfterViewInit, OnDe
 
   get previewType(): 'pdf' | 'html' | 'none' {
     if (this.result?.pdf_url) return 'pdf';
-    if (this.result?.cv_code) return 'html';
+    if (this.result?.cv_code?.trimStart().startsWith('<')) return 'html';
     return 'none';
   }
 

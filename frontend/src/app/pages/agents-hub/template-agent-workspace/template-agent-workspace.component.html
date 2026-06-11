@@ -30,55 +30,10 @@
   <div class="main-content">
     <div class="steps-panel">
 
-      <!-- ── STEP 1: Job to target (optional) ── -->
+      <!-- ── STEP 1: Choose template ── -->
       <div class="step-section">
         <div class="step-label">
           <span class="step-num">1</span>
-          <span class="step-title">Job to target <span class="optional-badge">optional</span></span>
-        </div>
-
-        @if (historyLoading()) {
-          <div class="skeleton-row">
-            <div class="skeleton" style="height:40px; width:100%;"></div>
-          </div>
-        } @else if (extractionHistory().length > 0) {
-          <div class="picker-wrap">
-            <select class="select picker-select" [ngModel]="selectedExtractionId()" (ngModelChange)="selectedExtractionId.set($event)">
-              <option value="">— No specific job (generic CV) —</option>
-              @for (item of extractionHistory(); track item.id) {
-                <option [value]="item.id">
-                  {{ item.jobRole || 'Untitled role' }} · {{ item.companyName }} · {{ formatDate(item.createdAt) }}
-                </option>
-              }
-            </select>
-            <p class="field-hint">
-              From your Job Extractor history.
-              <a routerLink="/agents-hub/job-extractor" class="inline-link">Run new extraction →</a>
-            </p>
-          </div>
-        } @else {
-          <div class="empty-history-state">
-            No extractions yet — CV will target a general role.
-            <a routerLink="/agents-hub/job-extractor" class="inline-link">Run Job Extractor →</a>
-          </div>
-        }
-
-        @if (selectedExtraction()) {
-          <div class="selected-extraction-card">
-            <div class="ext-card-role">{{ selectedExtraction()!.jobRole || 'Untitled role' }}</div>
-            <div class="ext-card-meta">
-              {{ selectedExtraction()!.companyName }}
-              <span class="dot">·</span>
-              {{ formatDate(selectedExtraction()!.createdAt) }}
-            </div>
-          </div>
-        }
-      </div>
-
-      <!-- ── STEP 2: Choose template ── -->
-      <div class="step-section">
-        <div class="step-label">
-          <span class="step-num">2</span>
           <span class="step-title">Choose a template</span>
         </div>
 
@@ -96,15 +51,13 @@
               <button
                 type="button"
                 class="template-card"
-                [class.selected]="selectedTemplateId === tpl.id"
+                [class.selected]="selectedTemplateId() === tpl.id"
                 [disabled]="loading()"
-                (click)="selectedTemplateId = tpl.id"
+                (click)="selectedTemplateId.set(tpl.id)"
               >
                 <div class="template-preview">
-                  @if (tpl.type === 'html' && tpl.html_code) {
-                    <div class="preview-viewport">
-                      <iframe class="preview-iframe" [srcdoc]="tpl.html_code" sandbox="allow-same-origin" title="{{ tpl.name }} preview"></iframe>
-                    </div>
+                  @if (tpl.previewUrl) {
+                    <img [src]="tpl.previewUrl" [alt]="tpl.name" class="preview-img" />
                   } @else {
                     <div class="preview-placeholder latex-placeholder">
                       <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
@@ -114,7 +67,7 @@
                       <span class="preview-type-label">{{ tpl.type }}</span>
                     </div>
                   }
-                  @if (selectedTemplateId === tpl.id) {
+                  @if (selectedTemplateId() === tpl.id) {
                     <span class="selected-check">
                       <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
                         <path d="M5 12l5 5L20 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -132,10 +85,10 @@
         }
       </div>
 
-      <!-- ── STEP 3: Tone ── -->
+      <!-- ── STEP 2: Tone ── -->
       <div class="step-section">
         <div class="step-label">
-          <span class="step-num">3</span>
+          <span class="step-num">2</span>
           <span class="step-title">Tone</span>
         </div>
         <div class="tone-pills">
@@ -157,7 +110,8 @@
       <div class="step-section advanced-section">
         <button class="advanced-toggle" type="button" (click)="showAdvanced = !showAdvanced">
           <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
-            <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
           Advanced settings
           <svg viewBox="0 0 24 24" fill="none" width="12" height="12" class="chevron-icon" [class.open]="showAdvanced">
@@ -168,19 +122,16 @@
         @if (showAdvanced) {
           <div class="advanced-panel">
             <div class="field">
-              <label class="field-label" for="manualRole">Target role override</label>
+              <label class="field-label" for="manualRole">Target role</label>
               <input
                 id="manualRole"
                 class="input"
                 type="text"
                 [(ngModel)]="manualRole"
-                placeholder="e.g. Software Engineer — leave blank to use extraction or generic"
+                placeholder="e.g. Software Engineer, Product Manager…"
                 [disabled]="loading()"
               />
-              <p class="field-hint">
-                Overrides the role from the extraction above.
-                @if (!selectedExtraction()) { Blank = generic CV. }
-              </p>
+              <p class="field-hint">Specify the target job role. Leave blank for a general-purpose CV.</p>
             </div>
           </div>
         }
@@ -233,13 +184,6 @@
           <li class="step-item">
             <span class="step-dot"></span>
             <div class="step-body">
-              <strong>Pick a job extraction</strong>
-              <span>Optional — the agent targets the exact role and requirements.</span>
-            </div>
-          </li>
-          <li class="step-item">
-            <span class="step-dot"></span>
-            <div class="step-body">
               <strong>Choose a template</strong>
               <span>LaTeX or HTML, selected from your stored templates.</span>
             </div>
@@ -249,6 +193,13 @@
             <div class="step-body">
               <strong>Set a tone</strong>
               <span>Controls the language style of the generated content.</span>
+            </div>
+          </li>
+          <li class="step-item">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <strong>Optionally set a target role</strong>
+              <span>Open Advanced settings to specify a role. Defaults to general.</span>
             </div>
           </li>
           <li class="step-item">
@@ -264,18 +215,18 @@
       <div class="aside-section">
         <h3 class="aside-title">Quick Actions</h3>
         <div class="action-list">
-          <a routerLink="/agents-hub/job-extractor" class="action-item">
-            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
-              <path d="M21 12H3M15 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Run Job Extractor
-          </a>
           <a routerLink="/my-career" class="action-item">
             <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
               <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/>
               <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
             </svg>
             Update career data
+          </a>
+          <a routerLink="/agents-hub/job-extractor" class="action-item">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+              <path d="M21 12H3M15 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Run Job Extractor
           </a>
           <a routerLink="/agents-hub" class="action-item">
             <svg viewBox="0 0 24 24" fill="none" width="14" height="14">

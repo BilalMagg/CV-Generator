@@ -77,6 +77,14 @@ public class TemplateRenderingController : ControllerBase
         return Ok(ApiResponse<List<TemplateDefinition>>.Ok(templates));
     }
 
+    [HttpGet("templates/{id}/preview")]
+    public async Task<IActionResult> GetTemplatePreview(string id, CancellationToken ct)
+    {
+        var (data, contentType) = await _templateAgent.GetTemplatePreviewAsync(id, ct);
+        if (data == null) return NotFound();
+        return File(data, contentType);
+    }
+
     [HttpGet("health")]
     public async Task<IActionResult> Health(CancellationToken ct)
     {
