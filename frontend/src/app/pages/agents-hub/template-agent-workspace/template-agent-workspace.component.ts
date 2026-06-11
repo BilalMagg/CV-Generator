@@ -23,7 +23,6 @@ export class TemplateAgentWorkspaceComponent implements OnInit {
   // Extraction history picker
   extractionHistory = signal<ExtractionHistoryItem[]>([]);
   selectedExtractionId = signal<string>('');
-  manualRole = '';
   historyLoading = signal(true);
 
   // Template gallery
@@ -40,6 +39,10 @@ export class TemplateAgentWorkspaceComponent implements OnInit {
     { id: 'concise',    label: 'Concise' },
   ] as const;
 
+  // Advanced settings
+  showAdvanced = false;
+  manualRole = '';
+
   // Render state
   loading  = signal(false);
   error    = signal('');
@@ -49,11 +52,11 @@ export class TemplateAgentWorkspaceComponent implements OnInit {
   );
 
   readonly targetRole = computed(() =>
-    this.selectedExtraction()?.jobRole ?? this.manualRole
+    this.selectedExtraction()?.jobRole ?? (this.manualRole.trim() || 'General')
   );
 
   readonly canSubmit = computed(() =>
-    !this.loading() && !!this.targetRole().trim() && !!this.selectedTemplateId
+    !this.loading() && !!this.selectedTemplateId
   );
 
   async ngOnInit(): Promise<void> {
@@ -72,8 +75,8 @@ export class TemplateAgentWorkspaceComponent implements OnInit {
 
   async onRender(): Promise<void> {
     this.error.set('');
-    const role = this.targetRole().trim();
-    if (!role) { this.error.set('Please select a job extraction or enter a role manually.'); return; }
+    const role = this.targetRole();
+    if (!this.selectedTemplateId) { this.error.set('Please select a template to continue.'); return; }
     this.loading.set(true);
     try {
       const userId = this.authService.currentUser()!.userId;

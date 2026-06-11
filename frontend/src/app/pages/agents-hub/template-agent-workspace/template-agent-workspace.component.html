@@ -30,11 +30,11 @@
   <div class="main-content">
     <div class="steps-panel">
 
-      <!-- ── STEP 1: Job to target ── -->
+      <!-- ── STEP 1: Job to target (optional) ── -->
       <div class="step-section">
         <div class="step-label">
           <span class="step-num">1</span>
-          <span class="step-title">Job to target</span>
+          <span class="step-title">Job to target <span class="optional-badge">optional</span></span>
         </div>
 
         @if (historyLoading()) {
@@ -44,7 +44,7 @@
         } @else if (extractionHistory().length > 0) {
           <div class="picker-wrap">
             <select class="select picker-select" [ngModel]="selectedExtractionId()" (ngModelChange)="selectedExtractionId.set($event)">
-              <option value="">— Enter role manually —</option>
+              <option value="">— No specific job (generic CV) —</option>
               @for (item of extractionHistory(); track item.id) {
                 <option [value]="item.id">
                   {{ item.jobRole || 'Untitled role' }} · {{ item.companyName }} · {{ formatDate(item.createdAt) }}
@@ -56,22 +56,10 @@
               <a routerLink="/agents-hub/job-extractor" class="inline-link">Run new extraction →</a>
             </p>
           </div>
-        }
-
-        @if (!selectedExtraction()) {
-          <div class="field" [class.mt-small]="extractionHistory().length > 0">
-            <label class="field-label" for="manualRole">
-              {{ extractionHistory().length > 0 ? 'Or enter role manually' : 'Target role' }}
-              @if (extractionHistory().length === 0) { <span class="field-required">*</span> }
-            </label>
-            <input
-              id="manualRole"
-              class="input"
-              type="text"
-              [(ngModel)]="manualRole"
-              placeholder="e.g. Software Engineer, Product Manager…"
-              [disabled]="loading()"
-            />
+        } @else {
+          <div class="empty-history-state">
+            No extractions yet — CV will target a general role.
+            <a routerLink="/agents-hub/job-extractor" class="inline-link">Run Job Extractor →</a>
           </div>
         }
 
@@ -113,14 +101,17 @@
                 (click)="selectedTemplateId = tpl.id"
               >
                 <div class="template-preview">
-                  @if (tpl.previewUrl) {
-                    <img [src]="tpl.previewUrl" [alt]="tpl.name" class="preview-img" />
+                  @if (tpl.type === 'html' && tpl.html_code) {
+                    <div class="preview-viewport">
+                      <iframe class="preview-iframe" [srcdoc]="tpl.html_code" sandbox="allow-same-origin" title="{{ tpl.name }} preview"></iframe>
+                    </div>
                   } @else {
-                    <div class="preview-placeholder">
-                      <svg viewBox="0 0 24 24" fill="none" width="24" height="24">
+                    <div class="preview-placeholder latex-placeholder">
+                      <svg viewBox="0 0 24 24" fill="none" width="28" height="28">
                         <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
                         <path d="M14 3v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                       </svg>
+                      <span class="preview-type-label">{{ tpl.type }}</span>
                     </div>
                   }
                   @if (selectedTemplateId === tpl.id) {
@@ -135,9 +126,6 @@
                   <span class="template-name">{{ tpl.name }}</span>
                   <span class="template-type-badge">{{ tpl.type }}</span>
                 </div>
-                @if (tpl.description) {
-                  <p class="template-desc">{{ tpl.description }}</p>
-                }
               </button>
             }
           </div>
@@ -163,6 +151,39 @@
             </button>
           }
         </div>
+      </div>
+
+      <!-- ── Advanced settings ── -->
+      <div class="step-section advanced-section">
+        <button class="advanced-toggle" type="button" (click)="showAdvanced = !showAdvanced">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
+            <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 5v5l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          Advanced settings
+          <svg viewBox="0 0 24 24" fill="none" width="12" height="12" class="chevron-icon" [class.open]="showAdvanced">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        @if (showAdvanced) {
+          <div class="advanced-panel">
+            <div class="field">
+              <label class="field-label" for="manualRole">Target role override</label>
+              <input
+                id="manualRole"
+                class="input"
+                type="text"
+                [(ngModel)]="manualRole"
+                placeholder="e.g. Software Engineer — leave blank to use extraction or generic"
+                [disabled]="loading()"
+              />
+              <p class="field-hint">
+                Overrides the role from the extraction above.
+                @if (!selectedExtraction()) { Blank = generic CV. }
+              </p>
+            </div>
+          </div>
+        }
       </div>
 
       <!-- Error -->
@@ -213,7 +234,7 @@
             <span class="step-dot"></span>
             <div class="step-body">
               <strong>Pick a job extraction</strong>
-              <span>The agent targets the exact role and requirements.</span>
+              <span>Optional — the agent targets the exact role and requirements.</span>
             </div>
           </li>
           <li class="step-item">

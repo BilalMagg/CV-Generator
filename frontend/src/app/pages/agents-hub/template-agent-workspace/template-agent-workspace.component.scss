@@ -178,6 +178,15 @@
 .field-hint { font-size: 12px; color: var(--text-4); margin: 0; line-height: 1.4; }
 .inline-link { color: var(--accent-text); text-decoration: none; font-weight: 500; &:hover { text-decoration: underline; } }
 
+.empty-history-state {
+  font-size: 13px;
+  color: var(--text-3);
+  padding: 14px 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+
 .input {
   width: 100%;
   padding: 10px 14px;
@@ -504,6 +513,88 @@
   text-decoration: none;
   transition: all .15s;
   &:hover { background: var(--bg-2); color: var(--accent); }
+}
+
+/* ── Template iframe preview ── */
+.preview-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.preview-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 600%;
+  height: 600%;
+  transform: scale(calc(1/6));
+  transform-origin: 0 0;
+  pointer-events: none;
+  border: none;
+  background: #fff;
+}
+
+.latex-placeholder {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preview-type-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+
+/* ── Optional badge ── */
+.optional-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-4);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  vertical-align: middle;
+  margin-left: 4px;
+  letter-spacing: .01em;
+}
+
+/* ── Advanced settings ── */
+.advanced-section { padding-top: 0; }
+
+.advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color .15s;
+
+  &:hover { color: var(--text); }
+
+  .chevron-icon {
+    transition: transform .2s;
+    &.open { transform: rotate(180deg); }
+  }
+}
+
+.advanced-panel {
+  margin-top: 4px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
 }
 
 /* ── Responsive ── */

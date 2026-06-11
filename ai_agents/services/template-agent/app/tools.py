@@ -149,5 +149,32 @@ def get_template_code(template_id: str) -> tuple[str, str]:
         return template.get("latex_code", ""), "latex"
 
 
+def list_templates() -> list[dict]:
+    """List all templates available in the cv-templates MinIO bucket."""
+    from cvtools.core.tools.minio_storage import get_minio_client
+    try:
+        client = get_minio_client()
+        objects = list(client.list_objects(TEMPLATES_BUCKET))
+        result = []
+        for obj in objects:
+            tid = obj.object_name
+            try:
+                tpl = get_template(tid)
+                ttype = tpl.get("type", "latex")
+            except Exception:
+                ttype = "latex"
+            name = tid.replace("-", " ").replace("_", " ").title()
+            result.append({
+                "id": tid,
+                "name": name,
+                "type": ttype,
+                "preview_url": None,
+                "html_code": tpl.get("html_code", "") if ttype == "html" else "",
+            })
+        return result
+    except Exception:
+        return []
+
+
 # i might add more tools that will be linked to the agent directly
 # like picking the best template based on the industry

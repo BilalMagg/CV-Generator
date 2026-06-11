@@ -185,6 +185,7 @@ public class TemplateDefinition
     [JsonPropertyName("preview_url")] public string? PreviewUrl { get; set; }
     [JsonPropertyName("type")]        public string Type { get; set; } = "latex";
     [JsonPropertyName("description")] public string? Description { get; set; }
+    [JsonPropertyName("html_code")]   public string? HtmlCode { get; set; }
 }
 
 public class TemplateInput

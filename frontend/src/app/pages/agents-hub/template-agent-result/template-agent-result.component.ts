@@ -29,8 +29,7 @@ export class TemplateAgentResultComponent implements OnInit, AfterViewInit, OnDe
   private monacoEditor: any = null;
 
   ngOnInit(): void {
-    const nav = this.router.getCurrentNavigation();
-    const state = nav?.extras?.state as { result: RenderedCV; targetRole: string } | undefined;
+    const state = history.state as { result?: RenderedCV; targetRole?: string };
 
     if (!state?.result) {
       this.router.navigate(['/agents-hub/template-agent']);
@@ -38,7 +37,7 @@ export class TemplateAgentResultComponent implements OnInit, AfterViewInit, OnDe
     }
 
     this.result = state.result;
-    this.targetRole = state.targetRole;
+    this.targetRole = state.targetRole ?? '';
 
     if (this.result.pdf_url) {
       this.safePdfUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.result.pdf_url));
