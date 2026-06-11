@@ -12,8 +12,8 @@ export class ReminderService {
     return this.http.post<{ id: string; message: string }>('/api/reminders', dto);
   }
 
-  async getUserReminders(userId: string): Promise<ReminderResultDto[]> {
-    return this.http.get<ReminderResultDto[]>(`/api/reminders/${userId}`);
+  async getUserReminders(): Promise<ReminderResultDto[]> {
+    return this.http.get<ReminderResultDto[]>('/api/reminders');
   }
 
   async cancel(reminderId: string): Promise<void> {
