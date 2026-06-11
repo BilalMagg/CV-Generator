@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WorkflowService;
 using WorkflowService.Entity;
+using WorkflowService.AgentClients;
+using WorkflowService.Models;
+using System.Text.Json;
 
 namespace WorkflowService.Controllers;
 
@@ -12,11 +15,13 @@ public class AgentsController : ControllerBase
 {
     private readonly WorkflowDbContext _db;
     private readonly ILogger<AgentsController> _logger;
+    private readonly ISearchAgentClient _searchAgentClient;
 
-    public AgentsController(WorkflowDbContext db, ILogger<AgentsController> logger)
+    public AgentsController(WorkflowDbContext db, ILogger<AgentsController> logger, ISearchAgentClient searchAgentClient)
     {
         _db = db;
         _logger = logger;
+        _searchAgentClient = searchAgentClient;
     }
 
     [HttpGet]
@@ -84,4 +89,73 @@ public class AgentsController : ControllerBase
 
     public record CreateAgentDto(string AgentId, string Name, string Role, string BackgroundGradient, int SortOrder, bool IsActive = true);
     public record UpdateAgentDto(string AgentId, string Name, string Role, string BackgroundGradient, int SortOrder, bool IsActive = true);
+
+    [HttpPost("search")]
+    public async Task<IActionResult> SearchCandidates([FromBody] SearchAgentFrontendRequest request)
+    {
+        // Try to get internal User ID from API Gateway header first
+        var userIdString = Request.Headers["X-User-Id"].FirstOrDefault();
+        
+        // Fallback to JWT 'sub' claim or a hardcoded demo ID
+        if (string.IsNullOrEmpty(userIdString))
+        {
+            userIdString = User.FindFirst("sub")?.Value;
+        }
+
+        var userId = Guid.TryParse(userIdString, out var uid) ? uid : Guid.Parse("34f9a4d3-b491-4ee4-946a-b04d37788ff8");
+
+        var jobRequirements = new JobRequirements();
+
+        if (request.ExtractedJobId.HasValue)
+        {
+            var extraction = await _db.JobExtractions.FindAsync(request.ExtractedJobId.Value);
+            if (extraction == null) return NotFound(ApiResponse<object>.Error("Extracted job not found"));
+
+            try
+            {
+                var extractedOutput = JsonSerializer.Deserialize<ExtractorOutput>(extraction.OutputJson);
+                if (extractedOutput != null)
+                {
+                    jobRequirements.JobRole = extractedOutput.JobRole;
+                    jobRequirements.ExtractedSkills = extractedOutput.RequiredSkills;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse extraction output json");
+            }
+        }
+        else if (!string.IsNullOrEmpty(request.Text))
+        {
+            jobRequirements.JobRole = "Candidate Search"; // Default
+            jobRequirements.Keywords = request.Text.Split(new[] { ' ', ',', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        }
+        else if (!string.IsNullOrEmpty(request.Keywords))
+        {
+            jobRequirements.JobRole = "Candidate Search"; // Default
+            jobRequirements.Keywords = request.Keywords.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(k => k.Trim()).ToList();
+        }
+        else
+        {
+            return BadRequest(ApiResponse<object>.Error("You must provide either an ExtractedJobId, Text, or Keywords"));
+        }
+
+        var searchInput = new SearchInput
+        {
+            UserId = userId,
+            JobRequirements = jobRequirements
+        };
+
+        try
+        {
+            var result = await _searchAgentClient.MatchAsync(searchInput);
+            if (result == null) return StatusCode(500, ApiResponse<object>.Error("Search Agent returned null"));
+            return Ok(ApiResponse<SearchOutput>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to call Search Agent");
+            return StatusCode(500, ApiResponse<object>.Error($"Search failed: {ex.Message}"));
+        }
+    }
 }

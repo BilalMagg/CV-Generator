@@ -1,0 +1,229 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.result-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+}
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px 28px 16px;
+  flex-shrink: 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-3);
+
+  a {
+    color: var(--text-3);
+    text-decoration: none;
+    transition: color 0.15s;
+    &:hover { color: var(--accent); }
+  }
+
+  .chevron { opacity: 0.4; flex-shrink: 0; }
+  span { color: var(--text-2); font-weight: 500; }
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.title-group {
+  h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text);
+  }
+}
+
+.match-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  .score-circle {
+    width: 64px;
+    height: 64px;
+
+    .circular-chart {
+      display: block;
+      margin: 0 auto;
+      width: 100%;
+      height: 100%;
+    }
+    .circle-bg {
+      fill: none;
+      stroke: var(--bg-2);
+      stroke-width: 3.8;
+    }
+    .circle {
+      fill: none;
+      stroke-width: 2.8;
+      stroke-linecap: round;
+      stroke: var(--accent);
+      animation: progress 1s ease-out forwards;
+    }
+    .percentage {
+      fill: var(--text);
+      font-weight: 700;
+      font-size: 0.5em;
+      text-anchor: middle;
+    }
+  }
+  .score-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+.main-content {
+  padding: 0 28px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr 2fr;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  &.skills-card {
+    grid-column: 1 / -1;
+    @media (min-width: 768px) {
+      grid-column: 1 / 2;
+    }
+  }
+  
+  &.experience-card, &.projects-card {
+    grid-column: 1 / -1;
+    @media (min-width: 768px) {
+      grid-column: 2 / 3;
+    }
+  }
+}
+
+.skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .skill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+
+    &.matched {
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+    &.gap {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+  }
+}
+
+.experience-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .exp-item {
+    padding: 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--accent);
+
+    .exp-header {
+      margin-bottom: 8px;
+      h3 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .company {
+        font-size: 13px;
+        color: var(--text-2);
+      }
+    }
+    .description {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-2);
+    }
+  }
+}
+
+.empty-state {
+  color: var(--text-4);
+  font-style: italic;
+  font-size: 13px;
+  margin: 0;
+}
+
+.mt-4 { margin-top: 24px; }
+
+@keyframes progress {
+  0% { stroke-dasharray: 0 100; }
+}

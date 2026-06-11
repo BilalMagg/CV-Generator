@@ -8,8 +8,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.job_model import JobRequirements
-from app.models.user_model import ExperienceResponse, ProjectResponse, SkillResponse
+from cvtools.models.job_model import JobRequirements
+from cvtools.models.user_model import ExperienceResponse, ProjectResponse, SkillResponse
 
 
 class SearchInput(BaseModel):

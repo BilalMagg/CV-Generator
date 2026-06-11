@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ExtractionService } from '@app/services/extraction.service';
+import { SearchAgentService, SearchAgentRequest } from '@app/services/search-agent.service';
 import { ExtractionHistoryItem } from '@app/models/extraction.types';
 import { extractError } from '@app/shared/error-utils';
 
@@ -16,8 +17,9 @@ type SearchInputMethod = 'extracted-job' | 'text' | 'keywords';
   styleUrl: './search-agent-workspace.component.scss'
 })
 export class SearchAgentWorkspaceComponent implements OnInit {
-  // Using ExtractionService temporarily as a placeholder for a future SearchAgentService
+  // Using ExtractionService temporarily as a placeholder for history
   private readonly extractionService = inject(ExtractionService);
+  private readonly searchAgentService = inject(SearchAgentService);
   private readonly router = inject(Router);
 
   activeMethod: SearchInputMethod = 'extracted-job';
@@ -64,11 +66,21 @@ export class SearchAgentWorkspaceComponent implements OnInit {
     this.error = '';
 
     try {
-      // In a real app, this would call searchAgentService.search(...)
-      // For now we simulate an API delay then just clear loading state
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      // await this.router.navigate(['/agents-hub/search-agent/result', 'new-id']);
-      this.error = 'Search Agent backend is not implemented yet.';
+      const request: SearchAgentRequest = {};
+      if (this.activeMethod === 'extracted-job') {
+        request.extractedJobId = this.extractedJobId;
+      } else if (this.activeMethod === 'text') {
+        request.text = this.textInput;
+      } else if (this.activeMethod === 'keywords') {
+        request.keywords = this.keywordsInput;
+      }
+
+      const result = await this.searchAgentService.search(request);
+      
+      // Navigate to result component, passing the result in router state
+      await this.router.navigate(['/agents-hub/search-agent/result'], {
+        state: { searchResult: result }
+      });
     } catch (err) {
       this.error = extractError(err, 'Search failed');
     } finally {
