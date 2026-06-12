@@ -20,16 +20,16 @@ def _get_genai_client() -> genai.Client:
     return _genai_client
 
 def _embed_text(text: str) -> List[float]:
-    return _embed_texts([text])[0]
-
-def _embed_texts(texts: List[str]) -> List[List[float]]:
     client = _get_genai_client()
     response = client.models.embed_content(
         model=os.getenv("EMBEDDING_MODEL", "gemini-embedding-001"),
-        contents=texts,
+        contents=text,
         config={"output_dimensionality": 768}
     )
-    return [e.values for e in response.embeddings]
+    return response.embeddings[0].values
+
+def _embed_texts(texts: List[str]) -> List[List[float]]:
+    return [_embed_text(t) for t in texts]
 
 def get_llm():
     provider = os.getenv("LLM_PROVIDER") or "google"
@@ -118,20 +118,22 @@ async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
     -----------------------------------------------
 
     MATCHING RULES (strictly follow these):
-    1. A skill ID should ONLY be in matched_skill_ids if the skill NAME appears in the job's extracted_skills list.
-    2. An experience ID should ONLY be in matched_experience_ids if the person's title/description clearly relates to the job role or required skills.
-    3. A project ID should ONLY be in matched_project_ids if the project description clearly relates to the job requirements.
-    4. gap_skills MUST include every skill from extracted_skills that is NOT present in the CANDIDATE SKILLS INVENTORY.
-    5. match_score should reflect the proportion of required skills the candidate has: 1.0 = all skills present, 0.5 = half, 0.0 = none.
+    1. A skill ID should ONLY be in matched_skill_ids if the skill NAME appears in the job's extracted_skills list OR closely matches any of the job's keywords.
+    2. An experience ID should ONLY be in matched_experience_ids if the person's title/description clearly relates to the job role, required skills, or keywords.
+    3. A project ID should ONLY be in matched_project_ids if the project description clearly relates to the job requirements or keywords.
+    4. gap_skills MUST include every skill from extracted_skills and keywords that is NOT present in the CANDIDATE SKILLS INVENTORY.
+    5. match_score should reflect the proportion of required skills/keywords the candidate has: 1.0 = all present, 0.5 = half, 0.0 = none.
 
     Output a JSON object with this exact structure:
     {{
-        "matched_experience_ids": ["uuid-string", ...],
-        "matched_project_ids": ["uuid-string", ...],
-        "matched_skill_ids": ["uuid-string", ...],
-        "gap_skills": ["skill1", "skill2"],
-        "match_score": 0.85
+        "matched_experience_ids": ["uuid"],
+        "matched_project_ids": ["uuid"],
+        "matched_skill_ids": ["uuid"],
+        "gap_skills": ["skill name"],
+        "match_score": 0.8
     }}
+
+    CRITICAL: YOU MUST OUTPUT ONLY VALID JSON. DO NOT OUTPUT ANY EXPLANATIONS, PREAMBLES, OR MARKDOWN BLOCKS. YOUR ENTIRE RESPONSE MUST BE A SINGLE JSON OBJECT.
     Only include IDs that are exactly present in the RETRIEVED CONTEXT.
     """)
 
@@ -155,6 +157,18 @@ async def match_candidate_data(input_data: SearchInput) -> SearchOutput:
     matched_exp_ids = set(result.get("matched_experience_ids", []))
     matched_proj_ids = set(result.get("matched_project_ids", []))
     matched_skill_ids = set(result.get("matched_skill_ids", []))
+    
+    # Auto-correct Llama-3 logic errors
+    total_reqs = len(job_reqs.extracted_skills) + len(job_reqs.keywords)
+    has_matches = bool(matched_skill_ids or matched_exp_ids or matched_proj_ids)
+    if has_matches and float(result.get("match_score", 0.0)) == 0.0:
+        result["match_score"] = 1.0
+        
+    if total_reqs == 1 and has_matches:
+        result["gap_skills"] = []
+        result["match_score"] = 1.0
+
+    print(f"STEP 5: matched IDs — {len(matched_exp_ids)} experiences, {len(matched_proj_ids)} projects, {len(matched_skill_ids)} skills")
 
     # 6. Build final result objects
     if not has_vectors:

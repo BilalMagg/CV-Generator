@@ -3,6 +3,11 @@ using WorkflowService;
 using WorkflowService.AgentClients;
 using WorkflowService.Entity;
 using WorkflowService.Services;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
 
 Console.WriteLine("[CV_GEN_2026-06-03] Starting WorkflowService with CvGenerationBackgroundService registration...");
 
@@ -81,6 +86,10 @@ builder.Services.AddHttpClient<IJobOfferServiceClient, JobOfferServiceClient>(cl
     client.BaseAddress = new Uri(jobOfferServiceUrl);
 });
 
+builder.Services.AddAuthentication("TokenForward")
+    .AddScheme<TokenForwardOptions, TokenForwardHandler>("TokenForward", _ => { });
+builder.Services.AddAuthorization();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -131,7 +140,48 @@ using (var scope = app.Services.CreateScope())
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.MapGrpcService<WorkflowService.Grpc.WorkflowServiceImpl>();
 
 app.Run();
+
+public class TokenForwardOptions : AuthenticationSchemeOptions { }
+
+public class TokenForwardHandler : AuthenticationHandler<TokenForwardOptions>
+{
+    public TokenForwardHandler(
+        IOptionsMonitor<TokenForwardOptions> options,
+        ILoggerFactory logger,
+        UrlEncoder encoder)
+        : base(options, logger, encoder) { }
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        var authHeader = Context.Request.Headers.Authorization.ToString();
+        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        {
+            return Task.FromResult(AuthenticateResult.NoResult());
+        }
+
+        var token = authHeader["Bearer ".Length..];
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(token);
+
+            var claims = jwt.Claims.Select(c => new Claim(c.Type, c.Value)).ToList();
+            var identity = new ClaimsIdentity(claims, Scheme.Name);
+            var principal = new ClaimsPrincipal(identity);
+            var ticket = new AuthenticationTicket(principal, Scheme.Name);
+
+            return Task.FromResult(AuthenticateResult.Success(ticket));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Token parsing failed");
+            return Task.FromResult(AuthenticateResult.Fail("Invalid token"));
+        }
+    }
+}
