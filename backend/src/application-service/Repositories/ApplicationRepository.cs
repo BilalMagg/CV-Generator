@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ApplicationService.DTOs;
 using ApplicationService.Entities;
+using ApplicationService.Services;
 
 namespace ApplicationService.Repositories;
 
@@ -15,10 +16,10 @@ public interface IApplicationRepository
     Task<Application> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto);
     Task<bool> DeleteAsync(Guid id);
     Task<bool> ExistsAsync(Guid id);
+    Task<List<Application>> FindDuplicatesAsync(Guid candidateId, string fingerprint, Guid? jobOfferId, Guid? excludeId);
     Task<Dictionary<ApplicationStatus, int>> GetStatisticsAsync(Guid? candidateId);
     Task<List<MonthlyTrendDto>> GetMonthlyTrendsAsync(Guid? candidateId, int months = 12);
     Task<double?> GetAverageResponseTimeAsync(Guid? candidateId);
-    Task<bool> ToggleSaveAsync(Guid id);
     Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid candidateId, DateTime from, DateTime to, string[]? statuses);
     Task<List<ActivityItemDto>> GetActivityFeedAsync(Guid? candidateId, int limit = 50);
     Task<int> GetActivityFeedCountAsync(Guid? candidateId);
@@ -41,6 +42,7 @@ public class ApplicationRepository : IApplicationRepository
     public async Task<Application?> GetByIdWithHistoryAsync(Guid id)
         => await _db.Applications
             .Include(a => a.StatusHistory.OrderByDescending(h => h.ChangedAt))
+            .Include(a => a.Attempts.OrderBy(t => t.AttemptNumber))
             .FirstOrDefaultAsync(a => a.Id == id);
 
     public async Task<List<Application>> GetAllAsync(Guid? candidateId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null)
@@ -48,7 +50,8 @@ public class ApplicationRepository : IApplicationRepository
         var query = BuildFilteredQuery(candidateId, statuses, search, appliedFrom, appliedTo, updatedFrom, updatedTo);
 
         return await query
-            .OrderByDescending(a => a.AppliedAt)
+            .OrderBy(a => a.AppliedAt == null)
+            .ThenByDescending(a => a.AppliedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -84,9 +87,9 @@ public class ApplicationRepository : IApplicationRepository
                 EF.Functions.ILike(a.PositionTitle, $"%{search}%"));
 
         if (appliedFrom.HasValue)
-            query = query.Where(a => a.AppliedAt >= appliedFrom.Value);
+            query = query.Where(a => a.AppliedAt != null && a.AppliedAt >= appliedFrom.Value);
         if (appliedTo.HasValue)
-            query = query.Where(a => a.AppliedAt <= appliedTo.Value);
+            query = query.Where(a => a.AppliedAt != null && a.AppliedAt <= appliedTo.Value);
 
         if (updatedFrom.HasValue)
             query = query.Where(a => a.UpdatedAt >= updatedFrom.Value);
@@ -98,6 +101,7 @@ public class ApplicationRepository : IApplicationRepository
 
     public async Task<Application> CreateAsync(Application application)
     {
+        application.Fingerprint = FingerprintHelper.ComputeFor(application);
         _db.Applications.Add(application);
         await _db.SaveChangesAsync();
         _logger.LogInformation("Created application {Id}", application.Id);
@@ -106,6 +110,7 @@ public class ApplicationRepository : IApplicationRepository
 
     public async Task<Application> UpdateAsync(Application application)
     {
+        application.Fingerprint = FingerprintHelper.ComputeFor(application);
         application.UpdatedAt = DateTime.UtcNow;
         _db.Applications.Update(application);
         await _db.SaveChangesAsync();
@@ -123,6 +128,7 @@ public class ApplicationRepository : IApplicationRepository
         if (dto.OfferSource != null) application.OfferSource = dto.OfferSource;
         if (dto.Notes != null) application.Notes = dto.Notes;
 
+        application.Fingerprint = FingerprintHelper.ComputeFor(application);
         application.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         _logger.LogInformation("Updated application details {Id}", id);
@@ -143,6 +149,25 @@ public class ApplicationRepository : IApplicationRepository
     public async Task<bool> ExistsAsync(Guid id)
         => await _db.Applications.AnyAsync(a => a.Id == id);
 
+    public async Task<List<Application>> FindDuplicatesAsync(Guid candidateId, string fingerprint, Guid? jobOfferId, Guid? excludeId)
+    {
+        var query = _db.Applications
+            .Where(a => a.CandidateId == candidateId);
+
+        if (!string.IsNullOrEmpty(fingerprint))
+            query = query.Where(a => a.Fingerprint == fingerprint);
+
+        if (jobOfferId.HasValue)
+            query = query.Where(a => a.JobOfferId == jobOfferId.Value);
+
+        if (excludeId.HasValue)
+            query = query.Where(a => a.Id != excludeId.Value);
+
+        return await query
+            .OrderByDescending(a => a.UpdatedAt)
+            .ToListAsync();
+    }
+
     public async Task<Dictionary<ApplicationStatus, int>> GetStatisticsAsync(Guid? candidateId)
     {
         var query = _db.Applications.AsQueryable();
@@ -162,10 +187,10 @@ public class ApplicationRepository : IApplicationRepository
             query = query.Where(a => a.CandidateId == candidateId.Value);
 
         var cutoff = DateTime.UtcNow.AddMonths(-months);
-        query = query.Where(a => a.AppliedAt >= cutoff);
+        query = query.Where(a => a.AppliedAt != null && a.AppliedAt >= cutoff);
 
         var raw = await query
-            .GroupBy(a => new { a.AppliedAt.Year, a.AppliedAt.Month })
+            .GroupBy(a => new { a.AppliedAt!.Value.Year, a.AppliedAt.Value.Month })
             .Select(g => new
             {
                 g.Key.Year,
@@ -182,18 +207,23 @@ public class ApplicationRepository : IApplicationRepository
             var s = r.Status.ToDictionary(x => x.Status, x => x.Count);
             return new MonthlyTrendDto(
                 r.Year, r.Month,
-                s.GetValueOrDefault(ApplicationStatus.PENDING, 0),
-                s.GetValueOrDefault(ApplicationStatus.REVIEWED, 0),
+                s.GetValueOrDefault(ApplicationStatus.SAVED, 0),
+                s.GetValueOrDefault(ApplicationStatus.APPLIED, 0),
+                s.GetValueOrDefault(ApplicationStatus.SCREENING, 0),
                 s.GetValueOrDefault(ApplicationStatus.INTERVIEW, 0),
+                s.GetValueOrDefault(ApplicationStatus.OFFER, 0),
                 s.GetValueOrDefault(ApplicationStatus.ACCEPTED, 0),
                 s.GetValueOrDefault(ApplicationStatus.REJECTED, 0),
-                s.GetValueOrDefault(ApplicationStatus.CANCELLED, 0)
+                s.GetValueOrDefault(ApplicationStatus.WITHDRAWN, 0)
             );
         }).ToList();
     }
 
     public async Task<double?> GetAverageResponseTimeAsync(Guid? candidateId)
     {
+        // A "response" is any transition beyond the initial applied/saved state.
+        var initialStatuses = new[] { ApplicationStatus.APPLIED, ApplicationStatus.SAVED };
+
         var query = _db.Applications
             .Include(a => a.StatusHistory)
             .AsQueryable();
@@ -202,12 +232,12 @@ public class ApplicationRepository : IApplicationRepository
             query = query.Where(a => a.CandidateId == candidateId.Value);
 
         var appsWithResponse = await query
-            .Where(a => a.StatusHistory.Any(h => h.NewStatus != ApplicationStatus.PENDING))
+            .Where(a => a.AppliedAt != null && a.StatusHistory.Any(h => !initialStatuses.Contains(h.NewStatus)))
             .Select(a => new
             {
                 a.AppliedAt,
                 FirstResponse = a.StatusHistory
-                    .Where(h => h.NewStatus != ApplicationStatus.PENDING)
+                    .Where(h => !initialStatuses.Contains(h.NewStatus))
                     .Min(h => h.ChangedAt)
             })
             .ToListAsync();
@@ -215,20 +245,8 @@ public class ApplicationRepository : IApplicationRepository
         if (appsWithResponse.Count == 0) return null;
 
         return appsWithResponse
-            .Select(x => (x.FirstResponse - x.AppliedAt).TotalDays)
+            .Select(x => (x.FirstResponse - x.AppliedAt!.Value).TotalDays)
             .Average();
-    }
-
-    public async Task<bool> ToggleSaveAsync(Guid id)
-    {
-        var app = await _db.Applications.FindAsync(id);
-        if (app == null) return false;
-
-        app.IsSaved = !app.IsSaved;
-        app.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        _logger.LogInformation("Toggled save for application {Id} → {IsSaved}", id, app.IsSaved);
-        return app.IsSaved;
     }
 
     public async Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid candidateId, DateTime from, DateTime to, string[]? statuses)
@@ -240,14 +258,15 @@ public class ApplicationRepository : IApplicationRepository
             .Select(s => s!.Value)
             .ToList() ?? [];
 
-        if (parsedStatuses.Contains(ApplicationStatus.PENDING))
+        if (parsedStatuses.Contains(ApplicationStatus.APPLIED))
         {
             var appliedEvents = await _db.Applications
                 .Where(a => a.CandidateId == candidateId
+                    && a.AppliedAt != null
                     && a.AppliedAt >= from
                     && a.AppliedAt <= to)
                 .Select(a => new CalendarEventDto(
-                    a.AppliedAt.ToString("yyyy-MM-dd"),
+                    a.AppliedAt!.Value.ToString("yyyy-MM-dd"),
                     "applied",
                     "Applied at " + a.CompanyName,
                     a.Id,
@@ -266,7 +285,7 @@ public class ApplicationRepository : IApplicationRepository
                 && h.ChangedAt >= from
                 && h.ChangedAt <= to
                 && parsedStatuses.Contains(h.NewStatus)
-                && h.NewStatus != ApplicationStatus.PENDING)
+                && h.NewStatus != ApplicationStatus.APPLIED)
             .Select(h => new CalendarEventDto(
                 h.ChangedAt.ToString("yyyy-MM-dd"),
                 h.NewStatus.ToString().ToLower(),

@@ -46,7 +46,7 @@ public class CalendarConfigurationController : ControllerBase
                 Guid.Empty,
                 userId.Value,
                 true,
-                new[] { "PENDING", "INTERVIEW" }
+                new[] { "APPLIED", "INTERVIEW" }
             );
             return Ok(ApiResponse<CalendarConfigurationDto>.Ok(defaults));
         }

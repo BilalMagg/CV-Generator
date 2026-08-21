@@ -19,8 +19,14 @@ public class DataSeeder : IDataSeeder
 
     private static readonly double[] SourceWeights = [0.35, 0.20, 0.15, 0.12, 0.07, 0.05, 0.03, 0.03];
 
-    private static readonly ApplicationStatus[] AllStatuses =
-        [ApplicationStatus.PENDING, ApplicationStatus.REVIEWED, ApplicationStatus.INTERVIEW, ApplicationStatus.ACCEPTED, ApplicationStatus.REJECTED];
+    private static readonly (AttemptChannel Channel, double Weight)[] AttemptChannels =
+    [
+        (AttemptChannel.EMAIL_GMAIL, 0.50),
+        (AttemptChannel.EMAIL_SMTP, 0.20),
+        (AttemptChannel.LINKEDIN_MESSAGE, 0.15),
+        (AttemptChannel.WEB_FORM, 0.10),
+        (AttemptChannel.WHATSAPP, 0.05),
+    ];
 
     public DataSeeder(ApplicationDbContext db, ILogger<DataSeeder> logger)
     {
@@ -50,10 +56,41 @@ public class DataSeeder : IDataSeeder
                 CompanyName = companyFaker.CompanyName(),
                 PositionTitle = jobFaker.JobTitle(),
                 OfferSource = PickSource(),
+                Origin = ApplicationOrigin.MANUAL,
                 Notes = i % 3 == 0 ? lorem.Sentence() : null,
                 AppliedAt = appliedAt,
                 UpdatedAt = appliedAt,
             };
+
+            app.Fingerprint = FingerprintHelper.ComputeFor(app);
+
+            // Every seeded application has at least one sent apply attempt.
+            var channel = PickAttemptChannel();
+            var attempt = new ApplicationAttempt
+            {
+                ApplicationId = app.Id,
+                AttemptNumber = 1,
+                Channel = channel,
+                InitiatedBy = AttemptInitiatedBy.USER,
+                Status = AttemptStatus.SENT,
+                Subject = $"Application for the {app.PositionTitle} position",
+                Body = lorem.Paragraph(),
+                SentAt = appliedAt,
+            };
+            if (channel == AttemptChannel.EMAIL_GMAIL)
+            {
+                attempt.ChannelMetadataJson =
+                    $$"""{"messageId": "<seed-{{attempt.Id:N}}@mail.gmail.com>", "threadId": "{{Guid.NewGuid():N}}"}""";
+            }
+            else if (channel == AttemptChannel.WHATSAPP)
+            {
+                attempt.ChannelMetadataJson = """{"phone": "+33600000000"}""";
+            }
+            else if (channel == AttemptChannel.LINKEDIN_MESSAGE)
+            {
+                attempt.ChannelMetadataJson = """{"profileUrl": "https://www.linkedin.com/in/seed-recruiter"}""";
+            }
+            app.Attempts.Add(attempt);
 
             var (finalStatus, statusChanges) = GenerateStatusProgression(appliedAt, now);
             app.Status = finalStatus;
@@ -116,71 +153,87 @@ public class DataSeeder : IDataSeeder
         return Sources[^1];
     }
 
+    private static AttemptChannel PickAttemptChannel()
+    {
+        var roll = new Faker().Random.Double();
+        var cumulative = 0.0;
+        foreach (var (channel, weight) in AttemptChannels)
+        {
+            cumulative += weight;
+            if (roll < cumulative) return channel;
+        }
+        return AttemptChannel.EMAIL_GMAIL;
+    }
+
     private static (ApplicationStatus finalStatus, List<(ApplicationStatus status, DateTime changedAt, string? comment)> changes)
         GenerateStatusProgression(DateTime appliedAt, DateTime now)
     {
         var faker = new Faker();
         var path = faker.Random.Int(0, 100);
 
-        if (path < 40)
+        if (path < 35)
         {
-            return (ApplicationStatus.PENDING, []);
+            return (ApplicationStatus.APPLIED, []);
         }
 
         var changes = new List<(ApplicationStatus, DateTime, string?)>();
 
-        if (path < 50)
+        if (path < 45)
         {
-            var reviewedAt = appliedAt.AddDays(faker.Random.Int(1, 7));
-            if (reviewedAt > now) return (ApplicationStatus.PENDING, []);
-            changes.Add((ApplicationStatus.REJECTED, reviewedAt, PickRejectionReason()));
+            var screenedAt = appliedAt.AddDays(faker.Random.Int(1, 7));
+            if (screenedAt > now) return (ApplicationStatus.APPLIED, []);
+            changes.Add((ApplicationStatus.REJECTED, screenedAt, PickRejectionReason()));
             return (ApplicationStatus.REJECTED, changes);
         }
 
-        if (path < 70)
+        if (path < 65)
         {
-            var reviewedAt = appliedAt.AddDays(faker.Random.Int(1, 7));
-            if (reviewedAt > now) return (ApplicationStatus.PENDING, []);
-            changes.Add((ApplicationStatus.REVIEWED, reviewedAt, null));
-            return (ApplicationStatus.REVIEWED, changes);
+            var screeningAt = appliedAt.AddDays(faker.Random.Int(1, 7));
+            if (screeningAt > now) return (ApplicationStatus.APPLIED, []);
+            changes.Add((ApplicationStatus.SCREENING, screeningAt, null));
+            return (ApplicationStatus.SCREENING, changes);
         }
 
-        if (path < 80)
+        if (path < 78)
         {
-            var reviewedAt = appliedAt.AddDays(faker.Random.Int(1, 7));
-            if (reviewedAt > now) return (ApplicationStatus.PENDING, []);
-            changes.Add((ApplicationStatus.REVIEWED, reviewedAt, null));
+            var screeningAt = appliedAt.AddDays(faker.Random.Int(1, 7));
+            if (screeningAt > now) return (ApplicationStatus.APPLIED, []);
+            changes.Add((ApplicationStatus.SCREENING, screeningAt, null));
 
-            var interviewAt = reviewedAt.AddDays(faker.Random.Int(3, 14));
-            if (interviewAt > now) return (ApplicationStatus.REVIEWED, changes);
+            var interviewAt = screeningAt.AddDays(faker.Random.Int(3, 14));
+            if (interviewAt > now) return (ApplicationStatus.SCREENING, changes);
             changes.Add((ApplicationStatus.INTERVIEW, interviewAt, null));
             return (ApplicationStatus.INTERVIEW, changes);
         }
 
-        if (path < 88)
+        if (path < 86)
         {
-            var reviewedAt = appliedAt.AddDays(faker.Random.Int(1, 7));
-            if (reviewedAt > now) return (ApplicationStatus.PENDING, []);
-            changes.Add((ApplicationStatus.REVIEWED, reviewedAt, null));
+            var screeningAt = appliedAt.AddDays(faker.Random.Int(1, 7));
+            if (screeningAt > now) return (ApplicationStatus.APPLIED, []);
+            changes.Add((ApplicationStatus.SCREENING, screeningAt, null));
 
-            var interviewAt = reviewedAt.AddDays(faker.Random.Int(3, 14));
-            if (interviewAt > now) return (ApplicationStatus.REVIEWED, changes);
+            var interviewAt = screeningAt.AddDays(faker.Random.Int(3, 14));
+            if (interviewAt > now) return (ApplicationStatus.SCREENING, changes);
             changes.Add((ApplicationStatus.INTERVIEW, interviewAt, null));
 
-            var acceptedAt = interviewAt.AddDays(faker.Random.Int(3, 21));
-            if (acceptedAt > now) return (ApplicationStatus.INTERVIEW, changes);
+            var offerAt = interviewAt.AddDays(faker.Random.Int(3, 21));
+            if (offerAt > now) return (ApplicationStatus.INTERVIEW, changes);
+            changes.Add((ApplicationStatus.OFFER, offerAt, "Offer received"));
+
+            var acceptedAt = offerAt.AddDays(faker.Random.Int(1, 7));
+            if (acceptedAt > now) return (ApplicationStatus.OFFER, changes);
             changes.Add((ApplicationStatus.ACCEPTED, acceptedAt, "Offer accepted"));
             return (ApplicationStatus.ACCEPTED, changes);
         }
 
         if (path < 95)
         {
-            var reviewedAt = appliedAt.AddDays(faker.Random.Int(1, 7));
-            if (reviewedAt > now) return (ApplicationStatus.PENDING, []);
-            changes.Add((ApplicationStatus.REVIEWED, reviewedAt, null));
+            var screeningAt = appliedAt.AddDays(faker.Random.Int(1, 7));
+            if (screeningAt > now) return (ApplicationStatus.APPLIED, []);
+            changes.Add((ApplicationStatus.SCREENING, screeningAt, null));
 
-            var interviewAt = reviewedAt.AddDays(faker.Random.Int(3, 14));
-            if (interviewAt > now) return (ApplicationStatus.REVIEWED, changes);
+            var interviewAt = screeningAt.AddDays(faker.Random.Int(3, 14));
+            if (interviewAt > now) return (ApplicationStatus.SCREENING, changes);
             changes.Add((ApplicationStatus.INTERVIEW, interviewAt, null));
 
             var rejectedAt = interviewAt.AddDays(faker.Random.Int(2, 14));
@@ -190,12 +243,12 @@ public class DataSeeder : IDataSeeder
         }
 
         {
-            var reviewedAt = appliedAt.AddDays(faker.Random.Int(1, 7));
-            if (reviewedAt > now) return (ApplicationStatus.PENDING, []);
-            changes.Add((ApplicationStatus.REVIEWED, reviewedAt, null));
+            var screeningAt = appliedAt.AddDays(faker.Random.Int(1, 7));
+            if (screeningAt > now) return (ApplicationStatus.APPLIED, []);
+            changes.Add((ApplicationStatus.SCREENING, screeningAt, null));
 
-            var rejectedAt = reviewedAt.AddDays(faker.Random.Int(3, 10));
-            if (rejectedAt > now) return (ApplicationStatus.REVIEWED, changes);
+            var rejectedAt = screeningAt.AddDays(faker.Random.Int(3, 10));
+            if (rejectedAt > now) return (ApplicationStatus.SCREENING, changes);
             changes.Add((ApplicationStatus.REJECTED, rejectedAt, PickRejectionReason()));
             return (ApplicationStatus.REJECTED, changes);
         }

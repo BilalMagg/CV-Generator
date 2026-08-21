@@ -2,10 +2,20 @@ namespace ApplicationService.Entities;
 
 public enum ApplicationStatus
 {
-    PENDING,
-    REVIEWED,
+    SAVED,
+    APPLIED,
+    SCREENING,
     INTERVIEW,
+    OFFER,
     ACCEPTED,
     REJECTED,
-    CANCELLED
+    WITHDRAWN
+}
+
+public enum ApplicationOrigin
+{
+    MANUAL,
+    FROM_JOB_OFFER,
+    AI_AGENT_AUTO_APPLY,
+    IMPORT
 }

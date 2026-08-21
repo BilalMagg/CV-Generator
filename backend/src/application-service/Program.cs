@@ -34,6 +34,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Services
 builder.Services.AddScoped<IApplicationRepository, ApplicationRepository>();
 builder.Services.AddScoped<IApplicationStatusHistoryRepository, ApplicationStatusHistoryRepository>();
+builder.Services.AddScoped<IApplicationAttemptRepository, ApplicationAttemptRepository>();
 builder.Services.AddScoped<IKafkaPublisher, KafkaPublisher>();
 builder.Services.AddScoped<IUserGrpcClientService, UserGrpcClientService>();
 builder.Services.AddScoped<ApplicationService.Services.IApplicationService, ApplicationServiceImpl>();
@@ -61,6 +62,9 @@ builder.Services.AddGrpc();
 builder.Services.AddScoped<IValidator<CreateApplicationDto>, CreateApplicationValidator>();
 builder.Services.AddScoped<IValidator<UpdateStatusDto>, UpdateStatusValidator>();
 builder.Services.AddScoped<IValidator<UpdateApplicationDto>, UpdateApplicationValidator>();
+builder.Services.AddScoped<IValidator<DuplicateCheckRequestDto>, DuplicateCheckValidator>();
+builder.Services.AddScoped<IValidator<CreateAttemptDto>, CreateAttemptValidator>();
+builder.Services.AddScoped<IValidator<UpdateAttemptDto>, UpdateAttemptValidator>();
 
 // AutoMapper
 builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());

@@ -1,4 +1,5 @@
 using CommonProtos.Application;
+using ApplicationService.Entities;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
@@ -41,10 +42,10 @@ public class ApplicationGrpcServiceImpl : ApplicationServiceGrpc.ApplicationServ
             PositionTitle = app.PositionTitle,
             OfferSource = app.OfferSource ?? "",
             Status = app.Status.ToString(),
-            AppliedAt = app.AppliedAt.ToString("O"),
+            AppliedAt = app.AppliedAt?.ToString("O") ?? "",
             UpdatedAt = app.UpdatedAt.ToString("O"),
             Notes = app.Notes ?? "",
-            IsSaved = app.IsSaved
+            IsSaved = app.Status == ApplicationStatus.SAVED
         };
     }
 }
