@@ -5,10 +5,19 @@ namespace CV_Generator.Services;
 
 public interface IApplicationService
 {
-    Task<List<Application>> GetAllAsync(Guid userId);
-    Task<Application?> GetByIdAsync(Guid id, Guid userId);
-    Task<Application> CreateAsync(CreateApplicationDto dto, Guid userId);
-    Task<Application?> UpdateAsync(Guid id, UpdateApplicationDto dto, Guid userId);
-    Task<Application?> UpdateStatusAsync(Guid id, UpdateStatusDto dto, Guid userId);
+    Task<ApplicationListDto> GetAllAsync(Guid userId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null);
+    Task<ApplicationResponseDto?> GetByIdAsync(Guid id, Guid userId);
+    Task<DuplicateCheckResponseDto> CheckDuplicatesAsync(Guid userId, DuplicateCheckRequestDto dto);
+    Task<ApplicationResponseDto> CreateAsync(CreateApplicationDto dto, Guid userId);
+    Task<ApplicationResponseDto?> UpdateStatusAsync(Guid id, UpdateStatusDto dto, Guid userId);
+    Task<ApplicationResponseDto?> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto, Guid userId);
     Task<bool> DeleteAsync(Guid id, Guid userId);
+    Task<ApplicationStatisticsDto> GetStatisticsAsync(Guid userId);
+    Task<StatisticsTrendsDto> GetTrendsAsync(Guid userId);
+    Task<bool?> ToggleSaveAsync(Guid id, Guid userId);
+    Task<ActivityFeedDto> GetActivityFeedAsync(Guid userId, int limit = 50);
+    Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid userId, DateTime from, DateTime to, string[]? statuses);
+    Task<List<AttemptResponseDto>> GetAttemptsAsync(Guid applicationId, Guid userId);
+    Task<AttemptResponseDto> CreateAttemptAsync(Guid applicationId, CreateAttemptDto dto, Guid userId);
+    Task<AttemptResponseDto?> UpdateAttemptAsync(Guid applicationId, Guid attemptId, UpdateAttemptDto dto, Guid userId);
 }

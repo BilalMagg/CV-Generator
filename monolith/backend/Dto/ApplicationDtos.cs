@@ -9,11 +9,12 @@ public record ApplicationResponseDto(
     string PositionTitle,
     string? OfferSource,
     string Status,
-    DateTime AppliedAt,
+    DateTime? AppliedAt,
     DateTime UpdatedAt,
     string? Notes,
-    bool IsSaved = false,
-    List<StatusHistoryDto>? History = null
+    string Origin = "MANUAL",
+    List<StatusHistoryDto>? History = null,
+    List<AttemptResponseDto>? Attempts = null
 );
 
 public record StatusHistoryDto(
@@ -32,7 +33,10 @@ public record CreateApplicationDto(
     string CompanyName,
     string PositionTitle,
     string? OfferSource,
-    string? Notes
+    string? Notes,
+    string Origin = "MANUAL",
+    string Status = "APPLIED",
+    bool AllowDuplicate = false
 );
 
 public record UpdateStatusDto(
@@ -47,25 +51,96 @@ public record UpdateApplicationDto(
     string? Notes
 );
 
+public record DuplicateCheckRequestDto(
+    string CompanyName,
+    string PositionTitle,
+    Guid? JobOfferId = null,
+    Guid? ExcludeApplicationId = null
+);
+
+public record DuplicateMatchDto(
+    Guid Id,
+    string CompanyName,
+    string PositionTitle,
+    string Status,
+    DateTime? AppliedAt,
+    DateTime UpdatedAt,
+    bool SameJobOffer
+);
+
+public record DuplicateCheckResponseDto(
+    bool HasDuplicates,
+    List<DuplicateMatchDto> Matches
+);
+
+public record CreateAttemptDto(
+    string Channel,
+    string InitiatedBy = "USER",
+    string Status = "DRAFT",
+    string? Subject = null,
+    string? Body = null,
+    string? RecipientName = null,
+    string? RecipientContact = null,
+    string? ChannelMetadataJson = null,
+    Guid? CvVersionId = null,
+    DateTime? SentAt = null,
+    string? FailureReason = null
+);
+
+public record UpdateAttemptDto(
+    string? Status = null,
+    string? Subject = null,
+    string? Body = null,
+    string? RecipientName = null,
+    string? RecipientContact = null,
+    string? ChannelMetadataJson = null,
+    Guid? CvVersionId = null,
+    DateTime? SentAt = null,
+    string? FailureReason = null
+);
+
+public record AttemptResponseDto(
+    Guid Id,
+    Guid ApplicationId,
+    int AttemptNumber,
+    string Channel,
+    string InitiatedBy,
+    string Status,
+    string? Subject,
+    string? Body,
+    string? RecipientName,
+    string? RecipientContact,
+    string? ChannelMetadataJson,
+    Guid? CvVersionId,
+    DateTime? SentAt,
+    string? FailureReason,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
 public record ApplicationStatisticsDto(
     int Total,
-    int Pending,
-    int Reviewed,
+    int Saved,
+    int Applied,
+    int Screening,
     int Interview,
+    int Offer,
     int Accepted,
     int Rejected,
-    int Cancelled
+    int Withdrawn
 );
 
 public record MonthlyTrendDto(
     int Year,
     int Month,
-    int Pending,
-    int Reviewed,
+    int Saved,
+    int Applied,
+    int Screening,
     int Interview,
+    int Offer,
     int Accepted,
     int Rejected,
-    int Cancelled
+    int Withdrawn
 );
 
 public record StatisticsTrendsDto(

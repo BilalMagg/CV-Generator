@@ -60,6 +60,7 @@ builder.Services.AddScoped<ITemplateRenderer, TemplateRenderer>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IContactService, ContactService>();
+builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<EmailScheduleService>();
 builder.Services.AddScoped<WorkflowExecutionService>();
 

@@ -27,18 +27,32 @@ public class Application
     [MaxLength(100)]
     public string? OfferSource { get; set; }
 
+    /// <summary>
+    /// How this application record came to exist (manual entry, job offer conversion, agent auto-apply...).
+    /// Distinct from OfferSource which describes where the offer was discovered.
+    /// </summary>
     [Required]
-    public ApplicationStatus Status { get; set; } = ApplicationStatus.PENDING;
+    [MaxLength(20)]
+    public ApplicationOrigin Origin { get; set; } = ApplicationOrigin.MANUAL;
 
     [Required]
-    public DateTime AppliedAt { get; set; } = DateTime.UtcNow;
+    public ApplicationStatus Status { get; set; } = ApplicationStatus.APPLIED;
+
+    /// <summary>
+    /// Normalized company+position key used for duplicate detection.
+    /// </summary>
+    [Required]
+    [MaxLength(280)]
+    public string Fingerprint { get; set; } = string.Empty;
+
+    public DateTime? AppliedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public string? Notes { get; set; }
 
-    public bool IsSaved { get; set; } = false;
-
     // Navigation
     public ICollection<ApplicationStatusHistory> StatusHistory { get; set; } = new List<ApplicationStatusHistory>();
+
+    public ICollection<ApplicationAttempt> Attempts { get; set; } = new List<ApplicationAttempt>();
 }

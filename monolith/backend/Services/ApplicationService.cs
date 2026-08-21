@@ -1,0 +1,628 @@
+using Microsoft.EntityFrameworkCore;
+using CV_Generator.Data;
+using CV_Generator.Dto;
+using CV_Generator.Models;
+
+namespace CV_Generator.Services;
+
+public class ApplicationService : IApplicationService
+{
+    private readonly AppDbContext _db;
+    private readonly ILogger<ApplicationService> _logger;
+
+    public ApplicationService(AppDbContext db, ILogger<ApplicationService> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
+
+    public async Task<ApplicationListDto> GetAllAsync(Guid userId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null)
+    {
+        var query = BuildFilteredQuery(userId, statuses, search, appliedFrom, appliedTo, updatedFrom, updatedTo);
+        var total = await query.CountAsync();
+        var apps = await query
+            .OrderBy(a => a.AppliedAt == null)
+            .ThenByDescending(a => a.AppliedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new ApplicationListDto(apps.Select(MapToDto).ToList(), total, page, pageSize);
+    }
+
+    public async Task<ApplicationResponseDto?> GetByIdAsync(Guid id, Guid userId)
+    {
+        var app = await _db.Applications
+            .Include(a => a.StatusHistory.OrderByDescending(h => h.ChangedAt))
+            .Include(a => a.Attempts.OrderBy(t => t.AttemptNumber))
+            .FirstOrDefaultAsync(a => a.Id == id && a.CandidateId == userId);
+        return app == null ? null : MapToDtoWithHistory(app);
+    }
+
+    public async Task<DuplicateCheckResponseDto> CheckDuplicatesAsync(Guid userId, DuplicateCheckRequestDto dto)
+    {
+        var fingerprint = FingerprintHelper.Compute(dto.CompanyName, dto.PositionTitle);
+        var matches = await FindDuplicatesAsync(userId, fingerprint, dto.JobOfferId, dto.ExcludeApplicationId);
+        return MapDuplicateMatches(matches, dto.JobOfferId);
+    }
+
+    public async Task<ApplicationResponseDto> CreateAsync(CreateApplicationDto dto, Guid userId)
+    {
+        ValidateCreate(dto);
+
+        if (!Enum.TryParse<ApplicationOrigin>(dto.Origin, true, out var origin))
+            origin = ApplicationOrigin.MANUAL;
+
+        var initialStatus = Enum.TryParse<ApplicationStatus>(dto.Status, true, out var parsedStatus)
+            ? parsedStatus
+            : ApplicationStatus.APPLIED;
+
+        // Soft dedup: warn when an equivalent application already exists
+        var fingerprint = FingerprintHelper.Compute(dto.CompanyName, dto.PositionTitle);
+        var duplicates = await FindDuplicatesAsync(userId, fingerprint, dto.JobOfferId, excludeId: null);
+        if (!dto.AllowDuplicate && duplicates.Count > 0)
+        {
+            _logger.LogInformation("Duplicate check hit for {Company}/{Position}: {Count} match(es)",
+                dto.CompanyName, dto.PositionTitle, duplicates.Count);
+            throw new DuplicateApplicationException(MapDuplicateMatches(duplicates, dto.JobOfferId));
+        }
+
+        var app = new Application
+        {
+            CandidateId = userId,
+            CvVersionId = dto.CvVersionId,
+            JobOfferId = dto.JobOfferId,
+            CompanyName = dto.CompanyName.Trim(),
+            PositionTitle = dto.PositionTitle.Trim(),
+            OfferSource = dto.OfferSource,
+            Origin = origin,
+            Status = initialStatus,
+            AppliedAt = initialStatus == ApplicationStatus.SAVED ? null : DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Notes = dto.Notes
+        };
+        app.Fingerprint = FingerprintHelper.ComputeFor(app);
+
+        _db.Applications.Add(app);
+        await _db.SaveChangesAsync();
+
+        await RecordHistoryAsync(app.Id, null, initialStatus, userId.ToString(), "Application created");
+
+        _logger.LogInformation("Application created {Id} ({Origin}, {Status}) for user {User}",
+            app.Id, origin, initialStatus, userId);
+
+        return MapToDtoWithHistory(await ReloadAsync(app.Id));
+    }
+
+    public async Task<ApplicationResponseDto?> UpdateStatusAsync(Guid id, UpdateStatusDto dto, Guid userId)
+    {
+        var app = await _db.Applications.FirstOrDefaultAsync(a => a.Id == id && a.CandidateId == userId);
+        if (app == null) return null;
+
+        if (!Enum.TryParse<ApplicationStatus>(dto.Status?.ToUpperInvariant(), out var newStatus))
+            throw new ArgumentException($"Invalid status value '{dto.Status}'");
+
+        var oldStatus = app.Status;
+
+        if (newStatus == ApplicationStatus.SAVED)
+            app.AppliedAt = null;
+        else if (newStatus == ApplicationStatus.APPLIED && oldStatus == ApplicationStatus.SAVED)
+            app.AppliedAt = DateTime.UtcNow;
+
+        app.Status = newStatus;
+        app.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await RecordHistoryAsync(id, oldStatus, newStatus, userId.ToString(), dto.Comment);
+
+        _logger.LogInformation("Application {Id} status updated from {Old} to {New}", id, oldStatus, newStatus);
+
+        return MapToDtoWithHistory(await ReloadAsync(id));
+    }
+
+    public async Task<ApplicationResponseDto?> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto, Guid userId)
+    {
+        var app = await _db.Applications.FirstOrDefaultAsync(a => a.Id == id && a.CandidateId == userId);
+        if (app == null) return null;
+
+        if (!string.IsNullOrWhiteSpace(dto.CompanyName))
+        {
+            if (dto.CompanyName.Length > 200) throw new ArgumentException("Company name cannot exceed 200 characters");
+            app.CompanyName = dto.CompanyName.Trim();
+        }
+        if (!string.IsNullOrWhiteSpace(dto.PositionTitle))
+        {
+            if (dto.PositionTitle.Length > 150) throw new ArgumentException("Position title cannot exceed 150 characters");
+            app.PositionTitle = dto.PositionTitle.Trim();
+        }
+        if (dto.OfferSource != null) app.OfferSource = dto.OfferSource;
+        if (dto.Notes != null) app.Notes = dto.Notes;
+
+        app.Fingerprint = FingerprintHelper.ComputeFor(app);
+        app.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return MapToDtoWithHistory(await ReloadAsync(id));
+    }
+
+    public async Task<bool> DeleteAsync(Guid id, Guid userId)
+    {
+        var app = await _db.Applications.FirstOrDefaultAsync(a => a.Id == id && a.CandidateId == userId);
+        if (app == null) return false;
+
+        _db.Applications.Remove(app);
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Application {Id} deleted", id);
+        return true;
+    }
+
+    public async Task<bool?> ToggleSaveAsync(Guid id, Guid userId)
+    {
+        var app = await _db.Applications.FirstOrDefaultAsync(a => a.Id == id && a.CandidateId == userId);
+        if (app == null) return null;
+
+        var oldStatus = app.Status;
+        var isSaved = app.Status == ApplicationStatus.SAVED;
+        var comment = isSaved ? "Removed from saved" : "Saved for later";
+
+        var newStatus = isSaved ? ApplicationStatus.APPLIED : ApplicationStatus.SAVED;
+
+        if (newStatus == ApplicationStatus.SAVED)
+            app.AppliedAt = null;
+        else if (oldStatus == ApplicationStatus.SAVED && app.AppliedAt == null)
+        {
+            var hasSentAttempt = await _db.ApplicationAttempts
+                .AnyAsync(t => t.ApplicationId == id && t.Status == AttemptStatus.SENT);
+            if (!hasSentAttempt)
+                app.AppliedAt = DateTime.UtcNow;
+        }
+
+        app.Status = newStatus;
+        app.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await RecordHistoryAsync(id, oldStatus, newStatus, userId.ToString(), comment);
+        return !isSaved;
+    }
+
+    // ── Statistics ──────────────────────────────────────────────────────────────
+
+    public async Task<ApplicationStatisticsDto> GetStatisticsAsync(Guid userId)
+    {
+        var stats = await _db.Applications
+            .Where(a => a.CandidateId == userId)
+            .GroupBy(a => a.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count);
+
+        return new ApplicationStatisticsDto(
+            stats.Values.Sum(),
+            stats.GetValueOrDefault(ApplicationStatus.SAVED, 0),
+            stats.GetValueOrDefault(ApplicationStatus.APPLIED, 0),
+            stats.GetValueOrDefault(ApplicationStatus.SCREENING, 0),
+            stats.GetValueOrDefault(ApplicationStatus.INTERVIEW, 0),
+            stats.GetValueOrDefault(ApplicationStatus.OFFER, 0),
+            stats.GetValueOrDefault(ApplicationStatus.ACCEPTED, 0),
+            stats.GetValueOrDefault(ApplicationStatus.REJECTED, 0),
+            stats.GetValueOrDefault(ApplicationStatus.WITHDRAWN, 0)
+        );
+    }
+
+    public async Task<StatisticsTrendsDto> GetTrendsAsync(Guid userId)
+    {
+        var current = await GetStatisticsAsync(userId);
+        var monthlyTrends = await GetMonthlyTrendsAsync(userId);
+        var avgResponseTime = await GetAverageResponseTimeAsync(userId);
+
+        return new StatisticsTrendsDto(current, monthlyTrends, avgResponseTime);
+    }
+
+    private async Task<List<MonthlyTrendDto>> GetMonthlyTrendsAsync(Guid userId, int months = 12)
+    {
+        var cutoff = DateTime.UtcNow.AddMonths(-months);
+
+        var raw = await _db.Applications
+            .Where(a => a.CandidateId == userId && a.AppliedAt != null && a.AppliedAt >= cutoff)
+            .GroupBy(a => new { a.AppliedAt!.Value.Year, a.AppliedAt.Value.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Status = g.GroupBy(a => a.Status)
+                    .Select(sg => new { Status = sg.Key, Count = sg.Count() })
+                    .ToList()
+            })
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+            .ToListAsync();
+
+        return raw.Select(r =>
+        {
+            var s = r.Status.ToDictionary(x => x.Status, x => x.Count);
+            return new MonthlyTrendDto(
+                r.Year, r.Month,
+                s.GetValueOrDefault(ApplicationStatus.SAVED, 0),
+                s.GetValueOrDefault(ApplicationStatus.APPLIED, 0),
+                s.GetValueOrDefault(ApplicationStatus.SCREENING, 0),
+                s.GetValueOrDefault(ApplicationStatus.INTERVIEW, 0),
+                s.GetValueOrDefault(ApplicationStatus.OFFER, 0),
+                s.GetValueOrDefault(ApplicationStatus.ACCEPTED, 0),
+                s.GetValueOrDefault(ApplicationStatus.REJECTED, 0),
+                s.GetValueOrDefault(ApplicationStatus.WITHDRAWN, 0)
+            );
+        }).ToList();
+    }
+
+    private async Task<double?> GetAverageResponseTimeAsync(Guid userId)
+    {
+        var initialStatuses = new[] { ApplicationStatus.APPLIED, ApplicationStatus.SAVED };
+
+        var appsWithResponse = await _db.Applications
+            .Include(a => a.StatusHistory)
+            .Where(a => a.CandidateId == userId
+                && a.AppliedAt != null
+                && a.StatusHistory.Any(h => !initialStatuses.Contains(h.NewStatus)))
+            .Select(a => new
+            {
+                a.AppliedAt,
+                FirstResponse = a.StatusHistory
+                    .Where(h => !initialStatuses.Contains(h.NewStatus))
+                    .Min(h => h.ChangedAt)
+            })
+            .ToListAsync();
+
+        if (appsWithResponse.Count == 0) return null;
+
+        return appsWithResponse
+            .Select(x => (x.FirstResponse - x.AppliedAt!.Value).TotalDays)
+            .Average();
+    }
+
+    // ── Feed & calendar ────────────────────────────────────────────────────────
+
+    public async Task<ActivityFeedDto> GetActivityFeedAsync(Guid userId, int limit = 50)
+    {
+        var query = _db.ApplicationStatusHistories
+            .Include(h => h.Application)
+            .Where(h => h.Application != null && h.Application.CandidateId == userId);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(h => h.ChangedAt)
+            .Take(limit)
+            .Select(h => new ActivityItemDto(
+                h.ApplicationId,
+                h.Application!.CompanyName,
+                h.Application.PositionTitle,
+                h.OldStatus != null ? h.OldStatus.ToString() : null,
+                h.NewStatus.ToString(),
+                h.ChangedAt,
+                h.Comment
+            ))
+            .ToListAsync();
+
+        return new ActivityFeedDto(items, total);
+    }
+
+    public async Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid userId, DateTime from, DateTime to, string[]? statuses)
+    {
+        var events = new List<CalendarEventDto>();
+
+        var parsedStatuses = statuses?
+            .Select(s => Enum.TryParse<ApplicationStatus>(s, true, out var st) ? st : (ApplicationStatus?)null)
+            .Where(s => s.HasValue)
+            .Select(s => s!.Value)
+            .ToList() ?? [];
+
+        if (parsedStatuses.Contains(ApplicationStatus.APPLIED))
+        {
+            var appliedEvents = await _db.Applications
+                .Where(a => a.CandidateId == userId
+                    && a.AppliedAt != null
+                    && a.AppliedAt >= from
+                    && a.AppliedAt <= to)
+                .Select(a => new CalendarEventDto(
+                    a.AppliedAt!.Value.ToString("yyyy-MM-dd"),
+                    "applied",
+                    "Applied at " + a.CompanyName,
+                    a.Id,
+                    a.CompanyName,
+                    a.PositionTitle
+                ))
+                .ToListAsync();
+
+            events.AddRange(appliedEvents);
+        }
+
+        var statusEvents = await _db.ApplicationStatusHistories
+            .Include(h => h.Application)
+            .Where(h => h.Application != null
+                && h.Application.CandidateId == userId
+                && h.ChangedAt >= from
+                && h.ChangedAt <= to
+                && parsedStatuses.Contains(h.NewStatus)
+                && h.NewStatus != ApplicationStatus.APPLIED)
+            .Select(h => new CalendarEventDto(
+                h.ChangedAt.ToString("yyyy-MM-dd"),
+                h.NewStatus.ToString().ToLower(),
+                h.Application!.CompanyName + " - " + h.NewStatus.ToString(),
+                h.ApplicationId,
+                h.Application!.CompanyName,
+                h.Application.PositionTitle
+            ))
+            .ToListAsync();
+
+        events.AddRange(statusEvents);
+
+        return events.OrderBy(e => e.Date).ToList();
+    }
+
+    // ── Attempts ────────────────────────────────────────────────────────────────
+
+    public async Task<List<AttemptResponseDto>> GetAttemptsAsync(Guid applicationId, Guid userId)
+    {
+        await EnsureOwnedAsync(applicationId, userId);
+
+        return (await _db.ApplicationAttempts
+                .AsNoTracking()
+                .Where(t => t.ApplicationId == applicationId)
+                .OrderBy(t => t.AttemptNumber)
+                .ToListAsync())
+            .Select(MapAttemptToDto)
+            .ToList();
+    }
+
+    public async Task<AttemptResponseDto> CreateAttemptAsync(Guid applicationId, CreateAttemptDto dto, Guid userId)
+    {
+        var app = await EnsureOwnedAsync(applicationId, userId);
+
+        if (!Enum.TryParse<AttemptChannel>(dto.Channel, true, out var channel))
+            throw new ArgumentException($"Invalid channel value '{dto.Channel}'");
+        if (!string.IsNullOrWhiteSpace(dto.InitiatedBy) && !Enum.TryParse<AttemptInitiatedBy>(dto.InitiatedBy, true, out _))
+            throw new ArgumentException($"Invalid initiatedBy value '{dto.InitiatedBy}'");
+        if (!string.IsNullOrWhiteSpace(dto.Status) && !Enum.TryParse<AttemptStatus>(dto.Status, true, out _))
+            throw new ArgumentException($"Invalid status value '{dto.Status}'");
+
+        Enum.TryParse<AttemptInitiatedBy>(dto.InitiatedBy, true, out var initiatedBy);
+        Enum.TryParse<AttemptStatus>(dto.Status, true, out var status);
+
+        var nextNumber = await _db.ApplicationAttempts
+            .Where(t => t.ApplicationId == applicationId)
+            .MaxAsync(t => (int?)t.AttemptNumber) ?? 0;
+        nextNumber += 1;
+
+        var attempt = new ApplicationAttempt
+        {
+            ApplicationId = applicationId,
+            AttemptNumber = nextNumber,
+            Channel = channel,
+            InitiatedBy = initiatedBy,
+            Status = status,
+            Subject = dto.Subject,
+            Body = dto.Body,
+            RecipientName = dto.RecipientName,
+            RecipientContact = dto.RecipientContact,
+            ChannelMetadataJson = dto.ChannelMetadataJson,
+            CvVersionId = dto.CvVersionId,
+            SentAt = status == AttemptStatus.SENT ? dto.SentAt ?? DateTime.UtcNow : dto.SentAt,
+            FailureReason = dto.FailureReason
+        };
+
+        _db.ApplicationAttempts.Add(attempt);
+        await _db.SaveChangesAsync();
+
+        if (attempt.Status == AttemptStatus.SENT)
+            await ApplySentSideEffectsAsync(app, attempt, userId.ToString());
+
+        _logger.LogInformation("Attempt #{Number} ({Channel}) created on application {AppId}",
+            attempt.AttemptNumber, channel, applicationId);
+
+        return MapAttemptToDto(attempt);
+    }
+
+    public async Task<AttemptResponseDto?> UpdateAttemptAsync(Guid applicationId, Guid attemptId, UpdateAttemptDto dto, Guid userId)
+    {
+        await EnsureOwnedAsync(applicationId, userId);
+
+        var attempt = await _db.ApplicationAttempts
+            .FirstOrDefaultAsync(t => t.Id == attemptId && t.ApplicationId == applicationId);
+        if (attempt == null) return null;
+
+        var oldStatus = attempt.Status;
+
+        if (dto.Status != null)
+        {
+            if (!Enum.TryParse<AttemptStatus>(dto.Status.ToUpperInvariant(), out var parsedStatus))
+                throw new ArgumentException($"Invalid status value '{dto.Status}'");
+            attempt.Status = parsedStatus;
+        }
+        if (dto.Subject != null) attempt.Subject = dto.Subject;
+        if (dto.Body != null) attempt.Body = dto.Body;
+        if (dto.RecipientName != null) attempt.RecipientName = dto.RecipientName;
+        if (dto.RecipientContact != null) attempt.RecipientContact = dto.RecipientContact;
+        if (dto.ChannelMetadataJson != null) attempt.ChannelMetadataJson = dto.ChannelMetadataJson;
+        if (dto.CvVersionId.HasValue) attempt.CvVersionId = dto.CvVersionId.Value;
+        if (dto.FailureReason != null) attempt.FailureReason = dto.FailureReason;
+        if (dto.SentAt.HasValue) attempt.SentAt = dto.SentAt.Value;
+
+        if (oldStatus != AttemptStatus.SENT && attempt.Status == AttemptStatus.SENT && attempt.SentAt == null)
+            attempt.SentAt = DateTime.UtcNow;
+
+        attempt.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        if (oldStatus != AttemptStatus.SENT && attempt.Status == AttemptStatus.SENT)
+        {
+            var app = await _db.Applications.FirstAsync(a => a.Id == applicationId);
+            await ApplySentSideEffectsAsync(app, attempt, userId.ToString());
+        }
+
+        _logger.LogInformation("Attempt {AttemptId} updated: {Old} → {New}",
+            attemptId, oldStatus, attempt.Status);
+
+        return MapAttemptToDto(attempt);
+    }
+
+    /// <summary>
+    /// Side effects of a sent attempt: first real send moves SAVED → APPLIED,
+    /// sets AppliedAt if unknown, and logs a feed entry so re-applies show up in the timeline.
+    /// </summary>
+    private async Task ApplySentSideEffectsAsync(Application app, ApplicationAttempt attempt, string changedBy)
+    {
+        var comment = $"Attempt #{attempt.AttemptNumber} sent via {attempt.Channel}";
+
+        if (app.AppliedAt == null || app.AppliedAt > attempt.SentAt)
+            app.AppliedAt = attempt.SentAt;
+
+        if (app.Status == ApplicationStatus.SAVED)
+        {
+            var oldStatus = app.Status;
+            app.Status = ApplicationStatus.APPLIED;
+            app.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            await RecordHistoryAsync(app.Id, oldStatus, ApplicationStatus.APPLIED, changedBy, comment);
+        }
+        else
+        {
+            app.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            // Self-transition entry keeps the activity feed aware of every send/re-apply.
+            await RecordHistoryAsync(app.Id, app.Status, app.Status, changedBy, comment);
+        }
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────────
+
+    private IQueryable<Application> BuildFilteredQuery(Guid userId, string[]? statuses, string? search, DateTime? appliedFrom, DateTime? appliedTo, DateTime? updatedFrom, DateTime? updatedTo)
+    {
+        var query = _db.Applications.Where(a => a.CandidateId == userId);
+
+        if (statuses is { Length: > 0 })
+        {
+            var parsed = statuses
+                .Select(s => Enum.TryParse<ApplicationStatus>(s, true, out var st) ? st : (ApplicationStatus?)null)
+                .Where(s => s.HasValue)
+                .Select(s => s!.Value)
+                .ToList();
+            if (parsed.Count > 0)
+                query = query.Where(a => parsed.Contains(a.Status));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a =>
+                EF.Functions.ILike(a.CompanyName, $"%{search}%") ||
+                EF.Functions.ILike(a.PositionTitle, $"%{search}%"));
+
+        if (appliedFrom.HasValue)
+            query = query.Where(a => a.AppliedAt != null && a.AppliedAt >= appliedFrom.Value);
+        if (appliedTo.HasValue)
+            query = query.Where(a => a.AppliedAt != null && a.AppliedAt <= appliedTo.Value);
+
+        if (updatedFrom.HasValue)
+            query = query.Where(a => a.UpdatedAt >= updatedFrom.Value);
+        if (updatedTo.HasValue)
+            query = query.Where(a => a.UpdatedAt <= updatedTo.Value);
+
+        return query;
+    }
+
+    private async Task<List<Application>> FindDuplicatesAsync(Guid userId, string fingerprint, Guid? jobOfferId, Guid? excludeId)
+    {
+        var query = _db.Applications.Where(a => a.CandidateId == userId);
+
+        if (!string.IsNullOrEmpty(fingerprint))
+            query = query.Where(a => a.Fingerprint == fingerprint);
+
+        if (jobOfferId.HasValue)
+            query = query.Where(a => a.JobOfferId == jobOfferId.Value);
+
+        if (excludeId.HasValue)
+            query = query.Where(a => a.Id != excludeId.Value);
+
+        return await query
+            .OrderByDescending(a => a.UpdatedAt)
+            .ToListAsync();
+    }
+
+    private DuplicateCheckResponseDto MapDuplicateMatches(List<Application> matches, Guid? jobOfferId)
+        => new(
+            matches.Count > 0,
+            matches.Select(a => new DuplicateMatchDto(
+                a.Id,
+                a.CompanyName,
+                a.PositionTitle,
+                a.Status.ToString(),
+                a.AppliedAt,
+                a.UpdatedAt,
+                jobOfferId.HasValue && a.JobOfferId == jobOfferId.Value
+            )).ToList()
+        );
+
+    private static void ValidateCreate(CreateApplicationDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.CompanyName))
+            throw new ArgumentException("Company name is required");
+        if (dto.CompanyName.Length > 200)
+            throw new ArgumentException("Company name cannot exceed 200 characters");
+        if (string.IsNullOrWhiteSpace(dto.PositionTitle))
+            throw new ArgumentException("Position title is required");
+        if (dto.PositionTitle.Length > 150)
+            throw new ArgumentException("Position title cannot exceed 150 characters");
+    }
+
+    private async Task<Application> EnsureOwnedAsync(Guid applicationId, Guid userId)
+    {
+        var app = await _db.Applications
+            .FirstOrDefaultAsync(a => a.Id == applicationId && a.CandidateId == userId)
+            ?? throw new KeyNotFoundException($"Application {applicationId} not found");
+        return app;
+    }
+
+    private async Task<Application> ReloadAsync(Guid id)
+        => await _db.Applications
+            .Include(a => a.StatusHistory.OrderByDescending(h => h.ChangedAt))
+            .Include(a => a.Attempts.OrderBy(t => t.AttemptNumber))
+            .FirstAsync(a => a.Id == id);
+
+    private async Task RecordHistoryAsync(Guid applicationId, ApplicationStatus? oldStatus, ApplicationStatus newStatus, string changedBy, string? comment)
+    {
+        _db.ApplicationStatusHistories.Add(new ApplicationStatusHistory
+        {
+            ApplicationId = applicationId,
+            OldStatus = oldStatus,
+            NewStatus = newStatus,
+            ChangedAt = DateTime.UtcNow,
+            ChangedBy = changedBy,
+            Comment = comment
+        });
+        await _db.SaveChangesAsync();
+    }
+
+    // ── Mapping ─────────────────────────────────────────────────────────────────
+
+    private static ApplicationResponseDto MapToDto(Application a) => new(
+        a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
+        a.CompanyName, a.PositionTitle, a.OfferSource,
+        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString()
+    );
+
+    private static ApplicationResponseDto MapToDtoWithHistory(Application a) => new(
+        a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
+        a.CompanyName, a.PositionTitle, a.OfferSource,
+        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString(),
+        a.StatusHistory?.Select(h => new StatusHistoryDto(
+            h.Id, h.OldStatus?.ToString(), h.NewStatus.ToString(),
+            h.ChangedAt, h.ChangedBy, h.Comment
+        )).ToList(),
+        a.Attempts?.Select(MapAttemptToDto).ToList()
+    );
+
+    private static AttemptResponseDto MapAttemptToDto(ApplicationAttempt t) => new(
+        t.Id, t.ApplicationId, t.AttemptNumber,
+        t.Channel.ToString(), t.InitiatedBy.ToString(), t.Status.ToString(),
+        t.Subject, t.Body, t.RecipientName, t.RecipientContact,
+        t.ChannelMetadataJson, t.CvVersionId,
+        t.SentAt, t.FailureReason, t.CreatedAt, t.UpdatedAt
+    );
+}

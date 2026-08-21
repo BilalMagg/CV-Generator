@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<Application> Applications => Set<Application>();
     public DbSet<ApplicationStatusHistory> ApplicationStatusHistories => Set<ApplicationStatusHistory>();
     public DbSet<ApplicationConfiguration> ApplicationConfigurations => Set<ApplicationConfiguration>();
+    public DbSet<ApplicationAttempt> ApplicationAttempts => Set<ApplicationAttempt>();
     public DbSet<JobOffer> JobOffers => Set<JobOffer>();
     public DbSet<JobSkill> JobSkills => Set<JobSkill>();
     public DbSet<JobResponsibility> JobResponsibilities => Set<JobResponsibility>();
@@ -72,15 +73,34 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Application>(entity =>
         {
             entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.Origin).HasConversion<string>();
             entity.HasIndex(e => e.CandidateId);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.AppliedAt);
+            entity.HasIndex(e => e.Fingerprint);
+            // Hard rule: one application per (candidate, job offer)
+            entity.HasIndex(e => new { e.CandidateId, e.JobOfferId })
+                .IsUnique()
+                .HasFilter("\"JobOfferId\" IS NOT NULL");
         });
 
         modelBuilder.Entity<ApplicationStatusHistory>(entity =>
         {
             entity.Property(e => e.OldStatus).HasConversion<string>();
             entity.Property(e => e.NewStatus).HasConversion<string>();
+        });
+
+        modelBuilder.Entity<ApplicationAttempt>(entity =>
+        {
+            entity.Property(e => e.Channel).HasConversion<string>();
+            entity.Property(e => e.InitiatedBy).HasConversion<string>();
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.HasOne(e => e.Application)
+                .WithMany(a => a.Attempts)
+                .HasForeignKey(e => e.ApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.ApplicationId, e.AttemptNumber }).IsUnique();
+            entity.HasIndex(e => e.Status);
         });
 
         modelBuilder.Entity<ApplicationConfiguration>(entity =>
