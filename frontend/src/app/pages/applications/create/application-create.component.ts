@@ -1,7 +1,7 @@
-import { Component, signal, inject, computed } from '@angular/core';
+import { Component, signal, inject, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ApplicationService } from '@app/services/application.service';
 import { ContactService } from '@app/services/contact.service';
@@ -33,11 +33,18 @@ interface ChannelTile {
   templateUrl: './application-create.component.html',
   styleUrl: './application-create.component.scss',
 })
-export class ApplicationCreateComponent {
+export class ApplicationCreateComponent implements OnInit {
   private appService = inject(ApplicationService);
   private contactApi = inject(ContactService);
   private authService = inject(AuthService);
   protected router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  ngOnInit() {
+    // Prefill support, e.g. /applications/new?companyName=… from a company detail page.
+    const prefill = this.route.snapshot.queryParamMap.get('companyName');
+    if (prefill) this.companyName.set(prefill);
+  }
 
   submitting = signal(false);
   error = signal<string | null>(null);

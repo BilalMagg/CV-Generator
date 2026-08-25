@@ -2,7 +2,7 @@
   <header class="page-head">
     <div>
       <h1>Companies</h1>
-      <p class="sub">{{ companies().length }} companies on your radar</p>
+      <p class="sub">{{ total() }} {{ total() === 1 ? 'company' : 'companies' }} on your radar</p>
     </div>
     <div class="head-actions">
       <div class="search-box">
@@ -18,12 +18,52 @@
   </header>
 
   <app-sheet-import-dialog [type]="'companies'" [(open)]="importOpen" (imported)="loadCompanies()" />
+  <app-company-form-dialog [(open)]="dialogOpen" [editing]="editingCompany()" (saved)="loadCompanies()" />
+
+  <div class="filter-bar">
+    <select class="filter-select" [ngModel]="countryFilter()" (ngModelChange)="onCountryFilterChange($event)">
+      <option value="">All countries</option>
+      @for (country of COUNTRIES; track country) {
+        <option [value]="country">{{ country }}</option>
+      }
+    </select>
+
+    <input class="filter-input" type="text" placeholder="City…" [ngModel]="cityFilter()" (ngModelChange)="onCityInput($event)">
+
+    <label class="minapps-label">
+      <span>Min applications</span>
+      <input class="filter-input num" type="number" min="0" placeholder="0"
+        [ngModel]="minAppsFilter()" (ngModelChange)="onMinAppsChange($event)">
+    </label>
+
+    <span class="spacer"></span>
+
+    <label class="minapps-label">
+      <span>Sort by</span>
+      <select class="filter-select" [ngModel]="sortBy()" (ngModelChange)="onSortByChange($event)">
+        <option value="name">Name</option>
+        <option value="apps">Applications</option>
+        <option value="applied">Last applied</option>
+      </select>
+      <button class="dir-btn" [title]="sortDir() === 'asc' ? 'Ascending' : 'Descending'" (click)="toggleSortDir()">
+        @if (sortDir() === 'asc') {
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+        } @else {
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+        }
+      </button>
+    </label>
+
+    @if (hasActiveFilters()) {
+      <button class="reset-btn" (click)="resetFilters()">Reset</button>
+    }
+  </div>
 
   @if (loading()) {
     <div class="empty-state"><p>Loading…</p></div>
-  } @else if (filtered().length === 0) {
+  } @else if (companies().length === 0) {
     <div class="empty-state">
-      <p>{{ search() ? 'No companies match your search.' : 'No companies yet — add the ones you\'re tracking.' }}</p>
+      <p>{{ hasActiveFilters() ? 'No companies match your filters.' : 'No companies yet — add the ones you\'re tracking.' }}</p>
     </div>
   } @else {
     <div class="table-wrap">
@@ -34,16 +74,17 @@
             <th>Location</th>
             <th>Note</th>
             <th class="td-num">Applications</th>
+            <th class="td-meta-h">Last applied</th>
             <th class="td-actions"></th>
           </tr>
         </thead>
         <tbody>
-          @for (c of filtered(); track c.id) {
-            <tr>
+          @for (c of companies(); track c.id) {
+            <tr class="row-link" (click)="openDetail(c)">
               <td>
                 <div class="co-cell">
                   @if (c.websiteUrl) {
-                    <a class="co-name co-link" [href]="c.websiteUrl" target="_blank" rel="noopener" [title]="c.websiteUrl">
+                    <a class="co-name co-link" [href]="c.websiteUrl" target="_blank" rel="noopener" [title]="c.websiteUrl" (click)="$event.stopPropagation()">
                       {{ c.name }}
                       <span class="co-host">{{ hostOf(c.websiteUrl) }}</span>
                     </a>
@@ -51,27 +92,28 @@
                     <span class="co-name">{{ c.name }}</span>
                   }
                   @if (c.locationUrl) {
-                    <a class="loc-link" [href]="c.locationUrl" target="_blank" rel="noopener" title="Open in maps">
+                    <a class="loc-link" [href]="c.locationUrl" target="_blank" rel="noopener" title="Open in maps" (click)="$event.stopPropagation()">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                     </a>
                   }
                 </div>
               </td>
-              <td class="td-meta">{{ c.location || '—' }}</td>
+              <td class="td-meta">{{ displayLocation(c) }}</td>
               <td class="td-note" [title]="c.note || ''">{{ c.note || '—' }}</td>
               <td class="td-num">
-                @if (appCount(c.name) > 0) {
-                  <a [routerLink]="['/applications']" class="count-chip" title="View applications">{{ appCount(c.name) }}</a>
+                @if ((c.applicationsCount ?? 0) > 0) {
+                  <a [routerLink]="['/applications']" class="count-chip" title="View applications" (click)="$event.stopPropagation()">{{ c.applicationsCount }}</a>
                 } @else {
                   <span class="count-chip zero">0</span>
                 }
               </td>
+              <td class="td-meta" [class.td-dim]="!c.lastAppliedAt">{{ formatDate(c.lastAppliedAt) }}</td>
               <td>
                 <div class="row-actions">
-                  <button class="row-btn" title="Edit" (click)="openEdit(c)">
+                  <button class="row-btn" title="Edit" (click)="openEdit(c); $event.stopPropagation()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                   </button>
-                  <button class="row-btn danger" title="Delete" (click)="onDelete(c)">
+                  <button class="row-btn danger" title="Delete" (click)="onDelete(c); $event.stopPropagation()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                   </button>
                 </div>
@@ -80,47 +122,21 @@
           }
         </tbody>
       </table>
+      <div class="table-foot">
+        <span class="foot-info">Page {{ page() }} of {{ pageCount() }}</span>
+        <div class="pager">
+          <button class="page-btn" [disabled]="page() <= 1" (click)="goToPage(page() - 1)" title="Previous page">‹</button>
+          @for (p of visiblePages(); track p) {
+            @if (p === -1) {
+              <span class="page-ellipsis">…</span>
+            } @else {
+              <button class="page-btn num" [class.active]="p === page()" (click)="goToPage(p)">{{ p }}</button>
+            }
+          }
+          <button class="page-btn" [disabled]="page() >= pageCount()" (click)="goToPage(page() + 1)" title="Next page">›</button>
+        </div>
+      </div>
     </div>
   }
 </div>
 
-@if (dialogOpen()) {
-  <div class="modal-backdrop" (click)="closeDialog()">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal-head">
-        <h2>{{ editingId() ? 'Edit company' : 'Add company' }}</h2>
-        <button class="icon-btn" (click)="closeDialog()">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Name <span class="req">*</span></label>
-          <input type="text" [(ngModel)]="formName" placeholder="e.g. Capgemini" name="coName">
-        </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Website</label>
-            <input type="url" [(ngModel)]="formWebsite" placeholder="https://…" name="coWebsite">
-          </div>
-          <div class="form-group">
-            <label>Location</label>
-            <input type="text" [(ngModel)]="formLocation" placeholder="e.g. Casablanca" name="coLocation">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Map link</label>
-          <input type="url" [(ngModel)]="formLocationUrl" placeholder="https://maps.google.com/…" name="coLocUrl">
-        </div>
-        <div class="form-group">
-          <label>Note</label>
-          <textarea rows="3" [(ngModel)]="formNote" placeholder="Anything worth remembering about this company…" name="coNote"></textarea>
-        </div>
-      </div>
-      <div class="modal-foot">
-        <button class="btn-ghost" (click)="closeDialog()">Cancel</button>
-        <button class="btn-primary" [disabled]="saving()" (click)="save()">
-          {{ saving() ? 'Saving…' : (editingId() ? 'Save changes' : 'Add company') }}
-        </button>
-      </div>
-    </div>
-  </div>
-}

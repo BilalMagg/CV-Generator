@@ -1,0 +1,200 @@
+<div class="page">
+  <div class="page-head">
+    <div class="head-left">
+      <a routerLink="/companies" class="back-link" title="Back to companies">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Companies
+      </a>
+    </div>
+    @if (company(); as c) {
+      <div class="head-actions">
+        <a class="btn-ghost" [routerLink]="['/applications/new']" [queryParams]="{ companyName: c.name }">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add application
+        </a>
+        <a class="btn-ghost" [routerLink]="['/mailbox']" [queryParams]="{ tab: 'contacts', newContact: 1, company: c.name }">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add contact
+        </a>
+        <button class="btn-ghost" (click)="openEdit()">Edit</button>
+        <button class="btn-danger-ghost" (click)="onDelete()">Delete</button>
+      </div>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="empty-state"><p>Loading…</p></div>
+  } @else if (!company()) {
+    <div class="empty-state"><p>Company not found.</p></div>
+  } @else {
+    @if (company(); as c) {
+      <!-- ── Header card ─────────────────────────────────────────────── -->
+      <section class="co-header">
+        <div class="avatar" [style.background]="avatarColor(c.name)">{{ initials(c.name) }}</div>
+        <div class="co-main">
+          <h1>{{ c.name }}</h1>
+          <div class="co-meta">
+            @if (c.websiteUrl) {
+              <a class="meta-chip link" [href]="c.websiteUrl" target="_blank" rel="noopener" [title]="c.websiteUrl">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                {{ hostOf(c.websiteUrl) }}
+              </a>
+            }
+            @if (displayLocation(c); as loc) {
+              @if (c.locationUrl) {
+                <a class="meta-chip link" [href]="c.locationUrl" target="_blank" rel="noopener" title="Open in maps">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {{ loc }}
+                </a>
+              } @else {
+                <span class="meta-chip">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {{ loc }}
+                </span>
+              }
+            }
+            <span class="meta-chip dim">Added {{ formatDate(c.createdAt) }}</span>
+          </div>
+          @if (c.note) {
+            <p class="co-note">{{ c.note }}</p>
+          }
+        </div>
+      </section>
+
+      <!-- ── Stats strip ─────────────────────────────────────────────── -->
+      <section class="stats-strip">
+        <div class="stat">
+          <span class="stat-num">{{ applications().length }}</span>
+          <span class="stat-label">{{ applications().length === 1 ? 'application' : 'applications' }}</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num">{{ contacts().length }}</span>
+          <span class="stat-label">{{ contacts().length === 1 ? 'contact' : 'contacts' }}</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num">{{ formatDate(c.lastAppliedAt) }}</span>
+          <span class="stat-label">last applied</span>
+        </div>
+        @if (statusCounts().length > 0) {
+          <div class="stat-divider"></div>
+          <div class="status-breakdown">
+            @for (sc of statusCounts(); track sc.status) {
+              <span class="breakdown-chip" [title]="sc.label">
+                <span class="dot" [style.background]="sc.color"></span>
+                {{ sc.count }} {{ sc.label }}
+              </span>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- ── Two-column body ─────────────────────────────────────────── -->
+      <div class="columns">
+        <section class="col col-apps">
+          <h2>Applications</h2>
+          @if (applications().length === 0) {
+            <div class="panel empty-panel">
+              <p>No applications at this company yet.</p>
+              <a class="btn-primary sm" [routerLink]="['/applications/new']" [queryParams]="{ companyName: c.name }">Add application</a>
+            </div>
+          } @else {
+            <div class="panel app-list">
+              @for (app of applications(); track app.id) {
+                <a class="app-row" [routerLink]="['/applications', app.id]">
+                  <span class="status-dot" [style.background]="statusColor(app.status)" [title]="statusLabel(app.status)"></span>
+                  <span class="app-main">
+                    <span class="app-position">{{ app.positionTitle }}</span>
+                    <span class="app-sub">
+                      {{ statusLabel(app.status) }} ·
+                      @if (app.appliedAt) { applied {{ formatDate(app.appliedAt) }} }
+                      @else { saved, not sent yet }
+                      @if (app.internshipType) { · {{ app.internshipType }} }
+                    </span>
+                  </span>
+                  @if (app.priority && app.priority !== 'LOW') {
+                    <span class="prio-chip" [class]="app.priority.toLowerCase()">
+                      <span class="priority-dot" [class]="app.priority.toLowerCase()"></span>
+                      {{ priorityLabel(app.priority) }}
+                    </span>
+                  }
+                  <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+              }
+            </div>
+          }
+
+          @if (activity().length > 0) {
+            <h2>Recent activity</h2>
+            <div class="panel feed">
+              @for (item of activity(); track item.entry.id) {
+                <div class="feed-row">
+                  <span class="feed-dot" [style.background]="statusColor(item.entry.newStatus)"></span>
+                  <div class="feed-main">
+                    <p class="feed-text">
+                      <strong>{{ statusLabel(item.entry.newStatus) }}</strong>
+                      — {{ item.position }}
+                      @if (item.entry.comment) {<span class="feed-comment"> · {{ item.entry.comment }}</span>}
+                    </p>
+                    <span class="feed-date">{{ formatDateTime(item.entry.changedAt) }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="col col-contacts">
+          <h2>Contacts</h2>
+          @if (contacts().length === 0) {
+            <div class="panel empty-panel">
+              <p>No contacts linked to this company.</p>
+              <a class="btn-primary sm" [routerLink]="['/mailbox']" [queryParams]="{ tab: 'contacts', newContact: 1, company: c.name }">Add contact</a>
+            </div>
+          } @else {
+            <div class="panel contact-list">
+              @for (ct of contacts(); track ct.id) {
+                <div class="contact-row">
+                  @if (ct.avatarBase64; as img) {
+                    <img class="contact-avatar" [src]="'data:image/png;base64,' + img" [alt]="ct.name">
+                  } @else {
+                    <span class="contact-avatar fallback" [style.background]="avatarColor(ct.name)">{{ initials(ct.name) }}</span>
+                  }
+                  <div class="contact-main">
+                    <div class="contact-name-row">
+                      <span class="contact-name">{{ ct.name }}</span>
+                      <button class="star-btn" [class.active]="ct.isFavorite" (click)="toggleFavorite(ct)"
+                        [title]="ct.isFavorite ? 'Remove from favorites' : 'Add to favorites'">
+                        <svg width="13" height="13" viewBox="0 0 24 24" [attr.fill]="ct.isFavorite ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      </button>
+                    </div>
+                    @if (ct.position || ct.company) {
+                      <span class="contact-role">{{ ct.position }}{{ ct.position && ct.company ? ' · ' : '' }}{{ ct.company }}</span>
+                    }
+                    <div class="contact-links">
+                      @if (ct.email) {
+                        <a class="contact-link" [href]="'mailto:' + ct.email" [title]="'Email ' + ct.name">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                          {{ ct.email }}
+                        </a>
+                      }
+                      @if (ct.phone) {
+                        <a class="contact-link" [href]="'tel:' + ct.phone" [title]="'Call ' + ct.name">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                          {{ ct.phone }}
+                        </a>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      </div>
+    }
+  }
+
+  <app-company-form-dialog [(open)]="dialogOpen" [editing]="editingCompany()" (saved)="onSaved($event)" />
+</div>

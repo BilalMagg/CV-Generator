@@ -14,6 +14,7 @@ public class CompanyImportRow
     public string? Name { get; set; }
     public string? WebsiteUrl { get; set; }
     public string? Location { get; set; }
+    public string? Country { get; set; }
     public string? LocationUrl { get; set; }
     public string? Note { get; set; }
 }
@@ -103,6 +104,7 @@ public class ImportsController : BaseApiController
                     Name = name,
                     WebsiteUrl = row.WebsiteUrl,
                     Location = row.Location,
+                    Country = string.IsNullOrWhiteSpace(row.Country) ? "Morocco" : row.Country.Trim(),
                     LocationUrl = row.LocationUrl,
                     Note = row.Note
                 };

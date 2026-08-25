@@ -1,0 +1,85 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 35%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 25%);
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px 0;
+
+  h2 { font-size: 16px; font-weight: 700; margin: 0; color: var(--text); }
+}
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  &:hover { background: var(--hover-bg, oklch(0.95 0.01 250)); color: var(--text); }
+}
+
+.modal-body { padding: 16px 20px; display: grid; gap: 12px; }
+
+.form-group {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+
+  label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+  .req { color: oklch(0.55 0.2 25); }
+
+  input, textarea, select {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg, #fff);
+    outline: none;
+
+    &:focus { border-color: var(--primary, oklch(0.55 0.2 260)); }
+  }
+  select {
+    padding-left: 14px;
+    padding-right: 34px;
+    cursor: pointer;
+  }
+  textarea { resize: vertical; }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  > .form-group { min-width: 0; }
+}
+
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 20px 18px;
+}

@@ -177,6 +177,10 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.UserId);
             // One watchlist entry per company per user (case-insensitive name match enforced in service layer).
             entity.HasIndex(e => new { e.UserId, e.Name });
+            entity.Property(e => e.Country)
+                .IsRequired()
+                .HasMaxLength(100)
+                .HasDefaultValue("Morocco");
         });
 
         modelBuilder.Entity<EmailMessage>(entity =>

@@ -22,6 +22,9 @@ public class Company
     [MaxLength(100)]
     public string? Location { get; set; }
 
+    [MaxLength(100)]
+    public string Country { get; set; } = "Morocco";
+
     [MaxLength(500)]
     public string? LocationUrl { get; set; }
 

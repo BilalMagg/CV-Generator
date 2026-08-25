@@ -64,6 +64,89 @@
   color: var(--text-2);
 }
 
+// ── Filter bar ───────────────────────────────────────────────────────────────
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.filter-select,
+.filter-input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg, #fff);
+  outline: none;
+
+  &:focus { border-color: var(--primary, oklch(0.55 0.2 260)); }
+}
+
+// Native select arrow needs breathing room on both sides.
+select.filter-select {
+  padding-left: 14px;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.filter-input.num { width: 70px; }
+
+.minapps-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-3);
+
+  select { cursor: pointer; }
+}
+
+.filter-bar .spacer { flex: 1; }
+
+.dir-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+
+  &:hover { background: var(--hover-bg, oklch(0.95 0.01 250)); color: var(--text); }
+}
+
+.reset-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 7px;
+  background: oklch(0.95 0.02 25);
+  color: oklch(0.5 0.18 25);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { background: oklch(0.92 0.04 25); }
+}
+
+.td-meta-h {
+  text-align: left;
+  white-space: nowrap;
+}
+.td-dim { color: var(--text-3); }
+
 .empty-state {
   text-align: center;
   padding: 60px 0;
@@ -80,8 +163,16 @@
 
 .co-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 13px;
+
+  // Fixed column budget so a long website host can't stretch the first column.
+  thead th:nth-child(1) { width: 30%; }
+  thead th:nth-child(2) { width: 17%; }
+  thead th:nth-child(4) { width: 92px; text-align: center; }
+  thead th:nth-child(5) { width: 110px; }
+  thead th:last-child { width: 84px; }
 
   thead th {
     text-align: left;
@@ -96,14 +187,31 @@
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
     vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
+  tbody tr.row-link { cursor: pointer; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: oklch(0.97 0.005 250 / 40%); }
 }
 
-.co-cell { display: flex; align-items: center; gap: 8px; }
+.co-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 
-.co-name { font-weight: 600; color: var(--text); }
+  > * { min-width: 0; }
+}
+
+.co-name {
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .co-link {
   color: var(--text);
   text-decoration: none;
@@ -123,7 +231,6 @@
 
 .td-meta { color: var(--text-2); }
 .td-note {
-  max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -162,79 +269,44 @@
   &.danger:hover { color: oklch(0.55 0.2 25); background: oklch(0.95 0.02 25); }
 }
 
-// ── Modal ────────────────────────────────────────────────────────────────────
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgb(0 0 0 / 35%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
 
-.modal {
-  width: 480px;
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 64px);
-  overflow-y: auto;
-  background: var(--surface);
-  border-radius: 14px;
-  box-shadow: 0 20px 60px rgb(0 0 0 / 25%);
-}
-
-.modal-head {
+// ── Pagination footer ────────────────────────────────────────────────────────
+.table-foot {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 20px 0;
-
-  h2 { font-size: 16px; font-weight: 700; margin: 0; color: var(--text); }
-}
-.icon-btn {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: var(--text-3);
-  font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  &:hover { background: var(--hover-bg, oklch(0.95 0.01 250)); color: var(--text); }
-}
-
-.modal-body { padding: 16px 20px; display: grid; gap: 12px; }
-
-.form-group {
-  display: grid;
-  gap: 5px;
-
-  label { font-size: 12px; font-weight: 600; color: var(--text-2); }
-  .req { color: oklch(0.55 0.2 25); }
-
-  input, textarea {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 9px 11px;
-    font: inherit;
-    font-size: 13px;
-    color: var(--text);
-    background: var(--bg, #fff);
-    outline: none;
-
-    &:focus { border-color: var(--primary, oklch(0.55 0.2 260)); }
-  }
-  textarea { resize: vertical; }
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
 }
 
-.modal-foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 0 20px 18px;
+.foot-info { font-size: 12px; color: var(--text-3); }
+
+.pager { display: flex; align-items: center; gap: 4px; }
+
+.page-btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover:not(:disabled) { background: var(--hover-bg, oklch(0.95 0.01 250)); color: var(--text); }
+  &:disabled { opacity: .4; cursor: default; }
+  &.num.active {
+    background: var(--primary, oklch(0.55 0.2 260));
+    color: #fff;
+    font-weight: 600;
+    border-color: var(--primary, oklch(0.55 0.2 260));
+  }
 }
+
+.page-ellipsis { color: var(--text-3); padding: 0 2px; font-size: 13px; }

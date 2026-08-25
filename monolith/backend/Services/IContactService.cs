@@ -13,4 +13,5 @@ public interface IContactService
     Task<int> ImportFromJobOffersAsync(Guid userId);
     Task<long> GetContactCountAsync(Guid userId);
     Task<ContactDto?> ToggleFavoriteAsync(Guid id, Guid userId);
+    Task<List<ContactDto>> GetByCompanyAsync(Guid userId, string companyName);
 }

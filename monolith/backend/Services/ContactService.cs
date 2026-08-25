@@ -141,6 +141,22 @@ public class ContactService : IContactService
         return Map(c);
     }
 
+    /// <summary>
+    /// Contacts whose company matches (normalized) the given name; favorites first, then by name.
+    /// </summary>
+    public async Task<List<ContactDto>> GetByCompanyAsync(Guid userId, string companyName)
+    {
+        var key = companyName.Trim().ToLower();
+
+        var contacts = await _db.Set<Contact>().AsNoTracking()
+            .Where(c => c.UserId == userId && c.Company != null && c.Company.Trim().ToLower() == key)
+            .OrderByDescending(c => c.IsFavorite)
+            .ThenBy(c => c.Name)
+            .ToListAsync();
+
+        return contacts.Select(Map).ToList();
+    }
+
     public async Task<int> ImportCsvAsync(Guid userId, string csvContent)
     {
         var rows = ParseCsv(csvContent);

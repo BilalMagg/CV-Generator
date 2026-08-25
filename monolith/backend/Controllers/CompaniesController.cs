@@ -13,16 +13,33 @@ public class CompaniesController : BaseApiController
 {
     private readonly AppDbContext _db;
     private readonly ILogger<CompaniesController> _logger;
+    private readonly IApplicationService _applications;
+    private readonly IContactService _contacts;
 
-    public CompaniesController(ICurrentUserService currentUser, AppDbContext db, ILogger<CompaniesController> logger)
+    public CompaniesController(
+        ICurrentUserService currentUser,
+        AppDbContext db,
+        ILogger<CompaniesController> logger,
+        IApplicationService applications,
+        IContactService contacts)
         : base(currentUser)
     {
         _db = db;
         _logger = logger;
+        _applications = applications;
+        _contacts = contacts;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 100)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? search,
+        [FromQuery] string? country,
+        [FromQuery] string? city,
+        [FromQuery] int? minApps,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortDir,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         var userId = GetUserId();
         var query = _db.Companies.AsNoTracking().Where(c => c.UserId == userId);
@@ -33,29 +50,77 @@ public class CompaniesController : BaseApiController
             query = query.Where(c =>
                 c.Name.ToLower().Contains(term) ||
                 (c.Location != null && c.Location.ToLower().Contains(term)) ||
+                (c.Country != null && c.Country.ToLower().Contains(term)) ||
                 (c.Note != null && c.Note.ToLower().Contains(term)));
         }
 
-        var total = await query.CountAsync();
-        var items = await query
-            .OrderBy(c => c.Name)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(c => new CompanyDto
-            {
-                Id = c.Id,
-                UserId = c.UserId,
-                Name = c.Name,
-                WebsiteUrl = c.WebsiteUrl,
-                Location = c.Location,
-                LocationUrl = c.LocationUrl,
-                Note = c.Note,
-                CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt
-            })
+        if (!string.IsNullOrWhiteSpace(country))
+        {
+            var countryTerm = country.Trim();
+            query = query.Where(c => c.Country == countryTerm);
+        }
+
+        if (!string.IsNullOrWhiteSpace(city))
+        {
+            var cityTerm = city.Trim().ToLower();
+            query = query.Where(c => c.Location != null && c.Location.ToLower().Contains(cityTerm));
+        }
+
+        // Application aggregates per company (matched by normalized name, same rule as the UI).
+        // Personal-scale data: one companies query + one lightweight applications projection,
+        // merged in memory to keep sorting by aggregates trivial.
+        var matched = await query.OrderBy(c => c.Name).ToListAsync();
+        var appRows = await _db.Applications.AsNoTracking()
+            .Where(a => a.CandidateId == userId)
+            .Select(a => new { a.CompanyName, a.AppliedAt })
             .ToListAsync();
 
-        return Ok(ApiResponse<CompanyListResponse>.Ok(new CompanyListResponse { Items = items, Total = total }));
+        var stats = new Dictionary<string, (int Count, DateTime? Last)>(StringComparer.Ordinal);
+        foreach (var row in appRows)
+        {
+            var key = row.CompanyName.Trim().ToLower();
+            var (count, last) = stats.TryGetValue(key, out var s) ? s : (0, null);
+            stats[key] = (
+                count + 1,
+                last.HasValue && row.AppliedAt.HasValue
+                    ? (row.AppliedAt.Value > last.Value ? row.AppliedAt : last)
+                    : (row.AppliedAt ?? last)
+            );
+        }
+
+        var enriched = matched.Select(c =>
+        {
+            var dto = Map(c);
+            var stat = stats.GetValueOrDefault(c.Name.Trim().ToLower(), (0, null));
+            dto.ApplicationsCount = stat.Count;
+            dto.LastAppliedAt = stat.Last;
+            return dto;
+        });
+
+        if (minApps.HasValue)
+            enriched = enriched.Where(c => c.ApplicationsCount >= minApps.Value);
+
+        var descending = !string.Equals(sortDir?.Trim(), "asc", StringComparison.OrdinalIgnoreCase);
+        enriched = (sortBy?.Trim().ToLowerInvariant()) switch
+        {
+            "apps" or "applications" => descending
+                ? enriched.OrderByDescending(c => c.ApplicationsCount).ThenBy(c => c.Name)
+                : enriched.OrderBy(c => c.ApplicationsCount).ThenBy(c => c.Name),
+            "applied" or "lastapplied" => descending
+                ? enriched.OrderByDescending(c => c.LastAppliedAt ?? DateTime.MinValue)
+                : enriched.OrderBy(c => c.LastAppliedAt ?? DateTime.MinValue),
+            _ => descending
+                ? enriched.OrderByDescending(c => c.Name)
+                : enriched.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase),
+        };
+
+        var filteredTotal = enriched.Count();
+        var items = enriched
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return Ok(ApiResponse<CompanyListResponse>.Ok(new CompanyListResponse { Items = items, Total = filteredTotal }));
     }
 
     [HttpGet("{id}")]
@@ -66,7 +131,36 @@ public class CompaniesController : BaseApiController
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
         if (company is null) return NotFound(ApiResponse<CompanyDto>.Error("Company not found"));
 
-        return Ok(ApiResponse<CompanyDto>.Ok(Map(company)));
+        var dto = Map(company);
+        (dto.ApplicationsCount, dto.LastAppliedAt) = await GetCompanyStatsAsync(userId, company.Name);
+
+        return Ok(ApiResponse<CompanyDto>.Ok(dto));
+    }
+
+    /// <summary>All of the user's applications at this company (normalized name match).</summary>
+    [HttpGet("{id}/applications")]
+    public async Task<IActionResult> GetApplications(Guid id)
+    {
+        var userId = GetUserId();
+        var company = await _db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (company is null) return NotFound(ApiResponse<object>.Error("Company not found"));
+
+        var apps = await _applications.GetApplicationsByCompanyAsync(userId, company.Name);
+        return Ok(ApiResponse<List<ApplicationResponseDto>>.Ok(apps));
+    }
+
+    /// <summary>Contacts whose company matches this one (normalized name match).</summary>
+    [HttpGet("{id}/contacts")]
+    public async Task<IActionResult> GetContacts(Guid id)
+    {
+        var userId = GetUserId();
+        var company = await _db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (company is null) return NotFound(ApiResponse<object>.Error("Company not found"));
+
+        var contacts = await _contacts.GetByCompanyAsync(userId, company.Name);
+        return Ok(ApiResponse<List<ContactDto>>.Ok(contacts));
     }
 
     [HttpPost]
@@ -90,6 +184,7 @@ public class CompaniesController : BaseApiController
             Name = name,
             WebsiteUrl = dto.WebsiteUrl,
             Location = dto.Location,
+            Country = string.IsNullOrWhiteSpace(dto.Country) ? "Morocco" : dto.Country.Trim(),
             LocationUrl = dto.LocationUrl,
             Note = dto.Note
         };
@@ -121,6 +216,11 @@ public class CompaniesController : BaseApiController
         }
         if (dto.WebsiteUrl != null) company.WebsiteUrl = dto.WebsiteUrl;
         if (dto.Location != null) company.Location = dto.Location;
+        if (dto.Country != null)
+        {
+            var country = dto.Country.Trim();
+            company.Country = country.Length == 0 ? "Morocco" : country;
+        }
         if (dto.LocationUrl != null) company.LocationUrl = dto.LocationUrl;
         if (dto.Note != null) company.Note = dto.Note;
         company.UpdatedAt = DateTime.UtcNow;
@@ -145,6 +245,19 @@ public class CompaniesController : BaseApiController
         => await _db.Companies.FirstOrDefaultAsync(c =>
             c.UserId == userId && c.Name.ToLower() == name.ToLower());
 
+    /// <summary>Application count + last applied date for one company (normalized name match).</summary>
+    private async Task<(int Count, DateTime? Last)> GetCompanyStatsAsync(Guid userId, string companyName)
+    {
+        var key = companyName.Trim().ToLower();
+        var query = _db.Applications.AsNoTracking()
+            .Where(a => a.CandidateId == userId && a.CompanyName.Trim().ToLower() == key);
+
+        var count = await query.CountAsync();
+        var last = await query.MaxAsync(a => (DateTime?)a.AppliedAt);
+
+        return (count, last);
+    }
+
     private static CompanyDto Map(Company c) => new()
     {
         Id = c.Id,
@@ -152,6 +265,7 @@ public class CompaniesController : BaseApiController
         Name = c.Name,
         WebsiteUrl = c.WebsiteUrl,
         Location = c.Location,
+        Country = c.Country,
         LocationUrl = c.LocationUrl,
         Note = c.Note,
         CreatedAt = c.CreatedAt,

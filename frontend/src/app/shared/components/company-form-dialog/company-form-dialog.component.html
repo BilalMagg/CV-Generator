@@ -1,0 +1,54 @@
+@if (open()) {
+  <div class="modal-backdrop" (click)="close()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h2>{{ editing() ? 'Edit company' : 'Add company' }}</h2>
+        <button class="icon-btn" (click)="close()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Name <span class="req">*</span></label>
+          <input type="text" [(ngModel)]="formName" placeholder="e.g. Capgemini" name="coName">
+        </div>
+        <div class="form-group">
+          <label>Website</label>
+          <input type="url" [(ngModel)]="formWebsite" placeholder="https://…" name="coWebsite">
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Country</label>
+            <select [(ngModel)]="formCountry" name="coCountry">
+              @for (country of COUNTRIES; track country) {
+                <option [value]="country">{{ country }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>City</label>
+            <input type="text" [(ngModel)]="formLocation" [attr.list]="'city-suggestions'" name="coCity"
+              placeholder="e.g. Casablanca">
+            <datalist id="city-suggestions">
+              @for (city of citySuggestions(); track city) {
+                <option [value]="city"></option>
+              }
+            </datalist>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Map link</label>
+          <input type="url" [(ngModel)]="formLocationUrl" placeholder="https://maps.google.com/…" name="coLocUrl">
+        </div>
+        <div class="form-group">
+          <label>Note</label>
+          <textarea rows="3" [(ngModel)]="formNote" placeholder="Anything worth remembering about this company…" name="coNote"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" (click)="close()">Cancel</button>
+        <button class="btn-primary" [disabled]="saving()" (click)="save()">
+          {{ saving() ? 'Saving…' : (editing() ? 'Save changes' : 'Add company') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
