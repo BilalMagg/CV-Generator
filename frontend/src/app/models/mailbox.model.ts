@@ -80,6 +80,23 @@ export interface SendEmailDto {
   subject: string;
   body: string;
   attachments?: EmailAttachmentPayload[];
+  /** When set, the backend logs a SENT attempt on this application after sending. */
+  applicationId?: string;
+}
+
+export interface LoggedAttemptInfo {
+  applicationId: string;
+  attemptId?: string;
+  companyName?: string;
+  positionTitle?: string;
+  error?: string;
+}
+
+export interface SendEmailResult {
+  sent: number;
+  failed: number;
+  total: number;
+  loggedAttempt?: LoggedAttemptInfo | null;
 }
 
 export interface EmailHistoryResponse {
@@ -106,9 +123,27 @@ export interface EmailScheduleDto {
   recipientIds: string[];
   isActive: boolean;
   nextRunAt?: string;
-  lastRunAt?: string;
+  lastRunAt?: string | null;
+  upcomingRuns?: string[] | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ScheduleHistoryItem {
+  id: string;
+  toName: string;
+  toEmail: string;
+  status: string;
+  error?: string | null;
+  sentAt?: string | null;
+  createdAt: string;
+}
+
+export interface ScheduleHistoryResponse {
+  items: ScheduleHistoryItem[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface CreateScheduleDto {

@@ -2,13 +2,15 @@ import { Component, signal, inject, OnInit, computed, effect } from '@angular/co
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MailboxService } from '@app/services/mailbox.service';
 import { ContactService } from '@app/services/contact.service';
 import { ToastService } from '@app/services/toast.service';
 import {
-  ContactDto, EmailMessageDto, EmailScheduleDto,
+  ContactDto, EmailMessageDto, EmailScheduleDto, ScheduleHistoryItem,
   MailboxStatsDto, SendEmailDto, ContactHistoryResponse, EmailAttachmentPayload,
 } from '@app/models/mailbox.model';
+import { ApplicationResponseDto, STATUS_LABELS } from '@app/models/application.model';
 
 type MailboxView = 'compose' | 'history' | 'contacts' | 'schedules' | 'settings';
 
@@ -52,6 +54,7 @@ export class MailboxComponent implements OnInit {
   private service = inject(MailboxService);
   private contactApi = inject(ContactService);
   readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
 
   view = signal<MailboxView>((localStorage.getItem('mailbox-view') as MailboxView) || 'compose');
 
@@ -94,6 +97,12 @@ export class MailboxComponent implements OnInit {
   composeBody = signal('');
   composeSending = signal(false);
 
+  // Attempt logging: candidates are applications linked to the chosen recipients.
+  attemptCandidates = signal<ApplicationResponseDto[]>([]);
+  logAttempt = signal(true);
+  attemptAppId = signal<string | null>(null);
+  private readonly candidateCache = new Map<string, ApplicationResponseDto[]>();
+
   selectedContact = signal<ContactDto | null>(null);
   showContactForm = signal(false);
   sheetImportOpen = signal(false);
@@ -117,6 +126,45 @@ export class MailboxComponent implements OnInit {
   showContactModal = signal(false);
   modalContactSearch = signal('');
   modalSelectedIds = signal<Set<string>>(new Set());
+  /** Where the picker writes: compose recipients or schedule recipients. */
+  pickerTarget = signal<'compose' | 'schedule'>('compose');
+
+  // Schedule form
+  showScheduleForm = signal(false);
+  editingScheduleId = signal<string | null>(null);
+  schedName = signal('');
+  schedCron = signal('0 9 * * *');
+  schedSubject = signal('');
+  schedBody = signal('');
+  schedRecipients = signal<ContactDto[]>([]);
+  schedSaving = signal(false);
+
+  // Schedule detail sub-view
+  selectedSchedule = signal<EmailScheduleDto | null>(null);
+  scheduleRecipients = signal<ContactDto[]>([]);
+  scheduleHistory = signal<ScheduleHistoryItem[]>([]);
+  schedHistoryLoading = signal(false);
+  scheduleRunning = signal(false);
+
+  protected readonly CRON_PRESETS: { value: string; label: string }[] = [
+    { value: '*/5 * * * *', label: 'Every 5 minutes' },
+    { value: '0 * * * *', label: 'Hourly' },
+    { value: '0 9 * * *', label: 'Daily at 09:00' },
+    { value: '0 9 * * 1-5', label: 'Weekdays at 09:00' },
+    { value: '0 9 * * 1', label: 'Weekly on Monday' },
+  ];
+
+  cronPresetValue = computed(() => {
+    const expr = this.schedCron().trim();
+    return this.CRON_PRESETS.some(p => p.value === expr) ? expr : 'custom';
+  });
+
+  cronDescription = computed(() => {
+    const preset = this.CRON_PRESETS.find(p => p.value === this.schedCron().trim());
+    if (preset) return preset.label;
+    const expr = this.schedCron().trim();
+    return expr ? `Custom: ${expr}` : '';
+  });
 
   sortedContacts = computed(() =>
     [...this.contacts()].sort((a, b) => a.name.localeCompare(b.name))
@@ -145,6 +193,7 @@ export class MailboxComponent implements OnInit {
   });
 
   async ngOnInit() {
+    this.applyQueryParams();
     this.loading.set(true);
     try {
       const [statsRes] = await Promise.all([
@@ -156,6 +205,24 @@ export class MailboxComponent implements OnInit {
     this.loadHistory();
     this.loadSchedules();
     this.loadGmailStatus();
+  }
+
+  /** Deep-link support, e.g. /mailbox?tab=contacts&newContact=1&company=… from a company detail page. */
+  private applyQueryParams() {
+    const params = this.route.snapshot.queryParamMap;
+    const tab = params.get('tab');
+    if (tab === 'contacts' || tab === 'compose' || tab === 'history' || tab === 'schedules' || tab === 'settings') {
+      this.view.set(tab);
+    }
+    if (params.get('newContact') === '1') {
+      this.showContactForm.set(true);
+      this.editingContactId.set(null);
+      this.contactFormName.set('');
+      this.contactFormEmail.set('');
+      this.contactFormPhone.set('');
+      this.contactFormCompany.set(params.get('company') ?? '');
+      this.contactFormPosition.set('');
+    }
   }
 
   async loadGmailStatus() {
@@ -329,16 +396,27 @@ export class MailboxComponent implements OnInit {
         subject: this.composeSubject(),
         body: this.composeBody(),
         attachments: attachmentPayloads.length ? attachmentPayloads : undefined,
+        applicationId: this.logAttempt() ? (this.attemptAppId() ?? undefined) : undefined,
       };
       const res = await this.service.send(dto);
       if (res.success) {
         const to = recipients.length === 1
           ? (recipients[0].name || recipients[0].email)
           : `${recipients.length} recipients`;
-        this.toast.success(`Email sent to ${to}`);
+        const logged = res.data?.loggedAttempt;
+        if (logged?.positionTitle && !logged.error) {
+          this.toast.success(`Email sent to ${to} · logged on ${logged.positionTitle}${logged.companyName ? ` @ ${logged.companyName}` : ''}`);
+        } else if (logged?.error) {
+          this.toast.info(`Email sent to ${to}, but logging on the application failed`);
+        } else {
+          this.toast.success(`Email sent to ${to}`);
+        }
         this.composeRecipients.set([]);
         this.composeSubject.set('');
         this.composeBody.set('');
+        this.attemptCandidates.set([]);
+        this.attemptAppId.set(null);
+        this.logAttempt.set(true);
         this.loadHistory();
         this.loadStats();
       } else {
@@ -442,6 +520,52 @@ export class MailboxComponent implements OnInit {
     } else {
       this.composeRecipients.set([...curr, c]);
     }
+    void this.refreshAttemptCandidates();
+  }
+
+  /** Distinct applications linked to any chosen recipient (cached per contact). */
+  private async refreshAttemptCandidates() {
+    const recipients = this.composeRecipients();
+    if (recipients.length === 0) {
+      this.attemptCandidates.set([]);
+      this.attemptAppId.set(null);
+      this.logAttempt.set(true);
+      return;
+    }
+
+    const byId = new Map<string, ApplicationResponseDto>();
+    for (const r of recipients) {
+      let apps = this.candidateCache.get(r.id);
+      if (!apps) {
+        try {
+          const res = await this.contactApi.getApplicationsForContact(r.id);
+          apps = res.data ?? [];
+        } catch {
+          apps = [];
+        }
+        this.candidateCache.set(r.id, apps);
+      }
+      for (const app of apps) byId.set(app.id, app);
+    }
+
+    const candidates = [...byId.values()];
+    this.attemptCandidates.set(candidates);
+
+    // Keep the current pick if still valid; otherwise preselect the first candidate.
+    const current = this.attemptAppId();
+    if (!candidates.some(a => a.id === current)) {
+      this.attemptAppId.set(candidates[0]?.id ?? null);
+      this.logAttempt.set(true);
+    }
+  }
+
+  statusLabel(status: string): string {
+    return STATUS_LABELS[status as keyof typeof STATUS_LABELS] ?? status;
+  }
+
+  humanizeCron(expr: string): string {
+    const preset = this.CRON_PRESETS.find(p => p.value === expr.trim());
+    return preset ? preset.label : 'Custom cadence';
   }
 
   isRecipientSelected(c: ContactDto): boolean {
@@ -485,8 +609,10 @@ export class MailboxComponent implements OnInit {
     this.attachments.set(this.attachments().filter(f => f !== file));
   }
 
-  openContactModal() {
-    this.modalSelectedIds.set(new Set(this.composeRecipients().map(c => c.id)));
+  openContactModal(target: 'compose' | 'schedule' = 'compose') {
+    this.pickerTarget.set(target);
+    const current = target === 'compose' ? this.composeRecipients() : this.schedRecipients();
+    this.modalSelectedIds.set(new Set(current.map(c => c.id)));
     this.modalContactSearch.set('');
     this.showContactModal.set(true);
   }
@@ -504,7 +630,200 @@ export class MailboxComponent implements OnInit {
   onAddSelected() {
     const ids = this.modalSelectedIds();
     const selected = this.contacts().filter(c => ids.has(c.id));
-    this.composeRecipients.set(selected);
+    if (this.pickerTarget() === 'compose') {
+      this.composeRecipients.set(selected);
+      void this.refreshAttemptCandidates();
+    } else {
+      this.schedRecipients.set(selected);
+    }
     this.showContactModal.set(false);
+  }
+
+  // ── Schedule form ──────────────────────────────────────────────────────────
+  openNewSchedule() {
+    this.editingScheduleId.set(null);
+    this.schedName.set('');
+    this.schedCron.set('0 9 * * *');
+    this.schedSubject.set('');
+    this.schedBody.set('');
+    this.schedRecipients.set([]);
+    this.showScheduleForm.set(true);
+  }
+
+  /** Resolve contact ids to ContactDtos using the loaded list, fetching any missing ones. */
+  private async resolveContacts(ids: string[]): Promise<ContactDto[]> {
+    const known = new Map(this.contacts().map(c => [c.id, c]));
+    const resolved: ContactDto[] = [];
+    for (const id of ids) {
+      const local = known.get(id);
+      if (local) { resolved.push(local); continue; }
+      try {
+        const res = await this.contactApi.getContact(id);
+        if (res.data) resolved.push(res.data);
+      } catch { /* skip unknown */ }
+    }
+    return resolved;
+  }
+
+  async openEditSchedule(s: EmailScheduleDto) {
+    this.editingScheduleId.set(s.id);
+    this.schedName.set(s.name);
+    this.schedCron.set(s.cronExpression);
+    this.schedSubject.set(s.subject);
+    this.schedBody.set(s.body);
+    this.schedRecipients.set(await this.resolveContacts(s.recipientIds));
+    this.showScheduleForm.set(true);
+  }
+
+  closeScheduleForm() {
+    this.showScheduleForm.set(false);
+  }
+
+  removeSchedRecipient(c: ContactDto) {
+    this.schedRecipients.set(this.schedRecipients().filter(r => r.id !== c.id));
+  }
+
+  schedFormValid = computed(() =>
+    this.schedName().trim().length > 0 &&
+    this.schedCron().trim().length > 0 &&
+    this.schedSubject().trim().length > 0 &&
+    this.schedBody().trim().length > 0 &&
+    this.schedRecipients().length > 0);
+
+  async saveSchedule() {
+    if (!this.schedFormValid()) return;
+    this.schedSaving.set(true);
+    try {
+      const dto = {
+        name: this.schedName().trim(),
+        cronExpression: this.schedCron().trim(),
+        subject: this.schedSubject(),
+        body: this.schedBody(),
+        recipientIds: this.schedRecipients().map(c => c.id),
+      };
+      const id = this.editingScheduleId();
+      if (id) {
+        await this.service.updateSchedule(id, dto);
+        this.toast.success('Schedule updated');
+      } else {
+        await this.service.createSchedule(dto);
+        this.toast.success('Schedule created');
+      }
+      this.showScheduleForm.set(false);
+      await this.loadSchedules();
+      // Keep the detail view in sync when the edited schedule is open.
+      const selected = this.selectedSchedule();
+      if (selected) await this.refreshSelectedSchedule();
+    } catch (err: unknown) {
+      const msg = (err as { error?: { message?: string } })?.error?.message;
+      this.toast.error(msg || 'Failed to save schedule');
+    } finally {
+      this.schedSaving.set(false);
+    }
+  }
+
+  // ── Schedule detail ────────────────────────────────────────────────────────
+  async openScheduleDetail(s: EmailScheduleDto) {
+    this.selectedSchedule.set(s);
+    void this.loadScheduleDetailData(s.id, s.recipientIds);
+  }
+
+  backToSchedules() {
+    this.selectedSchedule.set(null);
+    this.scheduleHistory.set([]);
+    this.scheduleRecipients.set([]);
+  }
+
+  private async loadScheduleDetailData(id: string, recipientIds: string[]) {
+    this.schedHistoryLoading.set(true);
+    try {
+      const [scheduleRes, historyRes, recipients] = await Promise.all([
+        this.service.getSchedule(id),
+        this.service.getScheduleHistory(id),
+        this.resolveContacts(recipientIds),
+      ]);
+      if (this.selectedSchedule()?.id !== id) return; // user navigated away
+      if (scheduleRes.data) this.selectedSchedule.set(scheduleRes.data);
+      this.scheduleHistory.set(historyRes.data?.items ?? []);
+      this.scheduleRecipients.set(recipients);
+    } catch {
+      this.toast.error('Failed to load schedule details');
+    } finally {
+      this.schedHistoryLoading.set(false);
+    }
+  }
+
+  private async refreshSelectedSchedule() {
+    const selected = this.selectedSchedule();
+    if (!selected) return;
+    try {
+      const res = await this.service.getSchedule(selected.id);
+      if (res.data) this.selectedSchedule.set(res.data);
+      const hist = await this.service.getScheduleHistory(selected.id);
+      this.scheduleHistory.set(hist.data?.items ?? []);
+    } catch { /* keep current data */ }
+  }
+
+  async runScheduleNow() {
+    const s = this.selectedSchedule();
+    if (!s || this.scheduleRunning()) return;
+    this.scheduleRunning.set(true);
+    try {
+      const res = await this.service.runScheduleNow(s.id);
+      if (res.success && res.data) {
+        const { sent, failed } = res.data;
+        if (failed > 0) {
+          this.toast.info(`Fired "${s.name}": ${sent} sent, ${failed} failed`);
+        } else {
+          this.toast.success(`Fired "${s.name}": ${sent} sent`);
+        }
+        await this.refreshSelectedSchedule();
+      } else {
+        this.toast.error(res.message || 'Failed to run schedule');
+      }
+    } catch (err: unknown) {
+      const msg = (err as { error?: { message?: string } })?.error?.message;
+      this.toast.error(msg || 'Failed to run schedule');
+    } finally {
+      this.scheduleRunning.set(false);
+    }
+  }
+
+  async toggleFromDetail() {
+    const s = this.selectedSchedule();
+    if (!s) return;
+    try {
+      const res = await this.service.toggleSchedule(s.id);
+      if (res.data) this.selectedSchedule.set(res.data);
+      this.loadSchedules();
+    } catch {
+      this.toast.error('Failed to update schedule');
+    }
+  }
+
+  async deleteFromDetail() {
+    const s = this.selectedSchedule();
+    if (!s || !confirm(`Delete schedule "${s.name}"?`)) return;
+    try {
+      await this.service.deleteSchedule(s.id);
+      this.toast.success('Schedule deleted');
+      this.backToSchedules();
+      this.loadSchedules();
+    } catch {
+      this.toast.error('Failed to delete schedule');
+    }
+  }
+
+  formatRelative(iso?: string | null): string {
+    if (!iso) return '—';
+    const diffMs = new Date(iso).getTime() - Date.now();
+    const future = diffMs > 0;
+    const mins = Math.round(Math.abs(diffMs) / 60000);
+    let label: string;
+    if (mins < 1) label = 'less than a minute';
+    else if (mins < 60) label = `${mins} min`;
+    else if (mins < 60 * 24) label = `${Math.round(mins / 60)} h`;
+    else label = `${Math.round(mins / (60 * 24))} d`;
+    return future ? `in ${label}` : `${label} ago`;
   }
 }

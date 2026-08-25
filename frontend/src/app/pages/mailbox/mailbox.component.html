@@ -78,6 +78,21 @@
               <label class="compose-label">Message</label>
               <textarea class="compose-textarea" rows="10" placeholder="Write your email…" [ngModel]="composeBody()" (ngModelChange)="composeBody.set($event)"></textarea>
             </div>
+            @if (attemptCandidates().length > 0) {
+              <div class="attempt-log-bar">
+                <label class="attempt-toggle">
+                  <input type="checkbox" [ngModel]="logAttempt()" (ngModelChange)="logAttempt.set($event)">
+                  Log as application attempt
+                </label>
+                @if (logAttempt()) {
+                  <select class="attempt-select" [ngModel]="attemptAppId()" (ngModelChange)="attemptAppId.set($event)">
+                    @for (app of attemptCandidates(); track app.id) {
+                      <option [value]="app.id">{{ app.positionTitle }} · {{ app.companyName }} ({{ statusLabel(app.status) }})</option>
+                    }
+                  </select>
+                }
+              </div>
+            }
             <div class="compose-actions">
               <button class="mb-btn-primary" (click)="sendEmail()" [disabled]="composeSending() || !composeRecipients().length || !composeSubject() || !composeBody()">
                 {{ composeSending() ? 'Sending…' : 'Send Email' }}
@@ -380,12 +395,113 @@
 
     @if (view() === 'schedules') {
       <div class="schedules-view">
+        @if (selectedSchedule(); as s) {
+          <!-- ── Schedule detail sub-view ─────────────────────────────── -->
+          <div class="sched-detail">
+            <button class="back-link" (click)="backToSchedules()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All schedules
+            </button>
+
+            <div class="sched-header">
+              <div class="sched-title-row">
+                <h2>{{ s.name }}</h2>
+                <span class="status-badge" [class.active-status]="s.isActive" [class.inactive-status]="!s.isActive">
+                  {{ s.isActive ? 'Active' : 'Paused' }}
+                </span>
+              </div>
+              <code class="cron-code">{{ s.cronExpression }}</code>
+              <span class="status-badge cadence-badge">{{ humanizeCron(s.cronExpression) }}</span>
+              <div class="sched-meta">
+                <span>Next run: <strong>{{ s.nextRunAt ? formatDateTime(s.nextRunAt) : '—' }}</strong></span>
+                @if (s.nextRunAt) { <span class="dim">({{ formatRelative(s.nextRunAt) }})</span> }
+                <span>·</span>
+                <span>Last run: <strong>{{ s.lastRunAt ? formatDateTime(s.lastRunAt) : 'never' }}</strong></span>
+              </div>
+              @if (s.upcomingRuns?.length) {
+                <div class="upcoming-row">
+                  <span class="upcoming-label">Upcoming:</span>
+                  @for (run of s.upcomingRuns; track $index) {
+                    <span class="upcoming-chip">{{ formatDateTime(run) }}</span>
+                  }
+                </div>
+              }
+              <div class="sched-actions">
+                <button class="mb-btn-sm" (click)="openEditSchedule(s)">Edit</button>
+                <button class="mb-btn-sm" (click)="toggleFromDetail()">{{ s.isActive ? 'Pause' : 'Resume' }}</button>
+                <button class="mb-btn-sm run-now" [disabled]="scheduleRunning()" (click)="runScheduleNow()">
+                  {{ scheduleRunning() ? 'Firing…' : '⚡ Run now' }}
+                </button>
+                <button class="mb-btn-sm danger" (click)="deleteFromDetail()">Delete</button>
+              </div>
+            </div>
+
+            <div class="sched-columns">
+              <section class="sched-col">
+                <h3>Recipients</h3>
+                <div class="panel-card">
+                  @if (scheduleRecipients().length === 0) {
+                    <p class="sched-empty">No recipients.</p>
+                  } @else {
+                    @for (r of scheduleRecipients(); track r.id) {
+                      <div class="recipient-row">
+                        <span class="contact-avatar fallback">{{ r.name.slice(0, 1).toUpperCase() }}</span>
+                        <div class="recipient-main">
+                          <span class="recipient-name">{{ r.name }}</span>
+                          <a class="recipient-email" [href]="'mailto:' + r.email">{{ r.email }}</a>
+                        </div>
+                      </div>
+                    }
+                  }
+                </div>
+
+                <h3>Message</h3>
+                <div class="panel-card message-preview">
+                  <p class="preview-subject">{{ s.subject }}</p>
+                  <p class="preview-body">{{ s.body }}</p>
+                </div>
+              </section>
+
+              <section class="sched-col">
+                <h3>Send history</h3>
+                @if (schedHistoryLoading()) {
+                  <div class="mb-loading">Loading…</div>
+                } @else if (scheduleHistory().length === 0) {
+                  <div class="panel-card">
+                    <p class="sched-empty">Nothing sent yet — use ⚡ Run now to fire it immediately.</p>
+                  </div>
+                } @else {
+                  <div class="panel-card history-card">
+                    @for (item of scheduleHistory(); track item.id) {
+                      <div class="history-row">
+                        <span class="history-dot" [class.ok]="item.status === 'sent'" [class.bad]="item.status !== 'sent'"></span>
+                        <div class="history-main">
+                          <span class="history-who">{{ item.toName || item.toEmail }} <span class="dim">({{ item.toEmail }})</span></span>
+                          @if (item.error) {
+                            <span class="history-error" [title]="item.error">{{ item.error }}</span>
+                          }
+                        </div>
+                        <span class="history-date">{{ formatDateTime(item.sentAt || item.createdAt) }}</span>
+                      </div>
+                    }
+                  </div>
+                  <p class="history-total">{{ scheduleHistory().length }} record{{ scheduleHistory().length === 1 ? '' : 's' }}</p>
+                }
+              </section>
+            </div>
+          </div>
+        } @else {
+        <div class="schedules-head">
+          <p class="schedules-hint">Fired automatically by the scheduler while Gmail is connected. Click a row for details.</p>
+          <button class="mb-btn-primary" (click)="openNewSchedule()">+ New schedule</button>
+        </div>
         @if (schedulesLoading()) {
           <div class="mb-loading">Loading schedules…</div>
         } @else if (schedules().length === 0) {
           <div class="empty-state">
             <svg viewBox="0 0 24 24" fill="none" width="32" height="32" stroke="currentColor" stroke-width="1.4" style="color:var(--text-3);margin-bottom:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <p>Create automated outreach campaigns.</p>
+            <p>No schedules yet — create one to automate your outreach.</p>
+            <button class="mb-btn-primary" (click)="openNewSchedule()">Create your first schedule</button>
           </div>
         } @else {
           <div class="mb-table-wrap">
@@ -394,6 +510,7 @@
                 <tr>
                   <th>Name</th>
                   <th>Recipients</th>
+                  <th>Cadence</th>
                   <th>Next Run</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -401,9 +518,10 @@
               </thead>
               <tbody>
                 @for (s of schedules(); track s.id) {
-                  <tr class="mb-tr">
+                  <tr class="mb-tr row-click" (click)="openScheduleDetail(s)">
                     <td>{{ s.name }}</td>
                     <td>{{ s.recipientIds.length }} contact(s)</td>
+                    <td><code class="cron-code">{{ s.cronExpression }}</code></td>
                     <td>{{ s.nextRunAt ? formatDateTime(s.nextRunAt) : '—' }}</td>
                     <td>
                       <span class="status-badge" [class.active-status]="s.isActive" [class.inactive-status]="!s.isActive">
@@ -411,14 +529,16 @@
                       </span>
                     </td>
                     <td>
-                      <button class="mb-btn-sm" (click)="toggleSchedule(s.id)">{{ s.isActive ? 'Pause' : 'Resume' }}</button>
-                      <button class="mb-btn-sm danger" (click)="deleteSchedule(s.id)">Delete</button>
+                      <button class="mb-btn-sm" (click)="openEditSchedule(s); $event.stopPropagation()">Edit</button>
+                      <button class="mb-btn-sm" (click)="toggleSchedule(s.id); $event.stopPropagation()">{{ s.isActive ? 'Pause' : 'Resume' }}</button>
+                      <button class="mb-btn-sm danger" (click)="deleteSchedule(s.id); $event.stopPropagation()">Delete</button>
                     </td>
                   </tr>
                 }
               </tbody>
             </table>
           </div>
+        }
         }
       </div>
     }
@@ -451,7 +571,7 @@
   }
 
   @if (showContactModal()) {
-    <div class="modal-backdrop" (click)="closeContactModal()">
+    <div class="modal-backdrop picker-backdrop" (click)="closeContactModal()">
       <div class="contact-modal" (click)="$event.stopPropagation()">
         <div class="contact-modal-header">
           <h3>Select Contacts</h3>
@@ -485,6 +605,71 @@
         <div class="contact-modal-footer">
           <button class="mb-btn-ghost" (click)="closeContactModal()">Cancel</button>
           <button class="mb-btn-primary" (click)="onAddSelected()">Add Selected ({{ modalSelectedIds().size }})</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showScheduleForm()) {
+    <div class="modal-backdrop" (click)="closeScheduleForm()">
+      <div class="schedule-modal" (click)="$event.stopPropagation()">
+        <div class="contact-modal-header">
+          <h3>{{ editingScheduleId() ? 'Edit schedule' : 'New schedule' }}</h3>
+          <button class="contact-modal-close" (click)="closeScheduleForm()">&times;</button>
+        </div>
+        <div class="schedule-form-body">
+          <div class="sched-field">
+            <label>Name <span class="req">*</span></label>
+            <input type="text" placeholder="e.g. Weekly follow-up" [ngModel]="schedName()" (ngModelChange)="schedName.set($event)">
+          </div>
+
+          <div class="sched-field">
+            <label>Cadence</label>
+            <select [ngModel]="cronPresetValue()" (ngModelChange)="$event !== 'custom' && schedCron.set($event)">
+              @for (p of CRON_PRESETS; track p.value) {
+                <option [value]="p.value">{{ p.label }}</option>
+              }
+              <option value="custom">Custom…</option>
+            </select>
+            @if (cronPresetValue() === 'custom') {
+              <input type="text" class="cron-input" placeholder="* * * * *  (min hour day month weekday)"
+                [ngModel]="schedCron()" (ngModelChange)="schedCron.set($event)">
+            }
+            @if (cronDescription()) {
+              <span class="sched-hint">{{ cronDescription() }}</span>
+            }
+          </div>
+
+          <div class="sched-field">
+            <label>Recipients <span class="req">*</span></label>
+            @if (schedRecipients().length > 0) {
+              <div class="compose-chips">
+                @for (r of schedRecipients(); track r.id) {
+                  <span class="compose-chip">{{ r.name }} <button type="button" (click)="removeSchedRecipient(r)">&times;</button></span>
+                }
+              </div>
+            }
+            <button type="button" class="compose-select-btn" (click)="openContactModal('schedule')">
+              <svg viewBox="0 0 14 14" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="5" r="3"/><path d="M2 13c1.5-3 5-3 5-3s3.5 0 5 3"/></svg>
+              Select from contacts
+            </button>
+          </div>
+
+          <div class="sched-field">
+            <label>Subject <span class="req">*</span></label>
+            <input type="text" placeholder="Email subject…" [ngModel]="schedSubject()" (ngModelChange)="schedSubject.set($event)">
+          </div>
+
+          <div class="sched-field">
+            <label>Message <span class="req">*</span></label>
+            <textarea rows="6" placeholder="Write the email body…" [ngModel]="schedBody()" (ngModelChange)="schedBody.set($event)"></textarea>
+          </div>
+        </div>
+        <div class="contact-modal-footer">
+          <button class="mb-btn-ghost" (click)="closeScheduleForm()">Cancel</button>
+          <button class="mb-btn-primary" [disabled]="!schedFormValid() || schedSaving()" (click)="saveSchedule()">
+            {{ schedSaving() ? 'Saving…' : (editingScheduleId() ? 'Save changes' : 'Create schedule') }}
+          </button>
         </div>
       </div>
     </div>
