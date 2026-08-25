@@ -552,6 +552,23 @@ public class ApplicationService : IApplicationService
     }
 
     /// <summary>
+    /// All of the user's applications whose company name matches (normalized) the given name.
+    /// </summary>
+    public async Task<List<ApplicationResponseDto>> GetApplicationsByCompanyAsync(Guid userId, string companyName)
+    {
+        var key = companyName.Trim().ToLower();
+
+        var apps = await _db.Applications
+            .Where(a => a.CandidateId == userId && a.CompanyName.Trim().ToLower() == key)
+            .Include(a => a.StatusHistory.OrderByDescending(h => h.ChangedAt))
+            .Include(a => a.Attempts.OrderBy(t => t.AttemptNumber)).ThenInclude(t => t.Contact)
+            .OrderByDescending(a => a.AppliedAt ?? a.UpdatedAt)
+            .ToListAsync();
+
+        return apps.Select(MapToDtoWithHistory).ToList();
+    }
+
+    /// <summary>
     /// Side effects of a sent attempt: first real send moves SAVED → APPLIED,
     /// sets AppliedAt if unknown, and logs a feed entry so re-applies show up in the timeline.
     /// </summary>

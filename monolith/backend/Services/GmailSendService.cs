@@ -40,7 +40,7 @@ public class GmailSendService : IGmailSendService
             ?? throw new InvalidOperationException("GOOGLE_CLIENT_SECRET is not set");
     }
 
-    public async Task SendWithAttachmentAsync(
+    public async Task<(string? MessageId, string? ThreadId)> SendWithAttachmentAsync(
         Guid userId, string to, string subject, string body,
         string? cvPdfUrl = null, IReadOnlyList<CV_Generator.Dto.EmailAttachmentDto>? attachments = null)
     {
@@ -112,11 +112,13 @@ public class GmailSendService : IGmailSendService
 
         var gmailMessage = new Message { Raw = raw };
 
-        await gmailService.Users.Messages.Send(gmailMessage, "me").ExecuteAsync();
+        var sent = await gmailService.Users.Messages.Send(gmailMessage, "me").ExecuteAsync();
 
         _logger.LogInformation(
-            "Gmail sent via {From} to {To} | Subject: {Subject} | Attached: {HasPdf}",
-            connection.GmailAddress, to, subject, !string.IsNullOrWhiteSpace(cvPdfUrl));
+            "Gmail sent via {From} to {To} | Subject: {Subject} | Attached: {HasPdf} | MessageId: {MessageId}",
+            connection.GmailAddress, to, subject, !string.IsNullOrWhiteSpace(cvPdfUrl), sent.Id);
+
+        return (sent.Id, sent.ThreadId);
     }
 
     private async Task<UserCredential> BuildCredentialAsync(

@@ -15,6 +15,7 @@ public class MailboxController : BaseApiController
     private readonly AppDbContext _db;
     private readonly IGmailSendService _gmailSendSvc;
     private readonly IContactService _contactSvc;
+    private readonly IApplicationService _applicationSvc;
     private readonly ILogger<MailboxController> _logger;
 
     public MailboxController(
@@ -22,12 +23,14 @@ public class MailboxController : BaseApiController
         AppDbContext db,
         IGmailSendService gmailSendSvc,
         IContactService contactSvc,
+        IApplicationService applicationSvc,
         ILogger<MailboxController> logger)
         : base(currentUser)
     {
         _db = db;
         _gmailSendSvc = gmailSendSvc;
         _contactSvc = contactSvc;
+        _applicationSvc = applicationSvc;
         _logger = logger;
     }
 
@@ -237,12 +240,20 @@ public class MailboxController : BaseApiController
 
         var sent = 0;
         var failed = 0;
+        string? firstMessageId = null;
+        string? firstThreadId = null;
+        Contact? firstSentContact = null;
 
         foreach (var contact in contacts)
         {
             try
             {
-                await _gmailSendSvc.SendWithAttachmentAsync(userId, contact.Email, dto.Subject, dto.Body, null, dto.Attachments);
+                var (messageId, threadId) = await _gmailSendSvc.SendWithAttachmentAsync(
+                    userId, contact.Email, dto.Subject, dto.Body, null, dto.Attachments);
+
+                firstMessageId ??= messageId;
+                firstThreadId ??= threadId;
+                firstSentContact ??= contact;
 
                 _db.Set<EmailMessage>().Add(new EmailMessage
                 {
@@ -292,7 +303,47 @@ public class MailboxController : BaseApiController
 
         await _db.SaveChangesAsync();
 
-        return Ok(ApiResponse<object>.Ok(new { sent, failed, total = contacts.Count }));
+        // Optionally log one SENT attempt on the given application (re-uses all
+        // existing side effects: SAVED → APPLIED, AppliedAt backfill, timeline entry).
+        object? loggedAttempt = null;
+        if (dto.ApplicationId.HasValue && firstSentContact is not null)
+        {
+            try
+            {
+                var attempt = await _applicationSvc.CreateAttemptAsync(
+                    dto.ApplicationId.Value,
+                    new CreateAttemptDto(
+                        Channel: "EMAIL_GMAIL",
+                        InitiatedBy: "USER",
+                        Status: "SENT",
+                        Subject: dto.Subject,
+                        ContactId: firstSentContact.Id,
+                        ChannelMetadataJson: (firstMessageId ?? firstThreadId) is not null
+                            ? JsonSerializer.Serialize(new { messageId = firstMessageId, threadId = firstThreadId })
+                            : null,
+                        SentAt: DateTime.UtcNow),
+                    userId);
+
+                var app = await _db.Applications.AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.Id == dto.ApplicationId.Value && a.CandidateId == userId);
+                loggedAttempt = new
+                {
+                    applicationId = dto.ApplicationId.Value,
+                    attemptId = attempt?.Id,
+                    companyName = app?.CompanyName,
+                    positionTitle = app?.PositionTitle,
+                };
+            }
+            catch (Exception ex)
+            {
+                // Email went out; never fail the request because bookkeeping didn't stick.
+                _logger.LogError(ex, "Email sent but failed to log attempt on application {AppId} for user {UserId}",
+                    dto.ApplicationId.Value, userId);
+                loggedAttempt = new { applicationId = dto.ApplicationId.Value, error = "attempt-log-failed" };
+            }
+        }
+
+        return Ok(ApiResponse<object>.Ok(new { sent, failed, total = contacts.Count, loggedAttempt }));
     }
 
     [HttpGet("stats")]

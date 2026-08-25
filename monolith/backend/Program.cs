@@ -84,6 +84,7 @@ builder.Services.AddScoped<WorkflowExecutionService>();
 // Background services
 builder.Services.AddSingleton<CvGenerationBackgroundService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CvGenerationBackgroundService>());
+builder.Services.AddHostedService<EmailScheduleWorker>();
 
 // SignalR
 builder.Services.AddSignalR();

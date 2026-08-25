@@ -31,6 +31,9 @@ public class SendEmailDto
     public string Subject { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
     public List<EmailAttachmentDto>? Attachments { get; set; }
+
+    /// <summary>When set, a SENT email attempt is logged on this application after sending.</summary>
+    public Guid? ApplicationId { get; set; }
 }
 
 public class EmailAttachmentDto
