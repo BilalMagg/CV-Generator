@@ -419,6 +419,28 @@
   line-height: 1.4;
 }
 
+.detail-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-2);
+  font-size: 11.5px;
+  color: var(--text-2);
+
+  svg { color: var(--text-3); flex-shrink: 0; }
+  .chip-file { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .chip-size { color: var(--text-3); font-size: 10.5px; flex-shrink: 0; }
+}
+
 .detail-field {
   margin-bottom: 12px;
 }
@@ -477,6 +499,57 @@
 
 .mb-subj { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
 .mb-date { color: var(--text-3); white-space: nowrap; font-size: 12px; }
+
+/* History table — fill available width */
+.mb-table-wrap {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: auto;
+}
+
+.mb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th, td { padding: 10px 14px; text-align: left; }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bg-2);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr + tr td { border-top: 1px solid oklch(0.5 0.01 250 / 0.08); }
+
+  td:nth-child(3) { width: auto; }        /* subject takes remaining space */
+  th:nth-child(1), td:nth-child(1) { width: 90px; }   /* status */
+  th:nth-child(4), td:nth-child(4) { width: 130px; }  /* sent date */
+  th:nth-child(5), td:nth-child(5) { width: 40px; }   /* error icon */
+}
+
+/* Sent / failed feedback effects on rows */
+.mb-tr {
+  box-shadow: inset 3px 0 0 transparent;
+  &.sent-row { box-shadow: inset 3px 0 0 oklch(0.72 0.15 145); }
+  &.failed-row { box-shadow: inset 3px 0 0 oklch(0.62 0.19 25); }
+}
+
+@keyframes rowFlashOk {
+  0% { background: oklch(0.93 0.07 145); }
+  100% { background: transparent; }
+}
+.mb-tr.just-sent { animation: rowFlashOk 1.8s ease-out; }
 
 .schedules-view {
   padding: 16px 28px;
@@ -675,13 +748,23 @@
 }
 
 .status-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 11.5px;
   font-weight: 600;
   background: var(--bg-2);
   color: var(--text-3);
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
   &.sent { background: oklch(0.92 0.06 145); color: oklch(0.35 0.08 145); }
   &.failed { background: oklch(0.93 0.05 25); color: oklch(0.4 0.1 25); }
   &.active-status { background: oklch(0.92 0.06 145); color: oklch(0.35 0.08 145); }

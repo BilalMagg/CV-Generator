@@ -56,7 +56,7 @@ export class DashboardComponent implements OnInit {
   }
 
   firstName = computed(() => this.authService.currentUser()?.firstName ?? 'there');
-  s = computed(() => this.trends()?.current ?? { total: 0, pending: 0, reviewed: 0, interview: 0, accepted: 0, rejected: 0, cancelled: 0 });
+  s = computed(() => this.trends()?.current ?? { total: 0, saved: 0, applied: 0, screening: 0, interview: 0, offer: 0, accepted: 0, rejected: 0, withdrawn: 0 });
 
   private _monthlyValues = computed<{ total: number[]; interview: number[]; accepted: number[]; responseRate: number[] }>(() => {
     const data = this.trends()?.monthlyTrends ?? [];
@@ -66,11 +66,11 @@ export class DashboardComponent implements OnInit {
     const responseRate: number[] = [];
 
     data.forEach(m => {
-      const t = m.pending + m.reviewed + m.interview + m.accepted + m.rejected + m.cancelled;
+      const t = m.saved + m.applied + m.screening + m.interview + m.offer + m.accepted + m.rejected + m.withdrawn;
       total.push(t);
       interview.push(m.interview);
       accepted.push(m.accepted);
-      responseRate.push(t > 0 ? Math.round(((m.interview + m.accepted + m.rejected) / t) * 100) : 0);
+      responseRate.push(t > 0 ? Math.round(((m.screening + m.interview + m.offer + m.accepted + m.rejected) / t) * 100) : 0);
     });
 
     return { total, interview, accepted, responseRate };
@@ -103,8 +103,8 @@ export class DashboardComponent implements OnInit {
     return `${days[d.getDay()]} · ${months[d.getMonth()]} ${d.getDate()}`;
   });
 
-  pendingFollowUps = computed(() => this.s().pending);
-  activeOffers = computed(() => this.s().accepted);
+  pendingFollowUps = computed(() => this.s().applied);
+  activeOffers = computed(() => this.s().offer);
 
   statCards = computed<StatCard[]>(() => {
     const s = this.s();
@@ -134,8 +134,8 @@ export class DashboardComponent implements OnInit {
       },
       {
         label: 'Offers',
-        displayValue: String(s.accepted),
-        sub: `${s.pending} pending`,
+        displayValue: String(s.offer),
+        sub: `${s.accepted} accepted`,
         change: this._monthOverMonthChange(mv.accepted),
         dotColor: 'oklch(0.62 0.15 155)',
         valueColor: 'oklch(0.45 0.14 155)',
@@ -143,7 +143,7 @@ export class DashboardComponent implements OnInit {
       },
       {
         label: 'Response rate',
-        displayValue: pct(s.total, s.interview + s.accepted + s.rejected) + '%',
+        displayValue: pct(s.total, s.screening + s.interview + s.offer + s.accepted + s.rejected) + '%',
         sub: 'industry avg 23%',
         change: this._monthOverMonthChange(mv.responseRate),
         dotColor: 'oklch(0.62 0.18 25)',
@@ -157,10 +157,10 @@ export class DashboardComponent implements OnInit {
     const apps = this.applications();
     if (apps.length === 0) return [];
 
-    const pending = apps.filter(a => a.status === 'PENDING' || a.status === 'REVIEWED');
-    if (pending.length === 0) return [];
+    const awaiting = apps.filter(a => a.status === 'APPLIED' || a.status === 'SCREENING');
+    if (awaiting.length === 0) return [];
 
-    return pending.slice(0, 5).map(a => ({
+    return awaiting.slice(0, 5).map(a => ({
       id: a.id,
       company: a.companyName,
       role: a.positionTitle,
@@ -180,9 +180,9 @@ export class DashboardComponent implements OnInit {
     const s = this.s();
     const total = s.total || 24;
     const interview = s.interview || 6;
-    const offered = s.accepted || 3;
+    const offered = s.offer + s.accepted || 3;
     const rejected = s.rejected || 4;
-    const applied = total - interview - offered - rejected;
+    const applied = Math.max(1, total - s.saved - s.withdrawn - interview - (s.offer + s.accepted) - rejected);
 
     const W = 480, H = 120;
     const statuses = [

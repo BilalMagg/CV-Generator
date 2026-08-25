@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using CV_Generator;
 using CV_Generator.Dto;
 using CV_Generator.Services;
@@ -28,6 +29,20 @@ public class MailboxController : BaseApiController
         _gmailSendSvc = gmailSendSvc;
         _contactSvc = contactSvc;
         _logger = logger;
+    }
+
+    /// <summary>Parses stored attachment metadata JSON into DTOs (empty list on null/corrupt data).</summary>
+    private static List<EmailAttachmentInfoDto> ParseAttachments(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            return JsonSerializer.Deserialize<List<EmailAttachmentInfoDto>>(json) ?? [];
+        }
+        catch
+        {
+            return [];
+        }
     }
 
     [HttpGet("history")]
@@ -59,26 +74,34 @@ public class MailboxController : BaseApiController
         var failedCount = await query.CountAsync(m => m.Status == "failed");
         var draftCount = await query.CountAsync(m => m.Status == "draft");
 
-        var items = await query
+        var rows = await query
             .OrderByDescending(m => m.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(m => new EmailMessageDto
+            .Select(m => new
             {
-                Id = m.Id,
-                UserId = m.UserId,
-                ContactId = m.ContactId,
-                RecipientEmail = m.ToEmail,
-                RecipientName = m.ToName,
-                Subject = m.Subject,
-                Body = m.Body,
-                Status = m.Status,
-                ErrorMessage = m.Error,
-                Provider = m.Provider,
-                SentAt = m.SentAt,
-                CreatedAt = m.CreatedAt
+                m.Id, m.UserId, m.ContactId, RecipientEmail = m.ToEmail, RecipientName = m.ToName,
+                m.Subject, m.Body, m.Status, Error = m.Error, m.Provider, m.SentAt,
+                m.CreatedAt, m.AttachmentMetadataJson
             })
             .ToListAsync();
+
+        var items = rows.Select(m => new EmailMessageDto
+        {
+            Id = m.Id,
+            UserId = m.UserId,
+            ContactId = m.ContactId,
+            RecipientEmail = m.RecipientEmail,
+            RecipientName = m.RecipientName,
+            Subject = m.Subject,
+            Body = m.Body,
+            Status = m.Status,
+            ErrorMessage = m.Error,
+            Provider = m.Provider,
+            SentAt = m.SentAt,
+            CreatedAt = m.CreatedAt,
+            Attachments = ParseAttachments(m.AttachmentMetadataJson)
+        }).ToList();
 
         return Ok(ApiResponse<EmailHistoryResponse>.Ok(new EmailHistoryResponse
         {
@@ -111,7 +134,8 @@ public class MailboxController : BaseApiController
             ErrorMessage = msg.Error,
             Provider = msg.Provider,
             SentAt = msg.SentAt,
-            CreatedAt = msg.CreatedAt
+            CreatedAt = msg.CreatedAt,
+            Attachments = ParseAttachments(msg.AttachmentMetadataJson)
         }));
     }
 
@@ -124,25 +148,33 @@ public class MailboxController : BaseApiController
         if (contact is null)
             return NotFound(ApiResponse<object>.Error("Contact not found"));
 
-        var emails = await _db.Set<EmailMessage>()
+        var rows = await _db.Set<EmailMessage>()
             .Where(m => m.ContactId == contactId && m.UserId == userId)
             .OrderByDescending(m => m.CreatedAt)
-            .Select(m => new EmailMessageDto
+            .Select(m => new
             {
-                Id = m.Id,
-                UserId = m.UserId,
-                ContactId = m.ContactId,
-                RecipientEmail = m.ToEmail,
-                RecipientName = m.ToName,
-                Subject = m.Subject,
-                Body = m.Body,
-                Status = m.Status,
-                ErrorMessage = m.Error,
-                Provider = m.Provider,
-                SentAt = m.SentAt,
-                CreatedAt = m.CreatedAt
+                m.Id, m.UserId, m.ContactId, RecipientEmail = m.ToEmail, RecipientName = m.ToName,
+                m.Subject, m.Body, m.Status, Error = m.Error, m.Provider, m.SentAt,
+                m.CreatedAt, m.AttachmentMetadataJson
             })
             .ToListAsync();
+
+        var emails = rows.Select(m => new EmailMessageDto
+        {
+            Id = m.Id,
+            UserId = m.UserId,
+            ContactId = m.ContactId,
+            RecipientEmail = m.RecipientEmail,
+            RecipientName = m.RecipientName,
+            Subject = m.Subject,
+            Body = m.Body,
+            Status = m.Status,
+            ErrorMessage = m.Error,
+            Provider = m.Provider,
+            SentAt = m.SentAt,
+            CreatedAt = m.CreatedAt,
+            Attachments = ParseAttachments(m.AttachmentMetadataJson)
+        }).ToList();
 
         return Ok(ApiResponse<ContactHistoryResponse>.Ok(new ContactHistoryResponse
         {
@@ -174,6 +206,22 @@ public class MailboxController : BaseApiController
         if (dto.RecipientIds.Count == 0)
             return BadRequest(ApiResponse<object>.Error("No recipients specified"));
 
+        // Reject oversized attachment payloads early (Gmail hard limit is 25MB per message).
+        const long MaxAttachmentsBytes = 20 * 1024 * 1024;
+        if (dto.Attachments is { Count: > 0 })
+        {
+            long total = 0;
+            foreach (var att in dto.Attachments)
+            {
+                if (string.IsNullOrWhiteSpace(att.ContentBase64))
+                    return BadRequest(ApiResponse<object>.Error($"Attachment '{att.FileName}' has no content"));
+                total += (long)(att.ContentBase64.Length * 3L / 4); // approx decoded size
+            }
+            if (total > MaxAttachmentsBytes)
+                return BadRequest(ApiResponse<object>.Error(
+                    $"Attachments exceed the 20 MB limit ({total / 1024 / 1024} MB)"));
+        }
+
         var contacts = await _db.Set<Contact>()
             .Where(c => dto.RecipientIds.Contains(c.Id) && c.UserId == userId)
             .ToListAsync();
@@ -194,7 +242,7 @@ public class MailboxController : BaseApiController
         {
             try
             {
-                await _gmailSendSvc.SendWithAttachmentAsync(userId, contact.Email, dto.Subject, dto.Body, null);
+                await _gmailSendSvc.SendWithAttachmentAsync(userId, contact.Email, dto.Subject, dto.Body, null, dto.Attachments);
 
                 _db.Set<EmailMessage>().Add(new EmailMessage
                 {
@@ -208,7 +256,15 @@ public class MailboxController : BaseApiController
                     Body = dto.Body,
                     Status = "sent",
                     Provider = provider,
-                    SentAt = DateTime.UtcNow
+                    SentAt = DateTime.UtcNow,
+                    AttachmentMetadataJson = dto.Attachments is { Count: > 0 }
+                        ? JsonSerializer.Serialize(dto.Attachments.Select(a => new EmailAttachmentInfoDto
+                          {
+                              FileName = a.FileName,
+                              ContentType = a.ContentType,
+                              SizeBytes = (long)(a.ContentBase64.Length * 3L / 4)
+                          }).ToList())
+                        : null
                 });
                 sent++;
             }

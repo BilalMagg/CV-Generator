@@ -20,4 +20,6 @@ public interface IApplicationService
     Task<List<AttemptResponseDto>> GetAttemptsAsync(Guid applicationId, Guid userId);
     Task<AttemptResponseDto> CreateAttemptAsync(Guid applicationId, CreateAttemptDto dto, Guid userId);
     Task<AttemptResponseDto?> UpdateAttemptAsync(Guid applicationId, Guid attemptId, UpdateAttemptDto dto, Guid userId);
+    Task<List<ContactSummaryDto>> GetSuggestedContactsAsync(Guid applicationId, Guid userId);
+    Task<List<ApplicationResponseDto>?> GetApplicationsForContactAsync(Guid contactId, Guid userId);
 }

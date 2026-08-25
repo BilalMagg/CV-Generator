@@ -13,6 +13,8 @@ public record ApplicationResponseDto(
     DateTime UpdatedAt,
     string? Notes,
     string Origin = "MANUAL",
+    string? InternshipType = null,
+    string Priority = "MEDIUM",
     List<StatusHistoryDto>? History = null,
     List<AttemptResponseDto>? Attempts = null
 );
@@ -36,7 +38,9 @@ public record CreateApplicationDto(
     string? Notes,
     string Origin = "MANUAL",
     string Status = "APPLIED",
-    bool AllowDuplicate = false
+    bool AllowDuplicate = false,
+    string? InternshipType = null,
+    string Priority = "MEDIUM"
 );
 
 public record UpdateStatusDto(
@@ -48,7 +52,9 @@ public record UpdateApplicationDto(
     string? CompanyName,
     string? PositionTitle,
     string? OfferSource,
-    string? Notes
+    string? Notes,
+    string? InternshipType = null,
+    string? Priority = null
 );
 
 public record DuplicateCheckRequestDto(
@@ -81,6 +87,7 @@ public record CreateAttemptDto(
     string? Body = null,
     string? RecipientName = null,
     string? RecipientContact = null,
+    Guid? ContactId = null,
     string? ChannelMetadataJson = null,
     Guid? CvVersionId = null,
     DateTime? SentAt = null,
@@ -93,10 +100,20 @@ public record UpdateAttemptDto(
     string? Body = null,
     string? RecipientName = null,
     string? RecipientContact = null,
+    Guid? ContactId = null,
     string? ChannelMetadataJson = null,
     Guid? CvVersionId = null,
     DateTime? SentAt = null,
     string? FailureReason = null
+);
+
+public record ContactSummaryDto(
+    Guid Id,
+    string Name,
+    string Email,
+    string? Company,
+    string? Position,
+    bool IsFavorite
 );
 
 public record AttemptResponseDto(
@@ -110,6 +127,8 @@ public record AttemptResponseDto(
     string? Body,
     string? RecipientName,
     string? RecipientContact,
+    Guid? ContactId,
+    ContactSummaryDto? Contact,
     string? ChannelMetadataJson,
     Guid? CvVersionId,
     DateTime? SentAt,

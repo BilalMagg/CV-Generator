@@ -5,9 +5,11 @@
       <div class="toolbar-stats">
         <span class="ts-item"><strong>{{ statistics().total }}</strong> total</span>
         <span class="ts-sep">·</span>
+        <span class="ts-item"><strong>{{ statistics().applied }}</strong> applied</span>
+        <span class="ts-sep">·</span>
         <span class="ts-item"><strong>{{ statistics().interview }}</strong> interviews</span>
         <span class="ts-sep">·</span>
-        <span class="ts-item"><strong>{{ statistics().accepted }}</strong> offers</span>
+        <span class="ts-item"><strong>{{ statistics().offer }}</strong> offers</span>
       </div>
     </div>
     <div class="toolbar-filters">
@@ -93,19 +95,19 @@
                 <div class="co-cell">
                   <div class="co-logo" [style.background]="logoBg(app.companyName)">{{ app.companyName[0] }}</div>
                   <div>
-                    <div class="co-name">{{ app.companyName }}</div>
+                    <div class="co-name">
+                      <span class="prio-dot" [style.background]="priorityColor(app.priority)" [title]="'Priority: ' + PRIORITY_LABELS[app.priority || 'MEDIUM']"></span>
+                      {{ app.companyName }}
+                    </div>
                     <div class="co-role">{{ app.positionTitle }}</div>
                   </div>
                 </div>
               </td>
               <td>
                 <select class="status-sel" [attr.data-status]="app.status" (change)="onInlineStatusChange(app, $event)" (click)="$event.stopPropagation()" [value]="app.status">
-                  <option value="PENDING">Pending</option>
-                  <option value="REVIEWED">Reviewed</option>
-                  <option value="INTERVIEW">Interview</option>
-                  <option value="ACCEPTED">Accepted</option>
-                  <option value="REJECTED">Rejected</option>
-                  <option value="CANCELLED">Cancelled</option>
+                  @for (s of ALL_STATUSES; track s) {
+                    <option [value]="s">{{ STATUS_LABELS[s] }}</option>
+                  }
                 </select>
               </td>
               <td class="td-meta">{{ formatDate(app.appliedAt) }}</td>

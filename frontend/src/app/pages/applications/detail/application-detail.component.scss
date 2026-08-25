@@ -76,3 +76,129 @@
 }
 .form-group { margin-bottom: 12px; }
 .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; }
+
+/* ── Attempts timeline ─────────────────────────────────────────────────────── */
+
+.attempt-item { align-items: flex-start; }
+
+.tl-dot[data-astatus='SENT']     { background: oklch(0.62 0.15 155); border-color: oklch(0.62 0.15 155); }
+.tl-dot[data-astatus='DRAFT']    { background: white;                border-color: oklch(0.65 0.01 80); }
+.tl-dot[data-astatus='SCHEDULED']{ background: oklch(0.6 0.16 250);  border-color: oklch(0.6 0.16 250); }
+.tl-dot[data-astatus='FAILED']   { background: oklch(0.62 0.18 25);  border-color: oklch(0.62 0.18 25); }
+
+.tl-body { min-width: 0; flex: 1; }
+.attempt-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.attempt-n { font-size: 11px; font-weight: 600; color: var(--text-3); }
+.attempt-channel { font-size: 13px; color: var(--text); }
+.attempt-pill {
+  font-size: 10.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+  background: oklch(0.94 0.004 80); color: var(--text-3);
+
+  &[data-astatus='SENT']      { background: oklch(0.93 0.06 155); color: oklch(0.35 0.09 155); }
+  &[data-astatus='SCHEDULED'] { background: oklch(0.93 0.04 250); color: oklch(0.4 0.12 250); }
+  &[data-astatus='FAILED']    { background: oklch(0.95 0.03 25);  color: oklch(0.45 0.16 25); }
+}
+.attempt-subject {
+  font-size: 12.5px; color: var(--text-2); margin-top: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.attempt-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.attempt-fail {
+  font-size: 12px; color: oklch(0.45 0.16 25); margin-top: 4px;
+  background: oklch(0.96 0.02 25); border-radius: 6px; padding: 4px 8px;
+}
+.attempt-actions { display: flex; gap: 6px; margin-top: 8px; }
+.att-btn {
+  font-size: 11.5px; font-weight: 600; padding: 4px 10px;
+  border-radius: 7px; cursor: pointer; border: 1px solid transparent;
+  font-family: var(--font-body);
+  &.ok   { background: oklch(0.95 0.04 155); color: oklch(0.38 0.1 155); &:hover { background: oklch(0.91 0.07 155); } }
+  &.fail { background: oklch(0.96 0.02 25);  color: oklch(0.45 0.16 25);  &:hover { background: oklch(0.93 0.05 25); } }
+}
+
+.empty-attempts {
+  color: var(--text-3); font-size: 13px;
+  display: flex; flex-direction: column; align-items: flex-start;
+}
+
+.attempt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.attempt-error {
+  background: oklch(0.96 0.04 25); border: 1px solid oklch(0.88 0.1 25);
+  color: oklch(0.45 0.16 25); font-size: 12.5px;
+  padding: 8px 12px; border-radius: 8px; margin-bottom: 12px;
+}
+
+// ── Contact chips & picker ───────────────────────────────────────────────────
+.contact-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--bg-2, oklch(0.97 0.005 250));
+  border: 1px solid var(--border-1, oklch(0.9 0.01 250));
+  border-radius: 999px; padding: 4px 12px 4px 5px;
+  cursor: pointer; font: inherit; color: inherit;
+  transition: border-color .15s, box-shadow .15s;
+  &:hover { border-color: oklch(0.6 0.16 250); box-shadow: 0 0 0 3px oklch(0.6 0.16 250 / 0.12); }
+}
+.chip-avatar {
+  width: 26px; height: 26px; flex: none; border-radius: 50%;
+  background: oklch(0.6 0.16 250); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600;
+}
+.chip-text {
+  display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25;
+  strong { font-size: 12.5px; }
+  em { font-style: normal; font-size: 11px; color: var(--text-3, oklch(0.5 0.02 250)); }
+}
+.chip-x {
+  margin-left: 2px; border: none; background: none; font-size: 15px;
+  color: var(--text-3); cursor: pointer; padding: 0 2px; line-height: 1;
+  &:hover { color: oklch(0.55 0.18 25); }
+}
+
+.picker-block {
+  border: 1px dashed var(--border-1, oklch(0.9 0.01 250));
+  border-radius: 10px; padding: 12px; margin-bottom: 14px;
+}
+.picker-label { font-size: 12px; color: var(--text-3); margin-bottom: 8px; }
+.picked-contact {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid oklch(0.6 0.16 250 / 0.4); border-radius: 999px;
+  padding: 5px 12px 5px 6px; background: oklch(0.6 0.16 250 / 0.07);
+  &.static { pointer-events: none; }
+}
+.suggest-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.search-row { position: relative; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.search-spin { color: var(--text-3); font-size: 12px; }
+.search-results {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 180px; overflow-y: auto; margin-bottom: 8px;
+}
+.result-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 8px; border: none; background: none;
+  text-align: left; cursor: pointer; font: inherit; color: inherit;
+  text-decoration: none;
+  &:hover { background: oklch(0.6 0.16 250 / 0.08); }
+  strong { font-size: 12.5px; white-space: nowrap; }
+  em { font-style: normal; font-size: 11.5px; color: var(--text-3); }
+  span { font-size: 11.5px; color: var(--text-3); margin-left: auto; }
+}
+.link-btn {
+  border: none; background: none; color: oklch(0.55 0.16 250);
+  font-size: 12.5px; cursor: pointer; padding: 2px 0;
+  &:hover { text-decoration: underline; }
+}
+.inline-create {
+  display: grid; gap: 8px; margin-top: 8px;
+  .inline-actions { display: flex; justify-content: flex-end; gap: 8px; }
+}
+
+// ── Contact side panel ───────────────────────────────────────────────────────
+.contact-panel { width: min(480px, 92vw); }
+.panel-emails { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.panel-email {
+  border: 1px solid var(--border-1, oklch(0.9 0.01 250)); border-radius: 10px; padding: 10px 12px;
+  .pe-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  strong { font-size: 12.5px; }
+}
+.panel-apps { display: flex; flex-direction: column; gap: 4px; }

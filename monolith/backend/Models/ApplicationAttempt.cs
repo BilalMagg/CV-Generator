@@ -45,6 +45,14 @@ public class ApplicationAttempt
     public string? RecipientContact { get; set; }
 
     /// <summary>
+    /// Linked contact from the address book. Null for one-off recipients.
+    /// </summary>
+    public Guid? ContactId { get; set; }
+
+    [ForeignKey(nameof(ContactId))]
+    public Contact? Contact { get; set; }
+
+    /// <summary>
     /// Provider-specific proof of send: gmail messageId/threadId, whatsapp phone,
     /// linkedin profile url / conversation id, web form url...
     /// </summary>

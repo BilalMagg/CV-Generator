@@ -13,7 +13,7 @@ import {
 } from '@app/models/reminder.model';
 import { CalendarEventDto } from '@app/models/calendar-event.model';
 import { CalendarConfigurationDto } from '@app/models/calendar-configuration.model';
-import { STATUS_LABELS } from '@app/models/application.model';
+import { STATUS_LABELS, STATUS_ORDER } from '@app/models/application.model';
 
 interface CalendarEvent {
   id: string;
@@ -33,7 +33,7 @@ interface CalendarDay {
 }
 
 const MAX_VISIBLE_EVENTS = 3;
-const STATUS_OPTIONS = ['PENDING', 'REVIEWED', 'INTERVIEW', 'ACCEPTED', 'REJECTED', 'CANCELLED'];
+const STATUS_OPTIONS = STATUS_ORDER;
 
 @Component({
   selector: 'app-calendar',
@@ -136,9 +136,7 @@ export class CalendarComponent implements OnInit {
   }
 
   private isStatusInFilter(type: string, statuses: string[]): boolean {
-    const upper = type.toUpperCase();
-    if (upper === 'APPLIED') return statuses.includes('PENDING');
-    return statuses.includes(upper);
+    return statuses.includes(type.toUpperCase());
   }
 
   showDayPopover(day: number, month?: number, year?: number) {

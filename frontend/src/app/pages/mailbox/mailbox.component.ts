@@ -1,10 +1,13 @@
 import { Component, signal, inject, OnInit, computed, effect } from '@angular/core';
+import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MailboxService } from '@app/services/mailbox.service';
+import { ContactService } from '@app/services/contact.service';
+import { ToastService } from '@app/services/toast.service';
 import {
   ContactDto, EmailMessageDto, EmailScheduleDto,
-  MailboxStatsDto, SendEmailDto, ContactHistoryResponse,
+  MailboxStatsDto, SendEmailDto, ContactHistoryResponse, EmailAttachmentPayload,
 } from '@app/models/mailbox.model';
 
 type MailboxView = 'compose' | 'history' | 'contacts' | 'schedules' | 'settings';
@@ -41,12 +44,14 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
 @Component({
   selector: 'app-mailbox',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SheetImportDialogComponent],
   templateUrl: './mailbox.component.html',
   styleUrl: './mailbox.component.scss',
 })
 export class MailboxComponent implements OnInit {
   private service = inject(MailboxService);
+  private contactApi = inject(ContactService);
+  readonly toast = inject(ToastService);
 
   view = signal<MailboxView>((localStorage.getItem('mailbox-view') as MailboxView) || 'compose');
 
@@ -91,6 +96,7 @@ export class MailboxComponent implements OnInit {
 
   selectedContact = signal<ContactDto | null>(null);
   showContactForm = signal(false);
+  sheetImportOpen = signal(false);
   contactFormName = signal('');
   contactFormEmail = signal('');
   contactFormPhone = signal('');
@@ -171,7 +177,7 @@ export class MailboxComponent implements OnInit {
   async loadContacts() {
     this.contactsLoading.set(true);
     try {
-      const res = await this.service.getContacts({
+      const res = await this.contactApi.getContacts({
         search: this.contactSearch(),
         favorite: this.showFavoritesOnly() || undefined,
       });
@@ -218,7 +224,7 @@ export class MailboxComponent implements OnInit {
     this.selectedContactDetail.set(contact);
     this.contactHistoryLoading.set(true);
     try {
-      const res = await this.service.getContactHistory(contact.id);
+      const res = await this.contactApi.getContactHistory(contact.id);
       if (res.success && res.data) {
         this.contactHistory.set(res.data.emails);
       }
@@ -232,7 +238,7 @@ export class MailboxComponent implements OnInit {
   }
 
   async toggleFavorite(contact: ContactDto) {
-    const res = await this.service.toggleFavorite(contact.id);
+    const res = await this.contactApi.toggleFavorite(contact.id);
     if (res.success && res.data) {
       this.contacts.set(this.contacts().map(c => c.id === contact.id ? { ...c, isFavorite: res.data!.isFavorite } : c));
     }
@@ -261,7 +267,7 @@ export class MailboxComponent implements OnInit {
       position: this.cdEditPosition() || undefined,
       phone: this.cdEditPhone() || undefined,
     };
-    const res = await this.service.updateContact(contact.id, dto);
+    const res = await this.contactApi.updateContact(contact.id, dto);
     if (res.success && res.data) {
       this.selectedContactDetail.set(res.data);
       this.cdEditing.set(false);
@@ -278,7 +284,7 @@ export class MailboxComponent implements OnInit {
       const base64 = reader.result as string;
       const contact = this.selectedContactDetail();
       if (!contact) return;
-      const res = await this.service.updateContact(contact.id, { avatarBase64: base64 });
+      const res = await this.contactApi.updateContact(contact.id, { avatarBase64: base64 });
       if (res.success && res.data) {
         this.selectedContactDetail.set(res.data);
         this.contacts.set(this.contacts().map(c => c.id === contact.id ? res.data! : c));
@@ -299,23 +305,72 @@ export class MailboxComponent implements OnInit {
   async sendEmail() {
     if (!this.composeRecipients().length || !this.composeSubject() || !this.composeBody()) return;
     this.composeSending.set(true);
+    const recipients = this.composeRecipients();
     try {
+      const files = this.attachments();
+      const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+      if (totalBytes > 10 * 1024 * 1024) {
+        this.toast.error('Attachments exceed the 10 MB limit');
+        return;
+      }
+      const attachmentPayloads: EmailAttachmentPayload[] = [];
+      for (const file of files) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+        attachmentPayloads.push({ fileName: file.name, contentType: file.type || 'application/octet-stream', contentBase64: base64 });
+      }
+
       const dto: SendEmailDto = {
-        recipientIds: this.composeRecipients().map(c => c.id),
+        recipientIds: recipients.map(c => c.id),
         subject: this.composeSubject(),
         body: this.composeBody(),
+        attachments: attachmentPayloads.length ? attachmentPayloads : undefined,
       };
       const res = await this.service.send(dto);
       if (res.success) {
+        const to = recipients.length === 1
+          ? (recipients[0].name || recipients[0].email)
+          : `${recipients.length} recipients`;
+        this.toast.success(`Email sent to ${to}`);
         this.composeRecipients.set([]);
         this.composeSubject.set('');
         this.composeBody.set('');
+        this.loadHistory();
+        this.loadStats();
+      } else {
+        this.toast.error(res.message || 'Failed to send email');
       }
-    } catch {} finally { this.composeSending.set(false); }
+    } catch {
+      this.toast.error('Failed to send email — check your connection or Gmail status');
+    } finally { this.composeSending.set(false); }
+  }
+
+  async loadStats() {
+    try {
+      const res = await this.service.getStats();
+      if (res.success && res.data) this.stats.set(res.data);
+    } catch {}
+  }
+
+  /** True for emails sent in the last few seconds — drives the green flash on the history row. */
+  isJustSent(m: EmailMessageDto): boolean {
+    if (m.status !== 'sent' || !m.sentAt) return false;
+    return Date.now() - new Date(m.sentAt).getTime() < 10_000;
+  }
+
+  formatBytes(bytes: number): string {
+    if (!bytes || bytes < 0) return '0 KB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   async deleteContact(id: string) {
-    await this.service.deleteContact(id);
+    await this.contactApi.deleteContact(id);
     this.loadContacts();
   }
 
@@ -358,9 +413,9 @@ export class MailboxComponent implements OnInit {
       position: this.contactFormPosition() || undefined,
     };
     if (this.editingContactId()) {
-      await this.service.updateContact(this.editingContactId()!, dto);
+      await this.contactApi.updateContact(this.editingContactId()!, dto);
     } else {
-      await this.service.createContact(dto);
+      await this.contactApi.createContact(dto);
     }
     this.showContactForm.set(false);
     this.loadContacts();
@@ -370,12 +425,12 @@ export class MailboxComponent implements OnInit {
     const file = (fileEvent.target as HTMLInputElement).files?.[0];
     if (!file) return;
     const text = await file.text();
-    await this.service.importCsv(text);
+    await this.contactApi.importCsv(text);
     this.loadContacts();
   }
 
   async importFromOffers() {
-    await this.service.importFromOffers();
+    await this.contactApi.importFromOffers();
     this.loadContacts();
   }
 

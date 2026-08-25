@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using CV_Generator.Data;
@@ -10,16 +11,13 @@ namespace CV_Generator.Services;
 public class ContactService : IContactService
 {
     private readonly AppDbContext _db;
-    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ContactService> _logger;
 
     public ContactService(
         AppDbContext db,
-        IHttpClientFactory httpClientFactory,
         ILogger<ContactService> logger)
     {
         _db = db;
-        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -77,12 +75,14 @@ public class ContactService : IContactService
 
     public async Task<ContactDto> CreateContactAsync(Guid userId, CreateContactDto dto)
     {
+        ValidateContact(dto.Name, dto.Email);
+
         var contact = new Contact
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Name = dto.Name,
-            Email = dto.Email,
+            Name = dto.Name.Trim(),
+            Email = dto.Email.Trim().ToLower(),
             Phone = dto.Phone,
             Company = dto.Company,
             Position = dto.Position,
@@ -100,8 +100,16 @@ public class ContactService : IContactService
         var c = await _db.Set<Contact>().FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
         if (c is null) return null;
 
-        if (dto.Name is not null) c.Name = dto.Name;
-        if (dto.Email is not null) c.Email = dto.Email;
+        if (dto.Name is not null)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Name cannot be empty");
+            c.Name = dto.Name.Trim();
+        }
+        if (dto.Email is not null)
+        {
+            ValidateEmail(dto.Email);
+            c.Email = dto.Email.Trim().ToLower();
+        }
         if (dto.Phone is not null) c.Phone = dto.Phone;
         if (dto.Company is not null) c.Company = dto.Company;
         if (dto.Position is not null) c.Position = dto.Position;
@@ -135,10 +143,10 @@ public class ContactService : IContactService
 
     public async Task<int> ImportCsvAsync(Guid userId, string csvContent)
     {
-        var lines = csvContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        if (lines.Length < 2) return 0;
+        var rows = ParseCsv(csvContent);
+        if (rows.Count < 2) return 0;
 
-        var headers = lines[0].Split(',').Select(h => h.Trim().ToLower()).ToList();
+        var headers = rows[0].Select(h => h.Trim().ToLower()).ToList();
         var nameIdx = headers.IndexOf("name");
         var emailIdx = headers.IndexOf("email");
         var companyIdx = headers.IndexOf("company");
@@ -147,24 +155,38 @@ public class ContactService : IContactService
 
         if (nameIdx < 0 || emailIdx < 0) return 0;
 
+        // Dedup within the file and against existing contacts (by email).
+        var seenEmails = (await _db.Set<Contact>()
+            .Where(c => c.UserId == userId)
+            .Select(c => c.Email.ToLower())
+            .ToListAsync())
+            .ToHashSet();
+
         var contacts = new List<Contact>();
-        foreach (var line in lines.Skip(1))
+        foreach (var cols in rows.Skip(1))
         {
-            var cols = line.Split(',').Select(c => c.Trim().Trim('"')).ToList();
             if (cols.Count <= Math.Max(nameIdx, emailIdx)) continue;
+            var name = cols[nameIdx];
+            var email = cols[emailIdx].Trim().ToLower();
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email)) continue;
+            var at = email.IndexOf('@');
+            if (at < 1 || at == email.Length - 1 || !email[(at + 1)..].Contains('.')) continue;
+            if (!seenEmails.Add(email)) continue;
 
             contacts.Add(new Contact
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Name = cols[nameIdx],
-                Email = cols[emailIdx],
+                Name = name.Trim(),
+                Email = email,
                 Phone = phoneIdx >= 0 && cols.Count > phoneIdx ? cols[phoneIdx] : null,
                 Company = companyIdx >= 0 && cols.Count > companyIdx ? cols[companyIdx] : null,
                 Position = positionIdx >= 0 && cols.Count > positionIdx ? cols[positionIdx] : null,
                 Source = "csv"
             });
         }
+
+        if (contacts.Count == 0) return 0;
 
         _db.Set<Contact>().AddRange(contacts);
         await _db.SaveChangesAsync();
@@ -175,27 +197,29 @@ public class ContactService : IContactService
     {
         try
         {
-            using var client = _httpClientFactory.CreateClient();
-            var response = await client.GetAsync(
-                $"http://cv-job-offer-service:8086/api/job-offers?userId={userId}&page=1&pageSize=500");
-            if (!response.IsSuccessStatusCode) return 0;
-
-            var json = await response.Content.ReadAsStringAsync();
-            var offers = JsonSerializer.Deserialize<JobOfferImportDto>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (offers?.Items is null) return 0;
-
-            var existingEmails = await _db.Set<Contact>()
-                .Where(c => c.UserId == userId)
-                .Select(c => c.Email.ToLower())
+            // Local job_offers table — companies the candidate actually tracked.
+            var companies = await _db.JobOffers.AsNoTracking()
+                .Where(j => j.UserId == userId)
+                .GroupBy(j => j.EnterpriseName.Trim().ToLower())
+                .Select(g => g.First().EnterpriseName.Trim())
                 .ToListAsync();
+            if (companies.Count == 0) return 0;
+
+            var existingKeys = (await _db.Set<Contact>()
+                .Where(c => c.UserId == userId)
+                .Select(c => new { c.Email, c.Source })
+                .ToListAsync())
+                .Select(c => (c.Email.ToLower(), c.Source))
+                .ToHashSet();
 
             var contacts = new List<Contact>();
-            foreach (var offer in offers.Items)
+            foreach (var company in companies)
             {
-                var company = offer.EnterpriseName ?? "Unknown";
-                var email = $"recruiter@{company.Replace(" ", "").ToLower()}.com";
+                var slug = company.Replace(" ", "").Replace("-", "").ToLower();
+                var email = $"recruiter@{slug}.com";
 
-                if (existingEmails.Contains(email.ToLower())) continue;
+                // One placeholder per company; skip if already imported from offers.
+                if (!existingKeys.Add((email, "offer-placeholder"))) continue;
 
                 contacts.Add(new Contact
                 {
@@ -205,9 +229,9 @@ public class ContactService : IContactService
                     Email = email,
                     Company = company,
                     Position = "Recruiter",
-                    Source = "offer"
+                    Notes = "Placeholder created from a tracked job offer — replace with the real person once identified.",
+                    Source = "offer-placeholder"
                 });
-                existingEmails.Add(email.ToLower());
             }
 
             if (contacts.Count > 0)
@@ -238,13 +262,63 @@ public class ContactService : IContactService
         CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt
     };
 
-    private class JobOfferImportDto
+    private static void ValidateContact(string name, string email)
     {
-        public List<JobOfferItem> Items { get; set; } = [];
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Contact name is required");
+        ValidateEmail(email);
     }
 
-    private class JobOfferItem
+    private static void ValidateEmail(string email)
     {
-        public string? EnterpriseName { get; set; }
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Contact email is required");
+        // Placeholder addresses (recruiter@company.com) and real ones both pass;
+        // anything without a basic local@domain.tld shape is rejected.
+        var at = email.IndexOf('@');
+        if (at < 1 || at == email.Length - 1 || !email[(at + 1)..].Contains('.'))
+            throw new ArgumentException($"Invalid email address '{email}'");
+    }
+
+    /// <summary>RFC4180-style CSV parsing: quoted fields, escaped quotes, CRLF/LF.</summary>
+    private static List<List<string>> ParseCsv(string csvContent)
+    {
+        var rows = new List<List<string>>();
+        var row = new List<string>();
+        var field = new StringBuilder();
+        var inQuotes = false;
+
+        void EndField() { row.Add(field.ToString().Trim()); field.Clear(); }
+        void EndRow()
+        {
+            EndField();
+            if (row.Any(v => v.Length > 0)) rows.Add(row);
+            row = new List<string>();
+        }
+
+        for (var i = 0; i < csvContent.Length; i++)
+        {
+            var ch = csvContent[i];
+            if (inQuotes)
+            {
+                if (ch == '"')
+                {
+                    if (i + 1 < csvContent.Length && csvContent[i + 1] == '"') { field.Append('"'); i++; }
+                    else inQuotes = false;
+                }
+                else field.Append(ch);
+            }
+            else if (ch == '"') inQuotes = true;
+            else if (ch == ',') EndField();
+            else if (ch is '\n' or '\r')
+            {
+                if (ch == '\r' && i + 1 < csvContent.Length && csvContent[i + 1] == '\n') i++;
+                EndRow();
+            }
+            else field.Append(ch);
+        }
+        if (field.Length > 0 || row.Count > 0) EndRow();
+
+        return rows;
     }
 }

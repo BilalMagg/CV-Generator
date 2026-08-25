@@ -9,6 +9,12 @@ import {
   CreateApplicationDto,
   UpdateStatusDto,
   UpdateApplicationDto,
+  DuplicateCheckRequestDto,
+  DuplicateCheckResponseDto,
+  AttemptResponseDto,
+  CreateAttemptDto,
+  UpdateAttemptDto,
+  ContactSummaryDto,
   ApiResponse,
 } from '../models/application.model';
 import { CalendarEventDto } from '@app/models/calendar-event.model';
@@ -48,6 +54,10 @@ export class ApplicationService {
 
   async getById(id: string): Promise<ApiResponse<ApplicationResponseDto>> {
     return this.http.get<ApiResponse<ApplicationResponseDto>>(`/api/applications/${id}`);
+  }
+
+  async checkDuplicate(dto: DuplicateCheckRequestDto): Promise<ApiResponse<DuplicateCheckResponseDto>> {
+    return this.http.post<ApiResponse<DuplicateCheckResponseDto>>('/api/applications/check-duplicate', dto);
   }
 
   async create(dto: CreateApplicationDto): Promise<ApiResponse<ApplicationResponseDto>> {
@@ -105,5 +115,39 @@ export class ApplicationService {
     if (params?.limit) qs.set('limit', String(params.limit));
     const query = qs.toString();
     return this.http.get<ApiResponse<ActivityFeedDto>>(`/api/applications/activity${query ? `?${query}` : ''}`);
+  }
+
+  // ── Attempts (apply / re-apply actions) ─────────────────────────────────────
+
+  async getAttempts(applicationId: string): Promise<ApiResponse<AttemptResponseDto[]>> {
+    return this.http.get<ApiResponse<AttemptResponseDto[]>>(`/api/applications/${applicationId}/attempts`);
+  }
+
+  async createAttempt(
+    applicationId: string,
+    dto: CreateAttemptDto,
+  ): Promise<ApiResponse<AttemptResponseDto>> {
+    return this.http.post<ApiResponse<AttemptResponseDto>>(`/api/applications/${applicationId}/attempts`, dto);
+  }
+
+  async updateAttempt(
+    applicationId: string,
+    attemptId: string,
+    dto: UpdateAttemptDto,
+  ): Promise<ApiResponse<AttemptResponseDto>> {
+    return this.http.patch<ApiResponse<AttemptResponseDto>>(
+      `/api/applications/${applicationId}/attempts/${attemptId}`,
+      dto,
+    );
+  }
+
+  /** Contacts matching the application's company (favorites first). */
+  async getSuggestedContacts(applicationId: string): Promise<ApiResponse<ContactSummaryDto[]>> {
+    return this.http.get<ApiResponse<ContactSummaryDto[]>>(`/api/applications/${applicationId}/suggested-contacts`);
+  }
+
+  /** Applications reached through a contact (null → contact not found). */
+  async getApplicationsForContact(contactId: string): Promise<ApiResponse<ApplicationResponseDto[] | null>> {
+    return this.http.get<ApiResponse<ApplicationResponseDto[] | null>>(`/api/contacts/${contactId}/applications`);
   }
 }

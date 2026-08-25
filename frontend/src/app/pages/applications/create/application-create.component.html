@@ -1,54 +1,251 @@
 <div class="topbar">
-  <button class="back-btn" (click)="router.navigate(['/applications/list'])"><i class="ti ti-arrow-left"></i></button>
+  <button class="back-btn" (click)="router.navigate(['/applications/kanban'])"><i class="ti ti-arrow-left"></i></button>
   <div class="topbar-title">New application</div>
 </div>
 
-<div class="form-body">
-  @if (error()) {
-    <div class="alert alert-error">{{ error() }}</div>
-  }
+<div class="create-shell">
 
-  <form (ngSubmit)="onSubmit()">
-    <div class="section">
-      <div class="section-header"><i class="ti ti-building"></i> Company & position</div>
-      <div class="section-body">
-        <div class="field">
-          <label>Company name <span class="req">*</span></label>
-          <input type="text" placeholder="e.g. Stripe" [(ngModel)]="companyName" name="companyName" required>
+  <!-- ══ Main column ══ -->
+  <div class="main-col">
+
+    @if (error()) {
+      <div class="alert alert-error"><i class="ti ti-alert-circle"></i> {{ error() }}</div>
+    }
+
+    @if (duplicateWarning(); as matches) {
+      <div class="dup-warning">
+        <div class="dup-head">
+          <i class="ti ti-alert-triangle"></i>
+          <div>
+            <div class="dup-title">Possible duplicates found</div>
+            <div class="dup-sub">You may have already tracked this company + position:</div>
+          </div>
         </div>
-        <div class="field">
-          <label>Position title <span class="req">*</span></label>
-          <input type="text" placeholder="e.g. Senior Backend Engineer" [(ngModel)]="positionTitle" name="positionTitle" required>
+        <div class="dup-list">
+          @for (m of matches; track m.id) {
+            <div class="dup-row" [routerLink]="['/applications', m.id]">
+              <span class="dup-company">{{ m.companyName }}</span>
+              <span class="dup-role">{{ m.positionTitle }}</span>
+              <span class="status-pill" [attr.data-status]="m.status">{{ statusLabel(m.status) }}</span>
+              <i class="ti ti-chevron-right"></i>
+            </div>
+          }
         </div>
-        <div class="field">
-          <label>Source</label>
-          <select [(ngModel)]="offerSource" name="offerSource">
-            <option value="">Select source</option>
-            <option value="LinkedIn">LinkedIn</option>
-            <option value="Indeed">Indeed</option>
-            <option value="Referral">Referral</option>
-            <option value="Company website">Company website</option>
-            <option value="Other">Other</option>
-          </select>
+        <div class="dup-actions">
+          <button type="button" class="ghost-btn" (click)="dismissDuplicates()">Go back and edit</button>
+          <button type="button" class="force-btn" (click)="onSubmit(true)" [disabled]="submitting()">
+            {{ submitting() ? 'Creating...' : 'Create anyway' }}
+          </button>
         </div>
       </div>
-    </div>
+    }
 
-    <div class="section">
-      <div class="section-header"><i class="ti ti-notes"></i> Details</div>
-      <div class="section-body">
-        <div class="field full">
-          <label>Notes</label>
-          <textarea placeholder="Any context about this application…" [(ngModel)]="notes" name="notes"></textarea>
+    <form (ngSubmit)="onSubmit()">
+
+      <!-- ── Company & position ── -->
+      <div class="section">
+        <div class="section-header"><i class="ti ti-building"></i> Company &amp; position</div>
+        <div class="section-body">
+          <div class="identity-row">
+            <div class="logo-chip">{{ (companyName().trim()[0] || '?') | uppercase }}</div>
+            <div class="field grow">
+              <label>Company name <span class="req">*</span></label>
+              <input type="text" placeholder="e.g. Stripe" [(ngModel)]="companyName" name="companyName" required>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label>Position title <span class="req">*</span></label>
+              <input type="text" placeholder="e.g. Senior Backend Engineer" [(ngModel)]="positionTitle" name="positionTitle" required>
+            </div>
+            <div class="field">
+              <label>Found via</label>
+              <select [(ngModel)]="offerSource" name="offerSource">
+                <option value="">Select source</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Indeed">Indeed</option>
+                <option value="Referral">Referral</option>
+                <option value="Company website">Company website</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label>Internship type</label>
+              <input type="text" placeholder="e.g. PFA, PFE, Full-time" [(ngModel)]="internshipType" name="internshipType" maxlength="50">
+            </div>
+            <div class="field">
+              <label>Priority</label>
+              <div class="priority-segmented">
+                @for (p of PRIORITY_ORDER; track p) {
+                  <button type="button" [class.active]="priority() === p"
+                    [style.--p-color]="p === 'HIGH' ? 'oklch(0.62 0.19 25)' : p === 'MEDIUM' ? 'oklch(0.72 0.14 80)' : 'oklch(0.6 0.1 250)'"
+                    (click)="priority.set(p)">{{ PRIORITY_LABELS[p] }}</button>
+                }
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="footer">
-      <button type="button" class="cancel-btn" (click)="router.navigate(['/applications/list'])">Cancel</button>
-      <button type="submit" class="create-btn" [disabled]="submitting() || !isFormValid">
-        {{ submitting() ? 'Creating...' : 'Create application' }}
-      </button>
+      <!-- ── Stage ── -->
+      <div class="section">
+        <div class="section-header"><i class="ti ti-route"></i> Where are you in the process?</div>
+        <div class="section-body">
+          <div class="choice-grid">
+            <button type="button" class="choice-card" [class.active]="stage() === 'SAVED'" (click)="setStage('SAVED')">
+              <span class="choice-icon saved"><i class="ti ti-bookmark"></i></span>
+              <span class="choice-name">Saved for later</span>
+              <span class="choice-desc">Haven't applied yet. Track it as a bookmark on your board.</span>
+            </button>
+            <button type="button" class="choice-card" [class.active]="stage() === 'APPLIED'" (click)="setStage('APPLIED')">
+              <span class="choice-icon applied"><i class="ti ti-send"></i></span>
+              <span class="choice-name">Already applied</span>
+              <span class="choice-desc">Log how you reached out so the timeline starts today.</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── First attempt (conditional) ── -->
+      @if (stage() === 'APPLIED') {
+        <div class="section attempt-section">
+          <div class="section-header"><i class="ti ti-send"></i> First apply attempt</div>
+          <div class="section-body">
+            <div class="field">
+              <label>Channel</label>
+              <div class="channel-grid">
+                @for (c of channels; track c.value) {
+                  <button type="button" class="channel-tile" [class.active]="channel() === c.value" (click)="channel.set(c.value)">
+                    <i class="{{ c.icon }}"></i>
+                    <span>{{ c.label }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="inline-row">
+              <div class="field">
+                <label>Initiated by</label>
+                <div class="seg-control">
+                  @for (opt of INITIATORS; track opt.value) {
+                    <button type="button" class="seg-btn" [class.active]="initiatedBy() === opt.value" (click)="initiatedBy.set(opt.value)">
+                      {{ opt.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+              <div class="field sent-toggle-field">
+                <label>Status</label>
+                <button type="button" class="sent-toggle" [class.on]="markSent()" (click)="markSent.set(!markSent())">
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  <span class="toggle-text">{{ markSent() ? 'Already sent' : 'Save as draft' }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Link a contact</label>
+              @if (pickedContact(); as pc) {
+                <div class="picked-contact">
+                  <span class="chip-avatar">{{ pc.name.charAt(0) }}</span>
+                  <span class="chip-text">
+                    <strong>{{ pc.name }}</strong>
+                    <em>{{ pc.email }}@if (pc.company) { · {{ pc.company }}}</em>
+                  </span>
+                  <button type="button" class="chip-x" (click)="clearPickedContact()" title="Unlink">&times;</button>
+                </div>
+              } @else {
+                <input type="text" placeholder="Search contacts by name, email or company…" [(ngModel)]="contactSearch"
+                  name="contactSearch" (ngModelChange)="searchContacts()">
+                @if (contactResults().length > 0) {
+                  <div class="contact-results">
+                    @for (c of contactResults(); track c.id) {
+                      <button type="button" class="result-row" (click)="pickContact(c)">
+                        <strong>{{ c.name }}</strong><em>{{ c.email }}</em>@if (c.company) { <span>{{ c.company }}</span> }
+                      </button>
+                    }
+                  </div>
+                }
+                <small>Optional — links the attempt to your contact book.</small>
+              }
+            </div>
+
+            <div class="two-col">
+              <div class="field">
+                <label>Recipient name</label>
+                <input type="text" placeholder="e.g. Jane Doe" [(ngModel)]="recipientName" name="recipientName">
+              </div>
+              <div class="field">
+                <label>Recipient contact</label>
+                <input type="text" placeholder="email · phone · profile URL" [(ngModel)]="recipientContact" name="recipientContact">
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Subject</label>
+              <input type="text" placeholder="Application – {{ positionTitle().trim() || 'Position title' }}" [(ngModel)]="subject" name="attemptSubject">
+            </div>
+
+            <div class="field">
+              <label>Message or notes</label>
+              <textarea rows="4" placeholder="What did you send? Paste the message here…" [(ngModel)]="body" name="attemptBody"></textarea>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ── Notes ── -->
+      <div class="section">
+        <div class="section-header"><i class="ti ti-notes"></i> Details</div>
+        <div class="section-body">
+          <div class="field full">
+            <label>Notes</label>
+            <textarea rows="3" placeholder="Job posting link, salary expectations, referral name… anything worth remembering." [(ngModel)]="notes" name="notes"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- ══ Sidebar ══ -->
+  <aside class="side-col">
+    <div class="preview-wrap">
+      <div class="preview-label">Board preview</div>
+      <div class="preview-card">
+        <div class="pv-head">
+          <div class="pv-logo">{{ (companyName().trim()[0] || '?') | uppercase }}</div>
+          <span class="pv-company">{{ companyName().trim() || 'Company' }}</span>
+        </div>
+        <div class="pv-role">{{ positionTitle().trim() || 'Position title' }}</div>
+        <div class="pv-footer">
+          <span class="status-pill" [attr.data-status]="previewStatus()">{{ STATUS_LABELS[previewStatus()] }}</span>
+          <span class="pv-date">{{ formatPreviewDate(previewDate()) }}</span>
+        </div>
+      </div>
+      <p class="preview-hint">
+        @if (stage() === 'SAVED') {
+          Lands in the <strong>Saved</strong> column — drag it across the board when you apply.
+        } @else {
+          Created as <strong>Applied</strong> with today's date@if (markSent()) {<span>, and the attempt is logged in the application's timeline</span>}.
+        }
+      </p>
     </div>
-  </form>
+  </aside>
+</div>
+
+<!-- Sticky footer -->
+<div class="footer">
+  <span class="footer-summary">
+    @if (stage() === 'APPLIED' && markSent()) { Will be marked as <strong>Applied today</strong> }
+    @else { Will be saved as <strong>{{ STATUS_LABELS[previewStatus()] }}</strong> }
+  </span>
+  <div class="footer-btns">
+    <button type="button" class="cancel-btn" (click)="router.navigate(['/applications/kanban'])">Cancel</button>
+    <button type="button" class="create-btn" (click)="onSubmit()" [disabled]="submitting() || !isFormValid">
+      {{ submitting() ? 'Creating…' : (stage() === 'APPLIED' ? 'Log application' : 'Save application') }}
+    </button>
+  </div>
 </div>

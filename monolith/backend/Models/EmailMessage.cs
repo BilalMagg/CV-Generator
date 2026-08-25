@@ -15,6 +15,7 @@ public class EmailMessage
     public string Provider { get; set; } = "gmail";
     public DateTime? SentAt { get; set; }
     public Guid? ScheduleId { get; set; }
+    public string? AttachmentMetadataJson { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Contact? Contact { get; set; }

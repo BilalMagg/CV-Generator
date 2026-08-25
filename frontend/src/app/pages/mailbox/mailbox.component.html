@@ -155,7 +155,12 @@
                 </thead>
                 <tbody>
                   @for (m of history(); track m.id) {
-                    <tr class="mb-tr" [class.active-row]="selectedEmail()?.id === m.id" [class.failed-row]="m.status === 'failed'" (click)="selectEmail(m)">
+                    <tr class="mb-tr"
+                        [class.active-row]="selectedEmail()?.id === m.id"
+                        [class.sent-row]="m.status === 'sent'"
+                        [class.failed-row]="m.status === 'failed'"
+                        [class.just-sent]="isJustSent(m)"
+                        (click)="selectEmail(m)">
                       <td><span class="status-badge" [class.sent]="m.status === 'sent'" [class.failed]="m.status === 'failed'">{{ m.status }}</span></td>
                       <td>{{ m.recipientName || m.recipientEmail }}</td>
                       <td class="mb-subj">{{ m.subject }}</td>
@@ -207,6 +212,22 @@
                 <span class="detail-label">Provider</span>
                 <span class="detail-value">{{ email.provider }}</span>
               </div>
+              @if (email.attachments?.length) {
+                <div class="detail-field">
+                  <span class="detail-label">Attachments ({{ email.attachments!.length }})</span>
+                  <div class="detail-attachments">
+                    @for (att of email.attachments; track att.fileName) {
+                      <div class="attach-chip" [title]="att.contentType">
+                        <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.5">
+                          <path d="M7 11.5V3.5M7 3.5L4 6.5M7 3.5l3 3" transform="rotate(45 7 7)" />
+                        </svg>
+                        <span class="chip-file">{{ att.fileName }}</span>
+                        <span class="chip-size">{{ formatBytes(att.sizeBytes) }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
               <div class="detail-body-preview">
                 <div class="detail-label">Message</div>
                 <div class="detail-message">{{ email.body }}</div>
@@ -301,8 +322,11 @@
                 Import CSV
                 <input type="file" accept=".csv" (change)="importCsv($event)" hidden />
               </label>
+              <button class="mb-btn-secondary" (click)="sheetImportOpen.set(true)">Import Sheet</button>
             </div>
           </div>
+
+          <app-sheet-import-dialog [type]="'contacts'" [(open)]="sheetImportOpen" (imported)="loadContacts()" />
 
           @if (showContactForm()) {
             <div class="mb-card contact-form">

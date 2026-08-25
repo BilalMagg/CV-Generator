@@ -27,6 +27,14 @@ public class Application
     [MaxLength(100)]
     public string? OfferSource { get; set; }
 
+    /// <summary>Type of internship/target (e.g. PFA, PFE, Full-time). Free text.</summary>
+    [MaxLength(50)]
+    public string? InternshipType { get; set; }
+
+    /// <summary>Candidate's own priority for follow-up energy allocation.</summary>
+    [Required]
+    public ApplicationPriority Priority { get; set; } = ApplicationPriority.MEDIUM;
+
     /// <summary>
     /// How this application record came to exist (manual entry, job offer conversion, agent auto-apply...).
     /// Distinct from OfferSource which describes where the offer was discovered.

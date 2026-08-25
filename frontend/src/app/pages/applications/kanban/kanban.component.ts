@@ -2,8 +2,18 @@ import { Component, signal, inject, OnInit, computed, effect } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApplicationService } from '@app/services/application.service';
-import { ApplicationResponseDto, ApplicationStatus, ActivityItemDto, STATUS_LABELS } from '@app/models/application.model';
+import {
+  ApplicationResponseDto,
+  ApplicationStatus,
+  ActivityItemDto,
+  STATUS_ORDER,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  PRIORITY_LABELS,
+  PRIORITY_COLORS,
+} from '@app/models/application.model';
 import { ApplicationsListComponent } from '../list/applications-list.component';
+import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 
 interface Column {
   status: ApplicationStatus;
@@ -12,19 +22,17 @@ interface Column {
   items: ApplicationResponseDto[];
 }
 
-const COLUMNS: { status: ApplicationStatus; label: string; colorVar: string }[] = [
-  { status: 'PENDING',   label: 'Applied',   colorVar: 'applied' },
-  { status: 'REVIEWED',  label: 'Screening', colorVar: 'screening' },
-  { status: 'INTERVIEW', label: 'Interview', colorVar: 'interview' },
-  { status: 'ACCEPTED',  label: 'Offer',     colorVar: 'offer' },
-  { status: 'REJECTED',  label: 'Rejected',  colorVar: 'rejected' },
-  { status: 'CANCELLED', label: 'Cancelled', colorVar: 'cancelled' },
-];
+const COLUMNS: { status: ApplicationStatus; label: string; colorVar: string }[] =
+  STATUS_ORDER.map(status => ({
+    status,
+    label: STATUS_LABELS[status],
+    colorVar: status.toLowerCase(),
+  }));
 
 @Component({
   selector: 'app-kanban',
   standalone: true,
-  imports: [CommonModule, RouterLink, ApplicationsListComponent],
+  imports: [CommonModule, RouterLink, ApplicationsListComponent, SheetImportDialogComponent],
   templateUrl: './kanban.component.html',
   styleUrl: './kanban.component.scss',
 })
@@ -40,13 +48,14 @@ export class KanbanComponent implements OnInit {
   }
 
   activityFeed = signal<ActivityItemDto[]>([]);
+  importOpen = signal(false);
   activityTotal = signal(0);
   activityLoading = signal(false);
 
   totalApps = computed(() => this.columns().reduce((s, c) => s + c.items.length, 0));
 
   savedApps = computed(() =>
-    this.columns().flatMap(c => c.items).filter(a => a.isSaved)
+    this.columns().flatMap(c => c.items).filter(a => a.status === 'SAVED')
   );
 
   ngOnInit() { this.loadApps(); }
@@ -83,6 +92,10 @@ export class KanbanComponent implements OnInit {
       await this.appService.toggleSave(app.id);
       await this.loadApps();
     } catch { }
+  }
+
+  savedDate(a: ApplicationResponseDto): string {
+    return a.appliedAt ?? a.updatedAt;
   }
 
   onDragStart(event: DragEvent, app: ApplicationResponseDto) {
@@ -143,7 +156,14 @@ export class KanbanComponent implements OnInit {
 
   logoText(name: string): string { return name.slice(0, 2).toUpperCase(); }
 
-  formatDate(d: string): string {
+  protected readonly PRIORITY_LABELS = PRIORITY_LABELS;
+
+  priorityColor(p?: string): string {
+    return PRIORITY_COLORS[p as 'LOW' | 'MEDIUM' | 'HIGH'] ?? PRIORITY_COLORS.MEDIUM;
+  }
+
+  formatDate(d: string | null | undefined): string {
+    if (!d) return '—';
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 

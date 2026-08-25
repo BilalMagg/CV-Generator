@@ -216,6 +216,15 @@ public class ApplicationsController : ControllerBase
         }
     }
 
+    /// GET /applications/{id}/suggested-contacts — contacts matching the application's company
+    [HttpGet("{id}/suggested-contacts")]
+    public async Task<IActionResult> SuggestedContacts(Guid id)
+    {
+        if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+        var suggestions = await _service.GetSuggestedContactsAsync(id, UserId.Value);
+        return Ok(ApiResponse<List<ContactSummaryDto>>.Ok(suggestions));
+    }
+
     /// POST /applications/{id}/attempts
     [HttpPost("{id}/attempts")]
     public async Task<IActionResult> CreateAttempt(Guid id, [FromBody] CreateAttemptDto dto)

@@ -47,6 +47,12 @@ export interface ContactListResponse {
   pageSize: number;
 }
 
+export interface EmailAttachmentInfo {
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
 export interface EmailMessageDto {
   id: string;
   userId: string;
@@ -60,12 +66,20 @@ export interface EmailMessageDto {
   errorMessage?: string;
   sentAt?: string;
   createdAt: string;
+  attachments?: EmailAttachmentInfo[];
+}
+
+export interface EmailAttachmentPayload {
+  fileName: string;
+  contentType: string;
+  contentBase64: string;
 }
 
 export interface SendEmailDto {
   recipientIds: string[];
   subject: string;
   body: string;
+  attachments?: EmailAttachmentPayload[];
 }
 
 export interface EmailHistoryResponse {

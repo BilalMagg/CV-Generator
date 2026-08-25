@@ -57,6 +57,12 @@ public class ApplicationService : IApplicationService
             ? parsedStatus
             : ApplicationStatus.APPLIED;
 
+        if (!Enum.TryParse<ApplicationPriority>(dto.Priority, true, out var priority))
+            throw new ArgumentException($"Invalid priority value '{dto.Priority}'");
+        var internshipType = dto.InternshipType?.Trim();
+        if (internshipType is { Length: > 50 })
+            throw new ArgumentException("Internship type cannot exceed 50 characters");
+
         // Soft dedup: warn when an equivalent application already exists
         var fingerprint = FingerprintHelper.Compute(dto.CompanyName, dto.PositionTitle);
         var duplicates = await FindDuplicatesAsync(userId, fingerprint, dto.JobOfferId, excludeId: null);
@@ -76,6 +82,8 @@ public class ApplicationService : IApplicationService
             PositionTitle = dto.PositionTitle.Trim(),
             OfferSource = dto.OfferSource,
             Origin = origin,
+            InternshipType = string.IsNullOrEmpty(internshipType) ? null : internshipType,
+            Priority = priority,
             Status = initialStatus,
             AppliedAt = initialStatus == ApplicationStatus.SAVED ? null : DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -137,6 +145,17 @@ public class ApplicationService : IApplicationService
         }
         if (dto.OfferSource != null) app.OfferSource = dto.OfferSource;
         if (dto.Notes != null) app.Notes = dto.Notes;
+        if (dto.InternshipType != null)
+        {
+            if (dto.InternshipType.Length > 50) throw new ArgumentException("Internship type cannot exceed 50 characters");
+            app.InternshipType = string.IsNullOrWhiteSpace(dto.InternshipType) ? null : dto.InternshipType.Trim();
+        }
+        if (dto.Priority != null)
+        {
+            if (!Enum.TryParse<ApplicationPriority>(dto.Priority, true, out var parsedPriority))
+                throw new ArgumentException($"Invalid priority value '{dto.Priority}'");
+            app.Priority = parsedPriority;
+        }
 
         app.Fingerprint = FingerprintHelper.ComputeFor(app);
         app.UpdatedAt = DateTime.UtcNow;
@@ -362,13 +381,14 @@ public class ApplicationService : IApplicationService
     {
         await EnsureOwnedAsync(applicationId, userId);
 
-        return (await _db.ApplicationAttempts
+        var attempts = await _db.ApplicationAttempts
                 .AsNoTracking()
                 .Where(t => t.ApplicationId == applicationId)
                 .OrderBy(t => t.AttemptNumber)
-                .ToListAsync())
-            .Select(MapAttemptToDto)
-            .ToList();
+                .ToListAsync();
+        await HydrateAttemptContactsAsync(attempts);
+
+        return attempts.Select(MapAttemptToDto).ToList();
     }
 
     public async Task<AttemptResponseDto> CreateAttemptAsync(Guid applicationId, CreateAttemptDto dto, Guid userId)
@@ -390,6 +410,13 @@ public class ApplicationService : IApplicationService
             .MaxAsync(t => (int?)t.AttemptNumber) ?? 0;
         nextNumber += 1;
 
+        // Linked contact must belong to the user; fills recipient gaps from the card.
+        var contact = await ResolveContactAsync(dto.ContactId, userId);
+        if (contact != null && dto.RecipientName == null)
+            dto = dto with { RecipientName = contact.Name };
+        if (contact != null && dto.RecipientContact == null)
+            dto = dto with { RecipientContact = contact.Email };
+
         var attempt = new ApplicationAttempt
         {
             ApplicationId = applicationId,
@@ -401,6 +428,7 @@ public class ApplicationService : IApplicationService
             Body = dto.Body,
             RecipientName = dto.RecipientName,
             RecipientContact = dto.RecipientContact,
+            ContactId = contact?.Id,
             ChannelMetadataJson = dto.ChannelMetadataJson,
             CvVersionId = dto.CvVersionId,
             SentAt = status == AttemptStatus.SENT ? dto.SentAt ?? DateTime.UtcNow : dto.SentAt,
@@ -409,6 +437,8 @@ public class ApplicationService : IApplicationService
 
         _db.ApplicationAttempts.Add(attempt);
         await _db.SaveChangesAsync();
+
+        attempt.Contact = contact;
 
         if (attempt.Status == AttemptStatus.SENT)
             await ApplySentSideEffectsAsync(app, attempt, userId.ToString());
@@ -439,6 +469,13 @@ public class ApplicationService : IApplicationService
         if (dto.Body != null) attempt.Body = dto.Body;
         if (dto.RecipientName != null) attempt.RecipientName = dto.RecipientName;
         if (dto.RecipientContact != null) attempt.RecipientContact = dto.RecipientContact;
+        if (dto.ContactId.HasValue)
+        {
+            var contact = await ResolveContactAsync(dto.ContactId.Value, userId);
+            attempt.ContactId = contact!.Id;
+            if (string.IsNullOrEmpty(attempt.RecipientName)) attempt.RecipientName = contact!.Name;
+            if (string.IsNullOrEmpty(attempt.RecipientContact)) attempt.RecipientContact = contact!.Email;
+        }
         if (dto.ChannelMetadataJson != null) attempt.ChannelMetadataJson = dto.ChannelMetadataJson;
         if (dto.CvVersionId.HasValue) attempt.CvVersionId = dto.CvVersionId.Value;
         if (dto.FailureReason != null) attempt.FailureReason = dto.FailureReason;
@@ -456,10 +493,62 @@ public class ApplicationService : IApplicationService
             await ApplySentSideEffectsAsync(app, attempt, userId.ToString());
         }
 
+        await HydrateAttemptContactsAsync(new List<ApplicationAttempt> { attempt });
+
         _logger.LogInformation("Attempt {AttemptId} updated: {Old} → {New}",
             attemptId, oldStatus, attempt.Status);
 
         return MapAttemptToDto(attempt);
+    }
+
+    /// <summary>
+    /// Contacts likely relevant to this application: same company, or email handle mentioning it.
+    /// </summary>
+    public async Task<List<ContactSummaryDto>> GetSuggestedContactsAsync(Guid applicationId, Guid userId)
+    {
+        var app = await EnsureOwnedAsync(applicationId, userId);
+
+        var token = app.CompanyName.Trim().Replace(" ", "").ToLower();
+        var query = _db.Contacts.AsNoTracking().Where(c => c.UserId == userId);
+
+        query = token.Length >= 3
+            ? query.Where(c =>
+                (c.Company != null && EF.Functions.ILike(c.Company, app.CompanyName)) ||
+                EF.Functions.ILike(c.Email, $"%{token}%"))
+            : query.Where(c => c.Company != null && EF.Functions.ILike(c.Company, app.CompanyName));
+
+        return await query
+            .OrderByDescending(c => c.IsFavorite)
+            .ThenBy(c => c.Name)
+            .Take(8)
+            .Select(c => new ContactSummaryDto(c.Id, c.Name, c.Email, c.Company, c.Position, c.IsFavorite))
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Applications reached through a specific contact (via linked attempts). Null → contact not found.
+    /// </summary>
+    public async Task<List<ApplicationResponseDto>?> GetApplicationsForContactAsync(Guid contactId, Guid userId)
+    {
+        var contact = await _db.Contacts.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == contactId && c.UserId == userId);
+        if (contact is null) return null;
+
+        var appIds = await _db.ApplicationAttempts.AsNoTracking()
+            .Where(t => t.ContactId == contactId)
+            .Select(t => t.ApplicationId)
+            .Distinct()
+            .ToListAsync();
+        if (appIds.Count == 0) return [];
+
+        var apps = await _db.Applications
+            .Where(a => a.CandidateId == userId && appIds.Contains(a.Id))
+            .Include(a => a.StatusHistory.OrderByDescending(h => h.ChangedAt))
+            .Include(a => a.Attempts.OrderBy(t => t.AttemptNumber)).ThenInclude(t => t.Contact)
+            .OrderByDescending(a => a.UpdatedAt)
+            .ToListAsync();
+
+        return apps.Select(MapToDtoWithHistory).ToList();
     }
 
     /// <summary>
@@ -579,10 +668,33 @@ public class ApplicationService : IApplicationService
         return app;
     }
 
+    private async Task<Contact?> ResolveContactAsync(Guid? contactId, Guid userId)
+    {
+        if (contactId is null) return null;
+        return await _db.Contacts.FirstOrDefaultAsync(c => c.Id == contactId.Value && c.UserId == userId)
+            ?? throw new ArgumentException($"Contact {contactId} not found");
+    }
+
+    /// <summary>Loads the Contact navigation for attempts that reference one (avoids N+1).</summary>
+    private async Task HydrateAttemptContactsAsync(List<ApplicationAttempt> attempts)
+    {
+        var ids = attempts.Where(t => t.ContactId.HasValue).Select(t => t.ContactId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return;
+
+        var contacts = await _db.Contacts.AsNoTracking()
+            .Where(c => ids.Contains(c.Id))
+            .ToListAsync();
+        var map = contacts.ToDictionary(c => c.Id);
+
+        foreach (var t in attempts)
+            if (t.ContactId.HasValue && map.TryGetValue(t.ContactId.Value, out var c))
+                t.Contact = c;
+    }
+
     private async Task<Application> ReloadAsync(Guid id)
         => await _db.Applications
             .Include(a => a.StatusHistory.OrderByDescending(h => h.ChangedAt))
-            .Include(a => a.Attempts.OrderBy(t => t.AttemptNumber))
+            .Include(a => a.Attempts.OrderBy(t => t.AttemptNumber)).ThenInclude(t => t.Contact)
             .FirstAsync(a => a.Id == id);
 
     private async Task RecordHistoryAsync(Guid applicationId, ApplicationStatus? oldStatus, ApplicationStatus newStatus, string changedBy, string? comment)
@@ -604,13 +716,15 @@ public class ApplicationService : IApplicationService
     private static ApplicationResponseDto MapToDto(Application a) => new(
         a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
         a.CompanyName, a.PositionTitle, a.OfferSource,
-        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString()
+        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString(),
+        a.InternshipType, a.Priority.ToString()
     );
 
     private static ApplicationResponseDto MapToDtoWithHistory(Application a) => new(
         a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
         a.CompanyName, a.PositionTitle, a.OfferSource,
         a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString(),
+        a.InternshipType, a.Priority.ToString(),
         a.StatusHistory?.Select(h => new StatusHistoryDto(
             h.Id, h.OldStatus?.ToString(), h.NewStatus.ToString(),
             h.ChangedAt, h.ChangedBy, h.Comment
@@ -622,6 +736,10 @@ public class ApplicationService : IApplicationService
         t.Id, t.ApplicationId, t.AttemptNumber,
         t.Channel.ToString(), t.InitiatedBy.ToString(), t.Status.ToString(),
         t.Subject, t.Body, t.RecipientName, t.RecipientContact,
+        t.ContactId,
+        t.Contact is null ? null : new ContactSummaryDto(
+            t.Contact.Id, t.Contact.Name, t.Contact.Email,
+            t.Contact.Company, t.Contact.Position, t.Contact.IsFavorite),
         t.ChannelMetadataJson, t.CvVersionId,
         t.SentAt, t.FailureReason, t.CreatedAt, t.UpdatedAt
     );

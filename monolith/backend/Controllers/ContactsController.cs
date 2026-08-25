@@ -8,11 +8,13 @@ namespace CV_Generator.Controllers;
 public class ContactsController : BaseApiController
 {
     private readonly IContactService _contactSvc;
+    private readonly IApplicationService _applicationSvc;
 
-    public ContactsController(ICurrentUserService currentUser, IContactService contactSvc)
+    public ContactsController(ICurrentUserService currentUser, IContactService contactSvc, IApplicationService applicationSvc)
         : base(currentUser)
     {
         _contactSvc = contactSvc;
+        _applicationSvc = applicationSvc;
     }
 
     [HttpGet]
@@ -37,21 +39,45 @@ public class ContactsController : BaseApiController
         return Ok(ApiResponse<ContactDto>.Ok(result));
     }
 
+    /// GET /contacts/{id}/applications — applications reached through this contact
+    [HttpGet("{id}/applications")]
+    public async Task<IActionResult> GetApplications(Guid id)
+    {
+        var userId = GetUserId();
+        var result = await _applicationSvc.GetApplicationsForContactAsync(id, userId);
+        if (result is null) return NotFound(ApiResponse<List<ApplicationResponseDto>>.Error("Contact not found"));
+        return Ok(ApiResponse<List<ApplicationResponseDto>>.Ok(result));
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateContactDto dto)
     {
         var userId = GetUserId();
-        var result = await _contactSvc.CreateContactAsync(userId, dto);
-        return CreatedAtAction(nameof(Get), new { id = result.Id }, ApiResponse<ContactDto>.Created(result));
+        try
+        {
+            var result = await _contactSvc.CreateContactAsync(userId, dto);
+            return CreatedAtAction(nameof(Get), new { id = result.Id }, ApiResponse<ContactDto>.Created(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<ContactDto>.Error(ex.Message));
+        }
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateContactDto dto)
     {
         var userId = GetUserId();
-        var result = await _contactSvc.UpdateContactAsync(id, userId, dto);
-        if (result is null) return NotFound(ApiResponse<ContactDto>.Error("Contact not found"));
-        return Ok(ApiResponse<ContactDto>.Ok(result));
+        try
+        {
+            var result = await _contactSvc.UpdateContactAsync(id, userId, dto);
+            if (result is null) return NotFound(ApiResponse<ContactDto>.Error("Contact not found"));
+            return Ok(ApiResponse<ContactDto>.Ok(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<ContactDto>.Error(ex.Message));
+        }
     }
 
     [HttpDelete("{id}")]

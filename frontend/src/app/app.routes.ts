@@ -22,6 +22,7 @@ import { ContactPageComponent } from './pages/contact/contact-page.component';
 // Reminders removed as they are now in Calendar
 
 import { MailboxComponent } from './pages/mailbox/mailbox.component';
+import { CompaniesComponent } from './pages/companies/companies.component';
 import { MyCvComponent } from './pages/my-cv/my-cv.component';
 import { AgentsHubComponent } from './pages/agents-hub/agents-hub.component';
 import { AgentGuideComponent } from './pages/agents-hub/agent-guide/agent-guide.component';
@@ -92,5 +93,6 @@ export const routes: Routes = [
     ],
   },
   { path: 'mailbox', component: MailboxComponent, canActivate: [authGuard] },
+  { path: 'companies', component: CompaniesComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: '' },
 ];

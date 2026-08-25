@@ -39,6 +39,7 @@ public class AppDbContext : DbContext
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<GmailConnection> GmailConnections => Set<GmailConnection>();
     public DbSet<Contact> Contacts => Set<Contact>();
+    public DbSet<Company> Companies => Set<Company>();
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
     public DbSet<EmailSchedule> EmailSchedules => Set<EmailSchedule>();
     public DbSet<Workflow> Workflows => Set<Workflow>();
@@ -99,8 +100,13 @@ public class AppDbContext : DbContext
                 .WithMany(a => a.Attempts)
                 .HasForeignKey(e => e.ApplicationId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Contact)
+                .WithMany()
+                .HasForeignKey(e => e.ContactId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(e => new { e.ApplicationId, e.AttemptNumber }).IsUnique();
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ContactId);
         });
 
         modelBuilder.Entity<ApplicationConfiguration>(entity =>
@@ -166,12 +172,20 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Email);
         });
 
+        modelBuilder.Entity<Company>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            // One watchlist entry per company per user (case-insensitive name match enforced in service layer).
+            entity.HasIndex(e => new { e.UserId, e.Name });
+        });
+
         modelBuilder.Entity<EmailMessage>(entity =>
         {
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.ContactId);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
+            entity.Property(e => e.AttachmentMetadataJson).HasColumnType("jsonb");
             entity.HasOne(e => e.Contact)
                 .WithMany()
                 .HasForeignKey(e => e.ContactId)

@@ -8,6 +8,23 @@ using CV_Generator.Services.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load optional .env (git-ignored) from the backend project dir; real env vars win.
+var envFile = Path.Combine(builder.Environment.ContentRootPath, ".env");
+if (File.Exists(envFile))
+{
+    foreach (var line in File.ReadAllLines(envFile))
+    {
+        var trimmed = line.Trim();
+        if (trimmed.Length == 0 || trimmed.StartsWith('#')) continue;
+        var eq = trimmed.IndexOf('=');
+        if (eq <= 0) continue;
+        var key = trimmed[..eq].Trim();
+        var value = trimmed[(eq + 1)..].Trim().Trim('"');
+        if (Environment.GetEnvironmentVariable(key) is null)
+            Environment.SetEnvironmentVariable(key, value);
+    }
+}
+
 var port = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "5000");
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 

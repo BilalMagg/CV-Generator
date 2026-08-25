@@ -1,0 +1,126 @@
+<div class="page">
+  <header class="page-head">
+    <div>
+      <h1>Companies</h1>
+      <p class="sub">{{ companies().length }} companies on your radar</p>
+    </div>
+    <div class="head-actions">
+      <div class="search-box">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search companies…" [ngModel]="search()" (ngModelChange)="onSearchInput($event)">
+      </div>
+      <button class="btn-ghost" (click)="importOpen.set(true)">Import</button>
+      <button class="btn-primary" (click)="openCreate()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add company
+      </button>
+    </div>
+  </header>
+
+  <app-sheet-import-dialog [type]="'companies'" [(open)]="importOpen" (imported)="loadCompanies()" />
+
+  @if (loading()) {
+    <div class="empty-state"><p>Loading…</p></div>
+  } @else if (filtered().length === 0) {
+    <div class="empty-state">
+      <p>{{ search() ? 'No companies match your search.' : 'No companies yet — add the ones you\'re tracking.' }}</p>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="co-table">
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Location</th>
+            <th>Note</th>
+            <th class="td-num">Applications</th>
+            <th class="td-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of filtered(); track c.id) {
+            <tr>
+              <td>
+                <div class="co-cell">
+                  @if (c.websiteUrl) {
+                    <a class="co-name co-link" [href]="c.websiteUrl" target="_blank" rel="noopener" [title]="c.websiteUrl">
+                      {{ c.name }}
+                      <span class="co-host">{{ hostOf(c.websiteUrl) }}</span>
+                    </a>
+                  } @else {
+                    <span class="co-name">{{ c.name }}</span>
+                  }
+                  @if (c.locationUrl) {
+                    <a class="loc-link" [href]="c.locationUrl" target="_blank" rel="noopener" title="Open in maps">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </a>
+                  }
+                </div>
+              </td>
+              <td class="td-meta">{{ c.location || '—' }}</td>
+              <td class="td-note" [title]="c.note || ''">{{ c.note || '—' }}</td>
+              <td class="td-num">
+                @if (appCount(c.name) > 0) {
+                  <a [routerLink]="['/applications']" class="count-chip" title="View applications">{{ appCount(c.name) }}</a>
+                } @else {
+                  <span class="count-chip zero">0</span>
+                }
+              </td>
+              <td>
+                <div class="row-actions">
+                  <button class="row-btn" title="Edit" (click)="openEdit(c)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                  </button>
+                  <button class="row-btn danger" title="Delete" (click)="onDelete(c)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (dialogOpen()) {
+  <div class="modal-backdrop" (click)="closeDialog()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h2>{{ editingId() ? 'Edit company' : 'Add company' }}</h2>
+        <button class="icon-btn" (click)="closeDialog()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Name <span class="req">*</span></label>
+          <input type="text" [(ngModel)]="formName" placeholder="e.g. Capgemini" name="coName">
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Website</label>
+            <input type="url" [(ngModel)]="formWebsite" placeholder="https://…" name="coWebsite">
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input type="text" [(ngModel)]="formLocation" placeholder="e.g. Casablanca" name="coLocation">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Map link</label>
+          <input type="url" [(ngModel)]="formLocationUrl" placeholder="https://maps.google.com/…" name="coLocUrl">
+        </div>
+        <div class="form-group">
+          <label>Note</label>
+          <textarea rows="3" [(ngModel)]="formNote" placeholder="Anything worth remembering about this company…" name="coNote"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" (click)="closeDialog()">Cancel</button>
+        <button class="btn-primary" [disabled]="saving()" (click)="save()">
+          {{ saving() ? 'Saving…' : (editingId() ? 'Save changes' : 'Add company') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

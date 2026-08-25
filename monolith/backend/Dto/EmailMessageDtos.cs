@@ -14,6 +14,15 @@ public class EmailMessageDto
     public string Provider { get; set; } = string.Empty;
     public DateTime? SentAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public List<EmailAttachmentInfoDto> Attachments { get; set; } = [];
+}
+
+/// <summary>Metadata of a file attached to a sent email (content is not stored).</summary>
+public class EmailAttachmentInfoDto
+{
+    public string FileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public long SizeBytes { get; set; }
 }
 
 public class SendEmailDto
@@ -21,6 +30,14 @@ public class SendEmailDto
     public List<Guid> RecipientIds { get; set; } = [];
     public string Subject { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
+    public List<EmailAttachmentDto>? Attachments { get; set; }
+}
+
+public class EmailAttachmentDto
+{
+    public string FileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = "application/octet-stream";
+    public string ContentBase64 { get; set; } = string.Empty;
 }
 
 public class EmailHistoryResponse

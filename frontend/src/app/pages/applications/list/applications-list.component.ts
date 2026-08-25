@@ -7,10 +7,12 @@ import {
   ApplicationResponseDto,
   ApplicationStatisticsDto,
   ApplicationStatus,
+  ApplicationPriority,
   STATUS_LABELS,
+  STATUS_ORDER,
+  PRIORITY_LABELS,
+  PRIORITY_COLORS,
 } from '@app/models/application.model';
-
-const ALL_STATUSES: ApplicationStatus[] = ['PENDING','REVIEWED','INTERVIEW','ACCEPTED','REJECTED','CANCELLED'];
 
 @Component({
   selector: 'app-applications-list',
@@ -24,7 +26,7 @@ export class ApplicationsListComponent implements OnInit {
   protected router = inject(Router);
 
   applications = signal<ApplicationResponseDto[]>([]);
-  statistics = signal<ApplicationStatisticsDto>({ total: 0, pending: 0, reviewed: 0, interview: 0, accepted: 0, rejected: 0, cancelled: 0 });
+  statistics = signal<ApplicationStatisticsDto>({ total: 0, saved: 0, applied: 0, screening: 0, interview: 0, offer: 0, accepted: 0, rejected: 0, withdrawn: 0 });
   loading = signal(true);
   page = signal(1);
   pageSize = signal(15);
@@ -72,8 +74,9 @@ export class ApplicationsListComponent implements OnInit {
   });
 
   protected readonly STATUS_LABELS = STATUS_LABELS;
-  protected readonly ALL_STATUSES = ALL_STATUSES;
-  protected Math = Math;
+  protected readonly PRIORITY_LABELS = PRIORITY_LABELS;
+  protected readonly ALL_STATUSES = STATUS_ORDER;
+  protected readonly Math = Math;
 
   ngOnInit() { this.loadData(); }
 
@@ -140,7 +143,12 @@ export class ApplicationsListComponent implements OnInit {
 
   getStatusLabel(s: string) { return STATUS_LABELS[s as ApplicationStatus] || s; }
 
-  formatDate(d: string) {
+  priorityColor(p?: string): string {
+    return PRIORITY_COLORS[p as ApplicationPriority] ?? PRIORITY_COLORS.MEDIUM;
+  }
+
+  formatDate(d: string | null | undefined) {
+    if (!d) return '—';
     return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 

@@ -41,6 +41,7 @@ export class SidebarComponent {
     { label: 'Mailbox', route: '/mailbox', icon: 'mailbox', exact: false, group: 'library' },
     { label: 'My Career', route: '/my-career', icon: 'user', exact: false, group: 'library' },
     { label: 'Job Offers', route: '/job-offers', icon: 'briefcase', exact: false, group: 'library' },
+    { label: 'Companies', route: '/companies', icon: 'building', exact: false, group: 'library' },
   ];
 
   user = computed(() => this.authService.currentUser());

@@ -19,3 +19,10 @@ public enum ApplicationOrigin
     AI_AGENT_AUTO_APPLY,
     IMPORT
 }
+
+public enum ApplicationPriority
+{
+    LOW,
+    MEDIUM,
+    HIGH
+}

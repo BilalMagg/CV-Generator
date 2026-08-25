@@ -42,7 +42,7 @@ export class AnalyticsComponent implements OnInit {
     this.periodMonths.set(months);
   }
 
-  s = computed(() => this.trends()?.current ?? { total: 0, pending: 0, reviewed: 0, interview: 0, accepted: 0, rejected: 0, cancelled: 0 } as ApplicationStatisticsDto);
+  s = computed<ApplicationStatisticsDto>(() => this.trends()?.current ?? { total: 0, saved: 0, applied: 0, screening: 0, interview: 0, offer: 0, accepted: 0, rejected: 0, withdrawn: 0 });
 
   pct(a: number, b: number) { return a > 0 ? Math.round((b / a) * 100) : 0; }
 
@@ -50,9 +50,9 @@ export class AnalyticsComponent implements OnInit {
     const s = this.s();
     const avgTime = this.trends()?.averageResponseTimeDays;
     return [
-      { label: 'Response rate',      value: this.pct(s.total, s.interview + s.accepted + s.rejected) + '%', change: '+8%', positive: true,  color: 'oklch(0.5 0.16 250)' },
+      { label: 'Response rate',      value: this.pct(s.total, s.screening + s.interview + s.offer + s.accepted + s.rejected) + '%', change: '+8%', positive: true,  color: 'oklch(0.5 0.16 250)' },
       { label: 'Interview rate',     value: this.pct(s.total, s.interview) + '%',                           change: '+5%', positive: true,  color: 'oklch(0.55 0.18 25)' },
-      { label: 'Offer rate',         value: this.pct(s.total, s.accepted) + '%',                            change: '+2%', positive: true,  color: 'oklch(0.55 0.14 155)' },
+      { label: 'Offer rate',         value: this.pct(s.total, s.offer + s.accepted) + '%',                  change: '+2%', positive: true,  color: 'oklch(0.55 0.14 155)' },
       { label: 'Avg. response time', value: avgTime != null ? avgTime.toFixed(1) + 'd' : '—',                change: '',    positive: true,  color: 'oklch(0.55 0.14 280)' },
     ];
   });
@@ -67,10 +67,10 @@ export class AnalyticsComponent implements OnInit {
     const s = this.s();
     const total = s.total || 1;
     const slices = [
-      { label: 'Applied',   count: s.pending + s.reviewed, pct: this.pct(total, s.pending + s.reviewed), color: 'oklch(0.72 0.01 80)' },
-      { label: 'Interview', count: s.interview,            pct: this.pct(total, s.interview),            color: 'oklch(0.6 0.16 250)' },
-      { label: 'Offer',     count: s.accepted,             pct: this.pct(total, s.accepted),             color: 'oklch(0.62 0.15 155)' },
-      { label: 'Rejected',  count: s.rejected,             pct: this.pct(total, s.rejected),             color: 'oklch(0.62 0.18 25)' },
+      { label: 'Applied',   count: s.applied + s.screening, pct: this.pct(total, s.applied + s.screening), color: 'oklch(0.72 0.01 80)' },
+      { label: 'Interview', count: s.interview,             pct: this.pct(total, s.interview),             color: 'oklch(0.6 0.16 250)' },
+      { label: 'Offer',     count: s.offer + s.accepted,    pct: this.pct(total, s.offer + s.accepted),    color: 'oklch(0.62 0.15 155)' },
+      { label: 'Rejected',  count: s.rejected,              pct: this.pct(total, s.rejected),              color: 'oklch(0.62 0.18 25)' },
     ];
 
     const cx = 80, cy = 80, r = 60, hole = 36;
@@ -108,10 +108,10 @@ export class AnalyticsComponent implements OnInit {
     const s = this.s();
     const total = s.total || 1;
     return [
-      { label: 'Applied',   pct: this.pct(total, s.pending + s.reviewed), count: s.pending + s.reviewed, color: 'oklch(0.72 0.01 80)' },
-      { label: 'Interview', pct: this.pct(total, s.interview),            count: s.interview,            color: 'oklch(0.6 0.16 250)' },
-      { label: 'Offer',     pct: this.pct(total, s.accepted),             count: s.accepted,             color: 'oklch(0.62 0.15 155)' },
-      { label: 'Rejected',  pct: this.pct(total, s.rejected),             count: s.rejected,             color: 'oklch(0.62 0.18 25)' },
+      { label: 'Applied',   pct: this.pct(total, s.applied + s.screening), count: s.applied + s.screening, color: 'oklch(0.72 0.01 80)' },
+      { label: 'Interview', pct: this.pct(total, s.interview),             count: s.interview,             color: 'oklch(0.6 0.16 250)' },
+      { label: 'Offer',     pct: this.pct(total, s.offer + s.accepted),    count: s.offer + s.accepted,    color: 'oklch(0.62 0.15 155)' },
+      { label: 'Rejected',  pct: this.pct(total, s.rejected),              count: s.rejected,              color: 'oklch(0.62 0.18 25)' },
     ];
   });
 
@@ -127,18 +127,20 @@ export class AnalyticsComponent implements OnInit {
     const pad = 32;
     const W = 340, H = 160, barW = 28;
     const gap = (W - 2 * pad - data.length * barW) / (data.length - 1);
-    const maxTotal = Math.max(...data.map(d => d.pending + d.reviewed + d.interview + d.accepted + d.rejected), 1);
+    const maxTotal = Math.max(...data.map(d => d.saved + d.applied + d.screening + d.interview + d.offer + d.accepted + d.rejected + d.withdrawn), 1);
     const chartH = H - pad - 20;
 
     const colors = {
-      pending:  'oklch(0.72 0.01 80)',
-      reviewed: 'oklch(0.65 0.02 80)',
-      interview: 'oklch(0.6 0.16 250)',
+      saved:     'oklch(0.72 0.01 80)',
+      applied:   'oklch(0.65 0.02 80)',
+      screening: 'oklch(0.6 0.13 200)',
+      interview: 'oklch(0.55 0.16 160)',
+      offer:     'oklch(0.55 0.13 130)',
       accepted:  'oklch(0.62 0.15 155)',
       rejected:  'oklch(0.62 0.18 25)',
     };
 
-    const barKeys: (keyof typeof colors)[] = ['pending', 'reviewed', 'interview', 'accepted', 'rejected'];
+    const barKeys: (keyof typeof colors)[] = ['saved', 'applied', 'screening', 'interview', 'offer', 'accepted', 'rejected'];
 
     let svg = '';
 

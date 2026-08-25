@@ -254,9 +254,13 @@
   &.ev-deadline   { background: oklch(0.95 0.05 65);  color: oklch(0.45 0.13 65); }
   &.ev-applied    { background: oklch(0.95 0.04 200); color: oklch(0.35 0.14 200); }
   &.ev-reviewed   { background: oklch(0.94 0.04 280); color: oklch(0.40 0.15 280); }
+  &.ev-screening  { background: oklch(0.94 0.04 280); color: oklch(0.40 0.15 280); }
   &.ev-accepted   { background: oklch(0.93 0.06 150); color: oklch(0.35 0.14 150); }
   &.ev-rejected   { background: oklch(0.94 0.05 30);  color: oklch(0.45 0.16 30); }
   &.ev-cancelled  { background: oklch(0.94 0.02 20);  color: oklch(0.45 0.05 20); }
+  &.ev-saved      { background: oklch(0.94 0.004 80); color: var(--text-3); }
+  &.ev-offer      { background: oklch(0.93 0.06 130); color: oklch(0.38 0.12 130); }
+  &.ev-withdrawn  { background: oklch(0.94 0.02 20);  color: oklch(0.45 0.05 20); }
   &.ev-reminder   { background: oklch(0.95 0.03 80);  color: oklch(0.45 0.10 80); }
 }
 
@@ -393,9 +397,13 @@
   &.ev-deadline   { background: oklch(0.95 0.05 65);  color: oklch(0.45 0.13 65); }
   &.ev-applied    { background: oklch(0.95 0.04 200); color: oklch(0.35 0.14 200); }
   &.ev-reviewed   { background: oklch(0.94 0.04 280); color: oklch(0.40 0.15 280); }
+  &.ev-screening  { background: oklch(0.94 0.04 280); color: oklch(0.40 0.15 280); }
   &.ev-accepted   { background: oklch(0.93 0.06 150); color: oklch(0.35 0.14 150); }
   &.ev-rejected   { background: oklch(0.94 0.05 30);  color: oklch(0.45 0.16 30); }
   &.ev-cancelled  { background: oklch(0.94 0.02 20);  color: oklch(0.45 0.05 20); }
+  &.ev-saved      { background: oklch(0.94 0.004 80); color: var(--text-3); }
+  &.ev-offer      { background: oklch(0.93 0.06 130); color: oklch(0.38 0.12 130); }
+  &.ev-withdrawn  { background: oklch(0.94 0.02 20);  color: oklch(0.45 0.05 20); }
   &.ev-reminder   { background: oklch(0.95 0.03 80);  color: oklch(0.45 0.10 80); }
 }
 
@@ -589,9 +597,13 @@
   &.ev-deadline   { background: oklch(0.45 0.13 65); }
   &.ev-applied    { background: oklch(0.35 0.14 200); }
   &.ev-reviewed   { background: oklch(0.40 0.15 280); }
+  &.ev-screening  { background: oklch(0.40 0.15 280); }
   &.ev-accepted   { background: oklch(0.35 0.14 150); }
   &.ev-rejected   { background: oklch(0.45 0.16 30); }
   &.ev-cancelled  { background: oklch(0.45 0.05 20); }
+  &.ev-saved      { background: oklch(0.55 0.01 80); }
+  &.ev-offer      { background: oklch(0.42 0.13 130); }
+  &.ev-withdrawn  { background: oklch(0.45 0.05 20); }
   &.ev-reminder   { background: oklch(0.45 0.10 80); }
 }
 

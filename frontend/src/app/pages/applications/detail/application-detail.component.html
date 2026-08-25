@@ -17,33 +17,90 @@
             <div class="det-co">{{ app.companyName }}</div>
             <div class="det-pos">{{ app.positionTitle }}</div>
           </div>
-          <span class="badge-lg" [style.background]="'#EEEDFE'" [style.color]="'#534AB7'">{{ getStatusLabel(app.status) }}</span>
+          <span class="badge-lg" [style.background]="statusColor(app.status)" [style.color]="'white'">{{ getStatusLabel(app.status) }}</span>
         </div>
       </div>
       <div class="det-actions">
+        <button class="det-btn primary" (click)="openAttemptModal()"><i class="ti ti-send"></i> Log attempt</button>
         <button class="det-btn" (click)="openEditModal()"><i class="ti ti-edit"></i> Edit</button>
-        <button class="det-btn primary" (click)="openStatusModal()" *ngIf="availableStatuses().length > 0"><i class="ti ti-refresh"></i> Update status</button>
+        <button class="det-btn" (click)="openStatusModal()" *ngIf="availableStatuses().length > 0"><i class="ti ti-refresh"></i> Update status</button>
         <button class="det-btn" (click)="onDelete()"><i class="ti ti-trash"></i></button>
       </div>
     </div>
 
-    <div class="info-grid">
-      <div class="info-cell"><div class="info-lbl">Applied</div><div class="info-val">{{ formatDate(app.appliedAt) }}</div></div>
-      <div class="info-cell"><div class="info-lbl">Last updated</div><div class="info-val">{{ formatDate(app.updatedAt) }}</div></div>
-      <div class="info-cell"><div class="info-lbl">Source</div><div class="info-val">{{ app.offerSource || '—' }}</div></div>
-      <div class="info-cell"><div class="info-lbl">Notes</div><div class="info-val">{{ app.notes || '—' }}</div></div>
-    </div>
+          <div class="info-grid">
+            <div class="info-cell"><div class="info-lbl">Applied</div><div class="info-val">{{ formatDate(app.appliedAt) }}</div></div>
+            <div class="info-cell"><div class="info-lbl">Last updated</div><div class="info-val">{{ formatDate(app.updatedAt) }}</div></div>
+            <div class="info-cell"><div class="info-lbl">Source</div><div class="info-val">{{ app.offerSource || '—' }}</div></div>
+            <div class="info-cell"><div class="info-lbl">Internship</div><div class="info-val">{{ app.internshipType || '—' }}</div></div>
+            <div class="info-cell">
+              <div class="info-lbl">Priority</div>
+              <div class="info-val prio" [style.color]="priorityColor(app.priority)">
+                ● {{ PRIORITY_LABELS[app.priority || 'MEDIUM'] }}
+              </div>
+            </div>
+            <div class="info-cell"><div class="info-lbl">Attempts</div><div class="info-val">{{ attempts().length }}</div></div>
+          </div>
   </div>
 
   <div class="content-grid">
     <div class="left-col">
+      <div class="card">
+        <div class="card-title">Apply attempts</div>
+        @if (sortedAttempts().length > 0) {
+          <div class="timeline">
+            @for (att of sortedAttempts(); track att.id) {
+              <div class="tl-item attempt-item">
+                <div class="tl-dot" [attr.data-astatus]="att.status"></div>
+                <div class="tl-body">
+                  <div class="attempt-head">
+                    <span class="attempt-n">#{{ att.attemptNumber }}</span>
+                    <strong class="attempt-channel">{{ CHANNEL_LABELS[att.channel] }}</strong>
+                    <span class="attempt-pill" [attr.data-astatus]="att.status">{{ ATTEMPT_STATUS_LABELS[att.status] }}</span>
+                  </div>
+                  @if (att.subject) { <div class="attempt-subject">{{ att.subject }}</div> }
+                  @if (att.contact) {
+                    <button type="button" class="contact-chip" (click)="openContactPanel(att)"
+                      title="View contact details & email history">
+                      <span class="chip-avatar">{{ att.contact.name.charAt(0) }}</span>
+                      <span class="chip-text">
+                        <strong>{{ att.contact.name }}</strong>
+                        @if (att.contact.company) { <em>{{ att.contact.company }}</em> }
+                      </span>
+                    </button>
+                  } @else if (att.recipientName || att.recipientContact) {
+                    <div class="attempt-meta">→ {{ att.recipientName }}@if (att.recipientContact) { · {{ att.recipientContact }}}</div>
+                  }
+                  <div class="tl-date">
+                    {{ att.sentAt ? 'Sent ' + formatDateTime(att.sentAt) : 'Created ' + formatDateTime(att.createdAt) }}
+                    @if (att.initiatedBy !== 'USER') { · via {{ att.initiatedBy.toLowerCase() }} }
+                  </div>
+                  @if (att.failureReason) { <div class="attempt-fail">{{ att.failureReason }}</div> }
+                  @if (att.status === 'DRAFT' || att.status === 'SCHEDULED') {
+                    <div class="attempt-actions">
+                      <button class="att-btn ok" (click)="setAttemptStatus(att, 'SENT')">Mark sent</button>
+                      <button class="att-btn fail" (click)="setAttemptStatus(att, 'FAILED', 'Marked as failed')">Mark failed</button>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-attempts">
+            No attempts yet.
+            <button class="det-btn primary" style="margin-top:10px" (click)="openAttemptModal()"><i class="ti ti-send"></i> Log first attempt</button>
+          </div>
+        }
+      </div>
+
       <div class="card">
         <div class="card-title">Status history</div>
         <div class="timeline">
           @if (app.history && app.history.length > 0) {
             @for (entry of app.history; track entry.id) {
               <div class="tl-item">
-                <div class="tl-dot" [style.background]="statusDotColor(entry.newStatus)" [style.border-color]="statusDotColor(entry.newStatus)"></div>
+                <div class="tl-dot" [style.background]="statusColor(entry.newStatus)" [style.border-color]="statusColor(entry.newStatus)"></div>
                 <div>
                   <div class="tl-date">{{ formatDate(entry.changedAt) }}</div>
                   <div class="tl-desc">{{ entry.oldStatus ? getStatusLabel(entry.oldStatus) + ' → ' : '' }}<strong>{{ getStatusLabel(entry.newStatus) }}</strong></div>
@@ -68,10 +125,6 @@
       <div class="card">
         <div class="card-title">Attachments</div>
         <div style="color:var(--color-text-tertiary);font-size:13px">No attachments yet. Coming soon.</div>
-      </div>
-      <div class="card">
-        <div class="card-title">Communication</div>
-        <div style="color:var(--color-text-tertiary);font-size:13px">No communication recorded yet. Coming soon.</div>
       </div>
     </div>
   </div>
@@ -101,6 +154,111 @@
   </div>
 }
 
+<!-- Attempt Modal -->
+@if (showAttemptModal()) {
+  <div class="modal-backdrop" (click)="closeAttemptModal()">
+    <div class="modal modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Log apply attempt</span>
+        <button class="modal-close" (click)="closeAttemptModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        @if (attemptError()) {
+          <div class="attempt-error">{{ attemptError() }}</div>
+        }
+        <div class="attempt-grid">
+          <div class="form-group">
+            <label>Channel</label>
+            <select class="form-select" [(ngModel)]="attemptForm().channel" name="channel">
+              @for (c of ALL_CHANNELS; track c) {
+                <option [value]="c">{{ CHANNEL_LABELS[c] }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Initiated by</label>
+            <select class="form-select" [(ngModel)]="attemptForm().initiatedBy" name="initiatedBy">
+              @for (i of INITIATORS; track i) {
+                <option [value]="i">{{ i === 'USER' ? 'Me' : i === 'AI_AGENT' ? 'AI agent' : 'Schedule' }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        <div class="attempt-grid">
+          <div class="form-group"><label>Recipient name</label><input class="form-input" [(ngModel)]="attemptForm().recipientName" name="recipientName" placeholder="e.g. Jane Doe"></div>
+          <div class="form-group"><label>Recipient contact</label><input class="form-input" [(ngModel)]="attemptForm().recipientContact" name="recipientContact" placeholder="email / phone / profile URL"></div>
+        </div>
+        <!-- Contact picker -->
+        <div class="picker-block">
+          @if (selectedContact()) {
+            <div class="picked-contact">
+              <span class="chip-avatar">{{ selectedContact()!.name.charAt(0) }}</span>
+              <span class="chip-text">
+                <strong>{{ selectedContact()!.name }}</strong>
+                <em>{{ selectedContact()!.email }}@if (selectedContact()!.company) { · {{ selectedContact()!.company }}}</em>
+              </span>
+              <button type="button" class="chip-x" (click)="clearContact()" title="Unlink contact">&times;</button>
+            </div>
+          } @else {
+            @if (suggestedContacts().length > 0) {
+              <div class="picker-label">Suggested for {{ application()!.companyName }}:</div>
+              <div class="suggest-row">
+                @for (c of suggestedContacts(); track c.id) {
+                  <button type="button" class="contact-chip" (click)="pickContact(c)">
+                    <span class="chip-avatar">{{ c.name.charAt(0) }}</span>
+                    <span class="chip-text">
+                      <strong>{{ c.name }}</strong>@if (c.isFavorite) { ★ }
+                      <em>{{ c.email }}</em>
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+            <div class="search-row">
+              <input class="form-input" placeholder="Search all contacts…" [(ngModel)]="contactSearch" name="contactSearch"
+                (ngModelChange)="searchAllContacts()">
+              @if (searching()) { <span class="search-spin">…</span> }
+            </div>
+            @if (searchResults().length > 0) {
+              <div class="search-results">
+                @for (c of searchResults(); track c.id) {
+                  <button type="button" class="result-row" (click)="pickContact(c)">
+                    <strong>{{ c.name }}</strong><em>{{ c.email }}</em>@if (c.company) { <span>{{ c.company }}</span> }
+                  </button>
+                }
+              </div>
+            }
+            @if (!showInlineCreate()) {
+              <button type="button" class="link-btn" (click)="toggleInlineCreate()">+ New contact</button>
+            } @else {
+              <div class="inline-create">
+                @if (inlineError()) { <div class="attempt-error">{{ inlineError() }}</div> }
+                <input class="form-input" placeholder="Name *" [(ngModel)]="inlineName" name="inlineName">
+                <input class="form-input" placeholder="Email *" [(ngModel)]="inlineEmail" name="inlineEmail">
+                <input class="form-input" placeholder="Company" [(ngModel)]="inlineCompany" name="inlineCompany">
+                <div class="inline-actions">
+                  <button type="button" class="det-btn" (click)="toggleInlineCreate()">Cancel</button>
+                  <button type="button" class="det-btn primary" (click)="createInlineContact()">Create & link</button>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <div class="form-group"><label>Subject</label><input class="form-input" [(ngModel)]="attemptForm().subject" name="subject"></div>
+        <div class="form-group"><label>Message / notes</label><textarea class="form-textarea" [(ngModel)]="attemptForm().body" rows="4"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="det-btn" (click)="closeAttemptModal()">Cancel</button>
+        <button class="det-btn" (click)="createAttempt(false)" [disabled]="saving()">Save as draft</button>
+        <button class="det-btn primary" (click)="createAttempt(true)" [disabled]="saving()">
+          {{ saving() ? 'Saving...' : 'Log & mark sent' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
 <!-- Edit Modal -->
 @if (showEditModal()) {
   <div class="modal-backdrop" (click)="closeEditModal()">
@@ -113,11 +271,80 @@
         <div class="form-group"><label>Company name</label><input class="form-input" [(ngModel)]="editCompanyName"></div>
         <div class="form-group"><label>Position title</label><input class="form-input" [(ngModel)]="editPositionTitle"></div>
         <div class="form-group"><label>Source</label><input class="form-input" [(ngModel)]="editOfferSource" placeholder="e.g. LinkedIn"></div>
+        <div class="attempt-grid">
+          <div class="form-group"><label>Internship type</label><input class="form-input" [(ngModel)]="editInternshipType" placeholder="e.g. PFA, PFE"></div>
+          <div class="form-group"><label>Priority</label>
+            <select class="form-select" [(ngModel)]="editPriority" name="editPriority">
+              @for (p of PRIORITY_ORDER; track p) {
+                <option [value]="p">{{ PRIORITY_LABELS[p] }}</option>
+              }
+            </select>
+          </div>
+        </div>
         <div class="form-group"><label>Notes</label><textarea class="form-textarea" [(ngModel)]="editNotes" rows="3"></textarea></div>
       </div>
       <div class="modal-footer">
         <button class="det-btn" (click)="closeEditModal()">Cancel</button>
         <button class="det-btn primary" (click)="saveEdit()" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Save' }}</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Contact side panel -->
+@if (panelOpen()) {
+  <div class="modal-backdrop" (click)="closeContactPanel()">
+    <div class="modal contact-panel" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Contact</span>
+        <button class="modal-close" (click)="closeContactPanel()">&times;</button>
+      </div>
+      <div class="modal-body">
+        @if (panelLoading()) {
+          <div class="empty-attempts">Loading…</div>
+        } @else if (panelContact(); as pc) {
+          <div class="picked-contact static">
+            <span class="chip-avatar">{{ pc.name.charAt(0) }}</span>
+            <span class="chip-text">
+              <strong>{{ pc.name }}</strong>
+              <em>{{ pc.email }}@if (pc.company) { · {{ pc.company }}}</em>
+              @if (pc.position) { <em>{{ pc.position }}</em> }
+            </span>
+          </div>
+
+          <div class="card-title">Email history ({{ panelEmails().length }})</div>
+          @if (panelEmails().length > 0) {
+            <div class="panel-emails">
+              @for (m of panelEmails(); track m.id) {
+                <div class="panel-email">
+                  <div class="pe-head">
+                    <strong>{{ m.subject }}</strong>
+                    <span class="attempt-pill" [attr.data-astatus]="m.status === 'SENT' ? 'SENT' : 'FAILED'">{{ m.status }}</span>
+                  </div>
+                  @if (m.sentAt) { <div class="tl-date">{{ formatDateTime(m.sentAt) }}</div> }
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-attempts">No emails exchanged yet.</div>
+          }
+
+          <div class="card-title">Applications via this contact ({{ panelApplications().length }})</div>
+          @if (panelApplications().length > 0) {
+            <div class="panel-apps">
+              @for (a of panelApplications(); track a.id) {
+                <a class="result-row" [routerLink]="['/applications', a.id]">
+                  <strong>{{ a.companyName }}</strong><em>{{ a.positionTitle }}</em>
+                  <span class="attempt-pill" [style.background]="statusColor(a.status)" style="color:#fff">{{ getStatusLabel(a.status) }}</span>
+                </a>
+              }
+            </div>
+          } @else {
+            <div class="empty-attempts">Not linked to any other application.</div>
+          }
+        } @else {
+          <div class="empty-attempts">Contact not found.</div>
+        }
       </div>
     </div>
   </div>

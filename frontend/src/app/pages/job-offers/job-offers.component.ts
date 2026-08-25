@@ -7,7 +7,7 @@ import { JobOfferSummary } from '@app/models/crawler.types';
 @Component({
   selector: 'app-job-offers',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   templateUrl: './job-offers.component.html',
   styleUrl: './job-offers.component.scss'
 })

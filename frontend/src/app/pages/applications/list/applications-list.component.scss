@@ -299,12 +299,14 @@ tr:last-child td { border-bottom: none; }
   color: var(--text-2);
   font-family: var(--font-body);
 
-  &[data-status="PENDING"]   { background: var(--st-applied-bg);   color: var(--st-applied-text); }
-  &[data-status="REVIEWED"]  { background: oklch(0.93 0.04 200);   color: oklch(0.35 0.1 200); }
+  &[data-status="SAVED"]     { background: oklch(0.94 0.004 80);   color: var(--text-3); }
+  &[data-status="APPLIED"]   { background: var(--st-applied-bg);   color: var(--st-applied-text); }
+  &[data-status="SCREENING"] { background: oklch(0.93 0.04 200);   color: oklch(0.35 0.1 200); }
   &[data-status="INTERVIEW"] { background: var(--st-interview-bg); color: var(--st-interview-text); }
-  &[data-status="ACCEPTED"]  { background: var(--st-offer-bg);     color: var(--st-offer-text); }
+  &[data-status="OFFER"]     { background: var(--st-offer-bg);     color: var(--st-offer-text); }
+  &[data-status="ACCEPTED"]  { background: oklch(0.93 0.06 155);   color: oklch(0.35 0.09 155); }
   &[data-status="REJECTED"]  { background: var(--st-rejected-bg);  color: var(--st-rejected-text); }
-  &[data-status="CANCELLED"] { background: oklch(0.94 0.004 80);   color: var(--text-3); }
+  &[data-status="WITHDRAWN"] { background: oklch(0.94 0.004 80);   color: var(--text-3); }
 }
 
 /* Row actions */
@@ -396,4 +398,12 @@ tr:last-child td { border-bottom: none; }
   &:hover:not([disabled]) { background: var(--bg); }
   &.active { background: oklch(0.95 0.04 250); border-color: oklch(0.86 0.08 250); color: oklch(0.45 0.16 250); font-weight: 600; }
   &[disabled] { opacity: 0.4; cursor: not-allowed; }
+}
+
+.prio-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
 }

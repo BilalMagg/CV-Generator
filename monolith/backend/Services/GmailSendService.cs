@@ -41,7 +41,8 @@ public class GmailSendService : IGmailSendService
     }
 
     public async Task SendWithAttachmentAsync(
-        Guid userId, string to, string subject, string body, string? cvPdfUrl = null)
+        Guid userId, string to, string subject, string body,
+        string? cvPdfUrl = null, IReadOnlyList<CV_Generator.Dto.EmailAttachmentDto>? attachments = null)
     {
         var connection = await _db.Set<GmailConnection>()
             .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsRevoked);
@@ -81,6 +82,26 @@ public class GmailSendService : IGmailSendService
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to download PDF from {Url}, sending without attachment", cvPdfUrl);
+            }
+        }
+
+        if (attachments is not null)
+        {
+            foreach (var att in attachments)
+            {
+                if (string.IsNullOrWhiteSpace(att.FileName) || string.IsNullOrWhiteSpace(att.ContentBase64))
+                    continue;
+                try
+                {
+                    var bytes = Convert.FromBase64String(att.ContentBase64);
+                    var contentType = ContentType.Parse(
+                        string.IsNullOrWhiteSpace(att.ContentType) ? "application/octet-stream" : att.ContentType);
+                    bodyBuilder.Attachments.Add(att.FileName, bytes, contentType);
+                }
+                catch (FormatException ex)
+                {
+                    _logger.LogWarning(ex, "Skipping attachment {FileName}: invalid base64", att.FileName);
+                }
             }
         }
 
