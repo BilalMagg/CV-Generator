@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { CrawlerService } from '@app/services/crawler.service';
 import { JobOfferSummary } from '@app/models/crawler.types';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 @Component({
   selector: 'app-job-offers',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RefreshButtonComponent],
   templateUrl: './job-offers.component.html',
   styleUrl: './job-offers.component.scss'
 })
@@ -30,6 +31,8 @@ export class JobOffersComponent implements OnInit {
   error = computed(() => this.errorSignal());
   total = computed(() => this.totalSignal());
   
+  refreshing = signal(false);
+
   // Derived computed signals
   hasJobs = computed(() => this.jobsSignal().length > 0);
   isEmpty = computed(() => !this.loadingSignal() && !this.errorSignal() && this.jobsSignal().length === 0);
@@ -55,8 +58,11 @@ export class JobOffersComponent implements OnInit {
       console.error('Error loading jobs:', err);
     } finally {
       this.loadingSignal.set(false);
+      this.refreshing.set(false);
     }
   }
+
+  onRefresh() { this.refreshing.set(true); this.loadJobs(); }
 
   viewJob(jobId: string): void {
     this.router.navigate(['/agents-hub/job-crawler/result', jobId]);
@@ -92,5 +98,12 @@ export class JobOffersComponent implements OnInit {
       this.page.set(pageNum);
       this.loadJobs();
     }
+  }
+
+  applyTo(job: JobOfferSummary): void {
+    const qp: Record<string, string> = {};
+    if (job.enterpriseName) qp['companyName'] = job.enterpriseName;
+    if (job.jobRole) qp['positionTitle'] = job.jobRole;
+    this.router.navigate(['/applications/apply'], { queryParams: qp });
   }
 }

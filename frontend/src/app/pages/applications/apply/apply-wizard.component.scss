@@ -98,5 +98,20 @@ textarea, input[type="text"], select {
 .seg button { background: #fff; border: none; padding: 8px 16px; cursor: pointer; font: inherit; }
 .seg button.active { background: #3b82f6; color: #fff; }
 
+.gmail-note {
+  margin: 12px 0 4px;
+  font-size: 0.82rem;
+  color: #15803d;
+  background: color-mix(in srgb, #16a34a 10%, transparent);
+  border: 1px solid color-mix(in srgb, #16a34a 30%, transparent);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+.gmail-note.warn {
+  color: #b45309;
+  background: color-mix(in srgb, #d97706 10%, transparent);
+  border-color: color-mix(in srgb, #d97706 35%, transparent);
+}
+
 .files { list-style: none; padding: 0; margin: 8px 0 0; }
 .files li { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.85rem; }

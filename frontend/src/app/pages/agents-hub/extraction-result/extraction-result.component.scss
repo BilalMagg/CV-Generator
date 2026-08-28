@@ -26,6 +26,13 @@
   gap: 6px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .breadcrumb {
   display: flex;
   align-items: center;

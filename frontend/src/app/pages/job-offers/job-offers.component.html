@@ -5,6 +5,7 @@
       <p class="header-sub">All crawled and extracted job offers</p>
     </div>
     <div class="header-right">
+      <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
       <span class="count-badge">{{ total() }} jobs</span>
       @if (totalPages() > 1) {
         <span class="page-badge">Page {{ page() }} of {{ totalPages() }}</span>
@@ -56,7 +57,9 @@
               {{ job.status }}
             </span>
             <span class="col-date">{{ job.createdAt | date:'MMM d, yyyy' }}</span>
-            <span class="col-action">View &rarr;</span>
+            <span class="col-action">
+              <button class="apply-link" (click)="applyTo(job); $event.stopPropagation()">Apply &rarr;</button>
+            </span>
           </div>
         }
       </div>

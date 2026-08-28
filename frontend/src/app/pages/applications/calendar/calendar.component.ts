@@ -14,6 +14,7 @@ import {
 import { CalendarEventDto } from '@app/models/calendar-event.model';
 import { CalendarConfigurationDto } from '@app/models/calendar-configuration.model';
 import { STATUS_LABELS, STATUS_ORDER } from '@app/models/application.model';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 interface CalendarEvent {
   id: string;
@@ -35,10 +36,13 @@ interface CalendarDay {
 const MAX_VISIBLE_EVENTS = 3;
 const STATUS_OPTIONS = STATUS_ORDER;
 
+/** Fallback statuses so application events appear even before the user opens the config filter. */
+const DEFAULT_APP_STATUSES = ['SAVED', 'APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'];
+
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RefreshButtonComponent],
   templateUrl: './calendar.component.html',
   styleUrl: './calendar.component.scss',
 })
@@ -54,6 +58,7 @@ export class CalendarComponent implements OnInit {
   remindersList = signal<ReminderResultDto[]>([]);
   offsetOptions = REMINDER_OFFSET_OPTIONS;
   loading = signal(false);
+  refreshing = signal(false);
   saving = signal(false);
   error = signal('');
   successMsg = signal('');
@@ -162,7 +167,13 @@ export class CalendarComponent implements OnInit {
       console.error(e);
     } finally {
       this.loading.set(false);
+      this.refreshing.set(false);
     }
+  }
+
+  onRefresh() {
+    this.refreshing.set(true);
+    Promise.all([this.loadReminders(), this.loadAppEvents()]).finally(() => this.refreshing.set(false));
   }
 
   async loadConfig() {
@@ -189,11 +200,8 @@ export class CalendarComponent implements OnInit {
     const from = new Date(year, month, 1);
     const to = new Date(year, month + 1, 0, 23, 59, 59);
 
-    const statuses = this.config()?.selectedStatuses;
-    if (!statuses || statuses.length === 0) {
-      this.appEvents.set([]);
-      return;
-    }
+    const selected = this.config()?.selectedStatuses;
+    const statuses = selected && selected.length > 0 ? selected : DEFAULT_APP_STATUSES;
 
     try {
       const res = await this.appSvc.getCalendarEvents({
@@ -207,6 +215,11 @@ export class CalendarComponent implements OnInit {
     } catch (e: any) {
       console.error('Failed to load app events', e);
     }
+  }
+
+  /** Number of application events (applies) on a given day — drives the per-day count badge. */
+  appCountForDay(day: number, month?: number, year?: number): number {
+    return this.eventsForDay(day, month, year).filter(ev => ev.source === 'application').length;
   }
 
   async saveConfig() {

@@ -57,6 +57,11 @@
   text-decoration: none;
 }
 
+.head-actions .btn-ghost.accent {
+  color: oklch(0.55 0.18 250);
+  border-color: color-mix(in srgb, oklch(0.55 0.18 250) 40%, var(--border));
+}
+
 // ── Company header card ──────────────────────────────────────────────────────
 .co-header {
   display: flex;

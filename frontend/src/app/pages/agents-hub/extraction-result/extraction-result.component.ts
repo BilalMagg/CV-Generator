@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExtractionService } from '@app/services/extraction.service';
 import { ExtractorOutput } from '@app/models/extraction.types';
+import { ToastService } from '@app/services/toast.service';
 import { Subject, skip, takeUntil } from 'rxjs';
 import { extractError } from '@app/shared/error-utils';
 
@@ -18,12 +19,15 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly extractionService = inject(ExtractionService);
+  private readonly toast = inject(ToastService);
   private readonly destroy$ = new Subject<void>();
 
+  extractionId = '';
   output: ExtractorOutput | null = null;
   loading = true;
   error = '';
   copied = false;
+  saving = false;
 
   editingField: string | null = null;
   editBuffer = '';
@@ -34,6 +38,7 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
     const histState = history.state as { output?: ExtractorOutput } | undefined;
     const output = navState?.output ?? histState?.output;
     const id = this.route.snapshot.paramMap.get('id');
+    if (id) this.extractionId = id;
 
     if (output) {
       this.output = output;
@@ -60,6 +65,7 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
   }
 
   private async loadResult(id: string): Promise<void> {
+    this.extractionId = id;
     try {
       this.output = await this.extractionService.getExtraction(id);
     } catch (err) {
@@ -188,5 +194,23 @@ export class ExtractionResultComponent implements OnInit, OnDestroy {
     if (!this.output) return [];
     const val = (this.output as unknown as Record<string, unknown>)[field];
     return Array.isArray(val) ? val as string[] : [];
+  }
+
+  async saveToLibrary(): Promise<void> {
+    if (!this.extractionId) return;
+    this.saving = true;
+    try {
+      const res = await this.extractionService.saveToLibrary(this.extractionId);
+      this.toast.success(`Saved ${res.companyName} to library`);
+    } catch (err) {
+      this.toast.error(extractError(err, 'Failed to save to library'));
+    } finally {
+      this.saving = false;
+    }
+  }
+
+  openInApply(): void {
+    if (!this.extractionId) return;
+    this.router.navigate(['/applications/apply'], { queryParams: { extractionId: this.extractionId } });
   }
 }

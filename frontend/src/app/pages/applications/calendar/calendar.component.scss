@@ -204,6 +204,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  position: relative;
 
   &:hover { background: var(--bg); }
   &.other-month { background: oklch(0.99 0.002 80); }
@@ -228,6 +229,25 @@
   background: var(--dark);
   color: white;
   font-weight: 700;
+}
+
+.app-count {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: white;
+  background: oklch(0.62 0.16 250);
+  border-radius: 999px;
+  box-sizing: border-box;
 }
 
 .day-events {

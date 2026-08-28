@@ -53,6 +53,8 @@ export interface ApplyTemplateDto {
   companyDescription?: string;
   recipientContactId?: string;
   recipientEmail?: string;
+  recipientName?: string;
+  contactNotes?: string;
   cronExpression: string;
   scheduleName?: string;
   createCompanyIfMissing?: boolean;

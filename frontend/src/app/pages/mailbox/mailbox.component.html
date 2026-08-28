@@ -387,6 +387,7 @@
                 <input placeholder="Company" [ngModel]="contactFormCompany()" (ngModelChange)="contactFormCompany.set($event)" />
                 <input placeholder="Position" [ngModel]="contactFormPosition()" (ngModelChange)="contactFormPosition.set($event)" />
               </div>
+              <textarea class="cd-input" rows="2" placeholder="Notes (language hints / context)" [ngModel]="contactFormNotes()" (ngModelChange)="contactFormNotes.set($event)"></textarea>
               <div class="form-actions">
                 <button class="mb-btn-primary" (click)="saveContact()">Save</button>
                 <button class="mb-btn-ghost" (click)="showContactForm.set(false)">Cancel</button>
@@ -651,6 +652,19 @@
               </div>
               <div class="fld"><label>Body template *</label><textarea [(ngModel)]="tplBody" rows="8"></textarea></div>
               <div class="fld"><label>Variable defaults (JSON)</label><textarea [(ngModel)]="tplVarDefaultsJson" rows="4"></textarea></div>
+              <div class="fld"><label>Attachments (attached to every scheduled email from this template)</label>
+                <input type="file" multiple (change)="onTplFilesSelected($event)" />
+                @if (tplAttachments().length) {
+                  <ul class="files">
+                    @for (a of tplAttachments(); track a.objectKey; let i = $index) {
+                      <li>
+                        <span>{{ a.fileName }} ({{ a.sizeBytes / 1024 | number: '1.0-0' }} KB)</span>
+                        <button class="link" (click)="removeTplAttachment(i)">remove</button>
+                      </li>
+                    }
+                  </ul>
+                }
+              </div>
               <div class="row end">
                 <button class="mb-btn" (click)="closeTemplateForm()">Cancel</button>
                 <button class="mb-btn-primary" (click)="saveTemplate()">Save template</button>

@@ -203,3 +203,14 @@
   opacity: 0;
   transition: opacity 0.15s;
 }
+
+.apply-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  &:hover { text-decoration: underline; }
+}

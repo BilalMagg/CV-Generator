@@ -175,6 +175,16 @@
         </div>
       }
 
+      <div class="gmail-note" [class.warn]="deliverMode() === 'now' && !gmailConnected()">
+        @if (gmailConnected()) {
+          Sending from <strong>{{ gmailEmail() }}</strong> via Gmail.
+        } @else if (deliverMode() === 'now') {
+          Gmail is not connected — connect it in Mailbox → Settings to send now, or pick Schedule.
+        } @else {
+          Scheduled emails fire automatically when Gmail is connected.
+        }
+      </div>
+
       <div class="row end">
         <button class="btn" (click)="step.set(3)">Back</button>
         <button class="btn primary" (click)="submit()" [disabled]="submitting()">

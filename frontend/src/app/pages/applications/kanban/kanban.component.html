@@ -18,6 +18,7 @@
       }
     </div>
     <div class="kb-header-right">
+      <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
       <div class="kb-view-group">
         <button class="kb-vbtn" [class.active]="view() === 'board'" (click)="view.set('board')">
           <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -56,6 +57,12 @@
             <line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/>
           </svg>
           Add
+        </button>
+        <button class="kb-add-btn accent" routerLink="/applications/apply">
+          <svg viewBox="0 0 14 14" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4a1 1 0 011-1h8a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l5 4 5-4"/>
+          </svg>
+          Apply
         </button>
       </div>
     </div>

@@ -32,6 +32,7 @@ export class CompanyFormDialogComponent implements OnChanges {
   formCountry = signal('Morocco');
   formLocationUrl = signal('');
   formNote = signal('');
+  formDescription = signal('');
 
   protected readonly COUNTRIES = COUNTRIES;
 
@@ -48,6 +49,7 @@ export class CompanyFormDialogComponent implements OnChanges {
       this.formCountry.set(c.country || 'Morocco');
       this.formLocationUrl.set(c.locationUrl ?? '');
       this.formNote.set(c.note ?? '');
+      this.formDescription.set(c.description ?? '');
     } else {
       this.formName.set(this.prefillName());
       this.formWebsite.set('');
@@ -55,6 +57,7 @@ export class CompanyFormDialogComponent implements OnChanges {
       this.formCountry.set('Morocco');
       this.formLocationUrl.set('');
       this.formNote.set('');
+      this.formDescription.set('');
     }
   }
 
@@ -77,6 +80,7 @@ export class CompanyFormDialogComponent implements OnChanges {
         country: this.formCountry(),
         locationUrl: this.formLocationUrl().trim() || undefined,
         note: this.formNote().trim() || undefined,
+        description: this.formDescription().trim() || undefined,
       };
       const editing = this.editing();
       const result = editing

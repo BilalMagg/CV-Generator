@@ -190,6 +190,10 @@ public class EmailScheduleService
                 throw new ArgumentException($"No contact found for company '{company.Name}'. Add a contact first or pass recipientEmail.");
         }
 
+        // Enrich the recipient contact with name/notes captured in the apply panel.
+        if (!string.IsNullOrWhiteSpace(dto.RecipientName)) contact.Name = dto.RecipientName.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.ContactNotes)) contact.Notes = dto.ContactNotes.Trim();
+
         // Render subject/body from template
         var subject = TemplateVariableResolver.Render(template.SubjectTemplate, Default(template), company, user);
         var body = TemplateVariableResolver.Render(template.BodyTemplate, Default(template), company, user);

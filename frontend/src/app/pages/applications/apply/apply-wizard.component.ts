@@ -1,10 +1,11 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { ExtractionService } from '@app/services/extraction.service';
 import { ApplyService } from '@app/services/apply.service';
 import { MailboxService } from '@app/services/mailbox.service';
+import { ToastService } from '@app/services/toast.service';
 import { DocumentsService } from '@app/services/documents.service';
 import { AuthService } from '@app/services/auth.service';
 import { ExtractorOutput, ExtractionHistoryItem } from '@app/models/extraction.types';
@@ -38,6 +39,8 @@ export class ApplyWizardComponent implements OnInit {
   private docsSvc = inject(DocumentsService);
   private authSvc = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private toast = inject(ToastService);
 
   step = signal<1 | 2 | 3 | 4>(1);
   cronPresets = CRON_PRESETS;
@@ -77,6 +80,8 @@ export class ApplyWizardComponent implements OnInit {
   submitting = signal(false);
   error = signal<string>('');
   result = signal<ApplyEmailResult | null>(null);
+  gmailConnected = signal(false);
+  gmailEmail = signal('');
 
   async ngOnInit() {
     this.history.set(await this.extractionSvc.getHistory('job-extractor').catch(() => []));
@@ -87,6 +92,33 @@ export class ApplyWizardComponent implements OnInit {
       for (const v of cv.versions) opts.push({ id: v.id, label: `${cv.title} — ${v.label}` });
     }
     this.cvOptions.set(opts);
+    try {
+      const gmail = await this.mailboxSvc.getGmailStatus();
+      this.gmailConnected.set(gmail.connected);
+      if (gmail.email) this.gmailEmail.set(gmail.email);
+    } catch { /* gmail status optional */ }
+    await this.applyQueryParams();
+  }
+
+  private async applyQueryParams() {
+    const q = this.route.snapshot.queryParamMap;
+    const extractionId = q.get('extractionId');
+    const companyName = q.get('companyName');
+    const positionTitle = q.get('positionTitle');
+    if (extractionId) {
+      try {
+        const output = await this.extractionSvc.getExtraction(extractionId);
+        this.extractionId.set(extractionId);
+        this.applyExtraction(output, extractionId);
+        this.step.set(2);
+        return;
+      } catch { /* fall through to prefill */ }
+    }
+    if (companyName) {
+      this.companyName = companyName;
+      if (positionTitle) this.positionTitle = positionTitle;
+      this.prefillCompose();
+    }
   }
 
   async extract() {
@@ -195,6 +227,12 @@ export class ApplyWizardComponent implements OnInit {
     if (!this.companyName.trim()) { this.error.set('Company name is required'); return; }
     if (!this.recipientEmail.trim()) { this.error.set('Recipient email is required'); return; }
     if (!this.subject.trim() || !this.body.trim()) { this.error.set('Subject and body are required'); return; }
+
+    if (this.deliverMode() === 'now' && !this.gmailConnected()) {
+      this.error.set('Gmail is not connected. Connect Gmail in Mailbox → Settings, or choose Schedule instead.');
+      this.toast.error('Gmail not connected');
+      return;
+    }
 
     this.error.set('');
     this.submitting.set(true);

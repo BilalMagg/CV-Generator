@@ -15,7 +15,7 @@ import {
 } from '@app/models/mailbox.model';
 import { ApplicationResponseDto, STATUS_LABELS } from '@app/models/application.model';
 import {
-  ScheduleTemplateDto, ApplyTemplateDto, ApplyTemplateResultDto,
+  ScheduleTemplateDto, ApplyTemplateDto, ApplyTemplateResultDto, ScheduleAttachmentRef,
 } from '@app/models/apply.model';
 
 type MailboxView = 'compose' | 'history' | 'contacts' | 'schedules' | 'templates' | 'settings';
@@ -120,6 +120,7 @@ export class MailboxComponent implements OnInit {
   contactFormPhone = signal('');
   contactFormCompany = signal('');
   contactFormPosition = signal('');
+  contactFormNotes = signal('');
   editingContactId = signal<string | null>(null);
 
   gmailConnected = signal(false);
@@ -198,6 +199,7 @@ export class MailboxComponent implements OnInit {
   tplCron = signal('0 9 * * *');
   tplCvVersionId = signal('');
   tplVarDefaultsJson = signal('{\n  \n}');
+  tplAttachments = signal<ScheduleAttachmentRef[]>([]);
 
   applyTargetTemplate = signal<ScheduleTemplateDto | null>(null);
   applyCompanyName = signal('');
@@ -233,6 +235,7 @@ export class MailboxComponent implements OnInit {
     this.tplCron.set('0 9 * * *');
     this.tplCvVersionId.set('');
     this.tplVarDefaultsJson.set('{\n  \n}');
+    this.tplAttachments.set([]);
     this.showTemplateForm.set(true);
     void this.ensureDocumentsLoaded();
   }
@@ -244,6 +247,7 @@ export class MailboxComponent implements OnInit {
     this.tplBody.set(t.bodyTemplate);
     this.tplCvVersionId.set(t.cvVersionId ?? '');
     this.tplVarDefaultsJson.set(JSON.stringify(t.variableDefaults ?? {}, null, 2));
+    this.tplAttachments.set(t.attachments ?? []);
     this.showTemplateForm.set(true);
     void this.ensureDocumentsLoaded();
   }
@@ -267,6 +271,7 @@ export class MailboxComponent implements OnInit {
       bodyTemplate: this.tplBody(),
       cvVersionId: this.tplCvVersionId() || undefined,
       variableDefaults,
+      attachments: this.tplAttachments().length ? this.tplAttachments() : undefined,
     };
     try {
       if (this.editingTemplateId()) {
@@ -282,6 +287,25 @@ export class MailboxComponent implements OnInit {
       const msg = (err as { error?: { message?: string } })?.error?.message;
       this.toast.error(msg || 'Failed to save template');
     }
+  }
+
+  async onTplFilesSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    const files = Array.from(input.files);
+    for (const f of files) {
+      try {
+        const ref = await this.service.uploadAttachment(f);
+        if (ref.data) this.tplAttachments.update(list => [...list, ref.data!]);
+      } catch {
+        this.toast.error(`Failed to upload ${f.name}`);
+      }
+    }
+    input.value = '';
+  }
+
+  removeTplAttachment(idx: number) {
+    this.tplAttachments.update(list => list.filter((_, i) => i !== idx));
   }
 
   async deleteTemplate(id: string) {
@@ -319,6 +343,8 @@ export class MailboxComponent implements OnInit {
         companyName: this.applyCompanyName().trim(),
         companyDescription: this.applyCompanyDescription().trim() || undefined,
         recipientEmail: this.applyRecipientEmail().trim() || undefined,
+        recipientName: this.applyRecipientName().trim() || undefined,
+        contactNotes: this.applyContactNotes().trim() || undefined,
         cronExpression: this.tplCron().trim(),
         scheduleName: `Apply → ${this.applyCompanyName().trim()}`,
         createCompanyIfMissing: true,
@@ -654,6 +680,7 @@ export class MailboxComponent implements OnInit {
     this.contactFormPhone.set('');
     this.contactFormCompany.set('');
     this.contactFormPosition.set('');
+    this.contactFormNotes.set('');
   }
 
   editContact(c: ContactDto) {
@@ -664,6 +691,7 @@ export class MailboxComponent implements OnInit {
     this.contactFormPhone.set(c.phone || '');
     this.contactFormCompany.set(c.company || '');
     this.contactFormPosition.set(c.position || '');
+    this.contactFormNotes.set(c.notes || '');
   }
 
   async saveContact() {
@@ -673,6 +701,7 @@ export class MailboxComponent implements OnInit {
       phone: this.contactFormPhone() || undefined,
       company: this.contactFormCompany() || undefined,
       position: this.contactFormPosition() || undefined,
+      notes: this.contactFormNotes() || undefined,
     };
     if (this.editingContactId()) {
       await this.contactApi.updateContact(this.editingContactId()!, dto);

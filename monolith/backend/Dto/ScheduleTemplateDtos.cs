@@ -75,6 +75,8 @@ public class ApplyTemplateDto
     public string? CompanyDescription { get; set; }
     public Guid? RecipientContactId { get; set; }
     public string? RecipientEmail { get; set; }
+    public string? RecipientName { get; set; }
+    public string? ContactNotes { get; set; }
     public string? CronExpression { get; set; }
     public string? ScheduleName { get; set; }
     public bool CreateCompanyIfMissing { get; set; } = true;

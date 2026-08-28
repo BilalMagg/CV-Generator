@@ -8,6 +8,7 @@
       <p class="page-sub">Interviews, follow-ups, and offer deadlines, never miss a beat.</p>
     </div>
     <div class="header-right">
+      <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
       <div class="view-group">
         <button class="vbtn">Board</button>
         <button class="vbtn">List</button>
@@ -76,6 +77,11 @@
             [class.today]="cell.isToday"
           >
             <div class="day-num" [class.today-num]="cell.isToday">{{ cell.day }}</div>
+            @if (appCountForDay(cell.day, cell.month, cell.year) > 0) {
+              <span class="app-count" [title]="appCountForDay(cell.day, cell.month, cell.year) + ' application(s)'">
+                {{ appCountForDay(cell.day, cell.month, cell.year) }}
+              </span>
+            }
             <div class="day-events">
               @for (ev of visibleEventsForDay(cell.day, cell.month, cell.year); track ev.id + ev.type) {
                 <div class="event-pill" [ngClass]="'ev-' + ev.type" [title]="ev.subtitle">{{ ev.title }}</div>
