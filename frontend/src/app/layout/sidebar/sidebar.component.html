@@ -78,6 +78,12 @@
                 <line x1="4" y1="18" x2="20" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
               </svg>
             }
+            @case ('send') {
+              <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+                <path d="M21 3L3 10.5l7 2.5 2.5 7L21 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+                <path d="M10 13l4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            }
           }
         </span>
         <span class="nav-label">{{ item.label }}</span>
@@ -131,6 +137,12 @@
                 <path d="M2 5l10 7 10-7" stroke="currentColor" stroke-width="1.6"/>
               </svg>
             }
+            @case ('documents') {
+              <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+                <path d="M2 7a2 2 0 012-2h5l2 2h9a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M4 11h16" stroke="currentColor" stroke-width="1.6"/>
+              </svg>
+            }
             @case ('briefcase') {
               <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
                 <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/>
@@ -153,19 +165,6 @@
   </nav>
 
   <div class="spacer"></div>
-
-  <!-- Credits promo card -->
-  <div class="promo-card">
-    <div class="promo-credits">
-      <svg viewBox="0 0 24 24" fill="none" width="12" height="12">
-        <path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"
-          stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-      </svg>
-      24 credits left
-    </div>
-    <div class="promo-desc">You've generated 6 CVs this month.</div>
-    <button class="promo-btn">Upgrade to Pro</button>
-  </div>
 
   <!-- User row -->
   <div class="user-row" (click)="goToProfile()">
