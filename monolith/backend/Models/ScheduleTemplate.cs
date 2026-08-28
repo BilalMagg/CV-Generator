@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CV_Generator.Models;
 
-[Table("companies")]
-public class Company
+[Table("schedule_templates")]
+public class ScheduleTemplate
 {
     [Key]
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -16,25 +16,20 @@ public class Company
     [MaxLength(200)]
     public required string Name { get; set; }
 
+    [Required]
     [MaxLength(500)]
-    public string? WebsiteUrl { get; set; }
-
-    [MaxLength(100)]
-    public string? Location { get; set; }
-
-    [MaxLength(100)]
-    public string Country { get; set; } = "Morocco";
-
-    [MaxLength(500)]
-    public string? LocationUrl { get; set; }
-
-    public string? Note { get; set; }
-
-    public string? Description { get; set; }
+    public required string SubjectTemplate { get; set; }
 
     [Required]
+    public required string BodyTemplate { get; set; }
+
+    public string? VariableDefaultsJson { get; set; }
+
+    public Guid? CvVersionId { get; set; }
+
+    public string? AttachmentRefsJson { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    [Required]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
