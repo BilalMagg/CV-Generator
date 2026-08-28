@@ -4,8 +4,12 @@ import { ApiResponse } from '../models/application.model';
 import {
   EmailMessageDto, SendEmailDto, SendEmailResult, EmailHistoryResponse,
   EmailScheduleDto, CreateScheduleDto, UpdateScheduleDto, ScheduleHistoryResponse,
-  MailboxStatsDto,
+  MailboxStatsDto, ScheduleAttachmentRef,
 } from '../models/mailbox.model';
+import {
+  ScheduleTemplateDto, CreateScheduleTemplateDto, UpdateScheduleTemplateDto,
+  ApplyTemplateDto, ApplyTemplateResultDto,
+} from '../models/apply.model';
 
 @Injectable({ providedIn: 'root' })
 export class MailboxService {
@@ -17,6 +21,13 @@ export class MailboxService {
 
   send(dto: SendEmailDto): Promise<ApiResponse<SendEmailResult>> {
     return this.http.post<ApiResponse<SendEmailResult>>('/api/mailbox/send', dto);
+  }
+
+  /** Uploads a file to MinIO for use as a schedule/template attachment. */
+  uploadAttachment(file: File): Promise<ApiResponse<ScheduleAttachmentRef>> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ApiResponse<ScheduleAttachmentRef>>('/api/mailbox/attachments', form);
   }
 
   getHistory(params?: { page?: number; pageSize?: number; status?: string; search?: string }): Promise<ApiResponse<EmailHistoryResponse>> {
@@ -63,6 +74,32 @@ export class MailboxService {
 
   toggleSchedule(scheduleId: string): Promise<ApiResponse<EmailScheduleDto>> {
     return this.http.patch<ApiResponse<EmailScheduleDto>>(`/api/email-schedules/${scheduleId}/toggle`, {});
+  }
+
+  // ── Schedule templates (reusable generic schedules) ─────────────────────────
+
+  getScheduleTemplates(): Promise<ApiResponse<ScheduleTemplateDto[]>> {
+    return this.http.get<ApiResponse<ScheduleTemplateDto[]>>('/api/email-schedules/templates');
+  }
+
+  getScheduleTemplate(id: string): Promise<ApiResponse<ScheduleTemplateDto>> {
+    return this.http.get<ApiResponse<ScheduleTemplateDto>>(`/api/email-schedules/templates/${id}`);
+  }
+
+  createScheduleTemplate(dto: CreateScheduleTemplateDto): Promise<ApiResponse<ScheduleTemplateDto>> {
+    return this.http.post<ApiResponse<ScheduleTemplateDto>>('/api/email-schedules/templates', dto);
+  }
+
+  updateScheduleTemplate(id: string, dto: UpdateScheduleTemplateDto): Promise<ApiResponse<ScheduleTemplateDto>> {
+    return this.http.put<ApiResponse<ScheduleTemplateDto>>(`/api/email-schedules/templates/${id}`, dto);
+  }
+
+  deleteScheduleTemplate(id: string): Promise<void> {
+    return this.http.delete<void>(`/api/email-schedules/templates/${id}`);
+  }
+
+  applyTemplate(dto: ApplyTemplateDto): Promise<ApiResponse<ApplyTemplateResultDto>> {
+    return this.http.post<ApiResponse<ApplyTemplateResultDto>>('/api/email-schedules/apply-template', dto);
   }
 
   getGmailStatus(): Promise<{ connected: boolean; email?: string; connectedAt?: string }> {

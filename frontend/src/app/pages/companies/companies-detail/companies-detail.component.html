@@ -16,6 +16,7 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add contact
         </a>
+        <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
         <button class="btn-ghost" (click)="openEdit()">Edit</button>
         <button class="btn-danger-ghost" (click)="onDelete()">Delete</button>
       </div>
@@ -57,6 +58,20 @@
           </div>
           @if (c.note) {
             <p class="co-note">{{ c.note }}</p>
+          }
+          @if (editingDesc()) {
+            <div class="co-desc-edit">
+              <textarea class="co-desc-input" [(ngModel)]="descDraft" rows="4" placeholder="Describe the company (used by {{ '{{company_description}}' }} in templates)…"></textarea>
+              <div class="row end">
+                <button class="mb-btn" (click)="cancelDesc()">Cancel</button>
+                <button class="mb-btn-primary" (click)="saveDesc()">Save</button>
+              </div>
+            </div>
+          } @else {
+            @if (c.description) {
+              <p class="co-desc">{{ c.description }}</p>
+            }
+            <button class="co-desc-edit-btn" (click)="startEditDesc()">{{ c.description ? 'Edit description' : 'Add description' }}</button>
           }
         </div>
       </section>

@@ -12,6 +12,7 @@ export interface CompanyDto {
   country?: string | null;
   locationUrl?: string | null;
   note?: string | null;
+  description?: string | null;
   applicationsCount?: number;
   lastAppliedAt?: string | null;
   createdAt: string;
@@ -25,6 +26,7 @@ export interface CreateCompanyDto {
   country?: string;
   locationUrl?: string;
   note?: string;
+  description?: string;
 }
 
 export interface UpdateCompanyDto {
@@ -34,6 +36,7 @@ export interface UpdateCompanyDto {
   country?: string;
   locationUrl?: string;
   note?: string;
+  description?: string;
 }
 
 export interface CompanyListResponse {

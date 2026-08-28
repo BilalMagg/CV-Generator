@@ -51,6 +51,16 @@ export class ExtractionService {
     }
   }
 
+  /** Saves an extraction's organized output to the library (upserts Company + JobOffer). */
+  async saveToLibrary(id: string): Promise<{ companyId: string; jobOfferId: string; companyName: string }> {
+    const response = await this.http.post<ApiResponse<{ companyId: string; jobOfferId: string; companyName: string }>>(
+      `/api/workflows/job-extractions/${id}/save-to-library`,
+      {},
+    );
+    if (!response.success || !response.data) throw new Error(response.message || 'Failed to save to library');
+    return response.data;
+  }
+
   async getConfig(agentId: string): Promise<AgentConfig> {
     const stored = localStorage.getItem(`agent-config-${agentId}`);
     return stored ? JSON.parse(stored) : { ...DEFAULT_CONFIG };

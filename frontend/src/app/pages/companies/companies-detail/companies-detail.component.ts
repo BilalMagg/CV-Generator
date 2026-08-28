@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CompanyService, CompanyDto } from '@app/services/company.service';
 import { ToastService } from '@app/services/toast.service';
 import { CompanyFormDialogComponent } from '@app/shared/components/company-form-dialog/company-form-dialog.component';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 import {
   ApplicationResponseDto,
   StatusHistoryDto,
@@ -22,7 +23,7 @@ interface ActivityEntry { appId: string; position: string; entry: StatusHistoryD
 @Component({
   selector: 'app-companies-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CompanyFormDialogComponent],
+  imports: [CommonModule, FormsModule, RouterLink, CompanyFormDialogComponent, RefreshButtonComponent],
   templateUrl: './companies-detail.component.html',
   styleUrl: './companies-detail.component.scss',
 })
@@ -38,6 +39,7 @@ export class CompaniesDetailComponent {
   applications = signal<ApplicationResponseDto[]>([]);
   contacts = signal<ContactDto[]>([]);
   loading = signal(true);
+  refreshing = signal(false);
 
   dialogOpen = signal(false);
   editingCompany = signal<CompanyDto | null>(null);
@@ -85,7 +87,13 @@ export class CompaniesDetailComponent {
       this.toast.error('Failed to load company');
     } finally {
       this.loading.set(false);
+      this.refreshing.set(false);
     }
+  }
+
+  onRefresh() {
+    this.refreshing.set(true);
+    this.loadAll();
   }
 
   openEdit() {
@@ -118,6 +126,34 @@ export class CompaniesDetailComponent {
       }
     } catch {
       this.toast.error('Failed to update favorite');
+    }
+  }
+
+  // ── Description editor ─────────────────────────────────────────────────────
+  editingDesc = signal(false);
+  descDraft = signal('');
+
+  startEditDesc() {
+    this.descDraft.set(this.company()?.description ?? '');
+    this.editingDesc.set(true);
+  }
+
+  cancelDesc() {
+    this.editingDesc.set(false);
+  }
+
+  async saveDesc() {
+    const c = this.company();
+    if (!c) return;
+    try {
+      const res = await this.companyService.updateCompany(c.id, { description: this.descDraft().trim() || undefined });
+      if (res.success && res.data) {
+        this.company.set(res.data);
+        this.toast.success('Description saved');
+      }
+      this.editingDesc.set(false);
+    } catch {
+      this.toast.error('Failed to save description');
     }
   }
 

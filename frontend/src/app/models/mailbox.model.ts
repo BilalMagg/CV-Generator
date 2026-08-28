@@ -113,6 +113,13 @@ export interface ContactHistoryResponse {
   totalEmails: number;
 }
 
+export interface ScheduleAttachmentRef {
+  fileName: string;
+  contentType?: string;
+  objectKey: string;
+  sizeBytes: number;
+}
+
 export interface EmailScheduleDto {
   id: string;
   userId: string;
@@ -125,6 +132,10 @@ export interface EmailScheduleDto {
   nextRunAt?: string;
   lastRunAt?: string | null;
   upcomingRuns?: string[] | null;
+  applicationId?: string | null;
+  cvVersionId?: string | null;
+  templateSourceId?: string | null;
+  attachments: ScheduleAttachmentRef[];
   createdAt: string;
   updatedAt: string;
 }
@@ -152,6 +163,10 @@ export interface CreateScheduleDto {
   subject: string;
   body: string;
   recipientIds: string[];
+  applicationId?: string;
+  cvVersionId?: string;
+  templateSourceId?: string;
+  attachments?: ScheduleAttachmentRef[];
 }
 
 export interface UpdateScheduleDto {
@@ -160,6 +175,10 @@ export interface UpdateScheduleDto {
   subject?: string;
   body?: string;
   recipientIds?: string[];
+  applicationId?: string;
+  cvVersionId?: string;
+  templateSourceId?: string;
+  attachments?: ScheduleAttachmentRef[];
 }
 
 export interface MailboxStatsDto {

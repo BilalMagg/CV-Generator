@@ -1,0 +1,203 @@
+<div class="apply-page">
+  <header class="apply-head">
+    <h1>Apply to a job post</h1>
+    <p class="sub">Paste a job post, let the agent organize it, then prepare and send (or schedule) your application email.</p>
+  </header>
+
+  @if (error()) {
+    <div class="banner error">{{ error() }}</div>
+  }
+
+  <ol class="steps">
+    <li [class.active]="step() === 1" [class.done]="step() > 1"><span>1</span> Paste</li>
+    <li [class.active]="step() === 2" [class.done]="step() > 2"><span>2</span> Review</li>
+    <li [class.active]="step() === 3" [class.done]="step() > 3"><span>3</span> Compose</li>
+    <li [class.active]="step() === 4"><span>4</span> Deliver</li>
+  </ol>
+
+  @if (step() === 1) {
+    <section class="card">
+      <label>Paste job post text</label>
+      <textarea [(ngModel)]="inputText" rows="8" placeholder="Paste the job description here..."></textarea>
+
+      <label>…or a URL</label>
+      <input type="text" [(ngModel)]="inputUrl" placeholder="https://careers.example.com/role" />
+
+      <div class="row">
+        <button class="btn primary" (click)="extract()" [disabled]="extracting()">
+          {{ extracting() ? 'Extracting…' : 'Extract & organize' }}
+        </button>
+      </div>
+
+      @if (history().length) {
+        <div class="history">
+          <h3>Recent extractions</h3>
+          <ul>
+            @for (h of history(); track h.id) {
+              <li>
+                <button class="link" (click)="selectHistory(h.id)">{{ h.companyName }} — {{ h.jobRole }}</button>
+                <span class="muted">{{ h.createdAt | date: 'short' }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </section>
+  }
+
+  @if (step() === 2 && extraction()) {
+    <section class="card">
+      <div class="review-grid">
+        <div><strong>Company</strong><div>{{ extraction()!.enterpriseName || '—' }}</div></div>
+        <div><strong>Role</strong><div>{{ extraction()!.jobRole || '—' }}</div></div>
+        <div><strong>Contact email</strong><div>{{ extraction()!.contactEmail || '—' }}</div></div>
+        <div><strong>Location</strong><div>{{ extraction()!.location || '—' }}</div></div>
+        <div><strong>Experience</strong><div>{{ extraction()!.requiredExperienceYears ?? '—' }} yrs</div></div>
+        <div><strong>Employment</strong><div>{{ extraction()!.employmentType || '—' }}</div></div>
+      </div>
+
+      <div class="chips">
+        @for (s of extraction()!.requiredSkills; track s) { <span class="chip">{{ s }}</span> }
+      </div>
+
+      <div class="row between">
+        <button class="btn" (click)="saveToLibrary()" [disabled]="savedToLibrary()">
+          {{ savedToLibrary() ? 'Saved to library ✓' : 'Save company to library' }}
+        </button>
+        <button class="btn primary" (click)="step.set(3)">Continue to compose</button>
+      </div>
+    </section>
+  }
+
+  @if (step() === 3) {
+    <section class="card">
+      <div class="row">
+        <div class="fld">
+          <label>Company</label>
+          <input type="text" [(ngModel)]="companyName" />
+        </div>
+        <div class="fld">
+          <label>Position</label>
+          <input type="text" [(ngModel)]="positionTitle" />
+        </div>
+      </div>
+
+      <div class="fld">
+        <label>Company description (used by {{ '{{company_description}}' }})</label>
+        <textarea [(ngModel)]="companyDescription" rows="2"></textarea>
+      </div>
+
+      <div class="row">
+        <div class="fld">
+          <label>Recipient email *</label>
+          <input type="text" [(ngModel)]="recipientEmail" placeholder="careers@company.com" />
+        </div>
+        <div class="fld">
+          <label>Recipient name</label>
+          <input type="text" [(ngModel)]="recipientName" />
+        </div>
+      </div>
+
+      <div class="fld">
+        <label>Contact notes (your own language hints)</label>
+        <input type="text" [(ngModel)]="contactNotes" placeholder="e.g. referred by Sara; avoid Tuesdays" />
+      </div>
+
+      <div class="row">
+        <div class="fld">
+          <label>Prefill from template</label>
+          <select [(ngModel)]="selectedTemplateId" (change)="useTemplate()">
+            <option value="">— write manually —</option>
+            @for (t of templates(); track t.id) {
+              <option [value]="t.id">{{ t.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="fld">
+          <label>CV version</label>
+          <select [(ngModel)]="selectedCvVersionId">
+            <option value="">— none —</option>
+            @for (o of cvOptions(); track o.id) {
+              <option [value]="o.id">{{ o.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="fld">
+        <label>Subject</label>
+        <input type="text" [(ngModel)]="subject" />
+      </div>
+
+      <div class="fld">
+        <label>Body</label>
+        <textarea [(ngModel)]="body" rows="10"></textarea>
+      </div>
+
+      <div class="fld">
+        <label>Attachments</label>
+        <input type="file" multiple (change)="onFilesSelected($event)" />
+        @if (attachmentFiles().length) {
+          <ul class="files">
+            @for (f of attachmentFiles(); track f.name; let i = $index) {
+              <li>
+                <span>{{ f.name }} ({{ f.size / 1024 | number: '1.0-0' }} KB)</span>
+                <button class="link" (click)="removeAttachment(i)">remove</button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="row end">
+        <button class="btn" (click)="step.set(2)">Back</button>
+        <button class="btn primary" (click)="step.set(4)">Continue to deliver</button>
+      </div>
+    </section>
+  }
+
+  @if (step() === 4 && !result()) {
+    <section class="card">
+      <h3>Deliver</h3>
+      <div class="seg">
+        <button [class.active]="deliverMode() === 'now'" (click)="deliverMode.set('now')">Send now</button>
+        <button [class.active]="deliverMode() === 'schedule'" (click)="deliverMode.set('schedule')">Schedule</button>
+      </div>
+
+      @if (deliverMode() === 'schedule') {
+        <div class="fld">
+          <label>Repeat</label>
+          <select [(ngModel)]="cronExpression">
+            @for (p of cronPresets; track p.cron) {
+              <option [value]="p.cron">{{ p.label }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      <div class="row end">
+        <button class="btn" (click)="step.set(3)">Back</button>
+        <button class="btn primary" (click)="submit()" [disabled]="submitting()">
+          {{ submitting() ? 'Sending…' : (deliverMode() === 'schedule' ? 'Schedule application' : 'Send application') }}
+        </button>
+      </div>
+    </section>
+  }
+
+  @if (step() === 4 && result()) {
+    <section class="card success">
+      <h3>{{ result()!.sentNow ? 'Application sent ✓' : 'Application scheduled ✓' }}</h3>
+      <p>
+        @if (result()!.sentNow) {
+          Your email was sent and logged as an attempt on the application.
+        } @else {
+          A scheduled email was created and a tracked application was saved (status: Saved).
+        }
+      </p>
+      <div class="row end">
+        <button class="btn" (click)="goApplications()">Open kanban</button>
+        <button class="btn primary" (click)="goDetail(result()!.applicationId)">View application</button>
+      </div>
+    </section>
+  }
+</div>

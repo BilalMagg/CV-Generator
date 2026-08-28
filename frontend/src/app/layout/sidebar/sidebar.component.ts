@@ -29,6 +29,7 @@ export class SidebarComponent {
     { label: 'Dashboard',    route: '/applications/dashboard', icon: 'dashboard', exact: false, group: 'main' },
     { label: 'Generate CV',  route: '/applications/generate',  icon: 'sparkle',   exact: false, accent: true, group: 'main' },
     { label: 'Applications', route: '/applications/kanban',    icon: 'kanban',    exact: false, group: 'main' },
+    { label: 'Apply',        route: '/applications/apply',      icon: 'send',      exact: false, accent: true, group: 'main' },
     { label: 'Analytics',    route: '/applications/analytics', icon: 'analytics', exact: false, group: 'main' },
     { label: 'Calendar',     route: '/applications/calendar',  icon: 'calendar',  exact: false, group: 'main' },
   ];
@@ -39,6 +40,7 @@ export class SidebarComponent {
 
   navLibrary: NavItem[] = [
     { label: 'Mailbox', route: '/mailbox', icon: 'mailbox', exact: false, group: 'library' },
+    { label: 'Documents', route: '/documents', icon: 'documents', exact: false, group: 'library' },
     { label: 'My Career', route: '/my-career', icon: 'user', exact: false, group: 'library' },
     { label: 'Job Offers', route: '/job-offers', icon: 'briefcase', exact: false, group: 'library' },
     { label: 'Companies', route: '/companies', icon: 'building', exact: false, group: 'library' },

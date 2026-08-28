@@ -1,18 +1,24 @@
 import { Component, signal, inject, OnInit, computed, effect } from '@angular/core';
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { MailboxService } from '@app/services/mailbox.service';
 import { ContactService } from '@app/services/contact.service';
 import { ToastService } from '@app/services/toast.service';
+import { DocumentsService } from '@app/services/documents.service';
+import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
 import {
   ContactDto, EmailMessageDto, EmailScheduleDto, ScheduleHistoryItem,
   MailboxStatsDto, SendEmailDto, ContactHistoryResponse, EmailAttachmentPayload,
 } from '@app/models/mailbox.model';
 import { ApplicationResponseDto, STATUS_LABELS } from '@app/models/application.model';
+import {
+  ScheduleTemplateDto, ApplyTemplateDto, ApplyTemplateResultDto,
+} from '@app/models/apply.model';
 
-type MailboxView = 'compose' | 'history' | 'contacts' | 'schedules' | 'settings';
+type MailboxView = 'compose' | 'history' | 'contacts' | 'schedules' | 'templates' | 'settings';
 
 interface EmailTemplate {
   name: string;
@@ -46,13 +52,14 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
 @Component({
   selector: 'app-mailbox',
   standalone: true,
-  imports: [CommonModule, FormsModule, SheetImportDialogComponent],
+  imports: [CommonModule, FormsModule, SheetImportDialogComponent, RefreshButtonComponent],
   templateUrl: './mailbox.component.html',
   styleUrl: './mailbox.component.scss',
 })
 export class MailboxComponent implements OnInit {
   private service = inject(MailboxService);
   private contactApi = inject(ContactService);
+  private docApi = inject(DocumentsService);
   readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
 
@@ -62,6 +69,7 @@ export class MailboxComponent implements OnInit {
     effect(() => localStorage.setItem('mailbox-view', this.view()));
   }
   loading = signal(true);
+  refreshing = signal(false);
   stats = signal<MailboxStatsDto | null>(null);
 
   contacts = signal<ContactDto[]>([]);
@@ -79,6 +87,7 @@ export class MailboxComponent implements OnInit {
   cdEditCompany = signal('');
   cdEditPosition = signal('');
   cdEditPhone = signal('');
+  cdEditNotes = signal('');
 
   history = signal<EmailMessageDto[]>([]);
   historyLoading = signal(false);
@@ -122,6 +131,11 @@ export class MailboxComponent implements OnInit {
   activeTemplate = signal<string | null>(null);
   attachments = signal<File[]>([]);
 
+  // Documents picker inside the Attachments tab (CVs + their PDF versions).
+  docCvs = signal<CvDocumentDto[]>([]);
+  docLoading = signal(false);
+  private docLoaded = false;
+
   // Contact modal
   showContactModal = signal(false);
   modalContactSearch = signal('');
@@ -154,6 +168,13 @@ export class MailboxComponent implements OnInit {
     { value: '0 9 * * 1', label: 'Weekly on Monday' },
   ];
 
+  protected readonly TEMPLATE_CRON_PRESETS: { value: string; label: string }[] = [
+    { value: '0 9 * * *', label: 'Daily at 09:00' },
+    { value: '0 9 * * 1', label: 'Weekly on Monday' },
+    { value: '0 9 * * 1/2', label: 'Every 2 weeks' },
+    { value: '0 9 1 * *', label: 'Monthly (1st)' },
+  ];
+
   cronPresetValue = computed(() => {
     const expr = this.schedCron().trim();
     return this.CRON_PRESETS.some(p => p.value === expr) ? expr : 'custom';
@@ -165,6 +186,156 @@ export class MailboxComponent implements OnInit {
     const expr = this.schedCron().trim();
     return expr ? `Custom: ${expr}` : '';
   });
+
+  // ── Reusable schedule templates ─────────────────────────────────────────────
+  scheduleTemplates = signal<ScheduleTemplateDto[]>([]);
+  templatesLoading = signal(false);
+  showTemplateForm = signal(false);
+  editingTemplateId = signal<string | null>(null);
+  tplName = signal('');
+  tplSubject = signal('');
+  tplBody = signal('');
+  tplCron = signal('0 9 * * *');
+  tplCvVersionId = signal('');
+  tplVarDefaultsJson = signal('{\n  \n}');
+
+  applyTargetTemplate = signal<ScheduleTemplateDto | null>(null);
+  applyCompanyName = signal('');
+  applyCompanyDescription = signal('');
+  applyRecipientEmail = signal('');
+  applyRecipientName = signal('');
+  applyContactNotes = signal('');
+  applyingNow = signal(false);
+
+  cvVersionOptions = computed(() => {
+    const list: { id: string; label: string }[] = [];
+    for (const cv of this.docCvs()) {
+      for (const v of cv.versions) {
+        list.push({ id: v.id, label: `${cv.title} — v${v.versionNumber}${v.label ? ' · ' + v.label : ''}` });
+      }
+    }
+    return list;
+  });
+
+  async loadScheduleTemplates() {
+    this.templatesLoading.set(true);
+    try {
+      const res = await this.service.getScheduleTemplates();
+      if (res.success && res.data) this.scheduleTemplates.set(res.data);
+    } catch {} finally { this.templatesLoading.set(false); }
+  }
+
+  openNewTemplate() {
+    this.editingTemplateId.set(null);
+    this.tplName.set('');
+    this.tplSubject.set('Application for {{company_name}}');
+    this.tplBody.set('Dear {{company_name}} hiring team,\n\nI am interested in the {{position}} role.\n\nBest regards,\n{{my_name}}');
+    this.tplCron.set('0 9 * * *');
+    this.tplCvVersionId.set('');
+    this.tplVarDefaultsJson.set('{\n  \n}');
+    this.showTemplateForm.set(true);
+    void this.ensureDocumentsLoaded();
+  }
+
+  openEditTemplate(t: ScheduleTemplateDto) {
+    this.editingTemplateId.set(t.id);
+    this.tplName.set(t.name);
+    this.tplSubject.set(t.subjectTemplate);
+    this.tplBody.set(t.bodyTemplate);
+    this.tplCvVersionId.set(t.cvVersionId ?? '');
+    this.tplVarDefaultsJson.set(JSON.stringify(t.variableDefaults ?? {}, null, 2));
+    this.showTemplateForm.set(true);
+    void this.ensureDocumentsLoaded();
+  }
+
+  closeTemplateForm() { this.showTemplateForm.set(false); }
+
+  async saveTemplate() {
+    if (!this.tplName().trim() || !this.tplSubject().trim() || !this.tplBody().trim()) {
+      this.toast.error('Name, subject and body are required');
+      return;
+    }
+    let variableDefaults: Record<string, string> = {};
+    const raw = this.tplVarDefaultsJson().trim();
+    if (raw) {
+      try { variableDefaults = JSON.parse(raw); }
+      catch { this.toast.error('Variable defaults is not valid JSON'); return; }
+    }
+    const dto = {
+      name: this.tplName().trim(),
+      subjectTemplate: this.tplSubject(),
+      bodyTemplate: this.tplBody(),
+      cvVersionId: this.tplCvVersionId() || undefined,
+      variableDefaults,
+    };
+    try {
+      if (this.editingTemplateId()) {
+        await this.service.updateScheduleTemplate(this.editingTemplateId()!, dto);
+        this.toast.success('Template updated');
+      } else {
+        await this.service.createScheduleTemplate(dto);
+        this.toast.success('Template created');
+      }
+      this.showTemplateForm.set(false);
+      await this.loadScheduleTemplates();
+    } catch (err: unknown) {
+      const msg = (err as { error?: { message?: string } })?.error?.message;
+      this.toast.error(msg || 'Failed to save template');
+    }
+  }
+
+  async deleteTemplate(id: string) {
+    if (!confirm('Delete this template?')) return;
+    try {
+      await this.service.deleteScheduleTemplate(id);
+      this.toast.success('Template deleted');
+      await this.loadScheduleTemplates();
+    } catch { this.toast.error('Failed to delete template'); }
+  }
+
+  startApply(t: ScheduleTemplateDto) {
+    this.applyTargetTemplate.set(t);
+    this.applyCompanyName.set('');
+    this.applyCompanyDescription.set('');
+    this.applyRecipientEmail.set('');
+    this.applyRecipientName.set('');
+    this.applyContactNotes.set('');
+  }
+
+  varDefaultsCount(t: ScheduleTemplateDto): number {
+    return Object.keys(t.variableDefaults ?? {}).length;
+  }
+
+  cancelApply() { this.applyTargetTemplate.set(null); }
+
+  async submitApply() {
+    const t = this.applyTargetTemplate();
+    if (!t) return;
+    if (!this.applyCompanyName().trim()) { this.toast.error('Company name is required'); return; }
+    this.applyingNow.set(true);
+    try {
+      const dto: ApplyTemplateDto = {
+        templateId: t.id,
+        companyName: this.applyCompanyName().trim(),
+        companyDescription: this.applyCompanyDescription().trim() || undefined,
+        recipientEmail: this.applyRecipientEmail().trim() || undefined,
+        cronExpression: this.tplCron().trim(),
+        scheduleName: `Apply → ${this.applyCompanyName().trim()}`,
+        createCompanyIfMissing: true,
+      };
+      const res = await this.service.applyTemplate(dto);
+      if (res.success && res.data) {
+        this.toast.success(`Created scheduled email for ${this.applyCompanyName()}`);
+        this.applyTargetTemplate.set(null);
+        this.loadSchedules();
+      } else {
+        this.toast.error(res.message || 'Failed to apply template');
+      }
+    } catch (err: unknown) {
+      const msg = (err as { error?: { message?: string } })?.error?.message;
+      this.toast.error(msg || 'Failed to apply template');
+    } finally { this.applyingNow.set(false); }
+  }
 
   sortedContacts = computed(() =>
     [...this.contacts()].sort((a, b) => a.name.localeCompare(b.name))
@@ -204,6 +375,7 @@ export class MailboxComponent implements OnInit {
     this.loadContacts();
     this.loadHistory();
     this.loadSchedules();
+    this.loadScheduleTemplates();
     this.loadGmailStatus();
   }
 
@@ -211,7 +383,7 @@ export class MailboxComponent implements OnInit {
   private applyQueryParams() {
     const params = this.route.snapshot.queryParamMap;
     const tab = params.get('tab');
-    if (tab === 'contacts' || tab === 'compose' || tab === 'history' || tab === 'schedules' || tab === 'settings') {
+    if (tab === 'contacts' || tab === 'compose' || tab === 'history' || tab === 'schedules' || tab === 'templates' || tab === 'settings') {
       this.view.set(tab);
     }
     if (params.get('newContact') === '1') {
@@ -252,7 +424,7 @@ export class MailboxComponent implements OnInit {
         this.contacts.set(res.data.items);
         this.contactsTotal.set(res.data.total);
       }
-    } catch {} finally { this.contactsLoading.set(false); }
+    } catch {} finally { this.contactsLoading.set(false); this.refreshing.set(false); }
   }
 
   async loadHistory() {
@@ -267,7 +439,7 @@ export class MailboxComponent implements OnInit {
         this.history.set(res.data.items);
         this.historyTotal.set(res.data.total);
       }
-    } catch {} finally { this.historyLoading.set(false); }
+    } catch {} finally { this.historyLoading.set(false); this.refreshing.set(false); }
   }
 
   async loadHistoryDetail(id: string) {
@@ -317,6 +489,7 @@ export class MailboxComponent implements OnInit {
     this.cdEditCompany.set(contact.company || '');
     this.cdEditPosition.set(contact.position || '');
     this.cdEditPhone.set(contact.phone || '');
+    this.cdEditNotes.set(contact.notes || '');
     this.cdEditing.set(true);
   }
 
@@ -333,6 +506,7 @@ export class MailboxComponent implements OnInit {
       company: this.cdEditCompany() || undefined,
       position: this.cdEditPosition() || undefined,
       phone: this.cdEditPhone() || undefined,
+      notes: this.cdEditNotes() || undefined,
     };
     const res = await this.contactApi.updateContact(contact.id, dto);
     if (res.success && res.data) {
@@ -366,7 +540,7 @@ export class MailboxComponent implements OnInit {
     try {
       const res = await this.service.getSchedules();
       if (res.success && res.data) this.schedules.set(res.data);
-    } catch {} finally { this.schedulesLoading.set(false); }
+    } catch {} finally { this.schedulesLoading.set(false); this.refreshing.set(false); }
   }
 
   async sendEmail() {
@@ -432,6 +606,16 @@ export class MailboxComponent implements OnInit {
       const res = await this.service.getStats();
       if (res.success && res.data) this.stats.set(res.data);
     } catch {}
+  }
+
+  onRefresh() {
+    this.refreshing.set(true);
+    const v = this.view();
+    if (v === 'contacts') this.loadContacts();
+    else if (v === 'history') this.loadHistory();
+    else if (v === 'schedules') this.loadSchedules();
+    else if (v === 'templates') this.loadScheduleTemplates();
+    else this.refreshing.set(false);
   }
 
   /** True for emails sent in the last few seconds — drives the green flash on the history row. */
@@ -597,6 +781,11 @@ export class MailboxComponent implements OnInit {
     this.activeTemplate.set(t.name);
   }
 
+  selectAsideTab(tab: 'templates' | 'attachments') {
+    this.asideTab.set(tab);
+    if (tab === 'attachments') void this.ensureDocumentsLoaded();
+  }
+
   onFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
@@ -607,6 +796,46 @@ export class MailboxComponent implements OnInit {
 
   removeAttachment(file: File) {
     this.attachments.set(this.attachments().filter(f => f !== file));
+  }
+
+  /** Lazy-load Documents on first open of the Attachments tab. */
+  async ensureDocumentsLoaded() {
+    if (this.docLoaded || this.docLoading()) return;
+    this.docLoading.set(true);
+    try {
+      const res = await this.docApi.listCvs();
+      if (res.success && res.data) {
+        this.docCvs.set(res.data.filter(cv => cv.versions.some(v => v.pdfUrl || v.fileUrl)));
+        this.docLoaded = true;
+      }
+    } catch {
+    } finally {
+      this.docLoading.set(false);
+    }
+  }
+
+  docVersionLabel(v: CvVersionDto): string {
+    const base = `v${v.versionNumber}`;
+    return v.label ? `${base} · ${v.label}` : base;
+  }
+
+  /** Fetch the document's bytes through the app's authenticated endpoint and attach it to the mail. */
+  async attachDocVersion(cv: CvDocumentDto, v: CvVersionDto) {
+    const name = `${cv.title} — ${this.docVersionLabel(v)}.pdf`;
+    try {
+      const blob = await this.docApi.getVersionFileBlob(v.id);
+      const size = blob.size;
+      const duplicate = this.attachments().some(a => a.name === name && a.size === size);
+      if (duplicate) {
+        this.toast.info(`"${name}" is already attached`);
+        return;
+      }
+      const file = new File([blob], name, { type: blob.type || 'application/pdf' });
+      this.attachments.set([...this.attachments(), file]);
+      this.toast.success(`Attached "${name}" (${this.formatBytes(size)})`);
+    } catch {
+      this.toast.error(`Could not load "${name}" from Documents`);
+    }
   }
 
   openContactModal(target: 'compose' | 'schedule' = 'compose') {
