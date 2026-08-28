@@ -46,7 +46,14 @@ public class AppDbContext : DbContext
     public DbSet<AgentEntity> Agents => Set<AgentEntity>();
     public DbSet<AgentDocumentChunk> AgentDocumentChunks => Set<AgentDocumentChunk>();
     public DbSet<CvGenerationRun> CvGenerationRuns => Set<CvGenerationRun>();
+    public DbSet<TemplateRenderRun> TemplateRenderRuns => Set<TemplateRenderRun>();
     public DbSet<JobExtractionEntity> JobExtractions => Set<JobExtractionEntity>();
+    public DbSet<BimeConversation> BimeConversations => Set<BimeConversation>();
+    public DbSet<BimeMessage> BimeMessages => Set<BimeMessage>();
+    public DbSet<UserLlmSettings> UserLlmSettings => Set<UserLlmSettings>();
+    public DbSet<AgentLlmSetting> AgentLlmSettings => Set<AgentLlmSetting>();
+    public DbSet<CvTemplate> CvTemplates => Set<CvTemplate>();
+    public DbSet<ScheduleTemplate> ScheduleTemplates => Set<ScheduleTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -216,5 +223,50 @@ public class AppDbContext : DbContext
                 .HasIndex(c => c.SearchVector)
                 .HasMethod("GIN");
         });
+
+        modelBuilder.Entity<BimeConversation>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.UpdatedAt);
+        });
+
+        modelBuilder.Entity<BimeMessage>(entity =>
+        {
+            entity.HasIndex(e => e.ConversationId);
+            entity.HasOne(e => e.Conversation)
+                .WithMany()
+                .HasForeignKey(e => e.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserLlmSettings>(entity =>
+        {
+            entity.HasIndex(e => e.UserId).IsUnique();
+        });
+
+        modelBuilder.Entity<AgentLlmSetting>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.AgentId }).IsUnique();
+        });
+
+        modelBuilder.Entity<CvTemplate>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.IsSystem);
+        });
+
+        modelBuilder.Entity<AgentEntity>(entity =>
+        {
+            entity.HasIndex(e => e.AgentId).IsUnique();
+        });
+
+        modelBuilder.Entity<AgentEntity>().HasData(
+            new AgentEntity { Id = Guid.Parse("10000000-0000-0000-0000-000000000001"), AgentId = "job-extractor", Name = "Job Extractor", Role = "Extracts structured data from job descriptions and URLs", BackgroundGradient = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", SortOrder = 1 },
+            new AgentEntity { Id = Guid.Parse("10000000-0000-0000-0000-000000000002"), AgentId = "search-agent", Name = "Search Agent", Role = "Finds similar CV content and matches your profile to job requirements", BackgroundGradient = "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)", SortOrder = 2 },
+            new AgentEntity { Id = Guid.Parse("10000000-0000-0000-0000-000000000003"), AgentId = "template-agent", Name = "Template Agent", Role = "Generates cover letters and formats CVs using templates", BackgroundGradient = "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)", SortOrder = 3 },
+            new AgentEntity { Id = Guid.Parse("10000000-0000-0000-0000-000000000004"), AgentId = "cv-optimizer", Name = "CV Optimizer", Role = "Optimizes your CV content for specific job applications using AI", BackgroundGradient = "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)", SortOrder = 4 },
+            new AgentEntity { Id = Guid.Parse("10000000-0000-0000-0000-000000000005"), AgentId = "contact-agent", Name = "Contact Agent", Role = "Drafts professional outreach emails to recruiters and hiring managers", BackgroundGradient = "linear-gradient(135deg, #fa709a 0%, #fee140 100%)", SortOrder = 5 },
+            new AgentEntity { Id = Guid.Parse("10000000-0000-0000-0000-000000000006"), AgentId = "job-crawler", Name = "Job Crawler", Role = "Searches and discovers new job opportunities matching your profile", BackgroundGradient = "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)", SortOrder = 6 }
+        );
     }
 }

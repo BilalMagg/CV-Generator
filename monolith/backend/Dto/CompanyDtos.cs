@@ -10,6 +10,7 @@ public class CompanyDto
     public string Country { get; set; } = "Morocco";
     public string? LocationUrl { get; set; }
     public string? Note { get; set; }
+    public string? Description { get; set; }
     public int ApplicationsCount { get; set; }
     public DateTime? LastAppliedAt { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -24,6 +25,7 @@ public class CreateCompanyDto
     public string? Country { get; set; }
     public string? LocationUrl { get; set; }
     public string? Note { get; set; }
+    public string? Description { get; set; }
 }
 
 public class UpdateCompanyDto
@@ -34,6 +36,7 @@ public class UpdateCompanyDto
     public string? Country { get; set; }
     public string? LocationUrl { get; set; }
     public string? Note { get; set; }
+    public string? Description { get; set; }
 }
 
 public class CompanyListResponse

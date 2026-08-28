@@ -16,6 +16,7 @@ public class MailboxController : BaseApiController
     private readonly IGmailSendService _gmailSendSvc;
     private readonly IContactService _contactSvc;
     private readonly IApplicationService _applicationSvc;
+    private readonly IMinioStorageService _minio;
     private readonly ILogger<MailboxController> _logger;
 
     public MailboxController(
@@ -24,6 +25,7 @@ public class MailboxController : BaseApiController
         IGmailSendService gmailSendSvc,
         IContactService contactSvc,
         IApplicationService applicationSvc,
+        IMinioStorageService minio,
         ILogger<MailboxController> logger)
         : base(currentUser)
     {
@@ -31,6 +33,7 @@ public class MailboxController : BaseApiController
         _gmailSendSvc = gmailSendSvc;
         _contactSvc = contactSvc;
         _applicationSvc = applicationSvc;
+        _minio = minio;
         _logger = logger;
     }
 
@@ -200,6 +203,32 @@ public class MailboxController : BaseApiController
             Emails = emails,
             TotalEmails = emails.Count
         }));
+    }
+
+    /// <summary>Uploads a file to MinIO for use as a schedule/template attachment; returns a ref.</summary>
+    [HttpPost("attachments")]
+    public async Task<IActionResult> UploadAttachment(IFormFile file)
+    {
+        var userId = GetUserId();
+        if (file is null || file.Length == 0)
+            return BadRequest(ApiResponse<object>.Error("No file provided"));
+
+        const long MaxFileBytes = 20 * 1024 * 1024;
+        if (file.Length > MaxFileBytes)
+            return BadRequest(ApiResponse<object>.Error("File exceeds the 20 MB limit"));
+
+        var objectKey = $"{userId}/{Guid.NewGuid()}_{file.FileName}";
+        await using var stream = file.OpenReadStream();
+        await _minio.UploadAsync("mail-attachments", objectKey, stream, file.ContentType, file.Length);
+
+        var dto = new CV_Generator.Dto.ScheduleAttachmentRef
+        {
+            FileName = file.FileName,
+            ContentType = file.ContentType,
+            ObjectKey = objectKey,
+            SizeBytes = file.Length
+        };
+        return Ok(ApiResponse<CV_Generator.Dto.ScheduleAttachmentRef>.Ok(dto));
     }
 
     [HttpPost("send")]

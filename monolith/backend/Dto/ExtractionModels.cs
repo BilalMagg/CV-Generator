@@ -6,6 +6,9 @@ public class JobExtractionRequest
     public string? Url { get; set; }
     public string? JobOfferId { get; set; }
     public string Language { get; set; } = "en";
+
+    public string? Provider { get; set; }
+    public string? Model { get; set; }
 }
 
 public class ExtractionResponse
@@ -24,7 +27,7 @@ public class ExtractionFullResult
     public List<string> Responsibilities { get; set; } = new();
     public List<string> RequiredSkills { get; set; } = new();
     public List<string> SoftSkills { get; set; } = new();
-    public int? RequiredExperienceYears { get; set; }
+    public double? RequiredExperienceYears { get; set; }
     public string? SeniorityLevel { get; set; }
     public string? EmploymentType { get; set; }
     public string? Location { get; set; }

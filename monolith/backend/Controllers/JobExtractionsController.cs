@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using CV_Generator.Data;
 using CV_Generator.Dto;
 using CV_Generator.Models;
+using CV_Generator.Services;
 using CV_Generator.Services.AgentClients;
 
 namespace CV_Generator.Controllers;
@@ -14,15 +15,21 @@ public class JobExtractionsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IJobExtractorClient _jobExtractor;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IAgentLlmSettingsService _agentLlm;
     private readonly ILogger<JobExtractionsController> _logger;
 
     public JobExtractionsController(
         AppDbContext db,
         IJobExtractorClient jobExtractor,
+        ICurrentUserService currentUser,
+        IAgentLlmSettingsService agentLlm,
         ILogger<JobExtractionsController> logger)
     {
         _db = db;
         _jobExtractor = jobExtractor;
+        _currentUser = currentUser;
+        _agentLlm = agentLlm;
         _logger = logger;
     }
 
@@ -38,7 +45,25 @@ public class JobExtractionsController : ControllerBase
 
         try
         {
-            var result = await _jobExtractor.ExtractFullAsync(request);
+            var provider = "";
+            var model = "";
+            var userId = _currentUser.UserId;
+            if (userId != null)
+            {
+                var llm = await _agentLlm.GetProviderModelAsync(userId, "job-extractor");
+                provider = llm.Provider ?? "";
+                model = llm.Model ?? "";
+            }
+
+            var result = await _jobExtractor.ExtractFullAsync(new JobExtractionRequest
+            {
+                Text = request.Text,
+                Url = request.Url,
+                JobOfferId = request.JobOfferId,
+                Language = request.Language,
+                Provider = request.Provider ?? (string.IsNullOrWhiteSpace(provider) ? null : provider),
+                Model = request.Model ?? (string.IsNullOrWhiteSpace(model) ? null : model),
+            });
             if (result == null)
                 return StatusCode(502, ApiResponse<object>.Error("Job extractor agent returned no result"));
 
@@ -110,6 +135,89 @@ public class JobExtractionsController : ControllerBase
             .ToListAsync();
 
         return Ok(ApiResponse<List<ExtractionHistoryItemDto>>.Ok(items));
+    }
+
+    /// <summary>
+    /// Saves an extraction's organized output to the library: upserts the Company
+    /// (with its description) and creates a JobOffer so it can be referenced later.
+    /// </summary>
+    [HttpPost("{id:guid}/save-to-library")]
+    public async Task<IActionResult> SaveToLibrary(Guid id)
+    {
+        var userId = _currentUser.UserId;
+        if (userId is null) return Unauthorized();
+
+        var entity = await _db.JobExtractions.FindAsync(id);
+        if (entity is null)
+            return NotFound(ApiResponse<object>.Error("Extraction not found"));
+
+        ExtractionFullResult? result = null;
+        try { result = JsonSerializer.Deserialize<ExtractionFullResult>(entity.OutputJson); }
+        catch { /* fall back to entity scalar fields */ }
+
+        result ??= new ExtractionFullResult
+        {
+            EnterpriseName = entity.CompanyName,
+            JobRole = entity.JobRole,
+            RawDescription = entity.InputSummary
+        };
+
+        var companyName = (result.EnterpriseName ?? entity.CompanyName).Trim();
+        if (string.IsNullOrWhiteSpace(companyName))
+            return BadRequest(ApiResponse<object>.Error("Extraction has no company name"));
+
+        var company = await _db.Companies.FirstOrDefaultAsync(c =>
+            c.UserId == userId && c.Name.ToLower() == companyName.ToLower());
+        if (company is null)
+        {
+            company = new Company
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId.Value,
+                Name = companyName,
+                Description = result.EnterpriseDescription,
+                Country = "Morocco",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _db.Companies.Add(company);
+        }
+        else if (string.IsNullOrWhiteSpace(company.Description) && !string.IsNullOrWhiteSpace(result.EnterpriseDescription))
+        {
+            company.Description = result.EnterpriseDescription;
+        }
+
+        var jobOffer = new JobOffer
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId.Value,
+            EnterpriseName = companyName,
+            EnterpriseDescription = result.EnterpriseDescription,
+            JobRole = result.JobRole ?? entity.JobRole,
+            RawDescription = result.RawDescription ?? entity.InputSummary,
+            RequiredExperienceYears = (int?)result.RequiredExperienceYears,
+            SeniorityLevel = result.SeniorityLevel,
+            EmploymentType = result.EmploymentType,
+            Location = result.Location,
+            LocationType = result.LocationType,
+            EducationRequirements = result.EducationRequirements,
+            SourceUrl = result.SourceUrl,
+            Status = JobOfferStatus.OPEN,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _db.JobOffers.Add(jobOffer);
+
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Saved extraction {Id} to library: company {Company}, jobOffer {Job}", id, company.Id, jobOffer.Id);
+
+        return Ok(ApiResponse<object>.Ok(new
+        {
+            companyId = company.Id,
+            jobOfferId = jobOffer.Id,
+            companyName = company.Name
+        }));
     }
 
     private static string GetInputType(JobExtractionRequest request)

@@ -5,6 +5,7 @@ using CV_Generator.Hubs;
 using CV_Generator.Services;
 using CV_Generator.Services.AgentClients;
 using CV_Generator.Services.BackgroundServices;
+using CV_Generator.Dto;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,27 +47,39 @@ builder.Services.AddAuthentication("Bearer")
         options.RequireHttpsMetadata = false;
         options.MapInboundClaims = false;
         options.TokenValidationParameters.ValidateAudience = false;
-    });
-builder.Services.AddAuthorization();
+    })
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, CV_Generator.Services.InternalServiceAuthHandler>(
+        CV_Generator.Services.InternalServiceAuthHandler.SchemeName, options => { });
+builder.Services.AddAuthorization(options =>
+{
+    options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder(
+            "Bearer", CV_Generator.Services.InternalServiceAuthHandler.SchemeName)
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 // Event bus (in-process Kafka replacement)
 builder.Services.AddSingleton<IEventBus, SynchronousEventBus>();
 
-// HTTP clients for AI agents
-var jobExtractorUrl = Environment.GetEnvironmentVariable("JOB_EXTRACTOR_URL") ?? "http://cv-job-extractor:8001/api/v1/";
-var searchAgentUrl = Environment.GetEnvironmentVariable("SEARCH_AGENT_URL") ?? "http://cv-search-agent:8002/api/v1/";
-var templateAgentUrl = Environment.GetEnvironmentVariable("TEMPLATE_AGENT_URL") ?? "http://cv-template-agent:8003/api/v1/";
-var cvOptimizerUrl = Environment.GetEnvironmentVariable("CV_OPTIMIZER_URL") ?? "http://cv-optimizer:8004/api/v1/";
-var contactAgentUrl = Environment.GetEnvironmentVariable("CONTACT_AGENT_URL") ?? "http://cv-contact-agent:8005/api/v1/";
-var jobCrawlerUrl = Environment.GetEnvironmentVariable("JOB_CRAWLER_URL") ?? "http://cv-job-crawler:8006/api/v1/";
-var jobOfferServiceUrl = Environment.GetEnvironmentVariable("JOB_OFFER_SERVICE_URL") ?? "http://cv-job-offer-service:8086";
+// HTTP clients for AI agents — all live in unified sidecar at :8000
+var agentBase = Environment.GetEnvironmentVariable("AGENTS_URL") ?? "http://localhost:8000";
 
-builder.Services.AddHttpClient<IJobExtractorClient, JobExtractorClient>(c => c.BaseAddress = new Uri(jobExtractorUrl));
-builder.Services.AddHttpClient<ISearchAgentClient, SearchAgentClient>(c => c.BaseAddress = new Uri(searchAgentUrl));
-builder.Services.AddHttpClient<ITemplateAgentClient, TemplateAgentClient>(c => c.BaseAddress = new Uri(templateAgentUrl));
-builder.Services.AddHttpClient<ICvOptimizerClient, CvOptimizerClient>(c => c.BaseAddress = new Uri(cvOptimizerUrl));
-builder.Services.AddHttpClient<IContactAgentClient, ContactAgentClient>(c => c.BaseAddress = new Uri(contactAgentUrl));
-builder.Services.AddHttpClient<CV_Generator.Services.AgentClients.IJobCrawlerClient, CV_Generator.Services.AgentClients.JobCrawlerClient>(c => c.BaseAddress = new Uri(jobCrawlerUrl));
+builder.Services.AddHttpClient<IJobExtractorClient, JobExtractorClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/extract/"));
+builder.Services.AddHttpClient<ISearchAgentClient, SearchAgentClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/search/"));
+builder.Services.AddHttpClient<ITemplateAgentClient, TemplateAgentClient>(c =>
+{
+    c.BaseAddress = new Uri($"{agentBase}/api/agents/template/");
+    // LaTeX PDF compilation via docker texlive can take several minutes.
+    c.Timeout = TimeSpan.FromMinutes(10);
+});
+builder.Services.AddHttpClient<ICvOptimizerClient, CvOptimizerClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/cv-optimizer/"));
+builder.Services.AddHttpClient<IContactAgentClient, ContactAgentClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/contact/"));
+builder.Services.AddHttpClient<CV_Generator.Services.AgentClients.IJobCrawlerClient, CV_Generator.Services.AgentClients.JobCrawlerClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/crawler/"));
+builder.Services.AddHttpClient<IPdfThumbnailService, PdfThumbnailService>(c =>
+{
+    c.BaseAddress = new Uri($"{agentBase}/api/agents/pdf/");
+    c.Timeout = TimeSpan.FromSeconds(20);
+});
 
 // Notification services
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -79,11 +92,26 @@ builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IContactService, ContactService>();
 builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<EmailScheduleService>();
+builder.Services.AddScoped<ScheduleTemplateService>();
+builder.Services.AddScoped<ApplyService>();
 builder.Services.AddScoped<WorkflowExecutionService>();
+builder.Services.AddScoped<TemplateRenderService>();
+builder.Services.AddScoped<IBimeService, BimeService>();
+builder.Services.AddScoped<ISearchSyncService, SearchSyncService>();
+builder.Services.AddScoped<ILlmSettingsService, LlmSettingsService>();
+builder.Services.AddScoped<IAgentLlmSettingsService, AgentLlmSettingsService>();
+builder.Services.AddHttpClient("agents", c =>
+{
+    c.BaseAddress = new Uri("http://localhost:8000");
+    c.Timeout = TimeSpan.FromMinutes(4);
+});
 
 // Background services
 builder.Services.AddSingleton<CvGenerationBackgroundService>();
+builder.Services.AddSingleton<TemplateRenderBackgroundService>();
+builder.Services.AddSingleton<IMinioStorageService, MinioStorageService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CvGenerationBackgroundService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TemplateRenderBackgroundService>());
 builder.Services.AddHostedService<EmailScheduleWorker>();
 
 // SignalR

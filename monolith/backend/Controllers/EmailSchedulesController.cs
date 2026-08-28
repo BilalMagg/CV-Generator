@@ -111,6 +111,33 @@ public class EmailSchedulesController : BaseApiController
         return NoContent();
     }
 
+    /// <summary>
+    /// Applies a reusable ScheduleTemplate to one company, producing a concrete per-company
+    /// EmailSchedule (own period/send time) plus a tracked Application with a SCHEDULED attempt.
+    /// </summary>
+    [HttpPost("apply-template")]
+    public async Task<IActionResult> ApplyTemplate([FromBody] ApplyTemplateDto dto)
+    {
+        var userId = GetUserId();
+        try
+        {
+            var result = await _scheduleSvc.ApplyTemplateAsync(userId, dto);
+            return Ok(ApiResponse<ApplyTemplateResultDto>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<ApplyTemplateResultDto>.Error(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<ApplyTemplateResultDto>.Error(ex.Message));
+        }
+        catch (DuplicateApplicationException ex)
+        {
+            return Conflict(ApiResponse<ApplyTemplateResultDto>.Error("Duplicate application", ex.Payload));
+        }
+    }
+
     [HttpPatch("{id}/toggle")]
     public async Task<IActionResult> Toggle(Guid id)
     {

@@ -32,6 +32,10 @@ public class EmailScheduleDto
     public DateTime? NextRunAt { get; set; }
     public DateTime? LastRunAt { get; set; }
     public List<DateTime>? UpcomingRuns { get; set; }
+    public Guid? ApplicationId { get; set; }
+    public Guid? CvVersionId { get; set; }
+    public Guid? TemplateSourceId { get; set; }
+    public List<ScheduleAttachmentRef> Attachments { get; set; } = [];
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -43,6 +47,10 @@ public class CreateScheduleDto
     public string Subject { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
     public List<Guid> RecipientIds { get; set; } = [];
+    public Guid? ApplicationId { get; set; }
+    public Guid? CvVersionId { get; set; }
+    public Guid? TemplateSourceId { get; set; }
+    public List<ScheduleAttachmentRef>? Attachments { get; set; }
 }
 
 public class UpdateScheduleDto
@@ -52,4 +60,8 @@ public class UpdateScheduleDto
     public string? Subject { get; set; }
     public string? Body { get; set; }
     public List<Guid>? RecipientIds { get; set; }
+    public Guid? ApplicationId { get; set; }
+    public Guid? CvVersionId { get; set; }
+    public Guid? TemplateSourceId { get; set; }
+    public List<ScheduleAttachmentRef>? Attachments { get; set; }
 }

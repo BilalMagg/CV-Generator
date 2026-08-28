@@ -15,19 +15,22 @@ public class CompaniesController : BaseApiController
     private readonly ILogger<CompaniesController> _logger;
     private readonly IApplicationService _applications;
     private readonly IContactService _contacts;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public CompaniesController(
         ICurrentUserService currentUser,
         AppDbContext db,
         ILogger<CompaniesController> logger,
         IApplicationService applications,
-        IContactService contacts)
+        IContactService contacts,
+        IServiceScopeFactory scopeFactory)
         : base(currentUser)
     {
         _db = db;
         _logger = logger;
         _applications = applications;
         _contacts = contacts;
+        _scopeFactory = scopeFactory;
     }
 
     [HttpGet]
@@ -186,10 +189,12 @@ public class CompaniesController : BaseApiController
             Location = dto.Location,
             Country = string.IsNullOrWhiteSpace(dto.Country) ? "Morocco" : dto.Country.Trim(),
             LocationUrl = dto.LocationUrl,
-            Note = dto.Note
+            Note = dto.Note,
+            Description = dto.Description
         };
         _db.Companies.Add(company);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, company.UserId, _logger, "Company.Create");
 
         return Created($"/api/companies/{company.Id}", ApiResponse<CompanyDto>.Created(Map(company)));
     }
@@ -223,9 +228,11 @@ public class CompaniesController : BaseApiController
         }
         if (dto.LocationUrl != null) company.LocationUrl = dto.LocationUrl;
         if (dto.Note != null) company.Note = dto.Note;
+        if (dto.Description != null) company.Description = dto.Description;
         company.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, company.UserId, _logger, "Company.Update");
         return Ok(ApiResponse<CompanyDto>.Ok(Map(company)));
     }
 
@@ -238,6 +245,7 @@ public class CompaniesController : BaseApiController
 
         _db.Companies.Remove(company);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, company.UserId, _logger, "Company.Delete");
         return Ok(ApiResponse<object>.Ok(null, "Company deleted"));
     }
 
@@ -268,6 +276,7 @@ public class CompaniesController : BaseApiController
         Country = c.Country,
         LocationUrl = c.LocationUrl,
         Note = c.Note,
+        Description = c.Description,
         CreatedAt = c.CreatedAt,
         UpdatedAt = c.UpdatedAt
     };
