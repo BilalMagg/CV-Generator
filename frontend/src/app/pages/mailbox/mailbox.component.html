@@ -654,6 +654,7 @@
               <div class="fld"><label>Variable defaults (JSON)</label><textarea [(ngModel)]="tplVarDefaultsJson" rows="4"></textarea></div>
               <div class="fld"><label>Attachments (attached to every scheduled email from this template)</label>
                 <input type="file" multiple (change)="onTplFilesSelected($event)" />
+                <button type="button" class="mb-btn sm" (click)="toggleTplDocPicker()">From Documents</button>
                 @if (tplAttachments().length) {
                   <ul class="files">
                     @for (a of tplAttachments(); track a.objectKey; let i = $index) {
@@ -664,8 +665,28 @@
                     }
                   </ul>
                 }
+                @if (tplDocPickerOpen()) {
+                  <div class="doc-picker">
+                    @if (docLoading()) {
+                      <div class="muted">Loading documents…</div>
+                    } @else if (docCvs().length) {
+                      @for (cv of docCvs(); track cv.id) {
+                        <div class="doc-pick-group">{{ cv.title }}</div>
+                        @for (v of cv.versions; track v.id) {
+                          @if (v.pdfUrl || v.fileUrl) {
+                            <button type="button" class="doc-pick-row" (click)="attachDocToTemplate(cv, v)">
+                              {{ docVersionLabel(v) }} · PDF
+                            </button>
+                          }
+                        }
+                      }
+                    } @else {
+                      <div class="muted">No documents with a PDF version yet.</div>
+                    }
+                  </div>
+                }
               </div>
-              <div class="row end">
+              <div class="row end tpl-form-actions">
                 <button class="mb-btn" (click)="closeTemplateForm()">Cancel</button>
                 <button class="mb-btn-primary" (click)="saveTemplate()">Save template</button>
               </div>

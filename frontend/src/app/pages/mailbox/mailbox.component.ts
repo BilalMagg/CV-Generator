@@ -200,6 +200,7 @@ export class MailboxComponent implements OnInit {
   tplCvVersionId = signal('');
   tplVarDefaultsJson = signal('{\n  \n}');
   tplAttachments = signal<ScheduleAttachmentRef[]>([]);
+  tplDocPickerOpen = signal(false);
 
   applyTargetTemplate = signal<ScheduleTemplateDto | null>(null);
   applyCompanyName = signal('');
@@ -306,6 +307,29 @@ export class MailboxComponent implements OnInit {
 
   removeTplAttachment(idx: number) {
     this.tplAttachments.update(list => list.filter((_, i) => i !== idx));
+  }
+
+  toggleTplDocPicker() {
+    this.tplDocPickerOpen.update(o => !o);
+    if (this.tplDocPickerOpen()) void this.ensureDocumentsLoaded();
+  }
+
+  /** Attach a Document's PDF version to the template as a MinIO attachment ref. */
+  async attachDocToTemplate(cv: CvDocumentDto, v: CvVersionDto) {
+    const name = `${cv.title} — ${this.docVersionLabel(v)}.pdf`;
+    try {
+      const blob = await this.docApi.getVersionFileBlob(v.id);
+      const file = new File([blob], name, { type: blob.type || 'application/pdf' });
+      const ref = await this.service.uploadAttachment(file);
+      if (ref.data) {
+        this.tplAttachments.update(list => [...list, ref.data!]);
+        this.toast.success(`Attached "${name}"`);
+      } else {
+        this.toast.error(`Failed to attach "${name}"`);
+      }
+    } catch {
+      this.toast.error(`Could not load "${name}" from Documents`);
+    }
   }
 
   async deleteTemplate(id: string) {

@@ -1073,6 +1073,13 @@ code { background: var(--bg-2); padding: 1px 5px; border-radius: 5px; font-size:
 .tpl-form .row, .apply-panel .row { display: flex; gap: 12px; flex-wrap: wrap; }
 .tpl-form .row .fld, .apply-panel .row .fld { flex: 1; min-width: 180px; }
 .row.end { justify-content: flex-end; }
+.tpl-form-actions { margin-top: 16px; }
+.mb-btn.sm { padding: 5px 10px; font-size: 12px; margin-top: 6px; }
+.doc-picker { margin-top: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); max-height: 220px; overflow-y: auto; }
+.doc-picker .muted { padding: 10px 12px; color: var(--text-3); font-size: 12.5px; }
+.doc-pick-group { padding: 8px 12px 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); }
+.doc-pick-row { display: block; width: 100%; text-align: left; background: none; border: none; border-top: 1px solid var(--border); padding: 8px 12px; font: inherit; font-size: 12.5px; color: var(--text); cursor: pointer; }
+.doc-pick-row:hover { background: var(--bg-2); }
 .fld { display: block; }
 .fld label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; color: var(--text-2); }
 .fld input, .fld textarea, .fld select { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; box-sizing: border-box; }
