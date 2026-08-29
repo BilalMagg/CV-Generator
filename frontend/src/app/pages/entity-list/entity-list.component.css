@@ -2,6 +2,44 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  height: 100%;
+  min-height: 0;
+}
+
+.entity-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
+  align-items: start;
+  min-height: 0;
+  flex: 1;
+}
+
+.category-sidebar {
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.entity-main {
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .entity-layout {
+    grid-template-columns: 1fr;
+  }
+  .category-sidebar {
+    position: static;
+    height: 360px;
+  }
 }
 
 .header-actions {

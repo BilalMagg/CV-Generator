@@ -5,11 +5,13 @@ import { CommonModule } from '@angular/common';
 import { environment } from '@env/environment';
 import { EntityCardComponent } from '@app/shared/components/entity-card/entity-card.component';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
+import { CategoryTreeComponent } from '@app/shared/components/category-tree/category-tree.component';
+import { CategoryService } from '@app/services/category.service';
 
 @Component({
   selector: 'app-entity-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, EntityCardComponent, RefreshButtonComponent],
+  imports: [CommonModule, RouterModule, EntityCardComponent, RefreshButtonComponent, CategoryTreeComponent],
   templateUrl: './entity-list.component.html',
   styleUrl: './entity-list.component.css',
 })
@@ -18,14 +20,40 @@ export class EntityListComponent implements OnInit {
     private http = inject(HttpClient);
     private router = inject(Router);
     private cdr = inject(ChangeDetectorRef);
+    private categoryService = inject(CategoryService);
 
     entity= '';
     data: any[]=[];
     refreshing = signal(false);
+    selectedCategoryIds = signal<string[]>([]);
+    matchedIds = signal<Set<string> | null>(null);
     
-    goToDetail(id: string){
-      this.router.navigate(['/my-career', this.entity, id]);
+  goToDetail(id: string){
+    this.router.navigate(['/my-career', this.entity, id]);
+  }
+
+  displayData(): any[] {
+    const matched = this.matchedIds();
+    if (!matched) return this.data;
+    return this.data.filter((d) => matched.has(d.id));
+  }
+
+  onCategoryChange(ids: string[]): void {
+    this.selectedCategoryIds.set(ids);
+    if (!ids || ids.length === 0) {
+      this.matchedIds.set(null);
+      return;
     }
+    this.categoryService
+      .search({ nodeIds: ids, sourceTypes: [this.entity.toLowerCase()] })
+      .then((results) => {
+        this.matchedIds.set(new Set(results.map((r) => r.sourceId)));
+      })
+      .catch(() => {
+        this.matchedIds.set(null);
+      });
+  }
+
 
     ngOnInit() {
     this.route.paramMap.subscribe(params => {
