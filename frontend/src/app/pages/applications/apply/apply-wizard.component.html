@@ -77,6 +77,13 @@
 
   @if (step() === 3) {
     <section class="card">
+      <div class="seg">
+        <button [class.active]="prepMode() === 'email'" (click)="prepMode.set('email')">Email</button>
+        <button [class.active]="prepMode() === 'form'" (click)="prepMode.set('form')">External form</button>
+        <button [class.active]="prepMode() === 'message'" (click)="prepMode.set('message')">Direct message</button>
+      </div>
+
+      <!-- Shared context -->
       <div class="row">
         <div class="fld">
           <label>Company</label>
@@ -95,8 +102,8 @@
 
       <div class="row">
         <div class="fld">
-          <label>Recipient email *</label>
-          <input type="text" [(ngModel)]="recipientEmail" placeholder="careers@company.com" />
+          <label>Recipient email</label>
+          <input type="text" [(ngModel)]="recipientEmail" placeholder="careers@company.com (optional for form/DM)" />
         </div>
         <div class="fld">
           <label>Recipient name</label>
@@ -109,7 +116,17 @@
         <input type="text" [(ngModel)]="contactNotes" placeholder="e.g. referred by Sara; avoid Tuesdays" />
       </div>
 
-      <div class="row">
+      <div class="fld">
+        <label>CV version (used as context)</label>
+        <select [(ngModel)]="selectedCvVersionId">
+          <option value="">— none —</option>
+          @for (o of cvOptions(); track o.id) {
+            <option [value]="o.id">{{ o.label }}</option>
+          }
+        </select>
+      </div>
+
+      @if (prepMode() === 'email') {
         <div class="fld">
           <label>Prefill from template</label>
           <select [(ngModel)]="selectedTemplateId" (change)="useTemplate()">
@@ -119,68 +136,145 @@
             }
           </select>
         </div>
+
         <div class="fld">
-          <label>CV version</label>
-          <select [(ngModel)]="selectedCvVersionId">
-            <option value="">— none —</option>
-            @for (o of cvOptions(); track o.id) {
-              <option [value]="o.id">{{ o.label }}</option>
-            }
-          </select>
+          <label>Subject</label>
+          <input type="text" [(ngModel)]="subject" />
         </div>
-      </div>
 
-      <div class="fld">
-        <label>Subject</label>
-        <input type="text" [(ngModel)]="subject" />
-      </div>
-
-      <div class="fld">
-        <label>Body</label>
-        <textarea [(ngModel)]="body" rows="10"></textarea>
-      </div>
-
-      <div class="fld">
-        <label>Attachments (additional files)</label>
-        <p class="hint">Your selected CV version is attached automatically — only add extra documents here (cover letter, portfolio). Don't re-add the same CV.</p>
-        <div class="attach-actions">
-          <input type="file" multiple (change)="onFilesSelected($event)" class="file-input" />
-          <button type="button" class="btn ghost sm" (click)="toggleDocPicker()">From Documents</button>
+        <div class="fld">
+          <label>Body</label>
+          <textarea [(ngModel)]="body" rows="10"></textarea>
         </div>
-        @if (attachmentFiles().length) {
-          <ul class="files">
-            @for (f of attachmentFiles(); track f.name; let i = $index) {
-              <li>
-                <span>{{ f.name }} ({{ f.size / 1024 | number: '1.0-0' }} KB)</span>
-                <button class="link" (click)="removeAttachment(i)">remove</button>
-              </li>
-            }
-          </ul>
-        }
-        @if (docPickerOpen()) {
-          <div class="doc-picker">
-            @if (!docCvs().length) {
-              <div class="muted">No documents with a PDF version found.</div>
-            } @else {
-              @for (cv of docCvs(); track cv.id) {
-                <div class="doc-pick-group">{{ cv.title }}</div>
-                @for (v of cv.versions; track v.id) {
-                  @if (v.pdfUrl || v.fileUrl) {
-                    <button type="button" class="doc-pick-row" (click)="attachDocToApply(cv, v)">
-                      {{ docVersionLabel(v) }} · PDF
-                    </button>
+
+        <div class="fld">
+          <label>Attachments (additional files)</label>
+          <p class="hint">Your selected CV version is attached automatically — only add extra documents here (cover letter, portfolio). Don't re-add the same CV.</p>
+          <div class="attach-actions">
+            <input type="file" multiple (change)="onFilesSelected($event)" class="file-input" />
+            <button type="button" class="btn ghost sm" (click)="toggleDocPicker()">From Documents</button>
+          </div>
+          @if (attachmentFiles().length) {
+            <ul class="files">
+              @for (f of attachmentFiles(); track f.name; let i = $index) {
+                <li>
+                  <span>{{ f.name }} ({{ f.size / 1024 | number: '1.0-0' }} KB)</span>
+                  <button class="link" (click)="removeAttachment(i)">remove</button>
+                </li>
+              }
+            </ul>
+          }
+          @if (docPickerOpen()) {
+            <div class="doc-picker">
+              @if (!docCvs().length) {
+                <div class="muted">No documents with a PDF version found.</div>
+              } @else {
+                @for (cv of docCvs(); track cv.id) {
+                  <div class="doc-pick-group">{{ cv.title }}</div>
+                  @for (v of cv.versions; track v.id) {
+                    @if (v.pdfUrl || v.fileUrl) {
+                      <button type="button" class="doc-pick-row" (click)="attachDocToApply(cv, v)">
+                        {{ docVersionLabel(v) }} · PDF
+                      </button>
+                    }
                   }
                 }
               }
+            </div>
+          }
+        </div>
+
+        <div class="row end">
+          <button class="btn" (click)="step.set(2)">Back</button>
+          <button class="btn primary" (click)="step.set(4)">Continue to deliver</button>
+        </div>
+      }
+
+      @if (prepMode() === 'form') {
+        <div class="fld">
+          <label>Form fields / questions (one per line)</label>
+          <textarea [(ngModel)]="formFields" rows="6"
+            placeholder="Why are you interested in this role?&#10;Greatest strength?&#10;Expected salary?"></textarea>
+          <p class="hint">The app generates a tailored answer for each line using your CV and the job.</p>
+        </div>
+
+        <label class="chk">
+          <input type="checkbox" [(ngModel)]="saveTracked" /> Save as tracked application (appears in your kanban)
+        </label>
+
+        <div class="row end">
+          <button class="btn" (click)="step.set(2)">Back</button>
+          <button class="btn primary" (click)="generateForm()" [disabled]="generatingForm()">
+            {{ generatingForm() ? 'Generating…' : 'Generate answers' }}
+          </button>
+        </div>
+
+        @if (formError()) { <div class="banner error">{{ formError() }}</div> }
+
+        @if (formResponses().length) {
+          <div class="prep-result">
+            <h4>Answers</h4>
+            @for (r of formResponses(); track r.field) {
+              <div class="resp-item">
+                <div class="resp-q">{{ r.field }}</div>
+                <div class="resp-a">{{ r.answer }}</div>
+                <button class="link" (click)="copyText(r.answer)">Copy</button>
+              </div>
             }
+            <div class="row between">
+              <button class="btn ghost sm" (click)="copyAllForm()">Copy all</button>
+              @if (prepApplicationId()) {
+                <a class="link" [routerLink]="['/applications', prepApplicationId()]">View in pipeline →</a>
+              }
+              <button class="btn" (click)="goApplications()">Done</button>
+            </div>
           </div>
         }
-      </div>
+      }
 
-      <div class="row end">
-        <button class="btn" (click)="step.set(2)">Back</button>
-        <button class="btn primary" (click)="step.set(4)">Continue to deliver</button>
-      </div>
+      @if (prepMode() === 'message') {
+        <div class="fld">
+          <label>Channel</label>
+          <select [(ngModel)]="messageChannel">
+            <option>LinkedIn</option>
+            <option>WhatsApp</option>
+            <option>Generic DM</option>
+          </select>
+        </div>
+
+        <div class="fld">
+          <label>Considerations (optional)</label>
+          <textarea [(ngModel)]="messageConsiderations" rows="3"
+            placeholder="e.g. mention my internship at X, keep it under 120 words, friendly tone"></textarea>
+        </div>
+
+        <label class="chk">
+          <input type="checkbox" [(ngModel)]="saveTracked" /> Save as tracked application (appears in your kanban)
+        </label>
+
+        <div class="row end">
+          <button class="btn" (click)="step.set(2)">Back</button>
+          <button class="btn primary" (click)="generateMessage()" [disabled]="generatingMessage()">
+            {{ generatingMessage() ? 'Generating…' : 'Generate message' }}
+          </button>
+        </div>
+
+        @if (messageError()) { <div class="banner error">{{ messageError() }}</div> }
+
+        @if (generatedMessage()) {
+          <div class="prep-result">
+            <h4>Message</h4>
+            <pre class="msg-box">{{ generatedMessage() }}</pre>
+            <div class="row between">
+              <button class="link" (click)="copyText(generatedMessage())">Copy</button>
+              @if (prepApplicationId()) {
+                <a class="link" [routerLink]="['/applications', prepApplicationId()]">View in pipeline →</a>
+              }
+              <button class="btn" (click)="goApplications()">Done</button>
+            </div>
+          </div>
+        }
+      }
     </section>
   }
 

@@ -99,3 +99,53 @@ export interface EmailAttachmentPayload {
   contentType: string;
   contentBase64: string;
 }
+
+// ── Apply Prep (form answers + direct messages) ────────────────────────────────
+
+export interface ApplyPrepFormRequest {
+  companyName: string;
+  positionTitle: string;
+  companyDescription?: string;
+  jobDescription?: string;
+  requiredSkills?: string[];
+  responsibilities?: string[];
+  language?: string;
+  fields: string[];
+  saveTracked: boolean;
+  recipientName?: string;
+  recipientEmail?: string;
+  contactNotes?: string;
+  cvVersionId?: string;
+}
+
+export interface FormResponseItem {
+  field: string;
+  answer: string;
+}
+
+export interface ApplyPrepFormResult {
+  applicationId?: string;
+  responses: FormResponseItem[];
+}
+
+export interface ApplyPrepMessageRequest {
+  companyName: string;
+  positionTitle: string;
+  companyDescription?: string;
+  jobDescription?: string;
+  requiredSkills?: string[];
+  responsibilities?: string[];
+  language?: string;
+  channel: string;
+  considerations?: string;
+  saveTracked: boolean;
+  recipientName?: string;
+  recipientEmail?: string;
+  contactNotes?: string;
+  cvVersionId?: string;
+}
+
+export interface ApplyPrepMessageResult {
+  applicationId?: string;
+  message: string;
+}

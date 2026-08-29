@@ -182,6 +182,37 @@ public class ApplyService
         }
     }
 
+    /// <summary>
+    /// Creates the tracking shell (Company + optional Contact + SAVED Application) used by the
+    /// "Apply Prep" flows (form answers / direct message) which do not send an email. Returns the
+    /// new Application id. No attempt or email is recorded.
+    /// </summary>
+    public async Task<Guid> CreateTrackedApplicationAsync(Guid userId, ApplyPrepTrackedRequest r)
+    {
+        if (string.IsNullOrWhiteSpace(r.CompanyName)) throw new ArgumentException("CompanyName is required");
+
+        var company = await UpsertCompanyAsync(userId, r.CompanyName.Trim(), r.CompanyDescription);
+        if (!string.IsNullOrWhiteSpace(r.RecipientEmail))
+        {
+            await UpsertContactAsync(userId, company, r.RecipientEmail.Trim(), r.RecipientName, r.ContactNotes);
+        }
+
+        var app = await _applications.CreateAsync(new CreateApplicationDto(
+            CandidateId: userId,
+            CvVersionId: r.CvVersionId,
+            JobOfferId: null,
+            CompanyName: company.Name,
+            PositionTitle: r.PositionTitle.Trim(),
+            OfferSource: "job_post_apply",
+            Notes: null,
+            Origin: "MANUAL",
+            Status: "SAVED",
+            AllowDuplicate: false
+        ), userId);
+
+        return app.Id;
+    }
+
     private async Task<Company> UpsertCompanyAsync(Guid userId, string name, string? description)
     {
         var company = await _db.Companies.FirstOrDefaultAsync(c =>

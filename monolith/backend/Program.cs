@@ -80,6 +80,11 @@ builder.Services.AddHttpClient<IPdfThumbnailService, PdfThumbnailService>(c =>
     c.BaseAddress = new Uri($"{agentBase}/api/agents/pdf/");
     c.Timeout = TimeSpan.FromSeconds(20);
 });
+builder.Services.AddHttpClient<IApplyPrepClient, ApplyPrepClient>(c =>
+{
+    c.BaseAddress = new Uri($"{agentBase}/api/agents/apply-prep/");
+    c.Timeout = TimeSpan.FromMinutes(3);
+});
 
 // Notification services
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -94,6 +99,7 @@ builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<EmailScheduleService>();
 builder.Services.AddScoped<ScheduleTemplateService>();
 builder.Services.AddScoped<ApplyService>();
+builder.Services.AddScoped<IApplyPrepService, ApplyPrepService>();
 builder.Services.AddScoped<WorkflowExecutionService>();
 builder.Services.AddScoped<TemplateRenderService>();
 builder.Services.AddScoped<IBimeService, BimeService>();

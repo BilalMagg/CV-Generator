@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { ExtractionService } from '@app/services/extraction.service';
 import { ApplyService } from '@app/services/apply.service';
 import { MailboxService } from '@app/services/mailbox.service';
@@ -12,7 +12,13 @@ import { AuthService } from '@app/services/auth.service';
 import { CreateContactDto } from '@app/models/mailbox.model';
 import { CronBuilderComponent } from '@app/shared/components/cron-builder/cron-builder.component';
 import { ExtractorOutput, ExtractionHistoryItem } from '@app/models/extraction.types';
-import { ScheduleTemplateDto, ApplyEmailResult } from '@app/models/apply.model';
+import {
+  ScheduleTemplateDto,
+  ApplyEmailResult,
+  ApplyPrepFormRequest,
+  ApplyPrepMessageRequest,
+  FormResponseItem,
+} from '@app/models/apply.model';
 import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
 import { EmailAttachmentPayload } from '@app/models/apply.model';
 
@@ -33,7 +39,7 @@ const CRON_PRESETS: { label: string; cron: string }[] = [
 @Component({
   selector: 'app-apply-wizard',
   standalone: true,
-  imports: [CommonModule, FormsModule, CronBuilderComponent],
+  imports: [CommonModule, FormsModule, RouterLink, CronBuilderComponent],
   templateUrl: './apply-wizard.component.html',
   styleUrl: './apply-wizard.component.scss',
 })
@@ -88,6 +94,20 @@ export class ApplyWizardComponent implements OnInit {
   deliverMode = signal<'now' | 'schedule'>('now');
   cronExpression = signal<string>(CRON_PRESETS[1].cron);
   customCron = signal<string>('');
+
+  // Apply Prep (form answers + direct message) — alternative to email delivery
+  prepMode = signal<'email' | 'form' | 'message'>('email');
+  formFields = signal<string>('');
+  generatingForm = signal(false);
+  formResponses = signal<FormResponseItem[]>([]);
+  formError = signal<string>('');
+  messageChannel = signal<string>('LinkedIn');
+  messageConsiderations = signal<string>('');
+  generatingMessage = signal(false);
+  generatedMessage = signal<string>('');
+  messageError = signal<string>('');
+  saveTracked = signal<boolean>(true);
+  prepApplicationId = signal<string | null>(null);
 
   savingContact = signal(false);
   contactSaved = signal(false);
@@ -399,4 +419,108 @@ export class ApplyWizardComponent implements OnInit {
 
   goApplications() { this.router.navigate(['/applications/kanban']); }
   goDetail(id: string) { this.router.navigate(['/applications', id]); }
+
+  // ── Apply Prep: generate content without sending ──────────────────────────────
+  private jobContext() {
+    const ext = this.extraction();
+    return {
+      jobDescription: (this.inputText.trim() || ext?.rawDescription || ext?.enterpriseDescription || ''),
+      jobRole: this.positionTitle,
+      requiredSkills: ext?.requiredSkills ?? [],
+      responsibilities: ext?.responsibilities ?? [],
+    };
+  }
+
+  private parseFields(): string[] {
+    return this.formFields().split('\n').map(s => s.trim()).filter(Boolean);
+  }
+
+  async generateForm() {
+    const fields = this.parseFields();
+    if (!this.companyName.trim()) { this.formError.set('Company name is required'); return; }
+    if (!fields.length) { this.formError.set('Paste at least one form field/question (one per line).'); return; }
+    this.formError.set('');
+    this.formResponses.set([]);
+    this.prepApplicationId.set(null);
+    this.generatingForm.set(true);
+    const ctx = this.jobContext();
+    try {
+      const res = await this.applySvc.generateFormResponses({
+        companyName: this.companyName.trim(),
+        positionTitle: this.positionTitle.trim(),
+        companyDescription: this.companyDescription || undefined,
+        jobDescription: ctx.jobDescription || undefined,
+        requiredSkills: ctx.requiredSkills,
+        responsibilities: ctx.responsibilities,
+        language: this.language === 'en' ? 'English' : this.language,
+        fields,
+        saveTracked: this.saveTracked(),
+        recipientName: this.recipientName.trim() || undefined,
+        recipientEmail: this.recipientEmail.trim() || undefined,
+        contactNotes: this.contactNotes.trim() || undefined,
+        cvVersionId: this.selectedCvVersionId() || undefined,
+      });
+      if (res.success && res.data) {
+        this.formResponses.set(res.data.responses ?? []);
+        this.prepApplicationId.set(res.data.applicationId ?? null);
+      } else {
+        this.formError.set(res.message || 'Failed to generate answers');
+      }
+    } catch (e: any) {
+      this.formError.set(e?.message || 'Failed to generate answers');
+    } finally {
+      this.generatingForm.set(false);
+    }
+  }
+
+  async generateMessage() {
+    if (!this.companyName.trim()) { this.messageError.set('Company name is required'); return; }
+    this.messageError.set('');
+    this.generatedMessage.set('');
+    this.prepApplicationId.set(null);
+    this.generatingMessage.set(true);
+    const ctx = this.jobContext();
+    try {
+      const res = await this.applySvc.generateMessage({
+        companyName: this.companyName.trim(),
+        positionTitle: this.positionTitle.trim(),
+        companyDescription: this.companyDescription || undefined,
+        jobDescription: ctx.jobDescription || undefined,
+        requiredSkills: ctx.requiredSkills,
+        responsibilities: ctx.responsibilities,
+        language: this.language === 'en' ? 'English' : this.language,
+        channel: this.messageChannel(),
+        considerations: this.messageConsiderations().trim() || undefined,
+        saveTracked: this.saveTracked(),
+        recipientName: this.recipientName.trim() || undefined,
+        recipientEmail: this.recipientEmail.trim() || undefined,
+        contactNotes: this.contactNotes.trim() || undefined,
+        cvVersionId: this.selectedCvVersionId() || undefined,
+      });
+      if (res.success && res.data) {
+        this.generatedMessage.set(res.data.message ?? '');
+        this.prepApplicationId.set(res.data.applicationId ?? null);
+      } else {
+        this.messageError.set(res.message || 'Failed to generate message');
+      }
+    } catch (e: any) {
+      this.messageError.set(e?.message || 'Failed to generate message');
+    } finally {
+      this.generatingMessage.set(false);
+    }
+  }
+
+  async copyText(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.toast.success('Copied to clipboard');
+    } catch {
+      this.toast.error('Copy failed — select and copy manually');
+    }
+  }
+
+  copyAllForm() {
+    const all = this.formResponses().map(r => `Q: ${r.field}\nA: ${r.answer}`).join('\n\n');
+    void this.copyText(all);
+  }
 }
