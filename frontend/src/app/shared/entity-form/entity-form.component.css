@@ -99,7 +99,147 @@ textarea.form-control { resize: vertical; }
 }
 .btn-secondary:hover { background: oklch(0.96 0.004 80); }
 
+.taxonomy-summary {
+  margin-bottom: 24px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.taxonomy-summary-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.taxonomy-summary-head h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+  font-family: var(--font-display);
+}
+
+.taxonomy-summary-head .subtitle {
+  color: var(--text-3);
+  font-size: 13px;
+  margin: 0;
+  max-width: 460px;
+}
+
+.taxonomy-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.taxonomy-empty {
+  color: var(--text-3);
+  font-size: 13px;
+  font-style: italic;
+  margin: 0;
+}
+
+.btn-outline {
+  background: var(--surface);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover { background: var(--accent-soft); color: var(--accent-text); }
+
+/* Taxonomy modal */
+.tax-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 24px;
+}
+
+.tax-modal {
+  width: 540px;
+  max-width: 100%;
+  max-height: 82vh;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.tax-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tax-modal-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.tax-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 0 4px;
+}
+.tax-close:hover { color: var(--text); }
+
+.tax-modal-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  max-height: 60vh;
+}
+
+.tax-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.tax-count {
+  font-size: 12.5px;
+  color: var(--text-3);
+  font-weight: 600;
+}
+
 @media (max-width: 640px) {
   .fields-grid { grid-template-columns: 1fr; }
   .form-group.full-width { grid-column: span 1; }
+  .tax-modal { max-height: 90vh; }
+  .tax-modal-body { max-height: 70vh; }
 }
