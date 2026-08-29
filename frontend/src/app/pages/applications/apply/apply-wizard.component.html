@@ -137,7 +137,10 @@
       <div class="fld">
         <label>Attachments (additional files)</label>
         <p class="hint">Your selected CV version is attached automatically — only add extra documents here (cover letter, portfolio). Don't re-add the same CV.</p>
-        <input type="file" multiple (change)="onFilesSelected($event)" />
+        <div class="attach-actions">
+          <input type="file" multiple (change)="onFilesSelected($event)" class="file-input" />
+          <button type="button" class="btn ghost sm" (click)="toggleDocPicker()">From Documents</button>
+        </div>
         @if (attachmentFiles().length) {
           <ul class="files">
             @for (f of attachmentFiles(); track f.name; let i = $index) {
@@ -147,6 +150,24 @@
               </li>
             }
           </ul>
+        }
+        @if (docPickerOpen()) {
+          <div class="doc-picker">
+            @if (!docCvs().length) {
+              <div class="muted">No documents with a PDF version found.</div>
+            } @else {
+              @for (cv of docCvs(); track cv.id) {
+                <div class="doc-pick-group">{{ cv.title }}</div>
+                @for (v of cv.versions; track v.id) {
+                  @if (v.pdfUrl || v.fileUrl) {
+                    <button type="button" class="doc-pick-row" (click)="attachDocToApply(cv, v)">
+                      {{ docVersionLabel(v) }} · PDF
+                    </button>
+                  }
+                }
+              }
+            }
+          </div>
         }
       </div>
 

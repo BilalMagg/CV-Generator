@@ -10,7 +10,7 @@ import { DocumentsService } from '@app/services/documents.service';
 import { AuthService } from '@app/services/auth.service';
 import { ExtractorOutput, ExtractionHistoryItem } from '@app/models/extraction.types';
 import { ScheduleTemplateDto, ApplyEmailResult } from '@app/models/apply.model';
-import { CvDocumentDto } from '@app/models/document.model';
+import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
 import { EmailAttachmentPayload } from '@app/models/apply.model';
 
 interface CvOption {
@@ -72,6 +72,11 @@ export class ApplyWizardComponent implements OnInit {
   cvOptions = signal<CvOption[]>([]);
   selectedCvVersionId = signal<string>('');
   attachmentFiles = signal<File[]>([]);
+
+  // "From Documents" picker
+  docCvs = signal<CvDocumentDto[]>([]);
+  docPickerOpen = signal(false);
+  private docsLoaded = false;
 
   // Step 4 deliver
   deliverMode = signal<'now' | 'schedule'>('now');
@@ -240,6 +245,38 @@ export class ApplyWizardComponent implements OnInit {
 
   removeAttachment(i: number) {
     this.attachmentFiles.update(list => list.filter((_, idx) => idx !== i));
+  }
+
+  private async ensureDocs() {
+    if (this.docsLoaded) return;
+    try {
+      const res = await this.docsSvc.listCvs();
+      if (res.success && res.data) {
+        this.docCvs.set(res.data.filter(cv => cv.versions.some(v => v.pdfUrl || v.fileUrl)));
+        this.docsLoaded = true;
+      }
+    } catch { /* documents optional */ }
+  }
+
+  toggleDocPicker() {
+    this.docPickerOpen.update(o => !o);
+    if (this.docPickerOpen()) void this.ensureDocs();
+  }
+
+  docVersionLabel(v: CvVersionDto): string {
+    const base = `v${v.versionNumber}`;
+    return v.label ? `${base} · ${v.label}` : base;
+  }
+
+  async attachDocToApply(cv: CvDocumentDto, v: CvVersionDto) {
+    const name = `${cv.title} — ${this.docVersionLabel(v)}.pdf`;
+    try {
+      const blob = await this.docsSvc.getVersionFileBlob(v.id);
+      const file = new File([blob], name, { type: blob.type || 'application/pdf' });
+      this.attachmentFiles.update(list => [...list, file]);
+    } catch {
+      this.toast.error(`Could not load "${name}" from Documents`);
+    }
   }
 
   async submit() {
