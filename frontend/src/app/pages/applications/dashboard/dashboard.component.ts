@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { ApplicationService } from '@app/services/application.service';
 import { AuthService } from '@app/services/auth.service';
 import { StatisticsTrendsDto, MonthlyTrendDto, ApplicationResponseDto } from '@app/models/application.model';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 interface StatCard {
   label: string;
@@ -28,7 +29,7 @@ const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RefreshButtonComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -41,6 +42,7 @@ export class DashboardComponent implements OnInit {
   trends = signal<StatisticsTrendsDto | null>(null);
   applications = signal<ApplicationResponseDto[]>([]);
   loading = signal(true);
+  refreshing = signal(false);
 
   ngOnInit() { this.loadTrends(); }
 
@@ -52,8 +54,10 @@ export class DashboardComponent implements OnInit {
       ]);
       if (trendsRes.success && trendsRes.data) this.trends.set(trendsRes.data);
       if (appsRes.success && appsRes.data) this.applications.set(appsRes.data.items);
-    } catch { } finally { this.loading.set(false); }
+    } catch { } finally { this.loading.set(false); this.refreshing.set(false); }
   }
+
+  onRefresh() { this.refreshing.set(true); this.loadTrends(); }
 
   firstName = computed(() => this.authService.currentUser()?.firstName ?? 'there');
   s = computed(() => this.trends()?.current ?? { total: 0, saved: 0, applied: 0, screening: 0, interview: 0, offer: 0, accepted: 0, rejected: 0, withdrawn: 0 });

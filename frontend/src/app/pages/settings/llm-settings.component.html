@@ -1,0 +1,76 @@
+<div class="llm-page">
+  <div class="section-header">
+    <div class="icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M3 9h18M9 5v14" />
+      </svg>
+    </div>
+    <div>
+      <h2>AI Language Model</h2>
+      <p>Choose the provider and model used by your AI agents (BIME, Job Extractor, etc.)</p>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading LLM configuration...</p>
+    </div>
+  } @else {
+    <div class="form-card">
+      <div class="field">
+        <label class="label">Provider</label>
+        <select
+          class="select"
+          [ngModel]="selectedProvider()"
+          (ngModelChange)="onProviderChange($event)"
+        >
+          @for (p of providers(); track p.name) {
+            <option [value]="p.name" [disabled]="!p.available">
+              {{ p.label }} {{ p.available ? '' : '(no API key)' }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="label">Model</label>
+        @if (modelsLoading()) {
+          <div class="models-loading">Loading available models...</div>
+        } @else {
+          <select class="select" [(ngModel)]="selectedModel">
+            @if (models().length === 0) {
+              <option value="">No models available</option>
+            }
+            @for (m of models(); track m) {
+              <option [value]="m">{{ m }}</option>
+            }
+          </select>
+        }
+      </div>
+
+      @if (error()) {
+        <div class="error-banner">{{ error() }}</div>
+      }
+
+      <div class="actions">
+        <button
+          class="save-btn"
+          [class.loading]="saving()"
+          (click)="save()"
+          [disabled]="saving() || !selectedProvider() || !selectedModel()"
+        >
+          {{ saving() ? 'Saving...' : 'Save' }}
+        </button>
+        @if (showSuccess()) {
+          <span class="saved-hint">Saved</span>
+        }
+      </div>
+
+      <p class="hint">
+        Your selection is saved and used as the default for all AI agents. Models are fetched live from the provider so the list is always current.
+      </p>
+    </div>
+  }
+</div>

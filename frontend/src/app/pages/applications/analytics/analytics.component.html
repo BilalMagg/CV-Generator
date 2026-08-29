@@ -8,6 +8,7 @@
       <p class="page-sub">See what's working, where you're getting traction, and where to push harder.</p>
     </div>
     <div class="header-right">
+      <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
       <div class="period-group">
         <button class="period-btn" [class.active]="periodMonths() === 3" (click)="setPeriod(3)">3m</button>
         <button class="period-btn" [class.active]="periodMonths() === 6" (click)="setPeriod(6)">6m</button>

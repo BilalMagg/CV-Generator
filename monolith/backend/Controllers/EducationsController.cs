@@ -4,6 +4,7 @@ using CV_Generator;
 using CV_Generator.Models;
 using CV_Generator.Data;
 using CV_Generator.Dto;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -13,11 +14,13 @@ public class EducationsController : ApiControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ILogger<EducationsController> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public EducationsController(AppDbContext db, ILogger<EducationsController> logger)
+    public EducationsController(AppDbContext db, ILogger<EducationsController> logger, IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     [HttpGet]
@@ -90,6 +93,7 @@ public class EducationsController : ApiControllerBase
 
         _db.Educations.Add(edu);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, edu.UserId, _logger, "Education.Create");
 
         _logger.LogInformation("Created education {Id}", edu.Id);
 
@@ -128,6 +132,7 @@ public class EducationsController : ApiControllerBase
         edu.DiplomaFileUrl = dto.DiplomaFileUrl;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, edu.UserId, _logger, "Education.Update");
 
         var response = new EducationResponseDto
         {
@@ -155,6 +160,7 @@ public class EducationsController : ApiControllerBase
 
         _db.Educations.Remove(edu);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, edu.UserId, _logger, "Education.Delete");
 
         _logger.LogInformation("Deleted education {Id}", id);
         return NoContent();

@@ -1,5 +1,7 @@
 namespace CV_Generator.Models;
 
+using System.Text.Json.Serialization;
+
 // CV version entity
 // Each CV can have multiple versions (drafts, revisions)
 public class CvVersion
@@ -10,9 +12,11 @@ public class CvVersion
     public string Label { get; set; } = string.Empty;
     public string? FileUrl { get; set; }
     public string? PdfUrl { get; set; }
+    public string? ThumbnailUrl { get; set; }
     public string ContentJson { get; set; } = "{}";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [JsonIgnore]
     public Cv Cv { get; set; } = null!;
     public List<CvSection> Sections {get; set;} = [];
     

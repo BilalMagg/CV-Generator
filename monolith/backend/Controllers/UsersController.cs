@@ -19,12 +19,14 @@ public class UsersController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IEventBus _eventBus;
     private readonly ILogger<UsersController> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public UsersController(AppDbContext db, IEventBus eventBus, ILogger<UsersController> logger)
+    public UsersController(AppDbContext db, IEventBus eventBus, ILogger<UsersController> logger, IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _eventBus = eventBus;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     [HttpGet]
@@ -140,6 +142,7 @@ public class UsersController : ControllerBase
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, user.Id, _logger, "User.Create");
 
         _logger.LogInformation("Created user {Id}", user.Id);
 
@@ -177,6 +180,7 @@ public class UsersController : ControllerBase
         user.ProfessionalTitles = dto.ProfessionalTitles;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, user.Id, _logger, "User.Update");
         return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
     }
 
@@ -188,6 +192,7 @@ public class UsersController : ControllerBase
 
         _db.Users.Remove(user);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, user.Id, _logger, "User.Delete");
         return NoContent();
     }
 

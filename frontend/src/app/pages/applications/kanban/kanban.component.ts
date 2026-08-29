@@ -14,6 +14,7 @@ import {
 } from '@app/models/application.model';
 import { ApplicationsListComponent } from '../list/applications-list.component';
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 interface Column {
   status: ApplicationStatus;
@@ -32,7 +33,7 @@ const COLUMNS: { status: ApplicationStatus; label: string; colorVar: string }[] 
 @Component({
   selector: 'app-kanban',
   standalone: true,
-  imports: [CommonModule, RouterLink, ApplicationsListComponent, SheetImportDialogComponent],
+  imports: [CommonModule, RouterLink, ApplicationsListComponent, SheetImportDialogComponent, RefreshButtonComponent],
   templateUrl: './kanban.component.html',
   styleUrl: './kanban.component.scss',
 })
@@ -41,6 +42,7 @@ export class KanbanComponent implements OnInit {
 
   columns = signal<Column[]>(COLUMNS.map(c => ({ ...c, items: [] })));
   loading = signal(true);
+  refreshing = signal(false);
   view = signal<'board' | 'list' | 'activity' | 'saved'>((localStorage.getItem('kanban-view') as 'board' | 'list' | 'activity' | 'saved') || 'board');
 
   constructor() {
@@ -71,8 +73,10 @@ export class KanbanComponent implements OnInit {
           items: all.filter(a => a.status === col.status),
         })));
       }
-    } catch { } finally { this.loading.set(false); }
+    } catch { } finally { this.loading.set(false); this.refreshing.set(false); }
   }
+
+  onRefresh() { this.refreshing.set(true); this.loadApps(); }
 
   async loadActivity() {
     if (this.activityFeed().length > 0) return;

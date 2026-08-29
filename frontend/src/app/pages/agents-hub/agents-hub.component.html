@@ -14,6 +14,12 @@
         </svg>
         Guides
       </a>
+      <a [routerLink]="'/agents-hub/config'" class="header-link">
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+          <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        Configure Agents
+      </a>
     </div>
   </div>
 
@@ -65,26 +71,6 @@
             <span class="status-name">{{ agent.name }}</span>
             <span class="status-badge-text">{{ agent.status }}</span>
           </div>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="aside-section">
-        <h3 class="aside-title">Quick Actions</h3>
-        <div class="action-list">
-          <a [routerLink]="'/agents-hub/guide/search-agent'" class="action-item">
-            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/>
-              <path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>
-            View Agent Guides
-          </a>
-          <a [routerLink]="'/agents-hub'" class="action-item">
-            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
-              <path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>
-            Configure Agents
-          </a>
         </div>
       </div>
     </aside>

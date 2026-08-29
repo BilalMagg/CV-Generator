@@ -4,6 +4,7 @@ using CV_Generator;
 using CV_Generator.Models;
 using CV_Generator.Data;
 using CV_Generator.Dto;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -12,10 +13,14 @@ namespace CV_Generator.Controllers;
 public class LanguagesController : ApiControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<LanguagesController> _logger;
 
-    public LanguagesController(AppDbContext db)
+    public LanguagesController(AppDbContext db, IServiceScopeFactory scopeFactory, ILogger<LanguagesController> logger)
     {
         _db = db;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -60,6 +65,7 @@ public class LanguagesController : ApiControllerBase
         var language = new Language { Name = dto.Name, Level = dto.Level, UserId = RequiredUserId };
         _db.Languages.Add(language);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, language.UserId, _logger, "Language.Create");
 
         var response = new LanguageResponseDto { Id = language.Id, Name = language.Name, Level = language.Level, UserId = language.UserId };
         return CreatedAtAction(nameof(GetById), new { id = language.Id }, ApiResponse<LanguageResponseDto>.Created(response));
@@ -74,6 +80,7 @@ public class LanguagesController : ApiControllerBase
         language.Name = dto.Name;
         language.Level = dto.Level;
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, language.UserId, _logger, "Language.Update");
 
         var response = new LanguageResponseDto { Id = language.Id, Name = language.Name, Level = language.Level, UserId = language.UserId };
         return Ok(ApiResponse<LanguageResponseDto>.Ok(response));
@@ -87,6 +94,7 @@ public class LanguagesController : ApiControllerBase
 
         _db.Languages.Remove(language);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, language.UserId, _logger, "Language.Delete");
 
         return NoContent();
     }

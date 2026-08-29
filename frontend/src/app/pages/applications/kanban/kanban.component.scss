@@ -176,6 +176,10 @@
   transition: opacity 0.15s;
 
   &:hover { opacity: 0.85; }
+
+  &.accent {
+    background: oklch(0.62 0.16 250);
+  }
 }
 
 /* Loading */

@@ -4,6 +4,7 @@ using CV_Generator;
 using CV_Generator.Models;
 using CV_Generator.Data;
 using CV_Generator.Dto;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -12,10 +13,14 @@ namespace CV_Generator.Controllers;
 public class SocialLinksController : ApiControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<SocialLinksController> _logger;
 
-    public SocialLinksController(AppDbContext db)
+    public SocialLinksController(AppDbContext db, IServiceScopeFactory scopeFactory, ILogger<SocialLinksController> logger)
     {
         _db = db;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -60,6 +65,7 @@ public class SocialLinksController : ApiControllerBase
         var link = new SocialLink { Platform = dto.Platform, Url = dto.Url, UserId = RequiredUserId };
         _db.SocialLinks.Add(link);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, link.UserId, _logger, "SocialLink.Create");
 
         var response = new SocialLinkResponseDto { Id = link.Id, Platform = link.Platform, Url = link.Url, UserId = link.UserId };
         return CreatedAtAction(nameof(GetById), new { id = link.Id }, ApiResponse<SocialLinkResponseDto>.Created(response));
@@ -74,6 +80,7 @@ public class SocialLinksController : ApiControllerBase
         link.Platform = dto.Platform;
         link.Url = dto.Url;
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, link.UserId, _logger, "SocialLink.Update");
 
         var response = new SocialLinkResponseDto { Id = link.Id, Platform = link.Platform, Url = link.Url, UserId = link.UserId };
         return Ok(ApiResponse<SocialLinkResponseDto>.Ok(response));
@@ -87,6 +94,7 @@ public class SocialLinksController : ApiControllerBase
 
         _db.SocialLinks.Remove(link);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, link.UserId, _logger, "SocialLink.Delete");
 
         return NoContent();
     }

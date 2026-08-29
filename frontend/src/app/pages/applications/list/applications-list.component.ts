@@ -13,11 +13,12 @@ import {
   PRIORITY_LABELS,
   PRIORITY_COLORS,
 } from '@app/models/application.model';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 @Component({
   selector: 'app-applications-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, RefreshButtonComponent],
   templateUrl: './applications-list.component.html',
   styleUrl: './applications-list.component.scss',
 })
@@ -40,6 +41,7 @@ export class ApplicationsListComponent implements OnInit {
   updatedTo = signal('');
 
   filterOpen = signal(false);
+  refreshing = signal(false);
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.totalItems() / this.pageSize())));
   visiblePages = computed(() => {
@@ -102,8 +104,10 @@ export class ApplicationsListComponent implements OnInit {
       }
       if (statsRes.success && statsRes.data) this.statistics.set(statsRes.data);
     } catch (err) { console.error(err); }
-    finally { this.loading.set(false); }
+    finally { this.loading.set(false); this.refreshing.set(false); }
   }
+
+  onRefresh() { this.refreshing.set(true); this.loadData(); }
 
   onSearch() { this.page.set(1); this.loadData(); this.filterOpen.set(false); }
 

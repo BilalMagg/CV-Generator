@@ -23,6 +23,7 @@ import {
   ATTEMPT_STATUS_LABELS,
 } from '@app/models/application.model';
 import { ContactDto, EmailMessageDto } from '@app/models/mailbox.model';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 type AttemptForm = {
   channel: AttemptChannel;
@@ -36,7 +37,7 @@ type AttemptForm = {
 @Component({
   selector: 'app-application-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, RefreshButtonComponent],
   templateUrl: './application-detail.component.html',
   styleUrl: './application-detail.component.scss',
 })
@@ -49,6 +50,7 @@ export class ApplicationDetailComponent implements OnInit {
   application = signal<ApplicationResponseDto | null>(null);
   attempts = signal<AttemptResponseDto[]>([]);
   loading = signal(true);
+  refreshing = signal(false);
   saving = signal(false);
   error = signal<string | null>(null);
   showStatusModal = signal(false);
@@ -125,7 +127,13 @@ export class ApplicationDetailComponent implements OnInit {
       const attRes = await this.appService.getAttempts(id);
       if (attRes.success && attRes.data) this.attempts.set(attRes.data);
     } catch { this.error.set('Failed to load'); }
-    finally { this.loading.set(false); }
+    finally { this.loading.set(false); this.refreshing.set(false); }
+  }
+
+  onRefresh() {
+    this.refreshing.set(true);
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) this.loadApplication(id);
   }
 
   resetEditForm(app: ApplicationResponseDto) {

@@ -2,6 +2,7 @@
   <!-- Toolbar -->
   <div class="list-toolbar">
     <div class="toolbar-row">
+      <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
       <div class="toolbar-stats">
         <span class="ts-item"><strong>{{ statistics().total }}</strong> total</span>
         <span class="ts-sep">·</span>

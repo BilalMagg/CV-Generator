@@ -19,7 +19,7 @@ public class ContactAgentClient : IContactAgentClient
 
     public async Task<ContactOutput?> DeliverAsync(ContactInput input, CancellationToken cancellationToken = default)
     {
-        var response = await _client.PostAsJsonAsync("deliver", input, cancellationToken: cancellationToken);
+        var response = await _client.PostAsJsonAsync("generate-email", input, cancellationToken: cancellationToken);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<ContactOutput>(cancellationToken: cancellationToken);
     }

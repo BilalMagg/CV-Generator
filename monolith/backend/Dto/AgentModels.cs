@@ -45,6 +45,12 @@ public class JobExtractorAgentRequest
 
     [JsonPropertyName("language")]
     public string Language { get; set; } = "en";
+
+    [JsonPropertyName("provider")]
+    public string? Provider { get; set; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
 }
 
 public class ExtractorInput
@@ -54,6 +60,12 @@ public class ExtractorInput
 
     [JsonPropertyName("language")]
     public string Language { get; set; } = "en";
+
+    [JsonPropertyName("provider")]
+    public string? Provider { get; set; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
 }
 
 public class ExtractorOutput : JobRequirements
@@ -153,6 +165,12 @@ public class OptimizerInput
 
     [JsonPropertyName("cv_content")]
     public string? CvContent { get; set; }
+
+    [JsonPropertyName("provider")]
+    public string? Provider { get; set; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
 }
 
 public class OptimizerOutput
@@ -178,11 +196,20 @@ public class TemplateInput
     [JsonPropertyName("template_id")]
     public string TemplateId { get; set; } = "default";
 
+    [JsonPropertyName("template_content")]
+    public string? TemplateContent { get; set; }
+
     [JsonPropertyName("template_type")]
     public string TemplateType { get; set; } = "pdf";
 
     [JsonPropertyName("target_role")]
     public string TargetRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("provider")]
+    public string? Provider { get; set; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
 }
 
 public class RenderedCV
@@ -194,7 +221,61 @@ public class RenderedCV
     public string TemplateId { get; set; } = string.Empty;
 
     [JsonPropertyName("sections")]
-    public List<dynamic>? Sections { get; set; }
+    public object? Sections { get; set; }
+}
+
+public class PdfInput
+{
+    [JsonPropertyName("user_id")]
+    public string UserId { get; set; } = string.Empty;
+
+    [JsonPropertyName("workflow_id")]
+    public string? WorkflowId { get; set; }
+
+    [JsonPropertyName("cv_data")]
+    public string CvData { get; set; } = string.Empty;
+
+    [JsonPropertyName("cv_data_format")]
+    public string CvDataFormat { get; set; } = "tex";
+
+    [JsonPropertyName("template_name")]
+    public string? TemplateName { get; set; }
+
+    [JsonPropertyName("template_id")]
+    public string? TemplateId { get; set; }
+
+    [JsonPropertyName("template_content")]
+    public string? TemplateContent { get; set; }
+
+    [JsonPropertyName("file_name")]
+    public string FileName { get; set; } = "cv.pdf";
+
+    [JsonPropertyName("language")]
+    public string Language { get; set; } = "English";
+
+    [JsonPropertyName("tone")]
+    public string Tone { get; set; } = "professional";
+
+    [JsonPropertyName("photo_key")]
+    public string? PhotoKey { get; set; }
+
+    [JsonPropertyName("provider")]
+    public string? Provider { get; set; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
+}
+
+public class PdfOutput
+{
+    [JsonPropertyName("file_path")]
+    public string FilePath { get; set; } = string.Empty;
+
+    [JsonPropertyName("file_size")]
+    public int FileSize { get; set; }
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
 }
 
 public class ContactInput
@@ -216,6 +297,12 @@ public class ContactInput
 
     [JsonPropertyName("cover_letter_hint")]
     public string? CoverLetterHint { get; set; }
+
+    [JsonPropertyName("provider")]
+    public string? Provider { get; set; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
 }
 
 public class ContactOutput

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using CV_Generator.Dto;
 using CV_Generator.Models;
 using CV_Generator.Services.AgentClients;
@@ -14,6 +15,7 @@ public class WorkflowExecutionService
     private readonly ICvOptimizerClient _cvOptimizer;
     private readonly ITemplateAgentClient _templateAgent;
     private readonly IContactAgentClient _contactAgent;
+    private readonly IAgentLlmSettingsService _agentLlm;
     private readonly ILogger<WorkflowExecutionService> _logger;
 
     private static readonly StepDefinition[] PipelineSteps =
@@ -32,6 +34,7 @@ public class WorkflowExecutionService
         ICvOptimizerClient cvOptimizer,
         ITemplateAgentClient templateAgent,
         IContactAgentClient contactAgent,
+        IAgentLlmSettingsService agentLlm,
         ILogger<WorkflowExecutionService> logger)
     {
         _db = db;
@@ -40,6 +43,7 @@ public class WorkflowExecutionService
         _cvOptimizer = cvOptimizer;
         _templateAgent = templateAgent;
         _contactAgent = contactAgent;
+        _agentLlm = agentLlm;
         _logger = logger;
     }
 
@@ -51,6 +55,11 @@ public class WorkflowExecutionService
             _logger.LogWarning("Run {RunId} not found", runId);
             return;
         }
+
+        var extractorLlm = await _agentLlm.GetProviderModelAsync(run.UserId, "job-extractor", ct);
+        var templateLlm = await _agentLlm.GetProviderModelAsync(run.UserId, "template-agent", ct);
+        var optimizerLlm = await _agentLlm.GetProviderModelAsync(run.UserId, "cv-optimizer", ct);
+        var contactLlm = await _agentLlm.GetProviderModelAsync(run.UserId, "contact-agent", ct);
 
         run.Status = "running";
         run.CurrentStep = 0;
@@ -73,7 +82,9 @@ public class WorkflowExecutionService
                     new ExtractorInput
                     {
                         JobDescription = run.JobDescription,
-                        Language = run.Language ?? "en"
+                        Language = run.Language ?? "en",
+                        Provider = extractorLlm.Provider,
+                        Model = extractorLlm.Model,
                     }, ct);
                 run.ExtractionResult = JsonSerializer.Serialize(result);
             });
@@ -101,21 +112,48 @@ public class WorkflowExecutionService
             {
                 var searchData = JsonSerializer.Deserialize<SearchOutput>(run.SearchResult ?? "{}");
                 var jobData = JsonSerializer.Deserialize<ExtractorOutput>(run.ExtractionResult ?? "{}");
+                if (jobData != null && jobData.ExtractedSkills.Count == 0 && jobData.RequiredSkills.Count > 0)
+                    jobData.ExtractedSkills = jobData.RequiredSkills;
                 var targetRole = jobData?.JobRole ?? "Professional";
+
+                var user = await _db.Users.FindAsync(new object[] { run.UserId }, ct);
+                var locationParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(user?.City)) locationParts.Add(user.City);
+                if (!string.IsNullOrWhiteSpace(user?.Country)) locationParts.Add(user.Country);
+
+                var templateId = run.TemplateId ?? "default";
+                var templateContent = await ResolveTemplateContentAsync(templateId, run.UserId, ct);
+
                 var result = await _templateAgent.RenderAsync(new TemplateInput
                 {
                     CvDraft = new Dictionary<string, object>
                     {
+                        ["user_id"] = run.UserId,
                         ["target_role"] = targetRole,
-                        ["summary"] = $"Professional summary for {run.CandidateName ?? "Candidate"}",
+                        ["summary"] = $"Professional summary for {run.CandidateName ?? user?.FirstName ?? "Candidate"}",
+                        ["job_data"] = jobData != null ? JsonSerializer.Serialize(jobData) : "",
+                        ["language"] = run.Language ?? "en",
+                        ["tone"] = run.Tone ?? "professional",
+                        ["profile"] = new Dictionary<string, object?>
+                        {
+                            ["name"] = $"{user?.FirstName} {user?.LastName}".Trim(),
+                            ["headline"] = user?.Headline,
+                            ["bio"] = user?.Bio,
+                            ["location"] = string.Join(", ", locationParts),
+                            ["email"] = user?.Email,
+                            ["phone"] = user?.PhoneNumber
+                        },
                         ["matched_skills"] = searchData?.MatchedSkills ?? new List<object>(),
                         ["matched_experiences"] = searchData?.MatchedExperiences ?? new List<object>(),
                         ["matched_projects"] = searchData?.MatchedProjects ?? new List<object>(),
                         ["gap_skills"] = searchData?.GapSkills ?? new List<string>()
                     },
-                    TemplateId = run.TemplateId ?? "default",
-                    TemplateType = "pdf",
-                    TargetRole = targetRole
+                    TemplateId = templateId,
+                    TemplateContent = templateContent,
+                    TemplateType = "latex",
+                    TargetRole = targetRole,
+                    Provider = templateLlm.Provider,
+                    Model = templateLlm.Model,
                 }, ct);
                 run.RenderResult = JsonSerializer.Serialize(result);
             });
@@ -133,7 +171,9 @@ public class WorkflowExecutionService
                     JobData = jobDataText,
                     CandidateName = run.CandidateName ?? "Candidate",
                     SessionId = Guid.NewGuid().ToString(),
-                    CvContent = rendered?.CvCode
+                    CvContent = rendered?.CvCode,
+                    Provider = optimizerLlm.Provider,
+                    Model = optimizerLlm.Model,
                 }, ct);
                 run.OptimizationResult = JsonSerializer.Serialize(result);
             });
@@ -160,7 +200,9 @@ public class WorkflowExecutionService
                     CompanyName = "Target Company",
                     JobDescription = run.JobDescription,
                     RecipientEmail = run.RecipientEmail ?? "",
-                    CoverLetterHint = run.Tone != null ? $"Tone: {run.Tone}" : null
+                    CoverLetterHint = run.Tone != null ? $"Tone: {run.Tone}" : null,
+                    Provider = contactLlm.Provider,
+                    Model = contactLlm.Model,
                 }, ct);
                 run.DeliveryResult = JsonSerializer.Serialize(result);
             });
@@ -236,4 +278,17 @@ public class WorkflowExecutionService
     }
 
     private record StepDefinition(int Index, string Name);
+
+    private async Task<string?> ResolveTemplateContentAsync(string templateId, Guid userId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(templateId) || string.Equals(templateId, "default", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        // Custom/user templates are selected by Guid id; system templates carry the fixed seeded id.
+        var template = Guid.TryParse(templateId, out var id)
+            ? await _db.CvTemplates.FirstOrDefaultAsync(t => t.Id == id && (t.IsSystem || t.UserId == userId), ct)
+            : await _db.CvTemplates.FirstOrDefaultAsync(t => t.Name == templateId && (t.IsSystem || t.UserId == userId), ct);
+
+        return template?.Content;
+    }
 }

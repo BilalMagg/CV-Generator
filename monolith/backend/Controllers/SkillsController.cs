@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CV_Generator.Data;
 using CV_Generator.Models;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -11,11 +12,13 @@ public class SkillsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ILogger<SkillsController> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public SkillsController(AppDbContext db, ILogger<SkillsController> logger)
+    public SkillsController(AppDbContext db, ILogger<SkillsController> logger, IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     [HttpGet]
@@ -49,6 +52,7 @@ public class SkillsController : ControllerBase
 
         _db.Skills.Add(skill);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Create");
 
         _logger.LogInformation("Created skill {Id}", skill.Id);
         return Created($"/api/skills/{skill.Id}", ApiResponse<Skill>.Created(skill));
@@ -66,6 +70,7 @@ public class SkillsController : ControllerBase
         skill.Category = dto.Category;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Update");
         return Ok(ApiResponse<Skill>.Ok(skill));
     }
 
@@ -77,6 +82,7 @@ public class SkillsController : ControllerBase
 
         _db.Skills.Remove(skill);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Delete");
         return NoContent();
     }
 

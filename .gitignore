@@ -60,6 +60,7 @@ coverage/
 *.terraform*
 terraform.tfstate*
 venv/
+.venv/
 
 # cloud deployment (infrastructure/cloud) — secrets, tfvars, and state must never be committed
 terraform.tfvars

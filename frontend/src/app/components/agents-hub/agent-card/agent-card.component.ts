@@ -24,6 +24,7 @@ export class AgentCardComponent {
   private readonly workspaceRoutes: Record<string, string> = {
     'job-extractor': '/agents-hub/job-extractor',
     'search-agent': '/agents-hub/search-agent',
+    'template-agent': '/agents-hub/template-agent',
     'job-crawler': '/agents-hub/job-crawler',
   };
 

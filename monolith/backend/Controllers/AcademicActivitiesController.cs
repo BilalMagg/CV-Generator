@@ -4,6 +4,7 @@ using CV_Generator;
 using CV_Generator.Models;
 using CV_Generator.Data;
 using CV_Generator.Dto;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -12,10 +13,14 @@ namespace CV_Generator.Controllers;
 public class AcademicActivitiesController : ApiControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<AcademicActivitiesController> _logger;
 
-    public AcademicActivitiesController(AppDbContext db)
+    public AcademicActivitiesController(AppDbContext db, IServiceScopeFactory scopeFactory, ILogger<AcademicActivitiesController> logger)
     {
         _db = db;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -75,6 +80,7 @@ public class AcademicActivitiesController : ApiControllerBase
 
         _db.AcademicActivities.Add(a);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, a.UserId, _logger, "AcademicActivity.Create");
 
         var response = new AcademicActivityResponseDto
         {
@@ -102,6 +108,7 @@ public class AcademicActivitiesController : ApiControllerBase
         a.EndDate = dto.EndDate;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, a.UserId, _logger, "AcademicActivity.Update");
 
         var response = new AcademicActivityResponseDto
         {
@@ -124,6 +131,7 @@ public class AcademicActivitiesController : ApiControllerBase
 
         _db.AcademicActivities.Remove(a);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, a.UserId, _logger, "AcademicActivity.Delete");
 
         return NoContent();
     }

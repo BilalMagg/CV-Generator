@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CV_Generator.Data;
 using CV_Generator.Models;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -11,11 +12,13 @@ public class ExperiencesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ILogger<ExperiencesController> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public ExperiencesController(AppDbContext db, ILogger<ExperiencesController> logger)
+    public ExperiencesController(AppDbContext db, ILogger<ExperiencesController> logger, IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     [HttpGet]
@@ -52,6 +55,7 @@ public class ExperiencesController : ControllerBase
 
         _db.Experiences.Add(exp);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, exp.UserId, _logger, "Experience.Create");
 
         _logger.LogInformation("Created experience {Id}", exp.Id);
         return Created($"/api/experiences/{exp.Id}", ApiResponse<Experience>.Created(exp));
@@ -72,6 +76,7 @@ public class ExperiencesController : ControllerBase
         exp.Status = dto.Status;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, exp.UserId, _logger, "Experience.Update");
         return Ok(ApiResponse<Experience>.Ok(exp));
     }
 
@@ -83,6 +88,7 @@ public class ExperiencesController : ControllerBase
 
         _db.Experiences.Remove(exp);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, exp.UserId, _logger, "Experience.Delete");
         return NoContent();
     }
 

@@ -1,0 +1,380 @@
+<div class="templates-tab">
+  <div class="toolbar">
+    <div>
+      <h2>Templates</h2>
+      <p class="muted">{{ templates().length }} template{{ templates().length === 1 ? '' : 's' }} — LaTeX sources rendered by the template agent</p>
+    </div>
+    <button class="btn-primary" (click)="openCreate()">
+      <i class="ti ti-plus"></i> New template
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="state-row">Loading…</div>
+  } @else if (templates().length === 0) {
+    <div class="empty-state">
+      <i class="ti ti-layers-off"></i>
+      <p>No templates yet</p>
+      <span>Create your first LaTeX template to customize CV rendering.</span>
+    </div>
+  } @else {
+    <div class="template-list">
+      @for (t of templates(); track t.id) {
+        <div class="template-card">
+          <div class="template-head">
+            <div class="template-title">
+              <h3>{{ t.name }}</h3>
+              @if (t.isSystem) {
+                <span class="badge badge-system"><i class="ti ti-sparkles"></i> System</span>
+              } @else {
+                <span class="badge"><i class="ti ti-user"></i> Mine</span>
+              }
+            </div>
+            <span class="type-badge">{{ t.templateType }}</span>
+          </div>
+
+          @if (t.description) {
+            <p class="desc">{{ t.description }}</p>
+          }
+
+          <div class="meta">
+            <span><i class="ti ti-code"></i> {{ t.content.length }} chars</span>
+            <span><i class="ti ti-section"></i> {{ placeholderCount(t.content) }} section placeholder{{ placeholderCount(t.content) === 1 ? '' : 's' }}</span>
+            <span><i class="ti ti-clock"></i> Updated {{ t.updatedAt | date: 'medium' }}</span>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary-sm" (click)="generateCvWithTemplate(t)"><i class="ti ti-wand"></i> Generate CV</button>
+            <button class="btn-ghost-sm" (click)="openEdit(t)"><i class="ti ti-edit"></i> Edit source</button>
+            <button class="btn-danger-sm" [disabled]="t.isSystem"
+              [title]="t.isSystem ? 'System templates cannot be deleted' : ''"
+              (click)="deleteTemplate(t)">
+              <i class="ti ti-trash"></i> Delete
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+@if (modalOpen()) {
+  <div class="modal-backdrop" (click)="close()">
+    <div class="modal modal-xl" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h2>{{ editing() ? 'Edit template' : 'New template' }}</h2>
+        <button class="icon-btn" (click)="close()">✕</button>
+      </div>
+
+      <div class="modal-body tpl-grid">
+        <!-- COLUMN 1 — source -->
+        <div class="tpl-col tpl-source">
+          <div class="tpl-source-head">
+            <div class="form-row">
+              <div class="form-group grow">
+                <label>Name <span class="req">*</span></label>
+                <input type="text" [(ngModel)]="formName" name="tplName" placeholder="e.g. Modern — two columns">
+              </div>
+              <div class="form-group">
+                <label>Type</label>
+                <select [(ngModel)]="formType" name="tplType">
+                  <option value="latex">latex</option>
+                  <option value="html">html</option>
+                  <option value="pdf">pdf</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" [(ngModel)]="formDescription" name="tplDesc" placeholder="Short description shown in lists">
+            </div>
+          </div>
+
+          <label class="tpl-src-label">
+            Source <span class="req">*</span>
+            <span class="tpl-src-hint">Paste your pre-filled CV — then select a part of it on the right → “Add as section”.</span>
+          </label>
+          <textarea #srcTa rows="16" class="tpl-src" [(ngModel)]="formContent" name="tplContent"
+            (select)="onTextAreaEvent($event)"
+            (mouseup)="onTextAreaEvent($event)"
+            (keyup)="onTextAreaEvent($event)"
+            (input)="onTextAreaEvent($event)"
+            placeholder="LaTeX source">
+          </textarea>
+
+          @if (sel() !== null) {
+            <div class="selbar">
+              <span class="selbar-info">
+                <i class="ti ti-highlight"></i> {{ selLen() }} chars selected
+              </span>
+              @if (!sfOpen()) {
+                <button class="btn-primary btn-sm" (click)="openSectionForm(true)">
+                  <i class="ti ti-scissors"></i> Add as section
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- COLUMN 2 — section workbench -->
+        <div class="tpl-col tpl-workbench">
+          <div class="wb-head">
+            <span class="wb-title"><i class="ti ti-section"></i> Sections</span>
+            <button class="btn-ghost-sm" (click)="openSectionForm(false)" [disabled]="sfOpen()">
+              <i class="ti ti-plus"></i> New section
+            </button>
+          </div>
+
+          @if (hasBodyMarker()) {
+            <div class="ph-head">
+              <span class="ph-title">Section placeholders</span>
+              <span class="ph-ok"><i class="ti ti-check"></i> BODY marker present</span>
+            </div>
+          } @else {
+            <div class="ph-head">
+              <span class="ph-title">Section placeholders</span>
+              <span class="ph-warn"><i class="ti ti-alert-triangle"></i> Missing %=== BODY === marker</span>
+            </div>
+          }
+
+          <details class="ph-legend">
+            <summary><i class="ti ti-help"></i> Available sections &amp; how constraints work</summary>
+            <div class="ph-legend-body">
+              <table class="ph-legend-table">
+                <thead>
+                  <tr><th>Key</th><th>Filled from</th></tr>
+                </thead>
+                <tbody>
+                  @for (l of sectionLegend; track l.key) {
+                    <tr>
+                      <td><code>{{ l.key }}</code></td>
+                      <td>{{ l.source }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              <p class="ph-legend-note">
+                <strong>Enforced automatically:</strong> max&nbsp;N&nbsp;characters · max&nbsp;N&nbsp;words ·
+                maximum&nbsp;N&nbsp;items/entries/projects/bullets/points · each&nbsp;item&nbsp;max&nbsp;N&nbsp;characters ·
+                bullet&nbsp;/&nbsp;comma list · reverse&nbsp;chronological / most&nbsp;recent&nbsp;first.
+                <strong>Any other wording</strong> is guidance passed to the AI. For unknown keys, the
+                <strong>example is mandatory</strong> — the AI reproduces its style with your real data.
+              </p>
+            </div>
+          </details>
+
+          @if (sfOpen()) {
+            <div class="section-form">
+              <div class="sf-head">
+                <span class="sf-title">
+                  {{ sfEditIndex() !== null ? 'Edit section' : (sfFromSelection() ? 'Add section from selection' : 'New section') }}
+                </span>
+                <button type="button" class="icon-btn" (click)="cancelSectionForm()">✕</button>
+              </div>
+
+              <div class="sf-grid">
+                <label class="sf-field">
+                  <span>Section title <b>*</b></span>
+                  <input type="text" [(ngModel)]="sfTitle" name="sfTitle" placeholder="e.g. PROFESSIONAL EXPERIENCE">
+                </label>
+                <label class="sf-field">
+                  <span>Key <i class="ti ti-help"></i></span>
+                  <input type="text" [(ngModel)]="sfKey" name="sfKey" class="mono" placeholder="e.g. experience">
+                </label>
+              </div>
+
+              <div class="sf-preset-row">
+                <span class="sf-preset-label">Quick fill</span>
+                <div class="ph-chips">
+                  @for (p of sectionPresets; track p.key) {
+                    <button type="button" class="ph-chip" (click)="pickPreset(p)">
+                      {{ p.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="sf-format">
+                <button type="button" class="seg" [class.on]="sfFormat() === 'list'"
+                  (click)="sfFormat.set('list')">
+                  <i class="ti ti-list"></i> Bullet list
+                </button>
+                <button type="button" class="seg" [class.on]="sfFormat() === 'paragraph'"
+                  (click)="sfFormat.set('paragraph')">
+                  <i class="ti ti-pilcrow"></i> Paragraph
+                </button>
+              </div>
+
+              @if (sfFormat() === 'paragraph') {
+                <div class="sf-grid">
+                  <label class="sf-field">
+                    <span>Max characters</span>
+                    <input type="number" min="0" [ngModel]="sfMaxChars() ?? ''" name="sfMaxChars"
+                      (ngModelChange)="setNum('maxChars', $event)" placeholder="e.g. 300">
+                  </label>
+                </div>
+              } @else {
+                <div class="sf-grid">
+                  <label class="sf-field">
+                    <span>Max items</span>
+                    <input type="number" min="0" [ngModel]="sfMaxItems() ?? ''" name="sfMaxItems"
+                      (ngModelChange)="setNum('maxItems', $event)" placeholder="e.g. 5">
+                  </label>
+                  <label class="sf-field">
+                    <span>Max chars per item</span>
+                    <input type="number" min="0" [ngModel]="sfPerItemChars() ?? ''" name="sfPerItemChars"
+                      (ngModelChange)="setNum('perItemChars', $event)" placeholder="e.g. 120">
+                  </label>
+                </div>
+              }
+
+              <label class="sf-check">
+                <input type="checkbox" [(ngModel)]="sfReverse" name="sfReverse">
+                Reverse chronological order (most recent first)
+              </label>
+
+              <label class="sf-field">
+                <span>Extra guidance <em>(AI hint)</em></span>
+                <input type="text" [(ngModel)]="sfGuidance" name="sfGuidance"
+                  placeholder="e.g. 2-4 concise bullets per entry, quantify impact">
+              </label>
+
+              <div class="sf-example">
+                <div class="sf-example-head">
+                  <span>Example for the model to follow</span>
+                  <span class="sf-example-tag" [class.on]="sfExample()">
+                    {{ sfExample() ? 'provided' : 'optional' }}
+                  </span>
+                </div>
+                <textarea rows="6" class="code-textarea" [(ngModel)]="sfExample" name="sfExample"
+                  placeholder="Paste the filled LaTeX snippet you selected (auto-filled) or a sample section the model should imitate">
+                </textarea>
+                @if (sfFromSelection()) {
+                  <div class="sf-example-meta">
+                    <label class="sf-check">
+                      <input type="checkbox" [(ngModel)]="sfExpandBlock" name="sfExpandBlock"
+                        (ngModelChange)="sfExpandBlock() && expandSelectionToSection()">
+                      Expand to the enclosing \section block
+                    </label>
+                    <span class="muted">{{ selLen() }} chars from your selection</span>
+                  </div>
+                }
+              </div>
+
+              @if (sfChips().length > 0) {
+                <div class="sf-conds-preview">
+                  <span class="ph-label">Conditions</span>
+                  <div class="ph-item-conds">
+                    @for (c of sfChips(); track c.text) {
+                      <span class="cond-chip" [class.hint]="c.kind === 'hint'">
+                        @if (c.kind !== 'hint') {
+                          <i class="ti ti-shield-check"></i>
+                        } @else {
+                          <i class="ti ti-sparkles"></i>
+                        }
+                        {{ c.text }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+
+              <div class="sf-actions">
+                <button type="button" class="btn-ghost-sm" (click)="cancelSectionForm()">Cancel</button>
+                <button type="button" class="btn-primary btn-sm" (click)="confirmSection()">
+                  <i class="ti ti-{{ sfEditIndex() !== null ? 'check' : (sfFromSelection() ? 'scissors' : 'plus') }}"></i>
+                  {{ sfEditIndex() !== null ? 'Save section' : (sfFromSelection() ? 'Convert selection' : 'Add section') }}
+                </button>
+              </div>
+            </div>
+          }
+
+          <div class="wb-list">
+            <span class="ph-label">
+              Render order — {{ parsedPlaceholders().length }} section{{ parsedPlaceholders().length === 1 ? '' : 's' }}
+              @if (hasPlaceholderWarnings()) {
+                <span class="ph-warn-chip">warnings</span>
+              }
+            </span>
+
+            @if (parsedPlaceholders().length === 0) {
+              <p class="ph-empty">
+                No named sections yet. Select a part of the source to convert it into a
+                section, or click “New section” to add one — always attach an example so
+                the AI reproduces your style.
+              </p>
+            } @else {
+              <div class="ph-list">
+                @for (ph of parsedPlaceholders(); track $index) {
+                  <div class="ph-item" [class.warn]="ph.warnings.length > 0">
+                    <div class="ph-item-head">
+                      <span class="ph-order">{{ $index + 1 }}</span>
+                      <code>{{ ph.key }}</code>
+                      <span class="ph-item-title">{{ ph.title }}</span>
+                      @if (ph.warnings.length > 0) {
+                        <span class="ph-item-warn">{{ ph.warnings.join(', ') }}</span>
+                      }
+                      <div class="ph-actions">
+                        <button type="button" class="ph-icon-btn" title="Move up" [disabled]="$first"
+                          (click)="movePlaceholder($index, -1)"><i class="ti ti-arrow-up"></i></button>
+                        <button type="button" class="ph-icon-btn" title="Move down" [disabled]="$last"
+                          (click)="movePlaceholder($index, 1)"><i class="ti ti-arrow-down"></i></button>
+                        <button type="button" class="ph-icon-btn" title="Duplicate"
+                          (click)="duplicatePlaceholder($index)"><i class="ti ti-copy"></i></button>
+                        <button type="button" class="ph-icon-btn ph-icon-danger" title="Remove section"
+                          (click)="deletePlaceholder($index)"><i class="ti ti-trash"></i></button>
+                      </div>
+                    </div>
+
+                    @if (ph.conditions.length > 0) {
+                      <div class="ph-item-conds">
+                        @for (c of ph.conditions; track c.text) {
+                          <span class="cond-chip" [class.hint]="c.kind === 'hint'">
+                            @if (c.kind !== 'hint') {
+                              <i class="ti ti-shield-check"></i>
+                            } @else {
+                              <i class="ti ti-sparkles"></i>
+                            }
+                            {{ c.text }}
+                          </span>
+                        }
+                      </div>
+                    }
+
+                    @if (ph.example) {
+                      <details class="ph-example-details">
+                        <summary><i class="ti ti-file-text"></i> Example</summary>
+                        <pre class="ph-example">{{ ph.example }}</pre>
+                      </details>
+                    } @else if (ph.warnings.some(w => w.includes('free-form'))) {
+                      <p class="ph-empty">No example yet — add one so the AI can write this section.</p>
+                    }
+
+                    <div class="ph-edit-btn-row">
+                      <button type="button" class="ph-edit-btn" (click)="editSection($index)">
+                        <i class="ti ti-edit"></i> Edit block
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <p class="hint">
+            Block order = render order. <code>%=== BODY ===</code> holds the header (name + contact);
+            each <code>%=== SECTION PLACEHOLDER ===</code> block renders one section — known keys use your
+            profile data, unknown keys are written by the AI from your example.
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn-ghost" (click)="close()">Cancel</button>
+        <button class="btn-primary" [disabled]="saving()" (click)="doSave()">
+          {{ saving() ? 'Saving…' : (editing() ? 'Save changes' : 'Create template') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -4,6 +4,7 @@ using CV_Generator;
 using CV_Generator.Models;
 using CV_Generator.Data;
 using CV_Generator.Dto;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -12,10 +13,14 @@ namespace CV_Generator.Controllers;
 public class CertificationsController : ApiControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<CertificationsController> _logger;
 
-    public CertificationsController(AppDbContext db)
+    public CertificationsController(AppDbContext db, IServiceScopeFactory scopeFactory, ILogger<CertificationsController> logger)
     {
         _db = db;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -72,6 +77,7 @@ public class CertificationsController : ApiControllerBase
 
         _db.Certifications.Add(cert);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, cert.UserId, _logger, "Certification.Create");
 
         var response = new CertificationResponseDto
         {
@@ -97,6 +103,7 @@ public class CertificationsController : ApiControllerBase
         cert.CredentialUrl = dto.CredentialUrl;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, cert.UserId, _logger, "Certification.Update");
 
         var response = new CertificationResponseDto
         {
@@ -118,6 +125,7 @@ public class CertificationsController : ApiControllerBase
 
         _db.Certifications.Remove(cert);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, cert.UserId, _logger, "Certification.Delete");
 
         return NoContent();
     }

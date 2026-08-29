@@ -6,12 +6,13 @@ import { CompanyService, CompanyDto } from '@app/services/company.service';
 import { ToastService } from '@app/services/toast.service';
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { CompanyFormDialogComponent } from '@app/shared/components/company-form-dialog/company-form-dialog.component';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 import { COUNTRIES } from '@app/shared/data/geo-data';
 
 @Component({
   selector: 'app-companies',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, SheetImportDialogComponent, CompanyFormDialogComponent],
+  imports: [CommonModule, FormsModule, RouterLink, SheetImportDialogComponent, CompanyFormDialogComponent, RefreshButtonComponent],
   templateUrl: './companies.component.html',
   styleUrl: './companies.component.scss',
 })
@@ -42,6 +43,7 @@ export class CompaniesComponent implements OnInit {
   dialogOpen = signal(false);
   editingCompany = signal<CompanyDto | null>(null);
   importOpen = signal(false);
+  refreshing = signal(false);
 
   protected readonly COUNTRIES = COUNTRIES;
 
@@ -78,7 +80,13 @@ export class CompaniesComponent implements OnInit {
       this.toast.error('Failed to load companies');
     } finally {
       this.loading.set(false);
+      this.refreshing.set(false);
     }
+  }
+
+  onRefresh() {
+    this.refreshing.set(true);
+    this.loadCompanies();
   }
 
   onSearchInput(value: string) {

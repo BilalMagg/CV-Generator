@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ApplicationService } from '@app/services/application.service';
 import { ApplicationStatisticsDto, StatisticsTrendsDto, MonthlyTrendDto } from '@app/models/application.model';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 interface StatCard {
   label: string;
@@ -17,7 +18,7 @@ const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RefreshButtonComponent],
   templateUrl: './analytics.component.html',
   styleUrl: './analytics.component.scss',
 })
@@ -27,6 +28,7 @@ export class AnalyticsComponent implements OnInit {
 
   trends = signal<StatisticsTrendsDto | null>(null);
   loading = signal(true);
+  refreshing = signal(false);
   periodMonths = signal(6);
 
   ngOnInit() { this.loadTrends(); }
@@ -35,8 +37,10 @@ export class AnalyticsComponent implements OnInit {
     try {
       const res = await this.appService.getTrends();
       if (res.success && res.data) this.trends.set(res.data);
-    } catch { } finally { this.loading.set(false); }
+    } catch { } finally { this.loading.set(false); this.refreshing.set(false); }
   }
+
+  onRefresh() { this.refreshing.set(true); this.loadTrends(); }
 
   setPeriod(months: number): void {
     this.periodMonths.set(months);

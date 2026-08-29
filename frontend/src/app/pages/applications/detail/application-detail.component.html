@@ -21,6 +21,7 @@
         </div>
       </div>
       <div class="det-actions">
+        <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
         <button class="det-btn primary" (click)="openAttemptModal()"><i class="ti ti-send"></i> Log attempt</button>
         <button class="det-btn" (click)="openEditModal()"><i class="ti ti-edit"></i> Edit</button>
         <button class="det-btn" (click)="openStatusModal()" *ngIf="availableStatuses().length > 0"><i class="ti ti-refresh"></i> Update status</button>

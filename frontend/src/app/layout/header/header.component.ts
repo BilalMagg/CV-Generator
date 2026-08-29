@@ -30,6 +30,7 @@ export class HeaderComponent {
     '/agents-hub':             'Agents Hub',
     '/agents-hub/guide':       'Agent Guide',
     '/agents-hub/job-crawler': 'Job Crawler',
+    '/agents-hub/template-agent': 'Template Agent',
     '/job-offers':             'Job Offers',
     '/settings':               'Settings',
   };
@@ -39,7 +40,9 @@ export class HeaderComponent {
       filter(e => e instanceof NavigationEnd)
     ).subscribe((e: any) => {
       const url: string = e.urlAfterRedirects || e.url;
-      const match = Object.keys(this.ROUTE_NAMES).find(k => url.startsWith(k));
+      const match = Object.keys(this.ROUTE_NAMES)
+        .sort((a, b) => b.length - a.length)
+        .find(k => url.startsWith(k));
       this.pageName = match ? this.ROUTE_NAMES[match] : 'Dashboard';
     });
   }

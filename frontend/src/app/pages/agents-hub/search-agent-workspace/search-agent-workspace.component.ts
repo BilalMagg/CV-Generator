@@ -1,12 +1,18 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { ExtractionService } from '@app/services/extraction.service';
-import { ExtractionHistoryItem } from '@app/models/extraction.types';
+import { SearchService, SearchResult, SearchStatus } from '@app/services/search.service';
 import { extractError } from '@app/shared/error-utils';
 
-type SearchInputMethod = 'extracted-job' | 'text' | 'keywords';
+type SearchInputMethod = 'text' | 'keywords' | 'entity';
+
+const ENTITY_TYPES = [
+  'User', 'CVProfile', 'Experience', 'Project', 'Skill',
+  'Education', 'Certification', 'Language', 'Interest',
+  'Hackathon', 'AcademicActivity', 'SocialLink',
+  'Company', 'Contact', 'Application',
+];
 
 @Component({
   selector: 'app-search-agent-workspace',
@@ -16,91 +22,169 @@ type SearchInputMethod = 'extracted-job' | 'text' | 'keywords';
   styleUrl: './search-agent-workspace.component.scss'
 })
 export class SearchAgentWorkspaceComponent implements OnInit {
-  // Using ExtractionService temporarily as a placeholder for a future SearchAgentService
-  private readonly extractionService = inject(ExtractionService);
+  private readonly searchService = inject(SearchService);
   private readonly router = inject(Router);
 
-  activeMethod: SearchInputMethod = 'extracted-job';
-  extractedJobId = '';
+  activeMethod: SearchInputMethod = 'text';
   textInput = '';
   keywordsInput = '';
-  language = 'en';
+  selectedEntityTypes: string[] = [];
 
-  loading = false;
-  error = '';
+  loading = signal(false);
+  syncing = signal(false);
+  error = signal('');
+  results = signal<SearchResult[]>([]);
+  hasSearched = signal(false);
 
-  history: ExtractionHistoryItem[] = [];
-  totalSearches = 0;
-  avgConfidence = 0;
+  status = signal<SearchStatus>({ synced: false, chunkCount: 0, sourceTypeCounts: {} });
+  entityTypes = ENTITY_TYPES;
 
   ngOnInit(): void {
-    this.loadHistory();
+    this.loadStatus();
   }
 
-  private async loadHistory(): Promise<void> {
+  private async loadStatus(): Promise<void> {
     try {
-      // Mocking history load using extraction service temporarily
-      this.history = await this.extractionService.getHistory('search-agent');
-      this.totalSearches = this.history.length;
-      this.avgConfidence = this.history.length
-        ? Math.round(this.history.reduce((s, h) => s + h.overallConfidence, 0) / this.history.length * 100)
-        : 0;
+      this.status.set(await this.searchService.getStatus());
     } catch {
-      this.history = [];
+      this.status.set({ synced: false, chunkCount: 0, sourceTypeCounts: {} });
     }
   }
 
   get canSubmit(): boolean {
     switch (this.activeMethod) {
-      case 'extracted-job': return this.extractedJobId.trim().length > 0;
       case 'text': return this.textInput.trim().length > 0;
       case 'keywords': return this.keywordsInput.trim().length > 0;
+      case 'entity': return this.textInput.trim().length > 0 && this.selectedEntityTypes.length > 0;
     }
+  }
+
+  toggleEntityType(type: string): void {
+    const idx = this.selectedEntityTypes.indexOf(type);
+    if (idx >= 0) {
+      this.selectedEntityTypes.splice(idx, 1);
+    } else {
+      this.selectedEntityTypes.push(type);
+    }
+  }
+
+  isTypeSelected(type: string): boolean {
+    return this.selectedEntityTypes.includes(type);
   }
 
   async onSubmit(): Promise<void> {
-    if (!this.canSubmit || this.loading) return;
-    this.loading = true;
-    this.error = '';
+    if (!this.canSubmit || this.loading()) return;
+    this.loading.set(true);
+    this.error.set('');
+    this.results.set([]);
 
     try {
-      // In a real app, this would call searchAgentService.search(...)
-      // For now we simulate an API delay then just clear loading state
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      // await this.router.navigate(['/agents-hub/search-agent/result', 'new-id']);
-      this.error = 'Search Agent backend is not implemented yet.';
+      const query = this.activeMethod === 'keywords' ? this.keywordsInput : this.textInput;
+      const sourceTypes = this.activeMethod === 'entity'
+        ? this.selectedEntityTypes
+        : [...ENTITY_TYPES];
+
+      const res = await this.searchService.search(query, sourceTypes, 20);
+      this.results.set(res);
+      this.hasSearched.set(true);
     } catch (err) {
-      this.error = extractError(err, 'Search failed');
+      this.error.set(extractError(err, 'Search failed'));
     } finally {
-      this.loading = false;
+      this.loading.set(false);
     }
   }
 
-  formatDate(dateStr: string): string {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
-    return d.toLocaleDateString();
+  async onSync(): Promise<void> {
+    this.syncing.set(true);
+    try {
+      await this.searchService.sync();
+      await this.loadStatus();
+    } catch (err) {
+      this.error.set(extractError(err, 'Sync failed'));
+    } finally {
+      this.syncing.set(false);
+    }
   }
 
-  confidenceColor(score: number): string {
-    if (score >= 0.8) return 'high';
-    if (score >= 0.5) return 'mid';
+  private percent(pct: number): string {
+    return Math.max(0, Math.min(100, Math.round(pct))) + '%';
+  }
+
+  scoreColor(score: number): string {
+    if (score == null || Number.isNaN(score)) return 'neutral';
+    if (score >= 0.5) return 'high';
+    if (score >= 0.3) return 'mid';
     return 'low';
   }
 
-  methodIcon(method: string): string {
-    switch (method) {
-      case 'extracted-job': return 'J';
-      case 'text': return 'T';
-      case 'keywords': return 'K';
-      default: return '?';
+  scoreWidth(score: number): string {
+    return this.percent((score ?? 0) * 100);
+  }
+
+  formatScore(score: number): string {
+    return this.percent((score ?? 0) * 100);
+  }
+
+  isNa(value: string): boolean {
+    const v = value.trim().toUpperCase();
+    return v === '' || v === 'N/A';
+  }
+
+  resultUrl(r: SearchResult): string {
+    const id = r.sourceId;
+    switch (r.sourceType) {
+      case 'Application': return `/applications/${id}`;
+      case 'Company': return `/companies/${id}`;
+      case 'Contact': return '/mailbox?tab=contacts';
+      case 'User': return '/profile';
+      case 'CVProfile': return `/my-career/cvprofiles/${id}`;
+      case 'Experience': return `/my-career/experiences/${id}`;
+      case 'Project': return `/my-career/projects/${id}`;
+      case 'Skill': return `/my-career/skills/${id}`;
+      case 'Education': return `/my-career/educations/${id}`;
+      case 'Certification': return `/my-career/certifications/${id}`;
+      case 'Language': return `/my-career/languages/${id}`;
+      case 'Interest': return `/my-career/interests/${id}`;
+      case 'Hackathon': return `/my-career/hackathons/${id}`;
+      case 'AcademicActivity': return `/my-career/academicactivities/${id}`;
+      case 'SocialLink': return `/my-career/sociallinks/${id}`;
+      default: return '';
     }
+  }
+
+  openResult(r: SearchResult): void {
+    const url = this.resultUrl(r);
+    if (url) this.router.navigateByUrl(url);
+  }
+
+  typeColor(type: string): string {
+    const colors: Record<string, string> = {
+      Experience: '#6366f1', Project: '#8b5cf6', Skill: '#06b6d4',
+      Education: '#f59e0b', Certification: '#10b981', Language: '#ec4899',
+      Interest: '#f97316', Hackathon: '#ef4444', AcademicActivity: '#3b82f6',
+      SocialLink: '#64748b', Company: '#14b8a6', Contact: '#a855f7',
+      Application: '#22c55e', User: '#6366f1', CVProfile: '#8b5cf6',
+    };
+    return colors[type] ?? '#64748b';
+  }
+
+  parseResult(r: SearchResult): { title: string; facts: { label: string; value: string }[] } {
+    const parts = r.content.split('.').map(p => p.trim()).filter(Boolean);
+    const facts: { label: string; value: string }[] = [];
+    let title = r.content;
+
+    parts.forEach((part, i) => {
+      const colon = part.indexOf(':');
+      const label = colon > -1 ? part.slice(0, colon).trim() : '';
+      const value = colon > -1 ? part.slice(colon + 1).trim() : part;
+
+      if (i === 0 && label) {
+        title = value || part;
+      } else if (i > 0 && (label || value)) {
+        facts.push({ label: label || 'Info', value });
+      }
+    });
+
+    return { title, facts };
   }
 }

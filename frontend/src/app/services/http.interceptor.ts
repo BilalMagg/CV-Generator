@@ -28,7 +28,7 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
       if (err instanceof HttpErrorResponse) {
         if (err.status === 401 && !AUTH_ENDPOINTS.some(e => req.url.includes(e))) {
           toast.error('Session expired — please sign in again');
-          router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
+          router.navigate(['/login']);
           return throwError(() => new Error('Session expired'));
         }
 

@@ -1,0 +1,315 @@
+<div class="workspace-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="breadcrumb">
+        <a routerLink="/applications/list">Applications</a>
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" class="chevron"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Generate CV</span>
+      </div>
+      <h1 class="header-title">Generate CV</h1>
+      <p class="header-sub">Render a tailored CV from your saved templates and a job description — optionally email it to a recipient.</p>
+    </div>
+    <div class="header-right">
+      <button class="guide-link" (click)="goToHistory()">History</button>
+    </div>
+  </div>
+
+  <div class="workspace-body">
+    <!-- Form panel -->
+    @if (state() === 'form') {
+      <div class="form-layout">
+        <div class="config-panel">
+          <div class="field">
+            <label class="field-label">Template</label>
+            <select
+              class="field-select"
+              [value]="selectedTemplate()"
+              (change)="selectedTemplate.set($any($event.target).value); onTemplateChange()"
+              [disabled]="templatesLoading()"
+            >
+              <option value="">Default (built-in)</option>
+              @for (t of templates(); track t.id) {
+                <option [value]="t.id">{{ t.name }}{{ t.isSystem ? '  ·  system' : '' }}</option>
+              }
+            </select>
+
+            @let meta = selectedTemplateMeta();
+
+            @if (templatesLoading()) {
+              <p class="field-hint">Loading template catalog…</p>
+            } @else if (meta) {
+              @if (meta.description) {
+                <p class="field-hint">{{ meta.description }}</p>
+              }
+              <p class="field-hint">
+                <i class="ti ti-section"></i>
+                {{ placeholderCount(meta.content) }} section placeholder{{ placeholderCount(meta.content) === 1 ? '' : 's' }}
+                · {{ meta.updatedAt | date: 'medium' }}
+              </p>
+            } @else {
+              <p class="field-hint">Unstyled rendering from the agent's bundled skeleton. Create templates in Documents → Templates.</p>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field-label">Job description</label>
+            <div class="tabs">
+              <button class="tab" [class.active]="inputTab() === 'paste'" (click)="inputTab.set('paste')">Paste</button>
+              <button class="tab" [class.active]="inputTab() === 'url'" (click)="inputTab.set('url')">URL</button>
+            </div>
+            @if (inputTab() === 'paste') {
+              <textarea
+                class="input-textarea"
+                placeholder="Paste the job posting here…"
+                [ngModel]="jobDescription()"
+                (ngModelChange)="jobDescription.set($event)"
+                rows="10"
+              ></textarea>
+            } @else {
+              <input
+                type="text"
+                class="input"
+                placeholder="https://example.com/jobs/123"
+                [ngModel]="jobUrl()"
+                (ngModelChange)="jobUrl.set($event)"
+              />
+            }
+            <div class="sample-row">
+              <button class="text-btn" (click)="useSample()">Use sample job</button>
+            </div>
+          </div>
+
+          <div class="fields-row">
+            <div class="field">
+              <label class="field-label">Tone</label>
+              <select class="field-select" [value]="selectedTone()" (change)="selectedTone.set($any($event.target).value)">
+                @for (t of tones; track t) {
+                  <option [value]="t">{{ t }}</option>
+                }
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label">Language</label>
+              <select class="field-select" [value]="selectedLanguage()" (change)="selectedLanguage.set($any($event.target).value)">
+                @for (l of languages; track l.code) {
+                  <option [value]="l.code">{{ l.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">CV profile</label>
+            <select class="field-select" [value]="selectedProfileId() ?? ''" (change)="selectedProfileId.set($any($event.target).value || null)">
+              <option value="">Default profile</option>
+              @for (p of profiles(); track p.id) {
+                <option [value]="p.id">{{ p.title }}</option>
+              }
+            </select>
+            @if (profilesLoading()) { <p class="field-hint">Loading profiles…</p> }
+          </div>
+
+          <div class="candidate-card">
+            <h4 class="candidate-title">Candidate &amp; email</h4>
+            <div class="field">
+              <label class="field-label">Candidate name</label>
+              <input
+                type="text"
+                class="input"
+                placeholder="Your name shown on the CV"
+                [ngModel]="candidateName()"
+                (ngModelChange)="candidateName.set($event)"
+              />
+            </div>
+
+            <div class="toggle-row">
+              <label class="toggle">
+                <input type="checkbox" [checked]="sendEmail()" (change)="sendEmail.set($any($event.target).checked)" />
+                <span class="toggle-mark"></span>
+                <span class="toggle-label">Send CV via email</span>
+              </label>
+            </div>
+
+            @if (sendEmail()) {
+              <div class="email-fields">
+                <input
+                  class="input"
+                  type="email"
+                  placeholder="recipient@example.com"
+                  [ngModel]="recipientEmail()"
+                  (ngModelChange)="recipientEmail.set($event)"
+                />
+                <input
+                  class="input"
+                  type="text"
+                  placeholder="Subject (optional)"
+                  [ngModel]="emailSubject()"
+                  (ngModelChange)="emailSubject.set($event)"
+                />
+              </div>
+            }
+          </div>
+
+          @if (error()) {
+            <div class="error-banner">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              {{ error() }}
+              <button class="retry-btn" (click)="error.set('')">Dismiss</button>
+            </div>
+          }
+
+          <button class="extract-btn" [disabled]="!canSubmit || templatesLoading()" (click)="generate()">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 3v12M7 10l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Generate CV
+          </button>
+        </div>
+
+        <div class="results-idle">
+          <div class="idle-icon">
+            <svg viewBox="0 0 24 24" fill="none" width="40" height="40"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Pick a template, paste a job</h3>
+          <p>The pipeline extracts the job requirements, matches your profile, then renders the CV with your selected template and its section placeholders — free-form blocks are written by the agent to match your examples. Optionally delivered by email when you tick the box.</p>
+        </div>
+      </div>
+    }
+
+    <!-- Progress panel -->
+    @if (state() === 'progress') {
+      <div class="progress-layout">
+        <div class="steps-card">
+          <div class="steps-header">
+            <div>
+              <h3>Rendering your CV</h3>
+              <p class="steps-meta">Template: {{ templateLabel() }} · extract → match → render → optimize → deliver</p>
+            </div>
+            <span class="elapsed">Elapsed {{ formatElapsed(elapsedSeconds()) }}</span>
+          </div>
+
+          <div class="step-list">
+            @for (step of displayedSteps(); track step.step) {
+              <div class="step-row" [class.done]="step.status === 'completed'" [class.active]="step.status === 'running'" [class.fail]="step.status === 'failed' || step.status === 'cancelled'">
+                <div class="step-dot">
+                  @if (step.status === 'running') {
+                    <span class="spinner" style="--sp:12px"></span>
+                  } @else if (step.status === 'completed') {
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  }
+                </div>
+                <span class="step-name">{{ step.name }}</span>
+                <div class="step-bar"><div class="step-fill" [style.width.%]="stepPercent(step)"></div></div>
+                @if (step.duration_ms != null) {
+                  <span class="step-dur">{{ formatDuration(step.duration_ms) }}</span>
+                }
+              </div>
+            }
+          </div>
+
+          @if (error()) {
+            <div class="error-banner">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              {{ error() }}
+            </div>
+          }
+
+          <div class="steps-actions">
+            <button class="cancel-btn" (click)="cancelRun()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Results panel -->
+    @if (state() === 'results' && result()) {
+      <div class="progress-layout">
+        <div class="result-main">
+          <div class="rc-head">
+            <div>
+              <h3>{{ error() ? 'Run failed' : 'CV generated' }}</h3>
+              <p class="steps-meta">Template: {{ templateLabel() }} · {{ formatElapsed(elapsedSeconds()) }}</p>
+            </div>
+            <div class="rc-actions">
+              <button class="ghost-btn" [disabled]="!pdfPreviewUrl()" (click)="downloadPdf()">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M12 3v12M7 10l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                Open PDF
+              </button>
+              @if (runId()) {
+                <button class="ghost-btn" (click)="viewEditPage()">Edit CV</button>
+              }
+            </div>
+          </div>
+
+          <div class="metrics-row">
+            <div class="metric">
+              <span class="metric-label">Profile match</span>
+              <span class="metric-value">{{ liveMatchScore() !== null ? liveMatchScore() + '%' : '—' }}</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">ATS score</span>
+              <span class="metric-value">{{ liveAtsScore() !== null ? liveAtsScore() : '—' }}</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Template</span>
+              <span class="metric-value" style="font-size:13px">{{ templateLabel() }}</span>
+            </div>
+          </div>
+
+          @if (liveGapSkills().length > 0) {
+            <div class="gap-row">
+              <span class="gap-label">Gap skills</span>
+              <div class="gap-chips">
+                @for (g of liveGapSkills(); track g) {
+                  <span class="gap-chip">{{ g }}</span>
+                }
+              </div>
+            </div>
+          }
+
+          @if (error()) {
+            <div class="error-banner">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4M12 16v-0.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              {{ error() }}
+            </div>
+          }
+        </div>
+
+        <div class="steps-card">
+          <div class="steps-header">
+            <div>
+              <h3>Pipeline steps</h3>
+            </div>
+            <button class="ghost-btn" (click)="goBack()">New run</button>
+          </div>
+
+          <div class="step-list">
+            @for (step of displayedSteps(); track step.step) {
+              <button class="step-row clickable" [class.done]="step.status === 'completed'" [class.active]="step.status === 'running'" [class.fail]="step.status === 'failed' || step.status === 'cancelled'" (click)="openStepDetail(step.step)">
+                <div class="step-dot">
+                  @if (step.status === 'running') {
+                    <span class="spinner" style="--sp:12px"></span>
+                  } @else if (step.status === 'completed') {
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  }
+                </div>
+                <span class="step-name">{{ step.name }}</span>
+                <div class="step-bar"><div class="step-fill" [style.width.%]="stepPercent(step)"></div></div>
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" class="chevron-small"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (selectedStepIndex() !== null) {
+          <div class="step-detail">
+            <div class="sd-head">
+              <h4>{{ displayedSteps()[selectedStepIndex() ?? 0]?.name ?? 'Detail' }}</h4>
+              <button class="icon-btn" (click)="closeStepDetail()">×</button>
+            </div>
+            <pre class="sd-json">{{ jsonStringify(stepDetailData(selectedStepIndex() ?? 0)) }}</pre>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

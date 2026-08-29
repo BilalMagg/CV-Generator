@@ -1,5 +1,7 @@
 namespace CV_Generator.Models;
 
+using System.Text.Json.Serialization;
+
 // CV section entity
 // Stores individual sections of a CV version
 public class CvSection
@@ -11,5 +13,6 @@ public class CvSection
     public string ContentJson { get; set; } = "{}";
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [JsonIgnore]
     public CvVersion Version { get; set; } = null!;
 }

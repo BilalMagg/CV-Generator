@@ -1,14 +1,15 @@
-import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { environment } from '@env/environment';
 import { EntityCardComponent } from '@app/shared/components/entity-card/entity-card.component';
+import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 @Component({
   selector: 'app-entity-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, EntityCardComponent],
+  imports: [CommonModule, RouterModule, EntityCardComponent, RefreshButtonComponent],
   templateUrl: './entity-list.component.html',
   styleUrl: './entity-list.component.css',
 })
@@ -20,6 +21,7 @@ export class EntityListComponent implements OnInit {
 
     entity= '';
     data: any[]=[];
+    refreshing = signal(false);
     
     goToDetail(id: string){
       this.router.navigate(['/my-career', this.entity, id]);
@@ -38,12 +40,20 @@ export class EntityListComponent implements OnInit {
     this.http.get<any>(url, { withCredentials: true }).subscribe({
       next: (response) => {
         this.data = response.data || [];
-        this.cdr.detectChanges(); // Force UI update!
+        this.refreshing.set(false);
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error(`[EntityList] Error fetching ${this.entity}:`, err);
+        this.refreshing.set(false);
+        this.cdr.detectChanges();
       }
     });
+  }
+
+  onRefresh() {
+    this.refreshing.set(true);
+    this.loadData();
   }
 
   getCardData(item: any) {

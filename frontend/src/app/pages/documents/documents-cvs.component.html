@@ -1,0 +1,186 @@
+<div class="cvs-tab">
+  <div class="toolbar">
+    <div>
+      <h2>My CVs</h2>
+      <p class="muted">{{ cvs().length }} document{{ cvs().length === 1 ? '' : 's' }}</p>
+    </div>
+    <button class="btn-primary" (click)="toggleUpload()">
+      <i class="ti ti-upload"></i> Upload ready CV
+    </button>
+  </div>
+
+  @if (uploadOpen()) {
+    <div class="upload-card">
+      <div class="upload-rows">
+        <label class="file-drop" for="cv-file-input">
+          <i class="ti ti-file-upload"></i>
+          @if (uploadFile()) {
+            <span class="file-name">{{ uploadFile()!.name }}</span>
+          } @else {
+            <span>Choose a file — PDF, DOCX, TXT, TEX…</span>
+          }
+        </label>
+        <input id="cv-file-input" type="file" hidden accept=".pdf,.docx,.doc,.txt,.tex,.html,.htm"
+          (change)="onFileSelected($event)">
+      </div>
+      <div class="upload-actions">
+        <div class="form-group grow">
+          <label>CV title</label>
+          <input type="text" [(ngModel)]="uploadTitle" name="cvUploadTitle" placeholder="e.g. My CV — Software Engineer">
+        </div>
+        <button class="btn-primary" [disabled]="uploading()" (click)="doUpload()">
+          {{ uploading() ? 'Uploading…' : 'Upload & save' }}
+        </button>
+        <button class="btn-ghost" (click)="toggleUpload()">Cancel</button>
+      </div>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="state-row">Loading…</div>
+  } @else if (cvs().length === 0) {
+    <div class="empty-state">
+      <i class="ti ti-file-off"></i>
+      <p>No CVs yet</p>
+      <span>Generate one from an application, or upload a ready document above.</span>
+    </div>
+  } @else {
+    <div class="cv-list">
+      @for (cv of cvs(); track cv.id) {
+        <div class="cv-card" [class.inactive]="!cv.isActive">
+          <div
+            class="cv-thumb"
+            [class.clickable]="canPreview(cv)"
+            role="button"
+            tabindex="0"
+            (click)="openPreviewFor(cv)"
+            (keydown.enter)="openPreviewFor(cv)"
+            [title]="canPreview(cv) ? 'Preview ' + cv.title : ''"
+          >
+            <div class="thumb-fallback"><i class="ti ti-file-text"></i></div>
+            @if (thumbSrc(cv)) {
+              <img
+                [src]="thumbSrc(cv)"
+                [alt]="cv.title + ' preview'"
+                loading="lazy"
+                (error)="$event.target.hidden = true"
+              >
+            }
+          </div>
+
+          <div class="cv-main">
+            <div class="cv-head">
+              <h3>{{ cv.title }}</h3>
+              @if (cv.isActive) {
+                <span class="badge badge-active"><i class="ti ti-check"></i> Active</span>
+              } @else {
+                <span class="badge">Inactive</span>
+              }
+            </div>
+            <div class="cv-meta">
+              <span><i class="ti ti-layers"></i> Template: {{ templateName(cv.templateId) }}</span>
+              <span><i class="ti ti-clock"></i> Updated {{ cv.updatedAt | date: 'medium' }}</span>
+            </div>
+
+            @if (cv.versions.length > 0) {
+              <div class="versions">
+                @for (ver of cv.versions; track ver.id) {
+                  <div class="version-chip">
+                    <i class="ti ti-file-text"></i>
+                    <span>v{{ ver.versionNumber }} — {{ ver.label }}</span>
+                    @if (ver.pdfUrl) {
+                      <button class="btn-ghost-sm" (click)="openPreview(ver)">
+                        <i class="ti ti-eye"></i> Preview
+                      </button>
+                      <a class="btn-ghost-sm" [href]="ver.pdfUrl" target="_blank" rel="noopener">
+                        <i class="ti ti-download"></i> PDF
+                      </a>
+                    } @else if (ver.fileUrl) {
+                      <a class="btn-ghost-sm" [href]="ver.fileUrl" target="_blank" rel="noopener">
+                        <i class="ti ti-download"></i> File
+                      </a>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="cv-actions">
+              <button class="btn-ghost-sm" (click)="openEdit(cv)"><i class="ti ti-edit"></i> Edit</button>
+              <button class="btn-danger-sm" (click)="deleteCv(cv)"><i class="ti ti-trash"></i> Delete</button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+@if (editingCv()) {
+  <div class="modal-backdrop" (click)="closeEdit()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h2>Edit CV</h2>
+        <button class="icon-btn" (click)="closeEdit()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Title <span class="req">*</span></label>
+          <input type="text" [(ngModel)]="editTitle" name="cvEditTitle">
+        </div>
+        <div class="form-group">
+          <label>Template</label>
+          <select [(ngModel)]="editTemplateId" name="cvEditTemplate">
+            <option [ngValue]="''">None — plain document</option>
+            @for (t of templates(); track t.id) {
+              <option [ngValue]="t.id">{{ t.name }}{{ t.isSystem ? ' (system)' : '' }}</option>
+            }
+          </select>
+        </div>
+        <label class="check-row">
+          <input type="checkbox" [(ngModel)]="editIsActive" name="cvEditActive">
+          <span>Active CV</span>
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" (click)="closeEdit()">Cancel</button>
+        <button class="btn-primary" [disabled]="saving()" (click)="doEdit()">
+          {{ saving() ? 'Saving…' : 'Save changes' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (previewVersion()?.pdfUrl) {
+  <div class="modal-backdrop preview-backdrop" (click)="closePreview()">
+    <div class="modal modal-preview" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h2>PDF Preview</h2>
+        <div class="preview-head-actions">
+          <span class="preview-version-label">v{{ previewVersion()!.versionNumber }} — {{ previewVersion()!.label }}</span>
+          <a class="btn-ghost-sm" [href]="previewVersion()!.pdfUrl" target="_blank" rel="noopener">
+            <i class="ti ti-external-link"></i> Open in new tab
+          </a>
+          <a class="btn-ghost-sm" [href]="downloadUrl()">
+            <i class="ti ti-download"></i> Download
+          </a>
+          <button class="icon-btn" (click)="closePreview()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body preview-body">
+        @if (previewLoading() && !pdfBlobUrl()) {
+          <div class="preview-loading">
+            <i class="ti ti-loader ti-spin"></i> Loading PDF…
+          </div>
+        }
+        <iframe
+          class="pdf-iframe"
+          [src]="previewUrl()"
+          frameborder="0"
+          title="CV PDF preview"
+        ></iframe>
+      </div>
+    </div>
+  </div>
+}

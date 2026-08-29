@@ -4,6 +4,7 @@ using CV_Generator;
 using CV_Generator.Models;
 using CV_Generator.Data;
 using CV_Generator.Dto;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -12,10 +13,14 @@ namespace CV_Generator.Controllers;
 public class HackathonsController : ApiControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<HackathonsController> _logger;
 
-    public HackathonsController(AppDbContext db)
+    public HackathonsController(AppDbContext db, IServiceScopeFactory scopeFactory, ILogger<HackathonsController> logger)
     {
         _db = db;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -78,6 +83,7 @@ public class HackathonsController : ApiControllerBase
 
         _db.Hackathons.Add(h);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, h.UserId, _logger, "Hackathon.Create");
 
         var response = new HackathonResponseDto
         {
@@ -107,6 +113,7 @@ public class HackathonsController : ApiControllerBase
         h.Result = dto.Result;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, h.UserId, _logger, "Hackathon.Update");
 
         var response = new HackathonResponseDto
         {
@@ -130,6 +137,7 @@ public class HackathonsController : ApiControllerBase
 
         _db.Hackathons.Remove(h);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, h.UserId, _logger, "Hackathon.Delete");
 
         return NoContent();
     }

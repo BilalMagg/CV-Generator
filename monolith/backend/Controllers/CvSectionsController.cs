@@ -9,7 +9,7 @@ namespace CV_Generator.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("api/cv-sections")]
+[Route("api/cv/sections")]
 public class CvSectionsController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -29,7 +29,7 @@ public class CvSectionsController : ControllerBase
         section.UpdatedAt = DateTime.UtcNow;
         _db.CvSections.Add(section);
         await _db.SaveChangesAsync();
-        return Created($"/api/cv-sections/{section.Id}", ApiResponse<CvSection>.Created(section));
+        return Created($"/api/cv/sections/{section.Id}", ApiResponse<CvSection>.Created(section));
     }
 
     [HttpDelete("{id}")]

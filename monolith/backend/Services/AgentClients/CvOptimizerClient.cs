@@ -19,7 +19,7 @@ public class CvOptimizerClient : ICvOptimizerClient
 
     public async Task<OptimizerOutput?> OptimizeAsync(OptimizerInput input, CancellationToken cancellationToken = default)
     {
-        var response = await _client.PostAsJsonAsync("optimize", input, cancellationToken: cancellationToken);
+        var response = await _client.PostAsJsonAsync("chat", input, cancellationToken: cancellationToken);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<OptimizerOutput>(cancellationToken: cancellationToken);
     }

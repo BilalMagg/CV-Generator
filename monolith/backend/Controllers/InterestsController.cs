@@ -4,6 +4,7 @@ using CV_Generator;
 using CV_Generator.Models;
 using CV_Generator.Data;
 using CV_Generator.Dto;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -12,10 +13,14 @@ namespace CV_Generator.Controllers;
 public class InterestsController : ApiControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<InterestsController> _logger;
 
-    public InterestsController(AppDbContext db)
+    public InterestsController(AppDbContext db, IServiceScopeFactory scopeFactory, ILogger<InterestsController> logger)
     {
         _db = db;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -53,6 +58,7 @@ public class InterestsController : ApiControllerBase
         var interest = new Interest { Name = dto.Name, UserId = RequiredUserId };
         _db.Interests.Add(interest);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, interest.UserId, _logger, "Interest.Create");
 
         var response = new InterestResponseDto { Id = interest.Id, Name = interest.Name, UserId = interest.UserId };
         return CreatedAtAction(nameof(GetById), new { id = interest.Id }, ApiResponse<InterestResponseDto>.Created(response));
@@ -66,6 +72,7 @@ public class InterestsController : ApiControllerBase
 
         interest.Name = dto.Name;
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, interest.UserId, _logger, "Interest.Update");
 
         var response = new InterestResponseDto { Id = interest.Id, Name = interest.Name, UserId = interest.UserId };
         return Ok(ApiResponse<InterestResponseDto>.Ok(response));
@@ -79,6 +86,7 @@ public class InterestsController : ApiControllerBase
 
         _db.Interests.Remove(interest);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, interest.UserId, _logger, "Interest.Delete");
 
         return NoContent();
     }

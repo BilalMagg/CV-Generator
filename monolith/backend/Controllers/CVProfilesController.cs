@@ -4,6 +4,7 @@ using CV_Generator;
 using CV_Generator.Models;
 using CV_Generator.Data;
 using CV_Generator.Dto;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -12,10 +13,14 @@ namespace CV_Generator.Controllers;
 public class CVProfilesController : ApiControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<CVProfilesController> _logger;
 
-    public CVProfilesController(AppDbContext db)
+    public CVProfilesController(AppDbContext db, IServiceScopeFactory scopeFactory, ILogger<CVProfilesController> logger)
     {
         _db = db;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -59,6 +64,7 @@ public class CVProfilesController : ApiControllerBase
 
         _db.CVProfiles.Add(profile);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, profile.UserId, _logger, "CVProfile.Create");
 
         var response = new CVProfileResponseDto { Id = profile.Id, Title = profile.Title, Summary = profile.Summary, UserId = profile.UserId };
         return CreatedAtAction(nameof(GetById), new { id = profile.Id }, ApiResponse<CVProfileResponseDto>.Created(response));
@@ -74,6 +80,7 @@ public class CVProfilesController : ApiControllerBase
         profile.Summary = dto.Summary;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, profile.UserId, _logger, "CVProfile.Update");
 
         var response = new CVProfileResponseDto { Id = profile.Id, Title = profile.Title, Summary = profile.Summary, UserId = profile.UserId };
         return Ok(ApiResponse<CVProfileResponseDto>.Ok(response));
@@ -87,6 +94,7 @@ public class CVProfilesController : ApiControllerBase
 
         _db.CVProfiles.Remove(profile);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, profile.UserId, _logger, "CVProfile.Delete");
 
         return NoContent();
     }

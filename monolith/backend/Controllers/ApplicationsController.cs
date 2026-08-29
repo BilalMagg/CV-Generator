@@ -14,15 +14,18 @@ public class ApplicationsController : ControllerBase
     private readonly IApplicationService _service;
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<ApplicationsController> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public ApplicationsController(
         IApplicationService service,
         ICurrentUserService currentUser,
-        ILogger<ApplicationsController> logger)
+        ILogger<ApplicationsController> logger,
+        IServiceScopeFactory scopeFactory)
     {
         _service = service;
         _currentUser = currentUser;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     private Guid? UserId => _currentUser.UserId;
@@ -85,6 +88,7 @@ public class ApplicationsController : ControllerBase
         try
         {
             var created = await _service.CreateAsync(dto, UserId.Value);
+            SearchSyncHelper.TriggerSync(_scopeFactory, UserId.Value, _logger, "Application.Create");
             return Created($"/api/applications/{created.Id}", ApiResponse<ApplicationResponseDto>.Created(created));
         }
         catch (DuplicateApplicationException ex)
@@ -125,6 +129,7 @@ public class ApplicationsController : ControllerBase
         {
             var updated = await _service.UpdateDetailsAsync(id, dto, UserId.Value);
             if (updated == null) return NotFound(ApiResponse<ApplicationResponseDto>.Error("Application not found"));
+            SearchSyncHelper.TriggerSync(_scopeFactory, UserId.Value, _logger, "Application.Update");
             return Ok(ApiResponse<ApplicationResponseDto>.Ok(updated));
         }
         catch (ArgumentException ex)
@@ -141,6 +146,7 @@ public class ApplicationsController : ControllerBase
 
         var deleted = await _service.DeleteAsync(id, UserId.Value);
         if (!deleted) return NotFound(ApiResponse<object>.Error("Application not found"));
+        SearchSyncHelper.TriggerSync(_scopeFactory, UserId.Value, _logger, "Application.Delete");
         return NoContent();
     }
 

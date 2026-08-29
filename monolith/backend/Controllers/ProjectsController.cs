@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CV_Generator.Data;
 using CV_Generator.Models;
+using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
 
@@ -11,11 +12,13 @@ public class ProjectsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ILogger<ProjectsController> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public ProjectsController(AppDbContext db, ILogger<ProjectsController> logger)
+    public ProjectsController(AppDbContext db, ILogger<ProjectsController> logger, IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     [HttpGet]
@@ -55,6 +58,7 @@ public class ProjectsController : ControllerBase
 
         _db.Projects.Add(project);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, project.UserId, _logger, "Project.Create");
 
         _logger.LogInformation("Created project {Id}", project.Id);
         return Created($"/api/projects/{project.Id}", ApiResponse<Project>.Created(project));
@@ -78,6 +82,7 @@ public class ProjectsController : ControllerBase
         project.SkillsJson = dto.SkillsJson;
 
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, project.UserId, _logger, "Project.Update");
         return Ok(ApiResponse<Project>.Ok(project));
     }
 
@@ -89,6 +94,7 @@ public class ProjectsController : ControllerBase
 
         _db.Projects.Remove(project);
         await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, project.UserId, _logger, "Project.Delete");
         return NoContent();
     }
 

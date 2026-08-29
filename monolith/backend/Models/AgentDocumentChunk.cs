@@ -21,7 +21,7 @@ public class AgentDocumentChunk
     [Required]
     public string Content { get; set; } = string.Empty;
 
-    [Column(TypeName = "vector(768)")]
+    [Column(TypeName = "vector(384)")]
     public Vector? Embedding { get; set; }
 
     public NpgsqlTsVector? SearchVector { get; set; }

@@ -20,7 +20,12 @@ public class SearchAgentClient : ISearchAgentClient
     public async Task<SearchOutput?> MatchAsync(SearchInput input, CancellationToken cancellationToken = default)
     {
         var response = await _client.PostAsJsonAsync("match", input, cancellationToken: cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken: cancellationToken);
+            throw new HttpRequestException(
+                $"Search agent returned {(int)response.StatusCode}: {errorBody}");
+        }
         return await response.Content.ReadFromJsonAsync<SearchOutput>(cancellationToken: cancellationToken);
     }
 
