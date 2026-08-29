@@ -1,0 +1,45 @@
+.cron-builder {
+  border: 1px solid var(--border, #e6e8f0);
+  border-radius: 12px;
+  background: #fbfbfe;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.cb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cb-label { font-size: 0.78rem; font-weight: 600; color: #4b5063; }
+.cb-select, .cb-raw {
+  padding: 7px 10px;
+  border: 1px solid #dce0ea;
+  border-radius: 9px;
+  font: inherit;
+  background: #fff;
+}
+.cb-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 0.86rem;
+  color: #2a2f3c;
+}
+.cb-num { width: 64px; padding: 7px 9px; border: 1px solid #dce0ea; border-radius: 9px; font: inherit; background: #fff; }
+.cb-time { padding: 6px 8px; border: 1px solid #dce0ea; border-radius: 9px; font: inherit; background: #fff; }
+.cb-weekdays { display: flex; gap: 6px; flex-wrap: wrap; }
+.cb-wd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border: 1px solid #dce0ea;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  background: #fff;
+  user-select: none;
+}
+.cb-wd.on { background: color-mix(in srgb, #6366f1 14%, #fff); border-color: #6366f1; color: #4338ca; font-weight: 600; }
+.cb-wd input { margin: 0; }
+.cb-preview { margin: 10px 0 0; font-size: 0.8rem; color: #6b7180; }
+.cb-preview code { background: #eef0f7; padding: 2px 6px; border-radius: 6px; font-size: 0.78rem; }
+.cb-note { font-size: 0.78rem; color: #8a8fa3; margin: 8px 0 0; line-height: 1.4; }

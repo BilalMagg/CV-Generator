@@ -1,6 +1,7 @@
 import { Component, signal, inject, OnInit, computed, effect } from '@angular/core';
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
+import { CronBuilderComponent } from '@app/shared/components/cron-builder/cron-builder.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -52,7 +53,7 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
 @Component({
   selector: 'app-mailbox',
   standalone: true,
-  imports: [CommonModule, FormsModule, SheetImportDialogComponent, RefreshButtonComponent],
+  imports: [CommonModule, FormsModule, SheetImportDialogComponent, RefreshButtonComponent, CronBuilderComponent],
   templateUrl: './mailbox.component.html',
   styleUrl: './mailbox.component.scss',
 })
@@ -149,6 +150,7 @@ export class MailboxComponent implements OnInit {
   editingScheduleId = signal<string | null>(null);
   schedName = signal('');
   schedCron = signal('0 9 * * *');
+  schedCustom = signal(false);
   schedSubject = signal('');
   schedBody = signal('');
   schedRecipients = signal<ContactDto[]>([]);
@@ -926,10 +928,20 @@ export class MailboxComponent implements OnInit {
     this.editingScheduleId.set(null);
     this.schedName.set('');
     this.schedCron.set('0 9 * * *');
+    this.schedCustom.set(false);
     this.schedSubject.set('');
     this.schedBody.set('');
     this.schedRecipients.set([]);
     this.showScheduleForm.set(true);
+  }
+
+  onCadenceChange(v: string) {
+    if (v === 'custom') {
+      this.schedCustom.set(true);
+      return;
+    }
+    this.schedCron.set(v);
+    this.schedCustom.set(false);
   }
 
   /** Resolve contact ids to ContactDtos using the loaded list, fetching any missing ones. */
@@ -951,6 +963,7 @@ export class MailboxComponent implements OnInit {
     this.editingScheduleId.set(s.id);
     this.schedName.set(s.name);
     this.schedCron.set(s.cronExpression);
+    this.schedCustom.set(!this.CRON_PRESETS.some(p => p.value === s.cronExpression));
     this.schedSubject.set(s.subject);
     this.schedBody.set(s.body);
     this.schedRecipients.set(await this.resolveContacts(s.recipientIds));

@@ -778,15 +778,14 @@
 
           <div class="sched-field">
             <label>Cadence</label>
-            <select [ngModel]="cronPresetValue()" (ngModelChange)="$event !== 'custom' && schedCron.set($event)">
+            <select [ngModel]="schedCustom() ? 'custom' : schedCron()" (ngModelChange)="onCadenceChange($event)">
               @for (p of CRON_PRESETS; track p.value) {
                 <option [value]="p.value">{{ p.label }}</option>
               }
               <option value="custom">Custom…</option>
             </select>
-            @if (cronPresetValue() === 'custom') {
-              <input type="text" class="cron-input" placeholder="* * * * *  (min hour day month weekday)"
-                [ngModel]="schedCron()" (ngModelChange)="schedCron.set($event)">
+            @if (schedCustom()) {
+              <app-cron-builder [value]="schedCron()" (valueChange)="schedCron.set($event)"></app-cron-builder>
             }
             @if (cronDescription()) {
               <span class="sched-hint">{{ cronDescription() }}</span>

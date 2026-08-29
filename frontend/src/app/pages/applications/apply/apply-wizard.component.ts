@@ -10,6 +10,7 @@ import { ToastService } from '@app/services/toast.service';
 import { DocumentsService } from '@app/services/documents.service';
 import { AuthService } from '@app/services/auth.service';
 import { CreateContactDto } from '@app/models/mailbox.model';
+import { CronBuilderComponent } from '@app/shared/components/cron-builder/cron-builder.component';
 import { ExtractorOutput, ExtractionHistoryItem } from '@app/models/extraction.types';
 import { ScheduleTemplateDto, ApplyEmailResult } from '@app/models/apply.model';
 import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
@@ -32,7 +33,7 @@ const CRON_PRESETS: { label: string; cron: string }[] = [
 @Component({
   selector: 'app-apply-wizard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CronBuilderComponent],
   templateUrl: './apply-wizard.component.html',
   styleUrl: './apply-wizard.component.scss',
 })

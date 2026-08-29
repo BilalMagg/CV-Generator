@@ -1,0 +1,51 @@
+<div class="cron-builder">
+  @if (rawMode()) {
+    <div class="cb-row">
+      <input type="text" class="cb-raw" [ngModel]="raw()" (ngModelChange)="onRawChange($event)" placeholder="* * * * *" />
+    </div>
+    <p class="cb-note">This expression couldn't be mapped to the builder — edit it directly (5 fields: min hour day month weekday).</p>
+  } @else {
+    <div class="cb-row">
+      <label class="cb-label">Repeat</label>
+      <select class="cb-select" [ngModel]="unit()" (ngModelChange)="onUnitChange($event)">
+        @for (u of unitOptions; track u.value) { <option [value]="u.value">{{ u.label }}</option> }
+      </select>
+    </div>
+
+    <div class="cb-config">
+      @if (unit() === 'minute') {
+        <span>Every</span>
+        <input type="number" min="1" max="59" class="cb-num" [ngModel]="interval()" (ngModelChange)="onIntervalChange(+$event)" />
+        <span>minute(s)</span>
+      } @else if (unit() === 'hour') {
+        <span>Every</span>
+        <input type="number" min="1" max="23" class="cb-num" [ngModel]="interval()" (ngModelChange)="onIntervalChange(+$event)" />
+        <span>hour(s), at minute</span>
+        <input type="number" min="0" max="59" class="cb-num" [ngModel]="minuteOfHour()" (ngModelChange)="onMinuteChange(+$event)" />
+      } @else if (unit() === 'day') {
+        <span>Every</span>
+        <input type="number" min="1" max="365" class="cb-num" [ngModel]="interval()" (ngModelChange)="onIntervalChange(+$event)" />
+        <span>day(s) at</span>
+        <input type="time" class="cb-time" [ngModel]="time()" (ngModelChange)="onTimeChange($event)" />
+      } @else if (unit() === 'week') {
+        <span>On</span>
+        <div class="cb-weekdays">
+          @for (d of weekdayOptions; track d.value) {
+            <label class="cb-wd" [class.on]="weekdays().includes(d.value)">
+              <input type="checkbox" [checked]="weekdays().includes(d.value)" (change)="toggleWeekday(d.value)" /> {{ d.label }}
+            </label>
+          }
+        </div>
+        <span>at</span>
+        <input type="time" class="cb-time" [ngModel]="time()" (ngModelChange)="onTimeChange($event)" />
+      } @else if (unit() === 'month') {
+        <span>On day</span>
+        <input type="number" min="1" max="31" class="cb-num" [ngModel]="monthDay()" (ngModelChange)="onMonthDayChange(+$event)" />
+        <span>of the month at</span>
+        <input type="time" class="cb-time" [ngModel]="time()" (ngModelChange)="onTimeChange($event)" />
+      }
+    </div>
+
+    <p class="cb-preview">Cron: <code>{{ buildCron() }}</code></p>
+  }
+</div>

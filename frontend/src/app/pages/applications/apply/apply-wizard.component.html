@@ -203,9 +203,8 @@
         </div>
         @if (isCustomCron()) {
           <div class="fld">
-            <label>Custom cron expression</label>
-            <input type="text" [(ngModel)]="customCron" placeholder="0 9 * * 1-5" />
-            <p class="hint">Standard 5-field cron (minute hour day month weekday). It is validated when you schedule.</p>
+            <label>Custom schedule</label>
+            <app-cron-builder [value]="customCron()" (valueChange)="customCron.set($event)"></app-cron-builder>
           </div>
         }
       }
