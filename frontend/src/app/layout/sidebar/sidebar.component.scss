@@ -7,6 +7,53 @@
   overflow: hidden;
   height: 100%;
   width: var(--sb-w);
+  transition: width .18s ease;
+}
+
+/* Collapsed: icon-only rail */
+.sidebar.collapsed {
+  width: var(--sb-w-collapsed);
+  padding: 14px 8px;
+}
+
+.sidebar.collapsed .brand-name,
+.sidebar.collapsed .section-eyebrow,
+.sidebar.collapsed .search-text,
+.sidebar.collapsed .keycap,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .ai-badge,
+.sidebar.collapsed .user-info,
+.sidebar.collapsed .user-row .logout-btn {
+  display: none;
+}
+
+.sidebar.collapsed .brand-row {
+  justify-content: center;
+  padding: 4px 0 14px;
+}
+
+.sidebar.collapsed .collapse-toggle svg {
+  transform: rotate(180deg);
+}
+
+.sidebar.collapsed .search-bar {
+  justify-content: center;
+  padding: 7px 0;
+}
+
+.sidebar.collapsed .nav-section {
+  align-items: stretch;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  gap: 0;
+  padding: 9px 0;
+}
+
+.sidebar.collapsed .user-row {
+  justify-content: center;
+  padding: 8px 0;
 }
 
 /* Brand */

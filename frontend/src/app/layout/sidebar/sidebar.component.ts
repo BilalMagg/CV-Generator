@@ -1,4 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
@@ -24,6 +24,29 @@ export class SidebarComponent {
   appName = APP_NAME;
   private router = inject(Router);
   private authService = inject(AuthService);
+
+  collapsed = signal(false);
+
+  constructor() {
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('sb-collapsed') === '1') {
+        this.collapsed.set(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  toggleSidebar(): void {
+    const next = !this.collapsed();
+    this.collapsed.set(next);
+    try {
+      localStorage.setItem('sb-collapsed', next ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }
+
 
   navMain: NavItem[] = [
     { label: 'Dashboard',    route: '/applications/dashboard', icon: 'dashboard', exact: false, group: 'main' },

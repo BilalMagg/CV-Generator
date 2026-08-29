@@ -1,4 +1,4 @@
-<aside class="sidebar">
+<aside class="sidebar" [class.collapsed]="collapsed()">
 
   <!-- Brand row -->
   <div class="brand-row">
@@ -12,15 +12,16 @@
       <span class="brand-title">{{ appName }}</span>
       <span class="brand-badge">Pro</span>
     </div>
-    <button class="icon-btn-sm">
+    <button class="icon-btn-sm collapse-toggle" (click)="toggleSidebar()"
+            [title]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'" aria-label="Toggle sidebar">
       <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
-        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
   </div>
 
   <!-- Search bar -->
-  <button class="search-bar">
+  <button class="search-bar" [title]="collapsed() ? 'Search' : null">
     <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
       <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/>
       <path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -36,7 +37,8 @@
          [routerLink]="item.route"
          routerLinkActive="active"
          [routerLinkActiveOptions]="{ exact: false }"
-         [class.accent]="item.accent">
+         [class.accent]="item.accent"
+         [attr.title]="item.label">
         <span class="nav-icon" [class.nav-icon-accent]="item.accent">
           @switch (item.icon) {
             @case ('dashboard') {
@@ -101,7 +103,8 @@
       <a class="nav-item"
          [routerLink]="item.route"
          routerLinkActive="active"
-         [routerLinkActiveOptions]="{ exact: false }">
+         [routerLinkActiveOptions]="{ exact: false }"
+         [attr.title]="item.label">
         <span class="nav-icon">
           <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
             <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/>
@@ -122,7 +125,8 @@
       <a class="nav-item"
          [routerLink]="item.route"
          routerLinkActive="active"
-         [routerLinkActiveOptions]="{ exact: false }">
+         [routerLinkActiveOptions]="{ exact: false }"
+         [attr.title]="item.label">
         <span class="nav-icon">
           @switch (item.icon) {
             @case ('user') {
@@ -167,7 +171,7 @@
   <div class="spacer"></div>
 
   <!-- User row -->
-  <div class="user-row" (click)="goToProfile()">
+  <div class="user-row" (click)="goToProfile()" [attr.title]="userFullName()">
     <div class="user-avatar">
       @if (avatarUrl()) {
         <img [src]="avatarUrl()" alt="Avatar" />
@@ -179,7 +183,7 @@
       <div class="user-name truncate">{{ userFullName() }}</div>
       <div class="user-email truncate">{{ userEmail() }}</div>
     </div>
-    <button class="icon-btn-sm" (click)="logout(); $event.stopPropagation()" title="Logout">
+    <button class="icon-btn-sm logout-btn" (click)="logout(); $event.stopPropagation()" title="Logout">
       <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         <polyline points="16,17 21,12 16,7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
