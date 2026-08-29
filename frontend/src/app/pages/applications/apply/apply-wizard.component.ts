@@ -5,9 +5,11 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { ExtractionService } from '@app/services/extraction.service';
 import { ApplyService } from '@app/services/apply.service';
 import { MailboxService } from '@app/services/mailbox.service';
+import { ContactService } from '@app/services/contact.service';
 import { ToastService } from '@app/services/toast.service';
 import { DocumentsService } from '@app/services/documents.service';
 import { AuthService } from '@app/services/auth.service';
+import { CreateContactDto } from '@app/models/mailbox.model';
 import { ExtractorOutput, ExtractionHistoryItem } from '@app/models/extraction.types';
 import { ScheduleTemplateDto, ApplyEmailResult } from '@app/models/apply.model';
 import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
@@ -18,11 +20,13 @@ interface CvOption {
   label: string;
 }
 
+const CUSTOM_CRON = '__custom__';
 const CRON_PRESETS: { label: string; cron: string }[] = [
   { label: 'Daily at 9:00', cron: '0 9 * * *' },
   { label: 'Weekly (Monday 9:00)', cron: '0 9 * * 1' },
   { label: 'Every 2 weeks (Monday 9:00)', cron: '0 9 * * 1/2' },
   { label: 'Monthly (1st 9:00)', cron: '0 9 1 * *' },
+  { label: 'Custom…', cron: CUSTOM_CRON },
 ];
 
 @Component({
@@ -36,6 +40,7 @@ export class ApplyWizardComponent implements OnInit {
   private extractionSvc = inject(ExtractionService);
   private applySvc = inject(ApplyService);
   private mailboxSvc = inject(MailboxService);
+  private contactSvc = inject(ContactService);
   private docsSvc = inject(DocumentsService);
   private authSvc = inject(AuthService);
   private router = inject(Router);
@@ -81,6 +86,10 @@ export class ApplyWizardComponent implements OnInit {
   // Step 4 deliver
   deliverMode = signal<'now' | 'schedule'>('now');
   cronExpression = signal<string>(CRON_PRESETS[1].cron);
+  customCron = signal<string>('');
+
+  savingContact = signal(false);
+  contactSaved = signal(false);
 
   submitting = signal(false);
   error = signal<string>('');
@@ -238,6 +247,40 @@ export class ApplyWizardComponent implements OnInit {
     }
   }
 
+  isCustomCron(): boolean {
+    return this.cronExpression() === CUSTOM_CRON;
+  }
+
+  /** Save the recipient as a contact in the mailbox, so it can be reused later. */
+  async saveContact() {
+    const email = this.recipientEmail.trim();
+    if (!email) {
+      this.toast.error('No recipient email to save');
+      return;
+    }
+    if (this.contactSaved()) return;
+    this.savingContact.set(true);
+    try {
+      const dto: CreateContactDto = {
+        name: this.recipientName.trim() || this.extraction()?.enterpriseName || email,
+        email,
+        company: this.companyName.trim() || undefined,
+        notes: this.contactNotes.trim() || undefined,
+      };
+      const res = await this.contactSvc.createContact(dto);
+      if (res.success) {
+        this.contactSaved.set(true);
+        this.toast.success('Contact saved');
+      } else {
+        this.toast.error(res.message || 'Failed to save contact');
+      }
+    } catch (e: any) {
+      this.toast.error(e?.message || 'Failed to save contact');
+    } finally {
+      this.savingContact.set(false);
+    }
+  }
+
   onFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files) this.attachmentFiles.set([...this.attachmentFiles(), ...Array.from(input.files)]);
@@ -290,6 +333,11 @@ export class ApplyWizardComponent implements OnInit {
       return;
     }
 
+    if (this.deliverMode() === 'schedule' && this.isCustomCron() && !this.customCron().trim()) {
+      this.error.set('Enter a custom cron expression, or pick a preset.');
+      return;
+    }
+
     this.error.set('');
     this.submitting.set(true);
     try {
@@ -310,7 +358,9 @@ export class ApplyWizardComponent implements OnInit {
         body: this.body,
         cvVersionId: this.selectedCvVersionId() || undefined,
         attachments: attachments.length ? attachments : undefined,
-        scheduleCron: this.deliverMode() === 'schedule' ? this.cronExpression() : undefined,
+        scheduleCron: this.deliverMode() === 'schedule'
+          ? (this.isCustomCron() ? this.customCron().trim() : this.cronExpression())
+          : undefined,
         scheduleName: this.deliverMode() === 'schedule' ? `Apply → ${this.companyName.trim()}` : undefined,
         allowDuplicate: false,
       });

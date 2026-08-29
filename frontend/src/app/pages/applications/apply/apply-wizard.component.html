@@ -61,10 +61,16 @@
       </div>
 
       <div class="row between">
-        <button class="btn" (click)="saveToLibrary()" [disabled]="savedToLibrary()">
-          {{ savedToLibrary() ? 'Saved to library ✓' : 'Save company to library' }}
-        </button>
-        <button class="btn primary" (click)="step.set(3)">Continue to compose</button>
+        <button class="btn ghost" (click)="step.set(1)">← Back to paste</button>
+        <div class="row" style="gap:8px">
+          <button class="btn" (click)="saveToLibrary()" [disabled]="savedToLibrary()">
+            {{ savedToLibrary() ? 'Company saved ✓' : 'Save company' }}
+          </button>
+          <button class="btn" (click)="saveContact()" [disabled]="savingContact() || contactSaved()">
+            {{ contactSaved() ? 'Contact saved ✓' : (savingContact() ? 'Saving…' : 'Save contact') }}
+          </button>
+          <button class="btn primary" (click)="step.set(3)">Continue to compose</button>
+        </div>
       </div>
     </section>
   }
@@ -195,6 +201,13 @@
             }
           </select>
         </div>
+        @if (isCustomCron()) {
+          <div class="fld">
+            <label>Custom cron expression</label>
+            <input type="text" [(ngModel)]="customCron" placeholder="0 9 * * 1-5" />
+            <p class="hint">Standard 5-field cron (minute hour day month weekday). It is validated when you schedule.</p>
+          </div>
+        }
       }
 
       <div class="gmail-note" [class.warn]="deliverMode() === 'now' && !gmailConnected()">
