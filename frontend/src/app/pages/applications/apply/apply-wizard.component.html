@@ -135,7 +135,8 @@
       </div>
 
       <div class="fld">
-        <label>Attachments</label>
+        <label>Attachments (additional files)</label>
+        <p class="hint">Your selected CV version is attached automatically — only add extra documents here (cover letter, portfolio). Don't re-add the same CV.</p>
         <input type="file" multiple (change)="onFilesSelected($event)" />
         @if (attachmentFiles().length) {
           <ul class="files">
@@ -183,6 +184,28 @@
         } @else {
           Scheduled emails fire automatically when Gmail is connected.
         }
+      </div>
+
+      <div class="preview">
+        <h4>Preview (variables resolved)</h4>
+        <div class="pv-row"><span class="pv-label">To</span><span class="pv-val">{{ recipientEmail }}</span></div>
+        <div class="pv-row"><span class="pv-label">Subject</span><span class="pv-val">{{ previewSubject() }}</span></div>
+        <div class="pv-block">
+          <span class="pv-label">Body</span>
+          <pre class="pv-body">{{ previewBody() }}</pre>
+        </div>
+        <div class="pv-row">
+          <span class="pv-label">Attachments</span>
+          <span class="pv-val">
+            @if (attachmentPreview().length) {
+              <ul class="pv-files">
+                @for (f of attachmentPreview(); track f) { <li>{{ f }}</li> }
+              </ul>
+            } @else {
+              <em>none</em>
+            }
+          </span>
+        </div>
       </div>
 
       <div class="row end">

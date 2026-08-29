@@ -1,3 +1,5 @@
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using CV_Generator.Data;
@@ -13,6 +15,7 @@ public class EmailScheduleService
     private readonly IGmailSendService _gmail;
     private readonly IMinioStorageService _minio;
     private readonly IApplicationService _applications;
+    private readonly IHttpClientFactory _httpClientFactory;
     private const string AttachmentBucket = "mail-attachments";
 
     public EmailScheduleService(
@@ -20,13 +23,15 @@ public class EmailScheduleService
         ILogger<EmailScheduleService> logger,
         IGmailSendService gmail,
         IMinioStorageService minio,
-        IApplicationService applications)
+        IApplicationService applications,
+        IHttpClientFactory httpClientFactory)
     {
         _db = db;
         _logger = logger;
         _gmail = gmail;
         _minio = minio;
         _applications = applications;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<List<EmailScheduleDto>> GetSchedulesAsync(Guid userId)
@@ -286,6 +291,7 @@ public class EmailScheduleService
 
         var cvPdfUrl = await ResolveCvPdfUrlAsync(schedule.CvVersionId);
         var extraAttachments = await BuildFireAttachmentsAsync(schedule.AttachmentRefsJson);
+        cvPdfUrl = await SkipDuplicateCvAsync(cvPdfUrl, extraAttachments);
 
         int sent = 0, failed = 0;
 
@@ -429,6 +435,42 @@ public class EmailScheduleService
         var cv = await _db.CvVersions.AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == cvVersionId.Value);
         return cv?.PdfUrl;
+    }
+
+    /// <summary>
+    /// If one of the extra attachments is byte-identical to the auto-attached CV, drop the auto CV
+    /// so the recipient doesn't receive the same file twice.
+    /// </summary>
+    private async Task<string?> SkipDuplicateCvAsync(string? cvPdfUrl, List<EmailAttachmentDto>? attachments)
+    {
+        if (cvPdfUrl is null || attachments is not { Count: > 0 }) return cvPdfUrl;
+        try
+        {
+            using var http = _httpClientFactory.CreateClient();
+            var cvBytes = await http.GetByteArrayAsync(cvPdfUrl);
+            using var cvHash = SHA256.Create();
+            var cvDigest = cvHash.ComputeHash(cvBytes);
+            foreach (var att in attachments)
+            {
+                if (string.IsNullOrWhiteSpace(att.ContentBase64)) continue;
+                try
+                {
+                    var attBytes = Convert.FromBase64String(att.ContentBase64);
+                    using var h = SHA256.Create();
+                    if (cvDigest.AsSpan().SequenceEqual(h.ComputeHash(attBytes)))
+                    {
+                        _logger.LogInformation("Skipping auto CV attach on schedule fire: identical file already present ({Name})", att.FileName);
+                        return null;
+                    }
+                }
+                catch (FormatException) { /* skip unreadable attachment */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "CV duplicate check failed on schedule fire; attaching CV anyway");
+        }
+        return cvPdfUrl;
     }
 
     private async Task<List<CV_Generator.Dto.EmailAttachmentDto>> BuildFireAttachmentsAsync(string? refsJson)

@@ -1,3 +1,5 @@
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using CV_Generator.Data;
@@ -20,6 +22,7 @@ public class ApplyService
     private readonly IGmailSendService _gmail;
     private readonly IMinioStorageService _minio;
     private readonly IApplicationService _applications;
+    private readonly IHttpClientFactory _httpClientFactory;
     private const string AttachmentBucket = "mail-attachments";
 
     public ApplyService(
@@ -27,13 +30,15 @@ public class ApplyService
         ILogger<ApplyService> logger,
         IGmailSendService gmail,
         IMinioStorageService minio,
-        IApplicationService applications)
+        IApplicationService applications,
+        IHttpClientFactory httpClientFactory)
     {
         _db = db;
         _logger = logger;
         _gmail = gmail;
         _minio = minio;
         _applications = applications;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<ApplyEmailResult> ApplyAsync(Guid userId, ApplyEmailRequest dto)
@@ -45,6 +50,13 @@ public class ApplyService
 
         var company = await UpsertCompanyAsync(userId, dto.CompanyName.Trim(), dto.CompanyDescription);
         var contact = await UpsertContactAsync(userId, company, dto.RecipientEmail.Trim(), dto.RecipientName, dto.ContactNotes);
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId)
+            ?? throw new KeyNotFoundException("User not found");
+
+        // Resolve {{token}} placeholders (company_name, my_name, ...) before sending/scheduling.
+        var subject = TemplateVariableResolver.Render(dto.Subject, null, company, user);
+        var body = TemplateVariableResolver.Render(dto.Body, null, company, user);
 
         var app = await _applications.CreateAsync(new CreateApplicationDto(
             CandidateId: userId,
@@ -71,8 +83,8 @@ public class ApplyService
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 Name = dto.ScheduleName ?? $"Apply → {company.Name}",
-                Subject = dto.Subject,
-                Body = dto.Body,
+                Subject = subject,
+                Body = body,
                 CronExpression = dto.ScheduleCron,
                 RecipientIds = [contact.Id],
                 ApplicationId = app.Id,
@@ -87,8 +99,8 @@ public class ApplyService
                 Channel: "EMAIL_GMAIL",
                 InitiatedBy: "SCHEDULE",
                 Status: "SCHEDULED",
-                Subject: dto.Subject,
-                Body: dto.Body,
+                Subject: subject,
+                Body: body,
                 ContactId: contact.Id,
                 CvVersionId: dto.CvVersionId,
                 SentAt: null
@@ -107,11 +119,11 @@ public class ApplyService
         }
 
         // Send now
-        var cvPdfUrl = await ResolveCvPdfUrlAsync(dto.CvVersionId);
+        var cvPdfUrl = await SkipDuplicateCvAsync(await ResolveCvPdfUrlAsync(dto.CvVersionId), dto.Attachments);
         try
         {
             var (messageId, threadId) = await _gmail.SendWithAttachmentAsync(
-                userId, contact.Email, dto.Subject, dto.Body, cvPdfUrl, dto.Attachments);
+                userId, contact.Email, subject, body, cvPdfUrl, dto.Attachments);
 
             var connection = await _db.Set<GmailConnection>()
                 .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsRevoked);
@@ -124,8 +136,8 @@ public class ApplyService
                 FromEmail = connection?.GmailAddress ?? "noreply@propel.com",
                 ToEmail = contact.Email,
                 ToName = contact.Name,
-                Subject = dto.Subject,
-                Body = dto.Body,
+                Subject = subject,
+                Body = body,
                 Status = "sent",
                 Provider = connection is not null ? "gmail" : "smtp",
                 SentAt = DateTime.UtcNow,
@@ -144,8 +156,8 @@ public class ApplyService
                 Channel: "EMAIL_GMAIL",
                 InitiatedBy: "USER",
                 Status: "SENT",
-                Subject: dto.Subject,
-                Body: dto.Body,
+                Subject: subject,
+                Body: body,
                 ContactId: contact.Id,
                 CvVersionId: dto.CvVersionId,
                 ChannelMetadataJson: (messageId ?? threadId) is not null
@@ -234,6 +246,42 @@ public class ApplyService
         if (cvVersionId is null) return null;
         var cv = await _db.CvVersions.AsNoTracking().FirstOrDefaultAsync(v => v.Id == cvVersionId.Value);
         return cv?.PdfUrl;
+    }
+
+    /// <summary>
+    /// If one of the explicit attachments is byte-identical to the auto-attached CV, drop the
+    /// auto CV so the recipient doesn't receive the same file twice.
+    /// </summary>
+    private async Task<string?> SkipDuplicateCvAsync(string? cvPdfUrl, List<EmailAttachmentDto>? attachments)
+    {
+        if (cvPdfUrl is null || attachments is not { Count: > 0 }) return cvPdfUrl;
+        try
+        {
+            using var http = _httpClientFactory.CreateClient();
+            var cvBytes = await http.GetByteArrayAsync(cvPdfUrl);
+            using var cvHash = SHA256.Create();
+            var cvDigest = cvHash.ComputeHash(cvBytes);
+            foreach (var att in attachments)
+            {
+                if (string.IsNullOrWhiteSpace(att.ContentBase64)) continue;
+                try
+                {
+                    var attBytes = Convert.FromBase64String(att.ContentBase64);
+                    using var h = SHA256.Create();
+                    if (cvDigest.AsSpan().SequenceEqual(h.ComputeHash(attBytes)))
+                    {
+                        _logger.LogInformation("Skipping auto CV attach: identical file already present ({Name})", att.FileName);
+                        return null;
+                    }
+                }
+                catch (FormatException) { /* skip unreadable attachment */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "CV duplicate check failed; attaching CV anyway");
+        }
+        return cvPdfUrl;
     }
 
     private async Task<List<ScheduleAttachmentRef>> UploadAttachmentsAsync(Guid userId, List<EmailAttachmentDto>? attachments)

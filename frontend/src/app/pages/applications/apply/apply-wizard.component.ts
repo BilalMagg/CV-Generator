@@ -186,8 +186,8 @@ export class ApplyWizardComponent implements OnInit {
     if (tpl.cvVersionId) this.selectedCvVersionId.set(tpl.cvVersionId);
   }
 
-  /** Client-side best-effort token resolution so the wizard shows concrete text. */
-  private renderTemplate(subjectTpl: string, bodyTpl: string) {
+  /** Client-side best-effort token resolution (mirrors backend TemplateVariableResolver). */
+  private resolveVars(text: string): string {
     const user = this.authSvc.currentUser();
     const myName = user ? `${user.firstName} ${user.lastName}`.trim() : '';
     const map: Record<string, string> = {
@@ -197,8 +197,27 @@ export class ApplyWizardComponent implements OnInit {
       '{{my_email}}': user?.email ?? '',
       '{{my_phone}}': '',
     };
-    const replace = (s: string) => s.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k) => map[m.toLowerCase()] ?? map[m] ?? (map[k] ?? m));
-    return { subject: replace(subjectTpl), body: replace(bodyTpl) };
+    return text.replace(/\{\{\s*(\w+)\s*\}\}/g,
+      (m, k) => map[m.toLowerCase()] ?? map[m] ?? map[`{{${k}}}`] ?? m);
+  }
+
+  private renderTemplate(subjectTpl: string, bodyTpl: string) {
+    return { subject: this.resolveVars(subjectTpl), body: this.resolveVars(bodyTpl) };
+  }
+
+  /** Live preview of what the email will actually contain (variables resolved). */
+  previewSubject(): string { return this.resolveVars(this.subject); }
+  previewBody(): string { return this.resolveVars(this.body); }
+
+  /** Exact list of files that will be attached, so nothing is a surprise at send time. */
+  attachmentPreview(): string[] {
+    const list: string[] = [];
+    if (this.selectedCvVersionId()) {
+      const opt = this.cvOptions().find(o => o.id === this.selectedCvVersionId());
+      list.push(`CV — ${opt?.label ?? 'selected version'} (attached automatically)`);
+    }
+    for (const f of this.attachmentFiles()) list.push(f.name);
+    return list;
   }
 
   async saveToLibrary() {

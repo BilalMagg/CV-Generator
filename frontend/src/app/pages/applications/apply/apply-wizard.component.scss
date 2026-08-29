@@ -113,5 +113,38 @@ textarea, input[type="text"], select {
   border-color: color-mix(in srgb, #d97706 35%, transparent);
 }
 
+.hint {
+  font-size: 0.78rem;
+  color: var(--muted, #888);
+  margin: 0 0 6px;
+}
+
+.preview {
+  margin: 16px 0 4px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--surface, #fff);
+}
+.preview h4 { margin: 0 0 10px; font-size: 0.9rem; }
+.pv-row { display: flex; gap: 10px; padding: 4px 0; font-size: 0.85rem; }
+.pv-label { flex: 0 0 90px; color: var(--muted, #888); font-weight: 600; }
+.pv-val { flex: 1; word-break: break-word; }
+.pv-block { display: flex; gap: 10px; padding: 6px 0; font-size: 0.85rem; }
+.pv-body {
+  flex: 1;
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.83rem;
+  background: var(--bg, #f6f6f6);
+  border: 1px solid var(--border, #eee);
+  border-radius: 8px;
+  padding: 8px 10px;
+  max-height: 220px;
+  overflow: auto;
+}
+.pv-files { margin: 0; padding-left: 18px; }
+
 .files { list-style: none; padding: 0; margin: 8px 0 0; }
 .files li { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.85rem; }
