@@ -6,12 +6,14 @@ import { environment } from '@env/environment';
 import { EntityCardComponent } from '@app/shared/components/entity-card/entity-card.component';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 import { CategoryTreeComponent } from '@app/shared/components/category-tree/category-tree.component';
+import { ExportDialogComponent } from '@app/shared/components/export-dialog/export-dialog.component';
+import { SheetImportDialogComponent, type ImportType } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { CategoryService } from '@app/services/category.service';
 
 @Component({
   selector: 'app-entity-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, EntityCardComponent, RefreshButtonComponent, CategoryTreeComponent],
+  imports: [CommonModule, RouterModule, EntityCardComponent, RefreshButtonComponent, CategoryTreeComponent, ExportDialogComponent, SheetImportDialogComponent],
   templateUrl: './entity-list.component.html',
   styleUrl: './entity-list.component.css',
 })
@@ -23,11 +25,22 @@ export class EntityListComponent implements OnInit {
     private categoryService = inject(CategoryService);
 
     entity= '';
+    exportOpen = signal(false);
+    importOpen = signal(false);
+
+    get importType(): ImportType {
+      return this.entity as unknown as ImportType;
+    }
     data: any[]=[];
     refreshing = signal(false);
     selectedCategoryIds = signal<string[]>([]);
     matchedIds = signal<Set<string> | null>(null);
-    
+
+    private readonly TAXONOMY_SCOPES = new Set([
+      'projects', 'experiences', 'educations', 'certifications',
+      'skills', 'languages', 'hackathons', 'interests', 'academicactivities',
+    ]);
+
   goToDetail(id: string){
     this.router.navigate(['/my-career', this.entity, id]);
   }
@@ -69,6 +82,7 @@ export class EntityListComponent implements OnInit {
       next: (response) => {
         this.data = response.data || [];
         this.refreshing.set(false);
+        this.loadCategoryTags();
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -82,6 +96,29 @@ export class EntityListComponent implements OnInit {
   onRefresh() {
     this.refreshing.set(true);
     this.loadData();
+  }
+
+  /** Attach taxonomy category names to each item so cards can show them. */
+  private loadCategoryTags(): void {
+    const scope = this.entity.toLowerCase();
+    if (!this.TAXONOMY_SCOPES.has(scope)) return;
+    Promise.all([
+      this.categoryService.getTagsForScope(scope),
+      this.categoryService.getNodeNameMap(scope),
+    ])
+      .then(([tagGroups, nameMap]) => {
+        const byId = new Map<string, string[]>();
+        for (const g of tagGroups) {
+          byId.set(g.sourceId, (g.nodeIds || []).map((id) => nameMap.get(id) || id));
+        }
+        for (const item of this.data) {
+          item._categories = byId.get(item.id) || [];
+        }
+        this.cdr.detectChanges();
+      })
+      .catch(() => {
+        /* taxonomy tags are non-critical; ignore failures */
+      });
   }
 
   getCardData(item: any) {

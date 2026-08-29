@@ -14,6 +14,9 @@
         <button class="btn btn-secondary" (click)="goToEdit()">
           Edit
         </button>
+        <button class="btn btn-accent" *ngIf="isTaxonomy" (click)="openCategorize()">
+          Categorize
+        </button>
         <button class="btn btn-danger" (click)="deleteItem()">
           Delete
         </button>
@@ -37,6 +40,15 @@
     </div>
   </div>
 
+  <!-- Categories section -->
+  <div class="detail-card categories-card" *ngIf="isTaxonomy">
+    <h3 class="section-title">Categories</h3>
+    <div class="cat-chips" *ngIf="currentTagNames.length">
+      <span class="cat-chip" *ngFor="let name of currentTagNames">{{ name }}</span>
+    </div>
+    <p class="cat-empty" *ngIf="!currentTagNames.length">No categories assigned yet.</p>
+  </div>
+
   <!-- Delete Confirmation Modal -->
   <div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
     <div class="modal-content" (click)="$event.stopPropagation()">
@@ -50,6 +62,58 @@
       <div class="modal-actions">
         <button class="btn-cancel" (click)="cancelDelete()">Cancel</button>
         <button class="btn-delete" (click)="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Categorize Modal -->
+  <div class="cat-modal-backdrop" *ngIf="showCategorizeModal" (click)="closeCategorize()">
+    <div class="cat-modal" (click)="$event.stopPropagation()">
+      <div class="cat-modal-header">
+        <h3>Categorize {{ entity | titlecase }}</h3>
+        <button type="button" class="cat-close" (click)="closeCategorize()" aria-label="Close">×</button>
+      </div>
+
+      <div class="cat-modal-body">
+        <!-- Step 1: choose method -->
+        <div *ngIf="categorizeStep === 'choice'">
+          <p class="cat-prompt">How would you like to assign categories?</p>
+          <div class="cat-choice-grid">
+            <button class="cat-choice" type="button" (click)="chooseManual()">
+              <span class="cat-choice-title">Manually</span>
+              <span class="cat-choice-sub">Pick categories yourself from your taxonomy.</span>
+            </button>
+            <button class="cat-choice" type="button" (click)="chooseAI()" [disabled]="isSuggesting">
+              <span class="cat-choice-title">Let AI choose</span>
+              <span class="cat-choice-sub">BIME suggests categories automatically; you review before saving.</span>
+            </button>
+          </div>
+          <p class="cat-error" *ngIf="suggestError">{{ suggestError }}</p>
+        </div>
+
+        <!-- Step 2: review / edit -->
+        <div *ngIf="categorizeStep === 'editing'">
+          <div *ngIf="isSuggesting" class="cat-loading">
+            <span class="spinner"></span> BIME is choosing categories…
+          </div>
+          <app-category-tree
+            *ngIf="!isSuggesting"
+            [scope]="entity"
+            mode="edit"
+            [selectedIds]="treeSelection"
+            [showCounts]="false"
+            (selectedIdsChange)="onTreeSelectionChange($event)"
+          ></app-category-tree>
+          <p class="cat-error" *ngIf="suggestError">{{ suggestError }}</p>
+        </div>
+      </div>
+
+      <div class="cat-modal-footer" *ngIf="categorizeStep === 'editing' && !isSuggesting">
+        <span class="cat-count">{{ treeSelection.length }} selected</span>
+        <div class="cat-footer-actions">
+          <button type="button" class="btn-cancel" (click)="closeCategorize()">Cancel</button>
+          <button type="button" class="btn btn-primary" (click)="saveCategorize()">Save</button>
+        </div>
       </div>
     </div>
   </div>

@@ -62,4 +62,50 @@ public class CategoriesController : ControllerBase
         await _service.SetTagsAsync(UserId.Value, request.SourceType, request.SourceId, request.NodeIds);
         return Ok(ApiResponse<object>.Ok(null));
     }
+
+    /// GET /api/categories/tags/all?sourceType=skills
+    /// Returns every tag grouping for the whole scope: [{ sourceId, nodeIds }].
+    [HttpGet("tags/all")]
+    public async Task<IActionResult> GetTagsForScope([FromQuery] string sourceType)
+    {
+        if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+        if (string.IsNullOrWhiteSpace(sourceType)) return BadRequest(ApiResponse<object>.Error("sourceType is required"));
+        var tags = await _service.GetTagsForScopeAsync(UserId.Value, sourceType);
+        return Ok(ApiResponse<List<ScopeTagsDto>>.Ok(tags));
+    }
+
+    /// POST /api/categories/categorize
+    /// Recategorize an entity (or, if SourceId is omitted, the whole scope) using the user's taxonomy.
+    [HttpPost("categorize")]
+    public async Task<IActionResult> Categorize([FromBody] CategoryCategorizeRequest request)
+    {
+        if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+        if (string.IsNullOrWhiteSpace(request.SourceType)) return BadRequest(ApiResponse<object>.Error("sourceType is required"));
+
+        int count;
+        if (!string.IsNullOrWhiteSpace(request.SourceId) && Guid.TryParse(request.SourceId, out var id))
+        {
+            await _service.CategorizeEntityAsync(UserId.Value, request.SourceType, id);
+            count = 1;
+        }
+        else
+        {
+            count = await _service.CategorizeScopeAsync(UserId.Value, request.SourceType);
+        }
+        return Ok(ApiResponse<object>.Ok(new { categorized = count }));
+    }
+
+    /// POST /api/categories/categorize/suggest
+    /// Returns suggested category node IDs for a single entity WITHOUT saving them,
+    /// so the UI can preview and let the user approve/edit before persisting.
+    [HttpPost("categorize/suggest")]
+    public async Task<IActionResult> Suggest([FromBody] CategoryCategorizeRequest request)
+    {
+        if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+        if (string.IsNullOrWhiteSpace(request.SourceType)) return BadRequest(ApiResponse<object>.Error("sourceType is required"));
+        if (string.IsNullOrWhiteSpace(request.SourceId) || !Guid.TryParse(request.SourceId, out var id))
+            return BadRequest(ApiResponse<object>.Error("sourceId is required and must be a valid GUID"));
+        var suggestions = await _service.SuggestEntityAsync(UserId.Value, request.SourceType, id);
+        return Ok(ApiResponse<List<Guid>>.Ok(suggestions));
+    }
 }

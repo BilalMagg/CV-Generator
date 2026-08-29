@@ -28,6 +28,7 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "allowedCommonJsDependencies": ["jszip"],
             "assets": [
               {
                 "glob": "**/*",

@@ -17,6 +17,7 @@ export class CategoryTreeComponent implements OnChanges, OnDestroy {
   @Input() mode: 'filter' | 'edit' = 'filter';
   @Input() multiple = true;
   @Input() selectedIds: string[] = [];
+  @Input() showCounts = true;
 
   @Output() selectedIdsChange = new EventEmitter<string[]>();
 
@@ -192,6 +193,23 @@ export class CategoryTreeComponent implements OnChanges, OnDestroy {
     this.selected = new Set<string>();
     this.recomputeDisplay();
     this.selectedIdsChange.emit([]);
+  }
+
+  private allBranchIds(): string[] {
+    const ids: string[] = [];
+    this.nodeById.forEach((n) => {
+      if (n.children && n.children.length) ids.push(n.id);
+    });
+    return ids;
+  }
+
+  get allExpanded(): boolean {
+    const branches = this.allBranchIds();
+    return branches.length > 0 && branches.every((id) => this.expanded.has(id));
+  }
+
+  toggleExpandAll(): void {
+    this.expanded = this.allExpanded ? new Set<string>() : new Set(this.allBranchIds());
   }
 
   get selectedCount(): number {

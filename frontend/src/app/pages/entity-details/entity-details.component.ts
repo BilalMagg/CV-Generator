@@ -4,11 +4,13 @@ import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { environment } from '@env/environment';
 import { ENTITY_FIELDS, EntityType } from '@app/models/user-content.models';
+import { CategoryService } from '@app/services/category.service';
+import { CategoryTreeComponent } from '@app/shared/components/category-tree/category-tree.component';
 
 @Component({
   selector: 'app-entity-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, CategoryTreeComponent],
   templateUrl: './entity-details.component.html',
   styleUrl: './entity-details.component.css'
 })
@@ -26,6 +28,28 @@ export class EntityDetailsComponent implements OnInit {
   error: string | null = null;
   showDeleteModal = false;
 
+  private readonly TAXONOMY_SCOPES = new Set([
+    'projects', 'experiences', 'educations', 'certifications',
+    'skills', 'languages', 'hackathons', 'interests', 'academicactivities',
+  ]);
+  get isTaxonomy(): boolean {
+    return this.TAXONOMY_SCOPES.has(this.entity.toLowerCase());
+  }
+  private get scope(): string {
+    return this.entity.toLowerCase();
+  }
+
+  // Categorize feature
+  showCategorizeModal = false;
+  categorizeStep: 'choice' | 'editing' = 'choice';
+  treeSelection: string[] = [];
+  isSuggesting = false;
+  suggestError: string | null = null;
+  currentTags: string[] = [];
+  currentTagNames: string[] = [];
+
+  private categoryService = inject(CategoryService);
+
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
       this.entity = params.get('entity') as EntityType;
@@ -34,7 +58,78 @@ export class EntityDetailsComponent implements OnInit {
       this.isLoading = true;
       this.error = null;
       this.loadData();
+      if (this.isTaxonomy) this.loadCurrentTags();
     });
+  }
+
+  private async loadCurrentTags(): Promise<void> {
+    try {
+      const [tags, nameMap] = await Promise.all([
+        this.categoryService.getTags(this.scope, this.id),
+        this.categoryService.getNodeNameMap(this.scope),
+      ]);
+      this.currentTags = tags;
+      this.currentTagNames = tags.map(id => nameMap.get(id) || id);
+    } catch {
+      this.currentTags = [];
+      this.currentTagNames = [];
+    }
+    this.cdr.detectChanges();
+  }
+
+  openCategorize() {
+    this.showCategorizeModal = true;
+    this.categorizeStep = 'choice';
+    this.suggestError = null;
+    this.treeSelection = [];
+    this.cdr.detectChanges();
+  }
+
+  closeCategorize() {
+    this.showCategorizeModal = false;
+    this.categorizeStep = 'choice';
+    this.suggestError = null;
+    this.treeSelection = [];
+    this.cdr.detectChanges();
+  }
+
+  chooseManual() {
+    this.treeSelection = [...this.currentTags];
+    this.categorizeStep = 'editing';
+    this.cdr.detectChanges();
+  }
+
+  async chooseAI() {
+    this.isSuggesting = true;
+    this.suggestError = null;
+    this.cdr.detectChanges();
+    try {
+      const suggested = await this.categoryService.suggestTags(this.scope, this.id);
+      this.treeSelection = Array.from(new Set([...this.currentTags, ...suggested]));
+      this.categorizeStep = 'editing';
+    } catch {
+      this.suggestError = 'Could not generate suggestions. Please try again or categorize manually.';
+    } finally {
+      this.isSuggesting = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  onTreeSelectionChange(ids: string[]) {
+    this.treeSelection = ids;
+  }
+
+  saveCategorize() {
+    this.categoryService
+      .setTags({ sourceType: this.scope, sourceId: this.id, nodeIds: this.treeSelection })
+      .then(() => {
+        this.showCategorizeModal = false;
+        this.categorizeStep = 'choice';
+        this.loadCurrentTags();
+      })
+      .catch(() => {
+        this.suggestError = 'Failed to save categories. Please try again.';
+      });
   }
 
   loadData() {

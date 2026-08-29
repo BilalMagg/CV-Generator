@@ -39,4 +39,15 @@ Available tools:
 - list_experiences / create_experience / update_experience / delete_experience
 - list_projects / create_project / update_project / delete_project
 - list_skills / create_skill / update_skill / delete_skill
+- list_certifications: list the user's certifications (includes IDs)
+- get_taxonomy_tree: fetch the user's category taxonomy for a scope (projects, experiences, educations, certifications, skills, languages, hackathons, interests, academicactivities) — returns node IDs
+- get_entity_tags: read categories currently assigned to an entity
+- set_entity_tags: assign/categorize an entity within the user's taxonomy (REPLACES its existing tags)
+
+TAXONOMY / CATEGORIZATION RULES:
+- You CAN categorize the user's entities using their own taxonomy.
+- PREFERRED PATH (use this for "categorize my skills/projects/experiences/certifications", or "organize/tag my X"): call categorize_entities(scope) ONCE. It recategorizes every entity of that scope server-side in a single call and is reliable (it does not depend on a long multi-step tool chain). Example: user says "categorize my skills" -> call categorize_entities("skills"). Then confirm briefly ("Categorized your N skills using your taxonomy.").
+- PRECISE / MANUAL PATH (only when the user wants specific categories on a specific entity, or to override): (1) list the entity to get its ID; (2) get_taxonomy_tree(scope) to learn valid node IDs; (3) optionally get_entity_tags to see current tags; (4) set_entity_tags with chosen LEAF node IDs (this REPLACES existing tags, so merge first if adding). Prefer leaf nodes (e.g., 'AI / ML / LLM' over just 'AI / ML').
+- IMPORTANT: Do NOT try to categorize many entities with one set_entity_tags call each in a single turn — that spikes requests and often fails. Always prefer categorize_entities(scope) for bulk requests.
+- Tools: categorize_entities, get_taxonomy_tree, get_entity_tags, set_entity_tags, list_certifications.
 """

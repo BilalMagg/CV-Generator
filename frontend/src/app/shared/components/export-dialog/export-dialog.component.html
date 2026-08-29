@@ -1,0 +1,86 @@
+@if (open()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <header class="modal-head">
+        <h2>Export data</h2>
+        <button class="icon-btn" (click)="closeModal()" aria-label="Close">✕</button>
+      </header>
+
+      <div class="modal-body">
+        @if (ui().length === 0) {
+          <div class="empty">Loading your data…</div>
+        }
+
+        @for (g of ui(); track g.def.key) {
+          <section class="group" [class.open]="g.checked">
+            <label class="group-head">
+              <input type="checkbox" [checked]="g.checked" (change)="toggleGroup(g, $any($event.target).checked)" />
+              <span class="group-title">{{ g.def.label }}</span>
+              <span class="group-count">
+                @if (g.checked) { {{ g.selectedItemIds.size }} item(s) · {{ g.selectedFields.size }} field(s) }
+                @else { {{ g.items.length }} available }
+              </span>
+            </label>
+
+            @if (g.checked) {
+              <div class="group-body">
+                <div class="cols">
+                  <div class="cols-head">
+                    <span>Fields</span>
+                    <button class="link" (click)="toggleAllFields(g, !allFieldsOn(g))">
+                      {{ allFieldsOn(g) ? 'Unselect all' : 'Select all' }}
+                    </button>
+                  </div>
+                  <div class="chips">
+                    @for (f of g.fields; track f) {
+                      <label class="chip">
+                        <input type="checkbox" [checked]="g.selectedFields.has(f)" (change)="toggleField(g, f, $any($event.target).checked)" />
+                        {{ fieldLabel(g, f) }}
+                      </label>
+                    }
+                  </div>
+                </div>
+
+                <div class="items">
+                  <div class="items-head">
+                    <input class="search" type="text" placeholder="Search items…" [(ngModel)]="g.search" />
+                    <button class="link" (click)="toggleAllItems(g, !allItemsOn(g))">
+                      {{ allItemsOn(g) ? 'Unselect all' : 'Select all' }}
+                    </button>
+                  </div>
+                  <div class="item-list">
+                    @if (visibleItems(g).length === 0) {
+                      <div class="muted">No items.</div>
+                    }
+                    @for (it of visibleItems(g); track it?.id) {
+                      <label class="item">
+                        <input type="checkbox" [checked]="g.selectedItemIds.has(it?.id)" (change)="toggleItem(g, it?.id, $any($event.target).checked)" />
+                        <span class="item-title">{{ it?.title || it?.name || it?.company || it?.institutionName || it?.platform || ('Item ' + it?.id) }}</span>
+                        @if (it?.status) { <span class="badge">{{ it.status }}</span> }
+                      </label>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </section>
+        }
+      </div>
+
+      <footer class="modal-foot">
+        <div class="review">{{ selectedGroups }} group(s) · {{ selectedItems }} item(s) selected</div>
+        <div class="formats">
+          <label><input type="radio" name="fmt" [value]="'json'" [checked]="format() === 'json'" (change)="format.set('json')" /> JSON</label>
+          <label><input type="radio" name="fmt" [value]="'csv'" [checked]="format() === 'csv'" (change)="format.set('csv')" /> CSV</label>
+          <label><input type="radio" name="fmt" [value]="'excel'" [checked]="format() === 'excel'" (change)="format.set('excel')" /> Excel</label>
+        </div>
+        <div class="actions">
+          <button class="btn ghost" (click)="closeModal()">Cancel</button>
+          <button class="btn primary" [disabled]="!canExport || busy()" (click)="doExport()">
+            {{ busy() ? 'Exporting…' : 'Export' }}
+          </button>
+        </div>
+      </footer>
+    </div>
+  </div>
+}

@@ -18,6 +18,12 @@
 
         <div class="header-right">
           <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
+          <button class="btn btn-outline" (click)="exportOpen.set(true)" title="Export this {{ entity }}">
+            Export
+          </button>
+          <button class="btn btn-outline" (click)="importOpen.set(true)" title="Import into {{ entity }}">
+            Import
+          </button>
           <button class="btn btn-primary" [routerLink]="['/my-career', entity, 'add']">
             <span class="icon">+</span>
             Add {{ entity | titlecase }}
@@ -34,6 +40,7 @@
             [meta]="getCardData(item).meta || ''"
             [footer]="getCardData(item).footer || ''"
             [isCompleted]="getCardData(item).isCompleted || false"
+            [categories]="item._categories || []"
             (click)="goToDetail(item.id)"
           ></app-entity-card>
         </div>
@@ -54,3 +61,11 @@
     </section>
   </div>
 </div>
+
+@if (exportOpen()) {
+  <app-export-dialog [singleEntity]="entity" [open]="exportOpen()" (close)="exportOpen.set(false)" />
+}
+
+@if (importOpen()) {
+  <app-sheet-import-dialog [type]="importType" [open]="importOpen()" (openChange)="importOpen.set($event)" (imported)="loadData()" />
+}

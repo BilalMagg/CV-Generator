@@ -3,8 +3,23 @@ import { FormsModule } from '@angular/forms';
 import { HttpService } from '@app/services/http.service';
 import { ApiResponse } from '@app/models/application.model';
 import { ToastService } from '@app/services/toast.service';
+import { ENTITY_FIELDS, type EntityType } from '@app/models/user-content.models';
 
-export type ImportType = 'companies' | 'contacts' | 'applications';
+export type ImportType =
+  | 'companies'
+  | 'contacts'
+  | 'applications'
+  | 'cvprofiles'
+  | 'projects'
+  | 'skills'
+  | 'experiences'
+  | 'educations'
+  | 'certifications'
+  | 'languages'
+  | 'interests'
+  | 'sociallinks'
+  | 'academicactivities'
+  | 'hackathons';
 
 interface ImportResult {
   imported: number;
@@ -17,7 +32,7 @@ interface SheetAnalysis {
   mappedColumns: string[];
 }
 
-const HEADER_MAP: Record<ImportType, Record<string, string>> = {
+const BASE_HEADER_MAP: Record<string, Record<string, string>> = {
   companies: {
     company: 'name',
     name: 'name',
@@ -60,6 +75,25 @@ const HEADER_MAP: Record<ImportType, Record<string, string>> = {
     note: 'notes',
     notes: 'notes',
   },
+};
+
+/** Per-entity header maps derived from ENTITY_FIELDS so any My Career entity is importable. */
+function buildUserContentHeaderMaps(): Record<string, Record<string, string>> {
+  const out: Record<string, Record<string, string>> = {};
+  (Object.keys(ENTITY_FIELDS) as EntityType[]).forEach((t) => {
+    const m: Record<string, string> = {};
+    for (const f of ENTITY_FIELDS[t]) {
+      m[normalizeHeader(f.label)] = f.name;
+      m[normalizeHeader(f.name)] = f.name;
+    }
+    out[t] = m;
+  });
+  return out;
+}
+
+const HEADER_MAP: Record<string, Record<string, string>> = {
+  ...BASE_HEADER_MAP,
+  ...buildUserContentHeaderMaps(),
 };
 
 const BOOL_FIELDS = new Set(['motivationLetterSent', 'portfolioSent']);

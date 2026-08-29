@@ -4,6 +4,7 @@ All tools are LangChain @tool-decorated async functions.
 """
 from langchain_core.tools import tool
 import httpx
+import json
 from shared.config import settings
 
 
@@ -336,6 +337,23 @@ async def delete_skill(user_id: str, skill_id: str) -> str:
 
 
 @tool
+async def list_certifications(user_id: str) -> str:
+    """List the user's certifications."""
+    async with _get_backend_client(user_id) as client:
+        resp = await client.get("/api/certifications", params={"userId": user_id})
+        if resp.status_code != 200:
+            return "Could not retrieve certifications."
+        items = resp.json().get("data", [])
+        if not items:
+            return "No certifications found."
+        lines = []
+        for c in items:
+            issuer = c.get("issuingOrganization") or c.get("issuer") or "N/A"
+            lines.append(f"- [{c.get('id', 'N/A')}] {c.get('name', 'N/A')} ({issuer})")
+        return "\n".join(lines)
+
+
+@tool
 async def update_experience(user_id: str, experience_id: str, title: str = "", company: str = "", description: str = "", start_date: str = "", end_date: str = "", status: str = "") -> str:
     """Update an existing experience. Only pass fields you want to change — others keep their current value."""
     async with _get_backend_client(user_id) as client:
@@ -399,6 +417,97 @@ async def delete_project(user_id: str, project_id: str) -> str:
         if resp.status_code in (200, 204):
             return "Project deleted."
         return f"Failed to delete project: {resp.text}"
+
+
+# ── Taxonomy tools ────────────────────────────────────────────────
+
+VALID_TAXONOMY_SCOPES = [
+    "projects", "experiences", "educations", "certifications",
+    "skills", "languages", "hackathons", "interests", "academicactivities",
+]
+
+
+@tool
+async def get_taxonomy_tree(user_id: str, scope: str) -> str:
+    """Get the user's category taxonomy tree for a given entity scope. Call this FIRST to discover valid category node IDs before tagging an entity.
+    Valid scopes: projects, experiences, educations, certifications, skills, languages, hackathons, interests, academicactivities.
+    Returns a flat JSON list of {id, name, path, keywords} for every node (branches and leaves). Prefer assigning LEAF nodes (nodes with no children) so categorization is as specific as possible."""
+    if scope not in VALID_TAXONOMY_SCOPES:
+        return f"Invalid scope '{scope}'. Valid scopes: {', '.join(VALID_TAXONOMY_SCOPES)}"
+    async with _get_backend_client(user_id) as client:
+        resp = await client.get("/api/categories/tree", params={"scope": scope})
+        if resp.status_code != 200:
+            return f"Could not retrieve taxonomy for {scope}: {resp.text}"
+        data = resp.json().get("data", []) or []
+        flat: list[dict] = []
+
+        def walk(nodes, prefix=""):
+            for n in nodes:
+                name = n.get("name", "")
+                path = f"{prefix} / {name}" if prefix else name
+                flat.append({
+                    "id": n.get("id"),
+                    "name": name,
+                    "path": path,
+                    "keywords": n.get("keywords", []),
+                })
+                if n.get("children"):
+                    walk(n["children"], path)
+
+        walk(data)
+        return json.dumps(flat, ensure_ascii=False)
+
+
+@tool
+async def get_entity_tags(user_id: str, source_type: str, source_id: str) -> str:
+    """Get the current taxonomy category IDs already assigned to an entity.
+    source_type must be a taxonomy scope: projects, experiences, educations, certifications, skills, languages, hackathons, interests, academicactivities.
+    source_id is the entity's GUID. Returns a JSON list of assigned category node IDs (empty list if none)."""
+    if source_type not in VALID_TAXONOMY_SCOPES:
+        return f"Invalid source_type '{source_type}'. Valid: {', '.join(VALID_TAXONOMY_SCOPES)}"
+    async with _get_backend_client(user_id) as client:
+        resp = await client.get("/api/categories/tags", params={"sourceType": source_type, "sourceId": source_id})
+        if resp.status_code != 200:
+            return f"Could not retrieve tags: {resp.text}"
+        ids = resp.json().get("data", []) or []
+        return json.dumps(ids)
+
+
+@tool
+async def set_entity_tags(user_id: str, source_type: str, source_id: str, category_node_ids: list[str]) -> str:
+    """Assign taxonomy categories to an entity. This REPLACES the entity's existing tags, so read get_entity_tags first and merge if you only want to ADD.
+    source_type must be a taxonomy scope: projects, experiences, educations, certifications, skills, languages, hackathons, interests, academicactivities.
+    source_id is the entity's GUID. category_node_ids is a list of category node GUID strings (prefer leaf nodes).
+    Use this to categorize an entity within the user's taxonomy (e.g., tag a project as 'AI / ML / LLM' or a skill as 'Technical / Backend')."""
+    if source_type not in VALID_TAXONOMY_SCOPES:
+        return f"Invalid source_type '{source_type}'. Valid: {', '.join(VALID_TAXONOMY_SCOPES)}"
+    if not category_node_ids:
+        return "No category_node_ids provided; nothing to assign."
+    payload = {
+        "sourceType": source_type,
+        "sourceId": source_id,
+        "nodeIds": [str(i) for i in category_node_ids],
+    }
+    async with _get_backend_client(user_id) as client:
+        resp = await client.put("/api/categories/tags", json=payload)
+        if resp.status_code in (200, 201, 204):
+            return f"Assigned {len(category_node_ids)} categories to {source_type} {source_id}."
+        return f"Failed to assign categories: {resp.text}"
+
+
+@tool
+async def categorize_entities(user_id: str, scope: str) -> str:
+    """Recategorize entities within the user's taxonomy, server-side. Use this as the PRIMARY tool when the user asks to 'categorize my skills/projects/experiences/certifications' — it tags every entity of that scope in ONE call and is far more reliable than assigning tags one by one.
+    scope must be a taxonomy scope: projects, experiences, educations, certifications, skills, languages, hackathons, interests, academicactivities.
+    Returns how many entities were categorized. The actual categories are chosen automatically from the user's taxonomy (keyword + LLM matching)."""
+    if scope not in VALID_TAXONOMY_SCOPES:
+        return f"Invalid scope '{scope}'. Valid: {', '.join(VALID_TAXONOMY_SCOPES)}"
+    async with _get_backend_client(user_id) as client:
+        resp = await client.post("/api/categories/categorize", json={"sourceType": scope})
+        if resp.status_code in (200, 201):
+            data = resp.json().get("data", {}) or {}
+            return f"Categorized {data.get('categorized', 0)} {scope} entities using your taxonomy."
+        return f"Failed to categorize: {resp.text}"
 
 
 # ── Search tool ─────────────────────────────────────────────────────

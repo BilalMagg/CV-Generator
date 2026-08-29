@@ -38,3 +38,16 @@ public class CategoryTagRequest
     public Guid SourceId { get; set; }
     public List<Guid> NodeIds { get; set; } = new();
 }
+
+public class CategoryCategorizeRequest
+{
+    /// <summary>If SourceId is omitted, the whole scope (all of the user's entities of that type) is (re)categorized.</summary>
+    public string SourceType { get; set; } = string.Empty;
+    public string? SourceId { get; set; }
+}
+
+public class ScopeTagsDto
+{
+    public Guid SourceId { get; set; }
+    public List<Guid> NodeIds { get; set; } = new();
+}

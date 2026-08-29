@@ -3,7 +3,7 @@
     <button type="button" class="chev" *ngIf="hasChildren" [class.open]="expandedIds.has(node.id)" (click)="onExpand($event)">▸</button>
     <span class="chev-spacer" *ngIf="!hasChildren"></span>
     <span class="node-name">{{ node.name }}</span>
-    <span class="count" *ngIf="node.count !== undefined && node.count > 0" [title]="node.count + ' item(s)'">{{ node.count }}</span>
+    <span class="count" *ngIf="showCounts && node.count !== undefined && node.count > 0" [title]="node.count + ' item(s)'">{{ node.count }}</span>
   </div>
   <div class="children" *ngIf="hasChildren && expandedIds.has(node.id)">
     <app-category-tree-node
@@ -12,6 +12,7 @@
       [selectedIds]="selectedIds"
       [expandedIds]="expandedIds"
       [mode]="mode"
+      [showCounts]="showCounts"
       (selectionChange)="selectionChange.emit($event)"
       (expandChange)="expandChange.emit($event)"
     ></app-category-tree-node>

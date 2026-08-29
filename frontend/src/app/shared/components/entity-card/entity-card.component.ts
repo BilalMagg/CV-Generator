@@ -24,6 +24,11 @@ import { CommonModule } from '@angular/common';
         </div>
       </div>
 
+      <div class="chips" *ngIf="categories && categories.length">
+        <span class="chip" *ngFor="let c of visibleCategories()">{{ c }}</span>
+        <span class="chip chip-more" *ngIf="extraCount() > 0">+{{ extraCount() }}</span>
+      </div>
+
       <div class="card-footer" *ngIf="footer">
         <span class="evaluation" *ngIf="evaluation">{{ evaluation }}</span>
         <span class="date">{{ footer }}</span>
@@ -97,6 +102,30 @@ import { CommonModule } from '@angular/common';
       color: var(--text-3);
     }
 
+    .chips {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 5px;
+      margin-top: 2px;
+      overflow: hidden;
+    }
+
+    .chip {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-text);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .chip-more {
+      background: oklch(0.94 0.004 80);
+      color: var(--text-3);
+    }
+
     .card-footer {
       margin-top: auto;
       display: flex;
@@ -125,4 +154,15 @@ export class EntityCardComponent {
   @Input() evaluation: string = '';
   @Input() footer: string = '';
   @Input() isCompleted: boolean = false;
+  @Input() categories: string[] = [];
+
+  private static readonly MAX_CHIPS = 3;
+
+  visibleCategories(): string[] {
+    return this.categories.slice(0, EntityCardComponent.MAX_CHIPS);
+  }
+
+  extraCount(): number {
+    return Math.max(0, this.categories.length - EntityCardComponent.MAX_CHIPS);
+  }
 }

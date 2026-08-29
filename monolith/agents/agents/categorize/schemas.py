@@ -6,6 +6,7 @@ class CandidateNode(BaseModel):
     id: str
     name: str
     keywords: List[str] = []
+    path: Optional[str] = None
 
 
 class CategorizeRequest(BaseModel):

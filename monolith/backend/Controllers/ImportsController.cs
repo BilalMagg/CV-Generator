@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -266,6 +267,68 @@ public class ImportsController : BaseApiController
         return Ok(ApiResponse<ImportResultDto>.Ok(result, $"{result.Imported} imported, {result.Skipped} skipped"));
     }
 
+    // ── Generic user-content (My Career) ─────────────────────────────────────
+    private static readonly Dictionary<string, Type> UserContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["cvprofiles"] = typeof(CVProfile),
+        ["projects"] = typeof(Project),
+        ["skills"] = typeof(Skill),
+        ["experiences"] = typeof(Experience),
+        ["educations"] = typeof(Education),
+        ["certifications"] = typeof(Certification),
+        ["languages"] = typeof(Language),
+        ["interests"] = typeof(Interest),
+        ["sociallinks"] = typeof(SocialLink),
+        ["academicactivities"] = typeof(AcademicActivity),
+        ["hackathons"] = typeof(Hackathon),
+    };
+
+    [HttpPost("{entity}")]
+    public async Task<IActionResult> ImportUserContent(string entity, [FromBody] List<Dictionary<string, string>> rows)
+    {
+        var userId = GetUserId();
+        if (rows is null || rows.Count == 0)
+            return BadRequest(ApiResponse<ImportResultDto>.Error("No rows provided"));
+
+        if (!UserContentTypes.TryGetValue(entity, out var type))
+            return BadRequest(ApiResponse<ImportResultDto>.Error($"Unknown import type '{entity}'"));
+
+        var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanWrite)
+            .ToDictionary(p => p.Name.ToLowerInvariant(), p => p);
+
+        var result = new ImportResultDto();
+        foreach (var (row, idx) in rows.Select((r, i) => (r, i)))
+        {
+            try
+            {
+                var instance = Activator.CreateInstance(type)!;
+                foreach (var kv in row)
+                {
+                    if (string.IsNullOrWhiteSpace(kv.Value)) continue;
+                    var key = kv.Key.ToLowerInvariant();
+                    if (key is "id" or "userid") continue;
+                    if (!props.TryGetValue(key, out var prop)) continue;
+                    var val = ConvertValue(prop.PropertyType, kv.Value!);
+                    if (val is not null) prop.SetValue(instance, val);
+                }
+
+                type.GetProperty("Id")!.SetValue(instance, Guid.NewGuid());
+                type.GetProperty("UserId")!.SetValue(instance, userId);
+                _db.Add(instance);
+                await _db.SaveChangesAsync();
+                result.Imported++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "User-content import row {Index} failed", idx);
+                result.Errors.Add($"Row {idx + 1}: {ex.Message}");
+            }
+        }
+
+        return Ok(ApiResponse<ImportResultDto>.Ok(result, $"{result.Imported} imported, {result.Skipped} skipped"));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static string Normalize(string s) => s.Trim().ToLowerInvariant();
@@ -278,6 +341,20 @@ public class ImportsController : BaseApiController
 
     private static string Truncate(string? s, int max) =>
         string.IsNullOrEmpty(s) ? s! : (s.Length <= max ? s : s[..max]);
+
+    /// Coerces a raw sheet cell into the target property type (strings pass through; numbers/dates/enums parsed).
+    private static object? ConvertValue(Type target, string raw)
+    {
+        var underlying = Nullable.GetUnderlyingType(target) ?? target;
+        if (underlying == typeof(string)) return raw;
+        if (underlying == typeof(Guid)) return null; // ids are generated server-side
+        if (underlying == typeof(int)) return int.TryParse(raw, out var i) ? i : null;
+        if (underlying == typeof(double)) return double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : null;
+        if (underlying == typeof(bool)) return bool.TryParse(raw, out var b) ? b : null;
+        if (underlying == typeof(DateTime)) return ParseDate(raw);
+        if (underlying.IsEnum) return Enum.TryParse(underlying, raw, true, out var e) ? e : null;
+        return raw;
+    }
 
     /// Parses day-first dates as used in the tracking sheets (e.g. 04/05/2026 = May 4th).
     private static DateTime? ParseDate(string? value)

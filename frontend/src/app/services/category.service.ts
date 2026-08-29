@@ -27,4 +27,35 @@ export class CategoryService {
   async setTags(req: CategoryTagRequest): Promise<unknown> {
     return this.http.put<unknown>('/api/categories/tags', req);
   }
+
+  /** All tag groupings for a whole scope: [{ sourceId, nodeIds }]. */
+  async getTagsForScope(sourceType: string): Promise<{ sourceId: string; nodeIds: string[] }[]> {
+    const res = await this.http.get<ApiResponse<{ sourceId: string; nodeIds: string[] }[]>>(
+      `/api/categories/tags/all?sourceType=${encodeURIComponent(sourceType)}`,
+    );
+    return res.data ?? [];
+  }
+
+  /** Build a nodeId -> name map for a scope (used to render category chips). */
+  async getNodeNameMap(scope: string): Promise<Map<string, string>> {
+    const nodes = await this.getTree(scope);
+    const map = new Map<string, string>();
+    const walk = (list: TaxonomyNode[]) => {
+      for (const n of list) {
+        map.set(n.id, n.name);
+        if (n.children && n.children.length) walk(n.children);
+      }
+    };
+    walk(nodes);
+    return map;
+  }
+
+  /** Ask the backend to suggest categories for one entity (LLM + keyword), without saving. */
+  async suggestTags(sourceType: string, sourceId: string): Promise<string[]> {
+    const res = await this.http.post<ApiResponse<string[]>>('/api/categories/categorize/suggest', {
+      sourceType,
+      sourceId,
+    });
+    return res.data ?? [];
+  }
 }

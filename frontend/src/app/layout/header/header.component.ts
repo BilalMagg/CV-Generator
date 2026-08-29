@@ -1,14 +1,16 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { AuthService } from '@app/services/auth.service';
 import { APP_NAME } from '@app/app-name';
+import { ExportDialogComponent } from '@app/shared/components/export-dialog/export-dialog.component';
+import { SheetImportDialogComponent, type ImportType } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ExportDialogComponent, SheetImportDialogComponent],
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss'
 })
@@ -18,6 +20,17 @@ export class HeaderComponent {
   private router = inject(Router);
 
   pageName = 'Dashboard';
+
+  isLoggedIn = computed(() => !!this.authService.currentUser());
+
+  exportOpen = signal(false);
+  importMenuOpen = signal(false);
+  importType = signal<ImportType | null>(null);
+
+  openImport(type: ImportType): void {
+    this.importType.set(type);
+    this.importMenuOpen.set(false);
+  }
 
   private readonly ROUTE_NAMES: Record<string, string> = {
     '/applications/dashboard': 'Dashboard',

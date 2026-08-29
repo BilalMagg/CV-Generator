@@ -10,6 +10,23 @@
         [value]="searchText"
         (input)="onSearch($event.target.value)"
       />
+      <button
+        type="button"
+        class="tree-expand-toggle"
+        (click)="toggleExpandAll()"
+        [title]="allExpanded ? 'Collapse all' : 'Expand all'"
+        [attr.aria-label]="allExpanded ? 'Collapse all' : 'Expand all'"
+      >
+        @if (!allExpanded) {
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9l6 6 6-6" /><path d="M6 15l6 6 6-6" />
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 15l6-6 6 6" /><path d="M6 9l6-6 6 6" />
+          </svg>
+        }
+      </button>
       <button *ngIf="searchText" type="button" class="clear-search" (click)="clearSearch()">×</button>
     </div>
     <div class="tree-actions" *ngIf="selectedCount > 0">
@@ -28,6 +45,7 @@
         [selectedIds]="displaySelected"
         [expandedIds]="expanded"
         [mode]="mode"
+        [showCounts]="showCounts"
         (selectionChange)="onSelectionChange($event)"
         (expandChange)="onExpandChange($event)"
       ></app-category-tree-node>

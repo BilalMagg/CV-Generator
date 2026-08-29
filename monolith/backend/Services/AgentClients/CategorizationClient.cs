@@ -22,7 +22,7 @@ public class CategorizationClient : ICategorizationClient
         {
             scope,
             text,
-            candidates = candidates.Select(c => new { id = c.Id.ToString(), name = c.Name, keywords = c.Keywords }).ToList()
+            candidates = candidates.Select(c => new { id = c.Id.ToString(), name = c.Name, keywords = c.Keywords, path = c.Path }).ToList()
         };
         try
         {
@@ -49,6 +49,7 @@ public class CategoryCandidateDto
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public List<string> Keywords { get; set; } = new();
+    public string Path { get; set; } = string.Empty;
 }
 
 public class CategorizeResponseDto

@@ -13,7 +13,10 @@ public interface ICategoryService
     Task<List<CategorySearchResult>> SearchAsync(Guid userId, List<Guid> nodeIds, List<string>? sourceTypes = null);
     Task SetTagsAsync(Guid userId, string sourceType, Guid sourceId, List<Guid> nodeIds);
     Task<List<Guid>> GetTagsAsync(Guid userId, string sourceType, Guid sourceId);
+    Task<List<ScopeTagsDto>> GetTagsForScopeAsync(Guid userId, string sourceType);
     Task CategorizeEntityAsync(Guid userId, string sourceType, Guid sourceId);
+    Task<List<Guid>> SuggestEntityAsync(Guid userId, string sourceType, Guid sourceId);
+    Task<int> CategorizeScopeAsync(Guid userId, string scope);
 }
 
 public class CategoryService : ICategoryService
@@ -144,32 +147,28 @@ public class CategoryService : ICategoryService
             .ToListAsync();
     }
 
-    public async Task CategorizeEntityAsync(Guid userId, string sourceType, Guid sourceId)
+    public async Task<List<ScopeTagsDto>> GetTagsForScopeAsync(Guid userId, string sourceType)
     {
-        var text = await BuildEntityText(sourceType, sourceId);
-        if (string.IsNullOrWhiteSpace(text))
-            return;
-
-        var nodes = await _db.CategoryNodes
-            .Where(n => n.Scope == sourceType && (n.UserId == null || n.UserId == userId))
+        var rows = await _db.EntityCategoryTags
+            .Where(t => t.UserId == userId && t.SourceType == sourceType)
+            .Select(t => new { t.SourceId, t.CategoryNodeId })
             .ToListAsync();
 
-        var candidates = nodes.Select(n => new CategoryCandidateDto
-        {
-            Id = n.Id,
-            Name = n.Name,
-            Keywords = ParseKeywords(n.KeywordsJson),
-        }).ToList();
+        return rows
+            .GroupBy(r => r.SourceId)
+            .Select(g => new ScopeTagsDto
+            {
+                SourceId = g.Key,
+                NodeIds = g.Select(x => x.CategoryNodeId).ToList(),
+            })
+            .ToList();
+    }
 
-        var llmIds = await _categorizationClient.CategorizeAsync(sourceType, text, candidates);
-        var keywordIds = KeywordMatch(text, nodes);
-
-        var existingManual = (await _db.EntityCategoryTags
-            .Where(t => t.UserId == userId && t.SourceType == sourceType && t.SourceId == sourceId && t.AssignedBy == "MANUAL")
-            .Select(t => t.CategoryNodeId)
-            .ToListAsync()).ToHashSet();
-
-        var toInsert = llmIds.Concat(keywordIds).Distinct().Where(id => !existingManual.Contains(id)).ToList();
+    public async Task CategorizeEntityAsync(Guid userId, string sourceType, Guid sourceId)
+    {
+        var (toInsert, llmSet) = await ComputeSuggestionsAsync(userId, sourceType, sourceId);
+        if (toInsert.Count == 0)
+            return;
 
         // Drop previous auto tags (keep manual), then re-insert merged auto tags.
         var autoTags = await _db.EntityCategoryTags
@@ -177,7 +176,6 @@ public class CategoryService : ICategoryService
             .ToListAsync();
         _db.EntityCategoryTags.RemoveRange(autoTags);
 
-        var llmSet = llmIds.ToHashSet();
         foreach (var id in toInsert)
             _db.EntityCategoryTags.Add(new EntityCategoryTag
             {
@@ -191,6 +189,101 @@ public class CategoryService : ICategoryService
         await _db.SaveChangesAsync();
     }
 
+    public async Task<List<Guid>> SuggestEntityAsync(Guid userId, string sourceType, Guid sourceId)
+    {
+        var (toInsert, _) = await ComputeSuggestionsAsync(userId, sourceType, sourceId);
+        return toInsert;
+    }
+
+    /// <summary>
+    /// Compute the suggested category node ids for an entity (LLM + keyword, excluding existing
+    /// MANUAL tags). Does NOT persist anything. Returns the merged ids plus the subset that came
+    /// from the LLM (used by CategorizeEntityAsync to tag the source). Returns empty when the
+    /// entity has no textual content to categorize.
+    /// </summary>
+    private async Task<(List<Guid> toInsert, HashSet<Guid> llmSet)> ComputeSuggestionsAsync(Guid userId, string sourceType, Guid sourceId)
+    {
+        var text = await BuildEntityText(sourceType, sourceId);
+        if (string.IsNullOrWhiteSpace(text))
+            return (new List<Guid>(), new HashSet<Guid>());
+
+        var nodes = await _db.CategoryNodes
+            .Where(n => n.Scope == sourceType && (n.UserId == null || n.UserId == userId))
+            .ToListAsync();
+
+        var candidates = nodes.Select(n => new CategoryCandidateDto
+        {
+            Id = n.Id,
+            Name = n.Name,
+            Keywords = ParseKeywords(n.KeywordsJson),
+            Path = n.Path,
+        }).ToList();
+
+        var llmIds = await _categorizationClient.CategorizeAsync(sourceType, text, candidates);
+        var keywordIds = KeywordMatch(text, nodes);
+
+        var existingManual = (await _db.EntityCategoryTags
+            .Where(t => t.UserId == userId && t.SourceType == sourceType && t.SourceId == sourceId && t.AssignedBy == "MANUAL")
+            .Select(t => t.CategoryNodeId)
+            .ToListAsync()).ToHashSet();
+
+        var merged = llmIds.Concat(keywordIds).Distinct().Where(id => !existingManual.Contains(id)).ToList();
+        // A category node may be a parent; for a single entity we always store its leaf
+        // descendants so the tag is specific and shows correctly in the tree.
+        var toInsert = ExpandToLeaves(merged, nodes);
+        var llmSet = ComputeLlmSourcedSet(toInsert, llmIds, nodes);
+        return (toInsert, llmSet);
+    }
+
+    /// <summary>Replace every selected node id with its leaf descendants (a leaf returns itself).</summary>
+    private List<Guid> ExpandToLeaves(List<Guid> ids, List<CategoryNode> nodes)
+    {
+        var childrenByParent = nodes
+            .Where(n => n.ParentId.HasValue)
+            .GroupBy(n => n.ParentId.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var leafCache = new Dictionary<Guid, List<Guid>>();
+
+        List<Guid> GetLeaves(Guid id)
+        {
+            if (leafCache.TryGetValue(id, out var cached)) return cached;
+            if (!childrenByParent.TryGetValue(id, out var kids))
+            {
+                var single = new List<Guid> { id };
+                leafCache[id] = single;
+                return single;
+            }
+            var leaves = new List<Guid>();
+            foreach (var k in kids)
+                leaves.AddRange(GetLeaves(k.Id));
+            leafCache[id] = leaves;
+            return leaves;
+        }
+
+        var result = new HashSet<Guid>();
+        foreach (var id in ids)
+            foreach (var leaf in GetLeaves(id))
+                result.Add(leaf);
+        return result.ToList();
+    }
+
+    /// <summary>A leaf is LLM-sourced if it (or any of its ancestors) was chosen by the LLM.</summary>
+    private HashSet<Guid> ComputeLlmSourcedSet(List<Guid> expanded, List<Guid> originalLlm, List<CategoryNode> nodes)
+    {
+        var byId = nodes.ToDictionary(n => n.Id);
+        var llmSet = new HashSet<Guid>();
+        foreach (var leaf in expanded)
+        {
+            var cur = byId.GetValueOrDefault(leaf);
+            while (cur != null)
+            {
+                if (originalLlm.Contains(cur.Id)) { llmSet.Add(leaf); break; }
+                cur = cur.ParentId.HasValue ? byId.GetValueOrDefault(cur.ParentId.Value) : null;
+            }
+        }
+        return llmSet;
+    }
+
     private static List<string> ParseKeywords(string json)
     {
         try { return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>(); }
@@ -200,6 +293,10 @@ public class CategoryService : ICategoryService
     private List<Guid> KeywordMatch(string text, List<CategoryNode> nodes)
     {
         var haystack = " " + text.ToLowerInvariant() + " ";
+        var entityTokens = text.ToLowerInvariant()
+            .Split(new[] { ' ', '\t', '\n', '\r', ',', ';', '.', '(', ')', '-', '/', '\\', ':' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(t => t.Length >= 2)
+            .ToHashSet();
         var result = new List<Guid>();
         foreach (var node in nodes)
         {
@@ -207,8 +304,16 @@ public class CategoryService : ICategoryService
             foreach (var term in terms)
             {
                 var t = term.Trim().ToLowerInvariant();
-                if (t.Length < 3) continue;
-                if (haystack.Contains(t))
+                if (t.Length < 2) continue;
+                // whole-term presence in the entity text
+                if (haystack.Contains(" " + t + " ") || haystack.Contains(t))
+                {
+                    result.Add(node.Id);
+                    break;
+                }
+                // token-level overlap (e.g. entity "aws" vs node keyword "aws", or
+                // entity "learning" vs node "machine learning")
+                if (entityTokens.Any(et => t.Contains(et) || et.Contains(t)))
                 {
                     result.Add(node.Id);
                     break;
@@ -240,5 +345,30 @@ public class CategoryService : ICategoryService
             .Select(p => p.GetValue(entity) as string)
             .Where(s => !string.IsNullOrWhiteSpace(s));
         return string.Join(" ", props);
+    }
+
+    public async Task<int> CategorizeScopeAsync(Guid userId, string scope)
+    {
+        var ids = await GetEntityIdsForScope(userId, scope);
+        foreach (var id in ids)
+            await CategorizeEntityAsync(userId, scope, id);
+        return ids.Count;
+    }
+
+    private async Task<List<Guid>> GetEntityIdsForScope(Guid userId, string scope)
+    {
+        return scope.ToLower() switch
+        {
+            "projects" => await _db.Projects.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(),
+            "experiences" => await _db.Experiences.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(),
+            "educations" => await _db.Educations.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(),
+            "certifications" => await _db.Certifications.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(),
+            "skills" => await _db.Skills.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(),
+            "languages" => await _db.Languages.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(),
+            "hackathons" => await _db.Hackathons.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(),
+            "interests" => await _db.Interests.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(),
+            "academicactivities" => await _db.AcademicActivities.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(),
+            _ => new List<Guid>(),
+        };
     }
 }

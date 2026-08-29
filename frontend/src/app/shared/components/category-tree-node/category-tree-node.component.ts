@@ -14,6 +14,7 @@ export class CategoryTreeNodeComponent {
   @Input() selectedIds!: Set<string>;
   @Input() expandedIds!: Set<string>;
   @Input() mode: 'filter' | 'edit' = 'filter';
+  @Input() showCounts = true;
 
   @Output() selectionChange = new EventEmitter<string>();
   @Output() expandChange = new EventEmitter<string>();
