@@ -112,6 +112,9 @@ builder.Services.AddHttpClient("agents", c =>
     c.Timeout = TimeSpan.FromMinutes(4);
 });
 
+    builder.Services.AddHttpClient<ICategorizationClient, CategorizationClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/categorize"));
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+
 // Background services
 builder.Services.AddSingleton<CvGenerationBackgroundService>();
 builder.Services.AddSingleton<TemplateRenderBackgroundService>();
@@ -157,13 +160,22 @@ using (var scope = app.Services.CreateScope())
             await db.Database.MigrateAsync();
         }
     }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Migration failed");
-    }
-}
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Migration failed");
+        }
 
-app.UseCors();
+        try
+        {
+            await CategorySeed.SeedAsync(db);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Category seed failed");
+        }
+    }
+
+    app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 

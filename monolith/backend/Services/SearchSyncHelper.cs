@@ -2,7 +2,20 @@ namespace CV_Generator.Services;
 
 public static class SearchSyncHelper
 {
-    public static void TriggerSync(IServiceScopeFactory scopeFactory, Guid userId, ILogger logger, string source)
+    private static readonly Dictionary<string, string> ScopeMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Project"] = "projects",
+        ["Experience"] = "experiences",
+        ["Education"] = "educations",
+        ["Certification"] = "certifications",
+        ["Skill"] = "skills",
+        ["Language"] = "languages",
+        ["Hackathon"] = "hackathons",
+        ["Interest"] = "interests",
+        ["AcademicActivity"] = "academicactivities",
+    };
+
+    public static void TriggerSync(IServiceScopeFactory scopeFactory, Guid userId, ILogger logger, string source, Guid entityId = default)
     {
         _ = Task.Run(async () =>
         {
@@ -12,6 +25,20 @@ public static class SearchSyncHelper
                 var syncService = scope.ServiceProvider.GetRequiredService<ISearchSyncService>();
                 await syncService.SyncUserAsync(userId);
                 logger.LogDebug("Search sync completed for user {UserId} after {Source}", userId, source);
+
+                // Hybrid category tagging (LLM + keyword), preserving any manual tags.
+                if (entityId != default && ScopeMap.TryGetValue(source.Split('.')[0], out var scopeName))
+                {
+                    try
+                    {
+                        var categoryService = scope.ServiceProvider.GetRequiredService<ICategoryService>();
+                        await categoryService.CategorizeEntityAsync(userId, scopeName, entityId);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Category tagging skipped for user {UserId} entity {Scope}/{EntityId}", userId, scopeName, entityId);
+                    }
+                }
             }
             catch (Exception ex)
             {

@@ -52,7 +52,7 @@ public class SkillsController : ControllerBase
 
         _db.Skills.Add(skill);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Create");
+        SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Create", skill.Id);
 
         _logger.LogInformation("Created skill {Id}", skill.Id);
         return Created($"/api/skills/{skill.Id}", ApiResponse<Skill>.Created(skill));
@@ -70,7 +70,7 @@ public class SkillsController : ControllerBase
         skill.Category = dto.Category;
 
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Update");
+        SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Update", skill.Id);
         return Ok(ApiResponse<Skill>.Ok(skill));
     }
 
@@ -82,7 +82,7 @@ public class SkillsController : ControllerBase
 
         _db.Skills.Remove(skill);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Delete");
+        SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Delete", skill.Id);
         return NoContent();
     }
 

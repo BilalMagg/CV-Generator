@@ -58,7 +58,7 @@ public class ProjectsController : ControllerBase
 
         _db.Projects.Add(project);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, project.UserId, _logger, "Project.Create");
+        SearchSyncHelper.TriggerSync(_scopeFactory, project.UserId, _logger, "Project.Create", project.Id);
 
         _logger.LogInformation("Created project {Id}", project.Id);
         return Created($"/api/projects/{project.Id}", ApiResponse<Project>.Created(project));
@@ -82,7 +82,7 @@ public class ProjectsController : ControllerBase
         project.SkillsJson = dto.SkillsJson;
 
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, project.UserId, _logger, "Project.Update");
+        SearchSyncHelper.TriggerSync(_scopeFactory, project.UserId, _logger, "Project.Update", project.Id);
         return Ok(ApiResponse<Project>.Ok(project));
     }
 
@@ -94,7 +94,7 @@ public class ProjectsController : ControllerBase
 
         _db.Projects.Remove(project);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, project.UserId, _logger, "Project.Delete");
+        SearchSyncHelper.TriggerSync(_scopeFactory, project.UserId, _logger, "Project.Delete", project.Id);
         return NoContent();
     }
 

@@ -65,7 +65,7 @@ public class LanguagesController : ApiControllerBase
         var language = new Language { Name = dto.Name, Level = dto.Level, UserId = RequiredUserId };
         _db.Languages.Add(language);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, language.UserId, _logger, "Language.Create");
+        SearchSyncHelper.TriggerSync(_scopeFactory, language.UserId, _logger, "Language.Create", language.Id);
 
         var response = new LanguageResponseDto { Id = language.Id, Name = language.Name, Level = language.Level, UserId = language.UserId };
         return CreatedAtAction(nameof(GetById), new { id = language.Id }, ApiResponse<LanguageResponseDto>.Created(response));
@@ -80,7 +80,7 @@ public class LanguagesController : ApiControllerBase
         language.Name = dto.Name;
         language.Level = dto.Level;
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, language.UserId, _logger, "Language.Update");
+        SearchSyncHelper.TriggerSync(_scopeFactory, language.UserId, _logger, "Language.Update", language.Id);
 
         var response = new LanguageResponseDto { Id = language.Id, Name = language.Name, Level = language.Level, UserId = language.UserId };
         return Ok(ApiResponse<LanguageResponseDto>.Ok(response));
@@ -94,7 +94,7 @@ public class LanguagesController : ApiControllerBase
 
         _db.Languages.Remove(language);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, language.UserId, _logger, "Language.Delete");
+        SearchSyncHelper.TriggerSync(_scopeFactory, language.UserId, _logger, "Language.Delete", language.Id);
 
         return NoContent();
     }

@@ -42,6 +42,8 @@ public class AppDbContext : DbContext
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
     public DbSet<EmailSchedule> EmailSchedules => Set<EmailSchedule>();
+    public DbSet<CategoryNode> CategoryNodes => Set<CategoryNode>();
+    public DbSet<EntityCategoryTag> EntityCategoryTags => Set<EntityCategoryTag>();
     public DbSet<Workflow> Workflows => Set<Workflow>();
     public DbSet<AgentEntity> Agents => Set<AgentEntity>();
     public DbSet<AgentDocumentChunk> AgentDocumentChunks => Set<AgentDocumentChunk>();
@@ -236,6 +238,25 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.Conversation)
                 .WithMany()
                 .HasForeignKey(e => e.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CategoryNode>(entity =>
+        {
+            entity.HasIndex(e => new { e.Scope, e.ParentId });
+            entity.HasIndex(e => e.Path);
+            entity.HasOne(e => e.Parent)
+                .WithMany(e => e.Children)
+                .HasForeignKey(e => e.ParentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EntityCategoryTag>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.SourceType, e.SourceId, e.CategoryNodeId }).IsUnique();
+            entity.HasOne(e => e.CategoryNode)
+                .WithMany()
+                .HasForeignKey(e => e.CategoryNodeId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

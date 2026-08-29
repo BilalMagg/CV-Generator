@@ -83,7 +83,7 @@ public class HackathonsController : ApiControllerBase
 
         _db.Hackathons.Add(h);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, h.UserId, _logger, "Hackathon.Create");
+        SearchSyncHelper.TriggerSync(_scopeFactory, h.UserId, _logger, "Hackathon.Create", h.Id);
 
         var response = new HackathonResponseDto
         {
@@ -113,7 +113,7 @@ public class HackathonsController : ApiControllerBase
         h.Result = dto.Result;
 
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, h.UserId, _logger, "Hackathon.Update");
+        SearchSyncHelper.TriggerSync(_scopeFactory, h.UserId, _logger, "Hackathon.Update", h.Id);
 
         var response = new HackathonResponseDto
         {
@@ -137,7 +137,7 @@ public class HackathonsController : ApiControllerBase
 
         _db.Hackathons.Remove(h);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, h.UserId, _logger, "Hackathon.Delete");
+        SearchSyncHelper.TriggerSync(_scopeFactory, h.UserId, _logger, "Hackathon.Delete", h.Id);
 
         return NoContent();
     }

@@ -80,7 +80,7 @@ public class AcademicActivitiesController : ApiControllerBase
 
         _db.AcademicActivities.Add(a);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, a.UserId, _logger, "AcademicActivity.Create");
+        SearchSyncHelper.TriggerSync(_scopeFactory, a.UserId, _logger, "AcademicActivity.Create", a.Id);
 
         var response = new AcademicActivityResponseDto
         {
@@ -108,7 +108,7 @@ public class AcademicActivitiesController : ApiControllerBase
         a.EndDate = dto.EndDate;
 
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, a.UserId, _logger, "AcademicActivity.Update");
+        SearchSyncHelper.TriggerSync(_scopeFactory, a.UserId, _logger, "AcademicActivity.Update", a.Id);
 
         var response = new AcademicActivityResponseDto
         {
@@ -131,7 +131,7 @@ public class AcademicActivitiesController : ApiControllerBase
 
         _db.AcademicActivities.Remove(a);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, a.UserId, _logger, "AcademicActivity.Delete");
+        SearchSyncHelper.TriggerSync(_scopeFactory, a.UserId, _logger, "AcademicActivity.Delete", a.Id);
 
         return NoContent();
     }

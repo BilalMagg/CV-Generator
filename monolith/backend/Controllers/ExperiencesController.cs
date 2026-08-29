@@ -55,7 +55,7 @@ public class ExperiencesController : ControllerBase
 
         _db.Experiences.Add(exp);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, exp.UserId, _logger, "Experience.Create");
+        SearchSyncHelper.TriggerSync(_scopeFactory, exp.UserId, _logger, "Experience.Create", exp.Id);
 
         _logger.LogInformation("Created experience {Id}", exp.Id);
         return Created($"/api/experiences/{exp.Id}", ApiResponse<Experience>.Created(exp));
@@ -76,7 +76,7 @@ public class ExperiencesController : ControllerBase
         exp.Status = dto.Status;
 
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, exp.UserId, _logger, "Experience.Update");
+        SearchSyncHelper.TriggerSync(_scopeFactory, exp.UserId, _logger, "Experience.Update", exp.Id);
         return Ok(ApiResponse<Experience>.Ok(exp));
     }
 
@@ -88,7 +88,7 @@ public class ExperiencesController : ControllerBase
 
         _db.Experiences.Remove(exp);
         await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, exp.UserId, _logger, "Experience.Delete");
+        SearchSyncHelper.TriggerSync(_scopeFactory, exp.UserId, _logger, "Experience.Delete", exp.Id);
         return NoContent();
     }
 
