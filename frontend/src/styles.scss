@@ -370,3 +370,21 @@ body.is-revealing { overflow: hidden; }
 @media (max-width: 900px) {
   section { padding: 64px 24px; }
 }
+
+/* ── ngx-charts theme overrides ── */
+.ngx-charts text,
+.ngx-charts .tick text,
+.ngx-charts .legend-label-text,
+.ngx-charts .axis-label {
+  fill: var(--text-2);
+  font-size: 11px;
+}
+.ngx-charts .gridline-path {
+  stroke: var(--hairline);
+}
+.ngx-charts .legend-title-text {
+  color: var(--text-2);
+}
+.ngx-charts .tooltip-anchor {
+  fill: var(--text);
+}

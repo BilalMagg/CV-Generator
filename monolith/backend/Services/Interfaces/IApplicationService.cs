@@ -14,6 +14,7 @@ public interface IApplicationService
     Task<bool> DeleteAsync(Guid id, Guid userId);
     Task<ApplicationStatisticsDto> GetStatisticsAsync(Guid userId);
     Task<StatisticsTrendsDto> GetTrendsAsync(Guid userId);
+    Task<AnalyticsSummaryDto> GetAnalyticsSummaryAsync(Guid userId);
     Task<bool?> ToggleSaveAsync(Guid id, Guid userId);
     Task<ActivityFeedDto> GetActivityFeedAsync(Guid userId, int limit = 50);
     Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid userId, DateTime from, DateTime to, string[]? statuses);

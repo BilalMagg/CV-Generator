@@ -4,6 +4,7 @@ import {
   ApplicationResponseDto,
   ApplicationListDto,
   ApplicationStatisticsDto,
+  AnalyticsSummaryDto,
   StatisticsTrendsDto,
   ActivityFeedDto,
   CreateApplicationDto,
@@ -88,6 +89,13 @@ export class ApplicationService {
   }): Promise<ApiResponse<StatisticsTrendsDto>> {
     const query = params?.candidateId ? `?candidateId=${params.candidateId}` : '';
     return this.http.get<ApiResponse<StatisticsTrendsDto>>(`/api/applications/statistics/trends${query}`);
+  }
+
+  async getAnalyticsSummary(params?: {
+    candidateId?: string;
+  }): Promise<ApiResponse<AnalyticsSummaryDto>> {
+    const query = params?.candidateId ? `?candidateId=${params.candidateId}` : '';
+    return this.http.get<ApiResponse<AnalyticsSummaryDto>>(`/api/applications/analytics/summary${query}`);
   }
 
   async toggleSave(id: string): Promise<ApiResponse<boolean>> {

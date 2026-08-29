@@ -236,6 +236,76 @@ public class ApplicationService : IApplicationService
         return new StatisticsTrendsDto(current, monthlyTrends, avgResponseTime);
     }
 
+    public async Task<AnalyticsSummaryDto> GetAnalyticsSummaryAsync(Guid userId)
+    {
+        var stats = await GetStatisticsAsync(userId);
+        var monthly = await GetMonthlyTrendsAsync(userId);
+        var avg = await GetAverageResponseTimeAsync(userId);
+
+        var apps = _db.Applications.Where(a => a.CandidateId == userId);
+
+        var priorityCounts = await apps.GroupBy(a => a.Priority)
+            .Select(g => new { Key = g.Key.ToString(), Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count);
+
+        var originCounts = await apps.GroupBy(a => a.Origin)
+            .Select(g => new { Key = g.Key.ToString(), Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count);
+
+        var channelCounts = await _db.ApplicationAttempts
+            .Where(x => x.Status == AttemptStatus.SENT)
+            .GroupBy(x => x.Channel)
+            .Select(g => new { Key = g.Key.ToString(), Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count);
+
+        var funnel = new List<FunnelStageDto>
+        {
+            new("SAVED", stats.Saved),
+            new("APPLIED", stats.Applied),
+            new("SCREENING", stats.Screening),
+            new("INTERVIEW", stats.Interview),
+            new("OFFER", stats.Offer),
+            new("ACCEPTED", stats.Accepted),
+        };
+
+        var topCompaniesRaw = await apps
+            .GroupBy(a => a.CompanyName)
+            .Select(g => new { Name = g.Key, Count = g.Count(), LastAppliedAt = g.Max(a => a.AppliedAt) })
+            .OrderByDescending(c => c.Count)
+            .Take(8)
+            .ToListAsync();
+
+        var topCompanies = topCompaniesRaw
+            .Select(c => new TopCompanyDto(c.Name, c.Count, c.LastAppliedAt))
+            .ToList();
+
+        var distinctCompanies = await apps.Select(a => a.CompanyName).Distinct().CountAsync();
+
+        var email = await GetEmailStatsAsync(userId);
+
+        return new AnalyticsSummaryDto(stats, avg, distinctCompanies, monthly, priorityCounts, originCounts, channelCounts, funnel, topCompanies, email);
+    }
+
+    private async Task<EmailStatsDto> GetEmailStatsAsync(Guid userId)
+    {
+        var byStatus = await _db.EmailMessages
+            .Where(m => m.UserId == userId)
+            .GroupBy(m => m.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var sent = byStatus.Where(m => m.Status == "sent").Sum(m => m.Count);
+        var failed = byStatus.Where(m => m.Status == "failed").Sum(m => m.Count);
+        var total = sent + failed;
+        var successRate = total == 0 ? 0 : Math.Round((double)sent / total * 100, 1);
+
+        var activeSchedules = await _db.EmailSchedules
+            .Where(s => s.UserId == userId && s.IsActive)
+            .CountAsync();
+
+        return new EmailStatsDto(sent, failed, successRate, activeSchedules);
+    }
+
     private async Task<List<MonthlyTrendDto>> GetMonthlyTrendsAsync(Guid userId, int months = 12)
     {
         var cutoff = DateTime.UtcNow.AddMonths(-months);

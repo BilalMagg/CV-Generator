@@ -195,6 +195,37 @@ export interface StatisticsTrendsDto {
   averageResponseTimeDays: number | null;
 }
 
+export interface AnalyticsSummaryDto {
+  statistics: ApplicationStatisticsDto;
+  averageResponseTimeDays: number | null;
+  distinctCompanies: number;
+  monthlyTrends: MonthlyTrendDto[];
+  priorityCounts: Record<string, number>;
+  originCounts: Record<string, number>;
+  channelCounts: Record<string, number>;
+  funnel: FunnelStageDto[];
+  topCompanies: TopCompanyDto[];
+  email: EmailStatsDto;
+}
+
+export interface FunnelStageDto {
+  stage: string;
+  count: number;
+}
+
+export interface TopCompanyDto {
+  name: string;
+  count: number;
+  lastAppliedAt: string | null;
+}
+
+export interface EmailStatsDto {
+  emailsSent: number;
+  emailsFailed: number;
+  successRate: number;
+  activeSchedules: number;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;

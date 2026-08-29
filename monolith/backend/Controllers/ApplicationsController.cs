@@ -168,6 +168,15 @@ public class ApplicationsController : ControllerBase
         return Ok(ApiResponse<StatisticsTrendsDto>.Ok(trends));
     }
 
+    /// GET /applications/analytics/summary
+    [HttpGet("analytics/summary")]
+    public async Task<IActionResult> GetAnalyticsSummary()
+    {
+        if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+        var summary = await _service.GetAnalyticsSummaryAsync(UserId.Value);
+        return Ok(ApiResponse<AnalyticsSummaryDto>.Ok(summary));
+    }
+
     /// PATCH /applications/{id}/toggle-save
     [HttpPatch("{id}/toggle-save")]
     public async Task<IActionResult> ToggleSave(Guid id)

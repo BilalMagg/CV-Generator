@@ -1,73 +1,174 @@
-<div class="analytics-page">
-
-  <!-- Page header -->
-  <div class="page-header">
-    <div class="header-left">
-      <span class="badge-pill">Analytics</span>
-      <h1 class="page-title">Your search, by the numbers</h1>
-      <p class="page-sub">See what's working, where you're getting traction, and where to push harder.</p>
+<div class="analytics">
+  <header class="page-head">
+    <div>
+      <h1>Analytics</h1>
+      <p class="muted">How your applications are performing.</p>
     </div>
-    <div class="header-right">
-      <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
-      <div class="period-group">
-        <button class="period-btn" [class.active]="periodMonths() === 3" (click)="setPeriod(3)">3m</button>
-        <button class="period-btn" [class.active]="periodMonths() === 6" (click)="setPeriod(6)">6m</button>
-        <button class="period-btn" [class.active]="periodMonths() === 12" (click)="setPeriod(12)">12m</button>
-        <button class="period-btn" [class.active]="periodMonths() === 0" (click)="setPeriod(0)">All</button>
-      </div>
-      <button class="report-btn" title="Coming soon">
-        <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Report
-      </button>
-    </div>
-  </div>
+    <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()"></app-refresh-button>
+  </header>
 
-  <!-- Stat cards -->
-  <div class="stats-row">
-    @for (s of statCards(); track s.label) {
-      <div class="stat-card">
-        <div class="stat-top">
-          <span class="stat-label">{{ s.label }}</span>
-          <span class="stat-badge" [class.positive]="s.positive" [class.negative]="!s.positive">{{ s.change }}</span>
+  @if (loading()) {
+    <div class="state muted">Loading analytics…</div>
+  } @else if (!hasData()) {
+    <div class="state muted">No applications yet. Once you add or apply to roles, your analytics will appear here.</div>
+  } @else {
+    <!-- KPI row -->
+    <section class="kpi-row">
+      @for (k of kpis(); track k.label) {
+        <div class="kpi-card">
+          <span class="kpi-dot" [style.background]="k.color"></span>
+          <div class="kpi-value">{{ k.value }}</div>
+          <div class="kpi-label">{{ k.label }}</div>
+          <div class="kpi-sub muted">{{ k.sub }}</div>
         </div>
-        <div class="stat-value" [style.color]="s.color">{{ s.value }}</div>
-      </div>
-    }
-  </div>
+      }
+    </section>
 
-  <!-- Charts -->
-  <div class="charts-row">
-    <!-- Donut chart -->
-    <div class="chart-card">
-      <h3 class="chart-title">Status distribution</h3>
-      <p class="chart-sub">Active applications</p>
-      <div class="donut-layout">
-        <div [innerHTML]="donutSvg()"></div>
-        <div class="donut-legend">
-          @for (sl of donutSlices(); track sl.label) {
-            <div class="legend-row">
-              <span class="legend-dot" [style.background]="sl.color"></span>
-              <span class="legend-label">{{ sl.label }}</span>
-              <span class="legend-pct">{{ sl.pct }}%</span>
-              <span class="legend-count">{{ sl.count }}</span>
+    <div class="grid">
+      <!-- Status distribution -->
+      <section class="card">
+        <h2>Status distribution</h2>
+        <div class="donut-wrap">
+          <ngx-charts-pie-chart
+            [view]="[220, 220]"
+            [results]="statusPie()"
+            [customColors]="statusColors()"
+            [doughnut]="true"
+            [labels]="false"
+            [legend]="false"
+            [animations]="false">
+          </ngx-charts-pie-chart>
+          <ul class="legend">
+            @for (s of statusPie(); track s.name) {
+              <li>
+                <span class="legend-dot" [style.background]="s.color"></span>
+                <span class="legend-name">{{ s.name }}</span>
+                <span class="legend-val">{{ s.value }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      </section>
+
+      <!-- Conversion funnel -->
+      <section class="card">
+        <h2>Conversion funnel</h2>
+        <div class="funnel">
+          @for (f of funnel(); track f.label) {
+            <div class="funnel-row">
+              <div class="funnel-head">
+                <span class="funnel-label">{{ f.label }}</span>
+                <span class="funnel-count">{{ f.count }} · {{ f.pct }}%</span>
+              </div>
+              <div class="funnel-track">
+                <div class="funnel-bar" [style.width.%]="f.pct" [style.background]="f.color"></div>
+              </div>
             </div>
           }
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- Bar chart -->
-    <div class="chart-card">
-      <h3 class="chart-title">Applications per month</h3>
-      <p class="chart-sub">Stacked by status</p>
-      <div [innerHTML]="barChartSvg()"></div>
-      <div class="bar-legend">
-        <span class="leg"><span class="leg-dot" style="background:oklch(0.72 0.01 80)"></span>Applied</span>
-        <span class="leg"><span class="leg-dot" style="background:oklch(0.6 0.16 250)"></span>Interview</span>
-        <span class="leg"><span class="leg-dot" style="background:oklch(0.62 0.15 155)"></span>Offer</span>
-        <span class="leg"><span class="leg-dot" style="background:oklch(0.62 0.18 25)"></span>Rejected</span>
-      </div>
-    </div>
-  </div>
+      <!-- Top companies -->
+      <section class="card">
+        <h2>Top companies</h2>
+        @if (topCompanies().length === 0) {
+          <div class="muted">No companies yet.</div>
+        } @else {
+          <ngx-charts-bar-horizontal
+            [view]="topCompanyView()"
+            [results]="topCompanies()"
+            [customColors]="topCompanyColors()"
+            [xAxis]="true"
+            [yAxis]="true"
+            [gradient]="false"
+            [roundEdges]="true"
+            [animations]="false">
+          </ngx-charts-bar-horizontal>
+          <ul class="company-list">
+            @for (c of topCompanyList(); track c.name) {
+              <li>
+                <span class="company-name">{{ c.name }}</span>
+                <span class="muted">{{ c.count }} applied</span>
+                <span class="muted">{{ c.lastAppliedAt ? ('last ' + (c.lastAppliedAt | date: 'mediumDate')) : 'no send yet' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
 
+      <!-- Email & schedules -->
+      <section class="card">
+        <h2>Email & schedules</h2>
+        @if (summary()?.email) {
+          <div class="email-kpis">
+            <div class="email-kpi">
+              <div class="email-val">{{ summary()!.email.emailsSent }}</div>
+              <div class="muted">Sent</div>
+            </div>
+            <div class="email-kpi">
+              <div class="email-val">{{ summary()!.email.emailsFailed }}</div>
+              <div class="muted">Failed</div>
+            </div>
+            <div class="email-kpi">
+              <div class="email-val">{{ summary()!.email.successRate }}%</div>
+              <div class="muted">Success</div>
+            </div>
+            <div class="email-kpi">
+              <div class="email-val">{{ summary()!.email.activeSchedules }}</div>
+              <div class="muted">Active schedules</div>
+            </div>
+          </div>
+          @if (emailPie().length > 0) {
+            <div class="email-pie">
+              <ngx-charts-pie-chart
+                [view]="[180, 180]"
+                [results]="emailPie()"
+                [customColors]="emailColors()"
+                [doughnut]="true"
+                [labels]="false"
+                [legend]="true"
+                [animations]="false">
+              </ngx-charts-pie-chart>
+            </div>
+          }
+          @if (channelBreakdown().length > 0) {
+            <div class="channel-breakdown">
+              <div class="muted small">Send channels</div>
+              <ul class="channel-list">
+                @for (c of channelBreakdown(); track c.name) {
+                  <li><span>{{ c.name }}</span><span class="muted">{{ c.value }}</span></li>
+                }
+              </ul>
+            </div>
+          }
+        }
+      </section>
+
+      <!-- Monthly stacked -->
+      <section class="card span-2">
+        <div class="card-head">
+          <h2>Applications over time</h2>
+          <div class="period-toggle">
+            @for (p of [3, 6, 12]; track p) {
+              <button class="chip" [class.active]="periodMonths() === p" (click)="setPeriod(p)">{{ p }}m</button>
+            }
+            <button class="chip" [class.active]="periodMonths() === 0" (click)="setPeriod(0)">All</button>
+          </div>
+        </div>
+        @if (monthlyStacked().length === 0) {
+          <div class="muted">No monthly data yet.</div>
+        } @else {
+          <ngx-charts-bar-vertical-stacked
+            [view]="[640, 280]"
+            [results]="monthlyStacked()"
+            [customColors]="statusColors()"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="true"
+            [animations]="false">
+          </ngx-charts-bar-vertical-stacked>
+        }
+      </section>
+    </div>
+  }
 </div>
