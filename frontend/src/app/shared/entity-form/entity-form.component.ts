@@ -1,17 +1,19 @@
-import { Component, inject, OnInit, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, computed, OnInit, signal, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { environment } from '@env/environment';
-import { ENTITY_FIELDS, EntityType } from '@app/models/user-content.models';
+import { ENTITY_FIELDS, EntityType, FieldConfig } from '@app/models/user-content.models';
 import { CategoryService } from '@app/services/category.service';
 import { CategoryTreeComponent } from '@app/shared/components/category-tree/category-tree.component';
+import { AutoFillDialogComponent } from '@app/shared/components/auto-fill-dialog/auto-fill-dialog.component';
+import { AutofillField } from '@app/services/autofill.service';
 
 @Component({
   selector: 'app-entity-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CategoryTreeComponent],
+  imports: [CommonModule, FormsModule, RouterModule, CategoryTreeComponent, AutoFillDialogComponent],
   templateUrl: './entity-form.component.html',
   styleUrl: './entity-form.component.css',
 })
@@ -31,12 +33,17 @@ export class EntityFormComponent implements OnInit {
   taxonomyOpen = signal(false);
   nameMap = signal<Map<string, string>>(new Map());
   saving = false;
+  autofillOpen = signal(false);
+
+  autofillFields = computed(() => this.fields);
+  entityLabel: string = '';
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
       this.entity = params.get('entity') as EntityType;
       this.id = params.get('id');
       this.fields = ENTITY_FIELDS[this.entity] || [];
+      this.entityLabel = this.entity.replace(/s$/, '');
       this.loadCategoryNames();
 
       if (this.id) {
@@ -131,6 +138,32 @@ export class EntityFormComponent implements OnInit {
 
   private sourceType(): string {
     return this.entity.toLowerCase();
+  }
+
+  openAutofill(): void {
+    this.autofillOpen.set(true);
+  }
+
+  applyAutofill(values: Record<string, any>): void {
+    this.fields.forEach((field: FieldConfig) => {
+      if (values[field.name] === undefined) return;
+      let value = values[field.name];
+      if (field.type === 'number') {
+        const n = Number(value);
+        this.form[field.name] = isNaN(n) ? '' : n;
+      } else if (field.type === 'date') {
+        const s = String(value);
+        this.form[field.name] = /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+      } else if (field.type === 'select' && field.options) {
+        const match = (field.options as string[]).find(o => o.toLowerCase() === String(value).toLowerCase());
+        this.form[field.name] = match ?? String(value);
+      } else if (field.type === 'checkbox') {
+        this.form[field.name] = Boolean(value);
+      } else {
+        this.form[field.name] = String(value);
+      }
+    });
+    this.cdr.detectChanges();
   }
 
   submit() {

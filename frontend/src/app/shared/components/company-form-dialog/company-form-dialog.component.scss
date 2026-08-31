@@ -83,3 +83,16 @@
   gap: 10px;
   padding: 0 20px 18px;
 }
+
+.modal-afbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 20px 0;
+
+  .af-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+

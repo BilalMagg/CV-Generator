@@ -1,0 +1,47 @@
+<div class="modal-backdrop" *ngIf="open()" (click)="close()">
+  <div class="af-modal" (click)="$event.stopPropagation()">
+    <div class="af-modal-head">
+      <div>
+        <h3>Auto-fill {{ entityLabel() }}</h3>
+        <p class="af-sub">Paste the text about this {{ entityLabel() }}, and the AI will fill the matching fields.</p>
+      </div>
+      <button type="button" class="af-close" (click)="close()" aria-label="Close">×</button>
+    </div>
+
+    <div class="af-modal-body">
+      <textarea
+        class="af-textarea"
+        rows="7"
+        placeholder="Paste a description, job posting, company overview, or any text with the details…"
+        [(ngModel)]="desc"
+      ></textarea>
+
+      <div class="af-actions" *ngIf="!loading()">
+        <button type="button" class="btn btn-primary" (click)="runExtract()">Extract fields</button>
+      </div>
+      <div class="af-loading" *ngIf="loading()">
+        <span class="af-spinner" aria-hidden="true"></span>
+        <span>Extracting fields with AI…</span>
+      </div>
+
+      <div class="af-error" *ngIf="error()">{{ error() }}</div>
+
+      <div class="af-result" *ngIf="result() as values">
+        <h4>Extracted details</h4>
+        <div class="af-result-list">
+          <div class="af-result-row" *ngFor="let v of values | keyvalue">
+            <span class="af-fkey">{{ fieldLabel(v.key) }}</span>
+            <span class="af-fval">{{ v.value }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="af-modal-foot">
+      <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="!result()" (click)="apply()">
+        Apply to form
+      </button>
+    </div>
+  </div>
+</div>

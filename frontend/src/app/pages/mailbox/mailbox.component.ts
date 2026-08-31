@@ -2,6 +2,8 @@ import { Component, signal, inject, OnInit, computed, effect } from '@angular/co
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 import { CronBuilderComponent } from '@app/shared/components/cron-builder/cron-builder.component';
+import { AutoFillDialogComponent } from '@app/shared/components/auto-fill-dialog/auto-fill-dialog.component';
+import { AutofillField } from '@app/services/autofill.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -53,7 +55,7 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
 @Component({
   selector: 'app-mailbox',
   standalone: true,
-  imports: [CommonModule, FormsModule, SheetImportDialogComponent, RefreshButtonComponent, CronBuilderComponent],
+  imports: [CommonModule, FormsModule, SheetImportDialogComponent, RefreshButtonComponent, CronBuilderComponent, AutoFillDialogComponent],
   templateUrl: './mailbox.component.html',
   styleUrl: './mailbox.component.scss',
 })
@@ -123,6 +125,29 @@ export class MailboxComponent implements OnInit {
   contactFormPosition = signal('');
   contactFormNotes = signal('');
   editingContactId = signal<string | null>(null);
+  contactAutofillOpen = signal(false);
+
+  contactAutofillFields: AutofillField[] = [
+    { name: 'contactFormName', label: 'Name', type: 'text' },
+    { name: 'contactFormEmail', label: 'Email', type: 'text' },
+    { name: 'contactFormPhone', label: 'Phone', type: 'text' },
+    { name: 'contactFormCompany', label: 'Company', type: 'text' },
+    { name: 'contactFormPosition', label: 'Position', type: 'text' },
+    { name: 'contactFormNotes', label: 'Notes', type: 'textarea' },
+  ];
+
+  openContactAutofill(): void {
+    this.contactAutofillOpen.set(true);
+  }
+
+  applyContactAutofill(values: Record<string, any>): void {
+    if (values['contactFormName'] !== undefined) this.contactFormName.set(String(values['contactFormName']));
+    if (values['contactFormEmail'] !== undefined) this.contactFormEmail.set(String(values['contactFormEmail']));
+    if (values['contactFormPhone'] !== undefined) this.contactFormPhone.set(String(values['contactFormPhone']));
+    if (values['contactFormCompany'] !== undefined) this.contactFormCompany.set(String(values['contactFormCompany']));
+    if (values['contactFormPosition'] !== undefined) this.contactFormPosition.set(String(values['contactFormPosition']));
+    if (values['contactFormNotes'] !== undefined) this.contactFormNotes.set(String(values['contactFormNotes']));
+  }
 
   gmailConnected = signal(false);
   gmailEmail = signal('');

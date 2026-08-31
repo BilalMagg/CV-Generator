@@ -376,10 +376,19 @@
           </div>
 
           <app-sheet-import-dialog [type]="'contacts'" [(open)]="sheetImportOpen" (imported)="loadContacts()" />
+          <app-auto-fill-dialog
+            [(open)]="contactAutofillOpen"
+            entityLabel="contact"
+            [fields]="contactAutofillFields"
+            (filled)="applyContactAutofill($event)"
+          />
 
           @if (showContactForm()) {
             <div class="mb-card contact-form">
-              <h3>{{ editingContactId() ? 'Edit Contact' : 'New Contact' }}</h3>
+              <div class="contact-form-head">
+                <h3>{{ editingContactId() ? 'Edit Contact' : 'New Contact' }}</h3>
+                <button type="button" class="mb-btn-ghost" (click)="openContactAutofill()">Auto-fill</button>
+              </div>
               <div class="form-grid">
                 <input placeholder="Name" [ngModel]="contactFormName()" (ngModelChange)="contactFormName.set($event)" />
                 <input placeholder="Email" [ngModel]="contactFormEmail()" (ngModelChange)="contactFormEmail.set($event)" />

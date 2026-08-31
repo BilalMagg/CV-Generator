@@ -1,7 +1,13 @@
 <div class="form-container">
   <div class="form-header">
-    <h2>{{ id ? 'Edit' : 'Add' }} {{ entity | titlecase }}</h2>
-    <p class="subtitle">Enter the details for your {{ entity }}</p>
+    <div>
+      <h2>{{ id ? 'Edit' : 'Add' }} {{ entity | titlecase }}</h2>
+      <p class="subtitle">Enter the details for your {{ entity }}</p>
+    </div>
+    <button type="button" class="btn btn-outline" (click)="openAutofill()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16M6 16l2-6m0 0l4-6 4 6m-8 0h8m-2 6l2-6"/></svg>
+      Auto-fill
+    </button>
   </div>
 
   <section class="taxonomy-summary">
@@ -103,3 +109,11 @@
     </div>
   </div>
 </div>
+
+<app-auto-fill-dialog
+  [(open)]="autofillOpen"
+  [entityLabel]="entityLabel"
+  [fields]="autofillFields()"
+  (filled)="applyAutofill($event)"
+></app-auto-fill-dialog>
+

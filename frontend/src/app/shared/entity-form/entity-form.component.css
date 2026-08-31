@@ -3,7 +3,13 @@
   margin: 0 auto;
 }
 
-.form-header { margin-bottom: 20px; }
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
 
 .form-header h2 {
   font-size: 18px;

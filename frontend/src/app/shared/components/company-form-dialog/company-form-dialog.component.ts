@@ -4,11 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { CompanyService, CompanyDto, CreateCompanyDto } from '@app/services/company.service';
 import { ToastService } from '@app/services/toast.service';
 import { COUNTRIES, MOROCCO_CITIES } from '@app/shared/data/geo-data';
+import { AutoFillDialogComponent } from '@app/shared/components/auto-fill-dialog/auto-fill-dialog.component';
+import { AutofillField } from '@app/services/autofill.service';
 
 @Component({
   selector: 'app-company-form-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AutoFillDialogComponent],
   templateUrl: './company-form-dialog.component.html',
   styleUrl: './company-form-dialog.component.scss',
 })
@@ -38,6 +40,36 @@ export class CompanyFormDialogComponent implements OnChanges {
 
   citySuggestions = computed(() =>
     this.formCountry() === 'Morocco' ? MOROCCO_CITIES : []);
+
+  autofillOpen = signal(false);
+
+  autofillFields: AutofillField[] = [
+    { name: 'formName', label: 'Company name', type: 'text' },
+    { name: 'formWebsite', label: 'Website URL', type: 'url' },
+    { name: 'formLocation', label: 'City', type: 'text' },
+    { name: 'formCountry', label: 'Country', type: 'text' },
+    { name: 'formLocationUrl', label: 'Location URL', type: 'url' },
+    { name: 'formNote', label: 'Note', type: 'textarea' },
+    { name: 'formDescription', label: 'Description', type: 'textarea' },
+  ];
+
+  openAutofill(): void {
+    this.autofillOpen.set(true);
+  }
+
+  applyAutofill(values: Record<string, any>): void {
+    if (values['formName'] !== undefined) this.formName.set(String(values['formName']));
+    if (values['formWebsite'] !== undefined) this.formWebsite.set(String(values['formWebsite']));
+    if (values['formLocation'] !== undefined) this.formLocation.set(String(values['formLocation']));
+    if (values['formCountry'] !== undefined) {
+      const country = String(values['formCountry']);
+      const countries = new Set((COUNTRIES as string[]).map(c => c.toLowerCase()));
+      this.formCountry.set(countries.has(country.toLowerCase()) ? country : 'Morocco');
+    }
+    if (values['formLocationUrl'] !== undefined) this.formLocationUrl.set(String(values['formLocationUrl']));
+    if (values['formNote'] !== undefined) this.formNote.set(String(values['formNote']));
+    if (values['formDescription'] !== undefined) this.formDescription.set(String(values['formDescription']));
+  }
 
   ngOnChanges(): void {
     if (!this.open()) return;

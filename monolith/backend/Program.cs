@@ -113,6 +113,7 @@ builder.Services.AddHttpClient("agents", c =>
 });
 
     builder.Services.AddHttpClient<ICategorizationClient, CategorizationClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/categorize"));
+    builder.Services.AddHttpClient<IAutofillClient, AutofillClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/autofill/"));
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 // Background services

@@ -5,6 +5,12 @@
         <h2>{{ editing() ? 'Edit company' : 'Add company' }}</h2>
         <button class="icon-btn" (click)="close()">✕</button>
       </div>
+      <div class="modal-afbar">
+        <button type="button" class="btn-ghost af-btn" (click)="openAutofill()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16M6 16l2-6m0 0l4-6 4 6m-8 0h8m-2 6l2-6"/></svg>
+          Auto-fill from text
+        </button>
+      </div>
       <div class="modal-body">
         <div class="form-group">
           <label>Name <span class="req">*</span></label>
@@ -54,5 +60,11 @@
         </button>
       </div>
     </div>
+    <app-auto-fill-dialog
+      [(open)]="autofillOpen"
+      entityLabel="company"
+      [fields]="autofillFields"
+      (filled)="applyAutofill($event)"
+    ></app-auto-fill-dialog>
   </div>
 }
