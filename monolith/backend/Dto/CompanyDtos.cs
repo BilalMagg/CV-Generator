@@ -12,6 +12,7 @@ public class CompanyDto
     public string? Note { get; set; }
     public string? Description { get; set; }
     public int ApplicationsCount { get; set; }
+    public int ContactsCount { get; set; }
     public DateTime? LastAppliedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

@@ -78,9 +78,15 @@ public class CompaniesController : BaseApiController
             .Select(a => new { a.CompanyName, a.AppliedAt })
             .ToListAsync();
 
+        var contactRows = await _db.Contacts.AsNoTracking()
+            .Where(co => co.UserId == userId && co.Company != null)
+            .Select(co => new { co.Company })
+            .ToListAsync();
+
         var stats = new Dictionary<string, (int Count, DateTime? Last)>(StringComparer.Ordinal);
         foreach (var row in appRows)
         {
+            if (string.IsNullOrWhiteSpace(row.CompanyName)) continue;
             var key = row.CompanyName.Trim().ToLower();
             var (count, last) = stats.TryGetValue(key, out var s) ? s : (0, null);
             stats[key] = (
@@ -91,12 +97,21 @@ public class CompaniesController : BaseApiController
             );
         }
 
+        var contactCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var row in contactRows)
+        {
+            if (string.IsNullOrWhiteSpace(row.Company)) continue;
+            var key = row.Company.Trim().ToLower();
+            contactCounts[key] = contactCounts.GetValueOrDefault(key) + 1;
+        }
+
         var enriched = matched.Select(c =>
         {
             var dto = Map(c);
             var stat = stats.GetValueOrDefault(c.Name.Trim().ToLower(), (0, null));
             dto.ApplicationsCount = stat.Count;
             dto.LastAppliedAt = stat.Last;
+            dto.ContactsCount = contactCounts.GetValueOrDefault(c.Name.Trim().ToLower());
             return dto;
         });
 
@@ -136,6 +151,9 @@ public class CompaniesController : BaseApiController
 
         var dto = Map(company);
         (dto.ApplicationsCount, dto.LastAppliedAt) = await GetCompanyStatsAsync(userId, company.Name);
+        dto.ContactsCount = await _db.Contacts.CountAsync(co =>
+            co.UserId == userId && co.Company != null &&
+            co.Company.Trim().ToLower() == company.Name.Trim().ToLower());
 
         return Ok(ApiResponse<CompanyDto>.Ok(dto));
     }
