@@ -157,6 +157,18 @@ export class CompaniesDetailComponent {
     }
   }
 
+  generateDesc() {
+    const c = this.company();
+    if (!c) return;
+    // Generate a description using available company data
+    const lines: string[] = [c.name];
+    if (c.description) lines.push(c.description);
+    const loc = c.location || c.country;
+    if (loc) lines.push(`based in ${loc}`);
+    this.descDraft.set(lines.join(' '));
+    this.editingDesc.set(true);
+  }
+
   statusColor(status: string): string {
     return STATUS_COLORS[status as keyof typeof STATUS_COLORS] ?? 'var(--text-3)';
   }

@@ -11,16 +11,14 @@
 
   <div class="spacer"></div>
 
-  <!-- Help -->
-  <button class="header-btn">
-    <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
-      <path d="M6 9a3 3 0 1 1 3-3v12a3 3 0 1 1-3-3h12a3 3 0 1 1-3 3V6a3 3 0 1 1 3 3z"
-        stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <span>Help</span>
-  </button>
-
   @if (isLoggedIn()) {
+    <button class="header-btn" (click)="router.navigate(['/settings'])" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
+        <path d="M3 3v2h2V3H3zm4 4v12h2V7H7zm4 12v-6h2v6h-2zm-4-6v6h2V7H11zm8 2v-6h2v6h-2zm2-4v2h2V9h-2z"/>
+      </svg>
+      <span>Settings</span>
+    </button>
+
     <!-- Export / Import -->
     <button class="header-btn" (click)="exportOpen.set(true)" title="Export data">
       <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
@@ -45,15 +43,6 @@
       }
     </div>
   }
-
-  <!-- Notification bell -->
-  <button class="header-btn notif-btn">
-    <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"
-        stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <span class="notif-dot"></span>
-  </button>
 
   <div class="v-sep"></div>
 

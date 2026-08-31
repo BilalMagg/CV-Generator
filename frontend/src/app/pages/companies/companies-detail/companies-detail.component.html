@@ -7,22 +7,18 @@
       </a>
     </div>
     @if (company(); as c) {
-      <div class="head-actions">
-        <a class="btn-ghost" [routerLink]="['/applications/new']" [queryParams]="{ companyName: c.name }">
+<div class="head-actions">
+        <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
+        <button class="btn-ghost" (click)="generateDesc()">Generate description</button>
+        <button class="btn-ghost" (click)="openEdit()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          Edit
+        </button>
+        <button class="btn-ghost" (click)="onDelete()">Delete</button>
+        <a class="btn-primary" [routerLink]="['/applications/new']" [queryParams]="{ companyName: c.name }">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add application
         </a>
-        <a class="btn-ghost accent" [routerLink]="['/applications/apply']" [queryParams]="{ companyName: c.name }">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4a1 1 0 011-1h8a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l5 4 5-4"/></svg>
-          Apply
-        </a>
-        <a class="btn-ghost" [routerLink]="['/mailbox']" [queryParams]="{ tab: 'contacts', newContact: 1, company: c.name }">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add contact
-        </a>
-        <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
-        <button class="btn-ghost" (click)="openEdit()">Edit</button>
-        <button class="btn-danger-ghost" (click)="onDelete()">Delete</button>
       </div>
     }
   </div>

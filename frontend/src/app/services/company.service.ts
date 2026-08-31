@@ -14,6 +14,7 @@ export interface CompanyDto {
   note?: string | null;
   description?: string | null;
   applicationsCount?: number;
+  ContactsCount?: number;
   lastAppliedAt?: string | null;
   createdAt: string;
   updatedAt: string;

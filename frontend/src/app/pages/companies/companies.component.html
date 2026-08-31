@@ -75,6 +75,7 @@
             <th>Location</th>
             <th>Note</th>
             <th class="td-num">Applications</th>
+            <th class="td-num">Contacts</th>
             <th class="td-meta-h">Last applied</th>
             <th class="td-actions"></th>
           </tr>
@@ -104,6 +105,13 @@
               <td class="td-num">
                 @if ((c.applicationsCount ?? 0) > 0) {
                   <a [routerLink]="['/applications']" class="count-chip" title="View applications" (click)="$event.stopPropagation()">{{ c.applicationsCount }}</a>
+                } @else {
+                  <span class="count-chip zero">0</span>
+                }
+              </td>
+              <td class="td-num">
+                @if ((c.ContactsCount ?? 0) > 0) {
+                  <span class="count-chip">{{ c.ContactsCount }}</span>
                 } @else {
                   <span class="count-chip zero">0</span>
                 }

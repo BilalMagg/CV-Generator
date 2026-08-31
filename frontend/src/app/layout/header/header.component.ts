@@ -16,8 +16,8 @@ import { SheetImportDialogComponent, type ImportType } from '@app/shared/compone
 })
 export class HeaderComponent {
   appName = APP_NAME;
-  private authService = inject(AuthService);
-  private router = inject(Router);
+  authService = inject(AuthService);
+  router = inject(Router);
 
   pageName = 'Dashboard';
 
@@ -45,6 +45,8 @@ export class HeaderComponent {
     '/agents-hub/job-crawler': 'Job Crawler',
     '/agents-hub/template-agent': 'Template Agent',
     '/job-offers':             'Job Offers',
+    '/companies':              'Companies',
+    '/companies/:id':          'Company Details',
     '/settings':               'Settings',
   };
 
