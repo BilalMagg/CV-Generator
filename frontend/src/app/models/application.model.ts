@@ -126,6 +126,7 @@ export interface CreateApplicationDto {
   allowDuplicate?: boolean;
   internshipType?: string;
   priority?: ApplicationPriority;
+  appliedAt?: string;
 }
 
 export interface UpdateStatusDto {

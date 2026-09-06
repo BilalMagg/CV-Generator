@@ -85,7 +85,7 @@ public class ApplicationService : IApplicationService
             InternshipType = string.IsNullOrEmpty(internshipType) ? null : internshipType,
             Priority = priority,
             Status = initialStatus,
-            AppliedAt = initialStatus == ApplicationStatus.SAVED ? null : DateTime.UtcNow,
+            AppliedAt = initialStatus == ApplicationStatus.SAVED ? null : (dto.AppliedAt ?? DateTime.UtcNow),
             UpdatedAt = DateTime.UtcNow,
             Notes = dto.Notes
         };

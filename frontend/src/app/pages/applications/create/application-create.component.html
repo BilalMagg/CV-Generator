@@ -48,9 +48,35 @@
         <div class="section-body">
           <div class="identity-row">
             <div class="logo-chip">{{ (companyName().trim()[0] || '?') | uppercase }}</div>
-            <div class="field grow">
+            <div class="field grow company-field">
               <label>Company name <span class="req">*</span></label>
-              <input type="text" placeholder="e.g. Stripe" [(ngModel)]="companyName" name="companyName" required>
+              <input type="text" placeholder="e.g. Stripe" [ngModel]="companyName()"
+                name="companyName" required autocomplete="off"
+                (ngModelChange)="onCompanyInput($event)"
+                (focus)="onCompanyFocus()"
+                (blur)="companySuggestOpen.set(false)" />
+              @if (companySuggestOpen() && (searchingCompanies() || companyMatches().length > 0)) {
+                <div class="company-dropdown">
+                  @if (searchingCompanies() && companyMatches().length === 0) {
+                    <div class="cd-hint"><i class="ti ti-loader"></i> Searching…</div>
+                  }
+                  @for (m of companyMatches(); track m.id) {
+                    <button type="button" class="cd-row" (mousedown)="$event.preventDefault()" (click)="pickCompany(m)">
+                      <i class="ti ti-building"></i>
+                      <span class="cd-name">{{ m.name }}</span>
+                      <span class="cd-meta">{{ m.country || m.location || m.region || m.sector || '' }}</span>
+                    </button>
+                  }
+                </div>
+              }
+              @if (companyIsNew() && companyName().trim()) {
+                <label class="save-company">
+                  <input type="checkbox" [checked]="saveCompanyInfo()"
+                    (change)="saveCompanyInfo.set($any($event.target).checked)" />
+                  <span>Save this company to my directory
+                    <em>— you can complete its details later</em></span>
+                </label>
+              }
             </div>
           </div>
           <div class="two-col">
@@ -156,9 +182,46 @@
                   </span>
                   <button type="button" class="chip-x" (click)="clearPickedContact()" title="Unlink">&times;</button>
                 </div>
+              } @else if (newContactMode()) {
+                <div class="new-contact-form">
+                  <div class="two-col">
+                    <div class="field">
+                      <label>Name <span class="req">*</span></label>
+                      <input type="text" placeholder="e.g. Jane Doe" [(ngModel)]="newContactName" name="ncName">
+                    </div>
+                    <div class="field">
+                      <label>Email <span class="req">*</span></label>
+                      <input type="email" placeholder="jane@example.com" [(ngModel)]="newContactEmail" name="ncEmail">
+                    </div>
+                  </div>
+                  <div class="two-col">
+                    <div class="field">
+                      <label>Company</label>
+                      <input type="text" placeholder="Company name" [(ngModel)]="newContactCompany" name="ncCompany">
+                    </div>
+                    <div class="field">
+                      <label>Position</label>
+                      <input type="text" placeholder="e.g. Recruiter" [(ngModel)]="newContactPosition" name="ncPosition">
+                    </div>
+                  </div>
+                  @if (newContactError()) {
+                    <div class="nc-error"><i class="ti ti-alert-circle"></i> {{ newContactError() }}</div>
+                  }
+                  <div class="nc-actions">
+                    <button type="button" class="ghost-btn" (click)="closeNewContact()">Cancel</button>
+                    <button type="button" class="create-btn" (click)="saveNewContact()" [disabled]="creatingContact()">
+                      {{ creatingContact() ? 'Saving…' : 'Save contact' }}
+                    </button>
+                  </div>
+                </div>
               } @else {
-                <input type="text" placeholder="Search contacts by name, email or company…" [(ngModel)]="contactSearch"
-                  name="contactSearch" (ngModelChange)="searchContacts()">
+                <div class="contact-search-row">
+                  <input type="text" placeholder="Search contacts by name, email or company…" [(ngModel)]="contactSearch"
+                    name="contactSearch" (ngModelChange)="searchContacts()">
+                  <button type="button" class="add-contact-btn" title="Add a new contact" (click)="openNewContact()">
+                    <i class="ti ti-user-plus"></i>
+                  </button>
+                </div>
                 @if (contactResults().length > 0) {
                   <div class="contact-results">
                     @for (c of contactResults(); track c.id) {
@@ -167,31 +230,50 @@
                       </button>
                     }
                   </div>
+                } @else if (contactSearch().trim().length >= 2 && !searchingContacts()) {
+                  <div class="no-results">No contact found —
+                    <button type="button" class="link-btn" (click)="openNewContact()">add "{{ contactSearch().trim() }}"</button>
+                  </div>
                 }
-                <small>Optional — links the attempt to your contact book.</small>
+                <small>Optional — pick an existing contact or add a new one.</small>
               }
             </div>
 
-            <div class="two-col">
-              <div class="field">
-                <label>Recipient name</label>
-                <input type="text" placeholder="e.g. Jane Doe" [(ngModel)]="recipientName" name="recipientName">
+            @if (channelFields().recipientName || channelFields().recipientContact) {
+              <div class="two-col">
+                @if (channelFields().recipientName) {
+                  <div class="field">
+                    <label>Recipient name</label>
+                    <input type="text" placeholder="e.g. Jane Doe" [(ngModel)]="recipientName" name="recipientName">
+                  </div>
+                }
+                @if (channelFields().recipientContact) {
+                  <div class="field">
+                    <label>{{ channelFields().recipientContactLabel }}</label>
+                    <input type="text" [placeholder]="channelFields().recipientContactPlaceholder"
+                      [(ngModel)]="recipientContact" name="recipientContact">
+                  </div>
+                }
               </div>
+            }
+
+            @if (channelFields().subject) {
               <div class="field">
-                <label>Recipient contact</label>
-                <input type="text" placeholder="email · phone · profile URL" [(ngModel)]="recipientContact" name="recipientContact">
+                <label>Subject</label>
+                <input type="text" placeholder="Application – {{ positionTitle().trim() || 'Position title' }}" [(ngModel)]="subject" name="attemptSubject">
               </div>
-            </div>
+            }
 
-            <div class="field">
-              <label>Subject</label>
-              <input type="text" placeholder="Application – {{ positionTitle().trim() || 'Position title' }}" [(ngModel)]="subject" name="attemptSubject">
-            </div>
+            @if (channelFields().message) {
+              <div class="field">
+                <label>{{ channelFields().messageLabel }}</label>
+                <textarea rows="4" [placeholder]="channelFields().messagePlaceholder" [(ngModel)]="body" name="attemptBody"></textarea>
+              </div>
+            }
 
-            <div class="field">
-              <label>Message or notes</label>
-              <textarea rows="4" placeholder="What did you send? Paste the message here…" [(ngModel)]="body" name="attemptBody"></textarea>
-            </div>
+            @if (channel() === 'WEB_FORM') {
+              <p class="webform-hint"><i class="ti ti-world"></i> The form URL is saved so you can find it again later.</p>
+            }
           </div>
         </div>
       }
@@ -225,11 +307,21 @@
           <span class="pv-date">{{ formatPreviewDate(previewDate()) }}</span>
         </div>
       </div>
+
+      @if (stage() === 'APPLIED') {
+        <div class="apply-date-field">
+          <label for="appliedDate">First applied on</label>
+          <input id="appliedDate" type="date"
+            [ngModel]="appliedDate()" (ngModelChange)="appliedDate.set($event)" name="appliedDate">
+          <small>Backdate an application you logged late.</small>
+        </div>
+      }
+
       <p class="preview-hint">
         @if (stage() === 'SAVED') {
           Lands in the <strong>Saved</strong> column — drag it across the board when you apply.
         } @else {
-          Created as <strong>Applied</strong> with today's date@if (markSent()) {<span>, and the attempt is logged in the application's timeline</span>}.
+          Created as <strong>Applied</strong> on <strong>{{ formatPreviewDate(previewDate()) }}</strong>@if (markSent()) {<span>, and the attempt is logged in the application's timeline</span>}.
         }
       </p>
     </div>
@@ -239,7 +331,7 @@
 <!-- Sticky footer -->
 <div class="footer">
   <span class="footer-summary">
-    @if (stage() === 'APPLIED' && markSent()) { Will be marked as <strong>Applied today</strong> }
+    @if (stage() === 'APPLIED' && markSent()) { Will be marked as <strong>Applied</strong> on <strong>{{ formatPreviewDate(previewDate()) }}</strong> }
     @else { Will be saved as <strong>{{ STATUS_LABELS[previewStatus()] }}</strong> }
   </span>
   <div class="footer-btns">

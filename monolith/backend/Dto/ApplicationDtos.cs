@@ -40,7 +40,8 @@ public record CreateApplicationDto(
     string Status = "APPLIED",
     bool AllowDuplicate = false,
     string? InternshipType = null,
-    string Priority = "MEDIUM"
+    string Priority = "MEDIUM",
+    DateTime? AppliedAt = null
 );
 
 public record UpdateStatusDto(
