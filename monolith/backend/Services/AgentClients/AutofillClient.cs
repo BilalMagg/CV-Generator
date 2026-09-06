@@ -15,7 +15,8 @@ public class AutofillClient : IAutofillClient
     private readonly HttpClient _client;
     private static readonly JsonSerializerOptions SnakeCaseOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNameCaseInsensitive = true
     };
 
     public AutofillClient(HttpClient client)

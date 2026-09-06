@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CV_Generator.Dto;
 
 namespace CV_Generator.Services.AgentClients;
@@ -10,6 +11,11 @@ public interface ICategorizationClient
 public class CategorizationClient : ICategorizationClient
 {
     private readonly HttpClient _client;
+
+    private static readonly JsonSerializerOptions CaseInsensitiveOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     public CategorizationClient(HttpClient client)
     {
@@ -29,7 +35,8 @@ public class CategorizationClient : ICategorizationClient
             var response = await _client.PostAsJsonAsync("", payload, cancellationToken: cancellationToken);
             if (!response.IsSuccessStatusCode)
                 return new List<Guid>();
-            var body = await response.Content.ReadFromJsonAsync<CategorizeResponseDto>(cancellationToken: cancellationToken);
+            var body = await response.Content.ReadFromJsonAsync<CategorizeResponseDto>(
+                CaseInsensitiveOptions, cancellationToken: cancellationToken);
             if (body?.NodeIds == null)
                 return new List<Guid>();
             return body.NodeIds

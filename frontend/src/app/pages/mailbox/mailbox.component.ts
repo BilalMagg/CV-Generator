@@ -4,6 +4,7 @@ import { RefreshButtonComponent } from '@app/shared/components/refresh-button/re
 import { CronBuilderComponent } from '@app/shared/components/cron-builder/cron-builder.component';
 import { AutoFillDialogComponent } from '@app/shared/components/auto-fill-dialog/auto-fill-dialog.component';
 import { AutofillField } from '@app/services/autofill.service';
+import { DirectAiService } from '@app/services/direct-ai.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -65,6 +66,7 @@ export class MailboxComponent implements OnInit {
   private docApi = inject(DocumentsService);
   readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
+  private readonly directAi = inject(DirectAiService);
 
   view = signal<MailboxView>((localStorage.getItem('mailbox-view') as MailboxView) || 'compose');
 
@@ -108,6 +110,7 @@ export class MailboxComponent implements OnInit {
   composeSubject = signal('');
   composeBody = signal('');
   composeSending = signal(false);
+  composeAi = signal(false);
 
   // Attempt logging: candidates are applications linked to the chosen recipients.
   attemptCandidates = signal<ApplicationResponseDto[]>([]);
@@ -618,6 +621,36 @@ export class MailboxComponent implements OnInit {
       const res = await this.service.getSchedules();
       if (res.success && res.data) this.schedules.set(res.data);
     } catch {} finally { this.schedulesLoading.set(false); this.refreshing.set(false); }
+  }
+
+  async generateDraft() {
+    const recips = this.composeRecipients();
+    const company = recips[0]?.company || '';
+    const name = recips.length === 1 ? recips[0].name : '';
+    if (!company) {
+      this.toast.error('Select a contact to draft to (so we know the company)');
+      return;
+    }
+    this.composeAi.set(true);
+    try {
+      const res = await this.directAi.generateMessage({
+        channel: 'email',
+        companyName: company,
+        recipientName: name,
+        contactType: 'recruiter',
+        considerations: '',
+        language: 'English',
+      });
+      const data = res?.data;
+      if (!data) throw new Error('empty');
+      if (data.subject) this.composeSubject.set(data.subject);
+      if (data.message) this.composeBody.set(data.message);
+      this.toast.success('AI draft ready — review before sending');
+    } catch {
+      this.toast.error('Could not generate a draft. Check the AI services are running.');
+    } finally {
+      this.composeAi.set(false);
+    }
   }
 
   async sendEmail() {

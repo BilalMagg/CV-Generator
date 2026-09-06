@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Any, Optional
 
-from shared.llm import get_llm
+from shared.llm import get_llm, ainvoke_with_fallback
 from agents.autofill.prompt import get_autofill_messages
 from agents.autofill.schemas import AutofillRequest, AutofillResponse, FieldDef
 
@@ -118,9 +118,13 @@ def _coerce(field: FieldDef, val: Any) -> Any:
 
 async def autofill(req: AutofillRequest) -> AutofillResponse:
     messages = get_autofill_messages(req.text, req.entity_type, req.fields)
-    llm = get_llm(preferred_provider=req.provider, model=req.model)
-    response = await llm.ainvoke(messages)
-    content = getattr(response, "content", str(response)) or ""
+    _, content = await ainvoke_with_fallback(
+        messages,
+        preferred_provider=req.provider,
+        model=req.model,
+        temperature=0.2,
+        max_tokens=1024,
+    )
     data = _parse_json(content)
 
     values: dict[str, Any] = {}

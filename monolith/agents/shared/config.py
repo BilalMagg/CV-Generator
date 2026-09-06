@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     GOOGLE_API_KEY: str | None = None
     MISTRAL_API_KEY: str | None = None
+    # OpenRouter uses OpenAI-compatible ChatOpenAI. If OPENROUTER_API_KEY is unset,
+    # it falls back to OPENAI_API_KEY (the user keeps their OpenRouter key there).
+    OPENROUTER_API_KEY: str | None = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OMNIROUTE_BASE_URL: str = "http://localhost:20128/v1"
     OMNIROUTE_API_KEY: str | None = None
     OMNIROUTE_MODEL: str = "auto/best-coding"
@@ -21,6 +25,7 @@ class Settings(BaseSettings):
     # Per-provider default chat models (final fallback behind the live catalog).
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     OPENAI_MODEL: str = "gpt-4o"
+    OPENROUTER_MODEL: str = "openai/gpt-4o-mini"
     GOOGLE_MODEL: str = "gemini-2.0-flash"
     MISTRAL_MODEL: str = "mistral-large-latest"
 

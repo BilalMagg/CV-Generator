@@ -29,16 +29,22 @@ logger = logging.getLogger(__name__)
 
 PROVIDER_ENV_MAP = {
     "omniroute": "OMNIROUTE_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
     "groq": "GROQ_API_KEY",
     "openai": "OPENAI_API_KEY",
     "google": "GOOGLE_API_KEY",
     "mistral": "MISTRAL_API_KEY",
 }
 
+# OpenRouter keeps its key in OPENROUTER_API_KEY; if that is unset it falls back
+# to OPENAI_API_KEY (the user stores their OpenRouter key under the openai slot).
+_OPENROUTER_KEY_FALLBACK = ("OPENROUTER_API_KEY", "OPENAI_API_KEY")
+
 # Per-provider default model used as the final fallback when the catalog is
 # unavailable. Kept as a safety net; the live catalog is authoritative.
 DEFAULT_MODEL_MAP: dict[str, str] = {
     "omniroute": settings.OMNIROUTE_MODEL,
+    "openrouter": settings.OPENROUTER_MODEL,
     "groq": settings.GROQ_MODEL,
     "openai": settings.OPENAI_MODEL,
     "google": settings.GOOGLE_MODEL,
@@ -48,6 +54,7 @@ DEFAULT_MODEL_MAP: dict[str, str] = {
 # Provider display labels for the picker.
 PROVIDER_LABELS = {
     "omniroute": "OmniRoute",
+    "openrouter": "OpenRouter",
     "groq": "Groq",
     "openai": "OpenAI",
     "google": "Google Gemini",
@@ -62,12 +69,29 @@ _OPENAI_ENDPOINT = "https://api.openai.com/v1/models"
 _MISTRAL_ENDPOINT = "https://api.mistral.ai/v1/models"
 
 
+def _provider_key(provider: str) -> str | None:
+    """Return which env var actually backs a provider, honoring the OpenRouter
+    OPENROUTER->OPENAI key fallback."""
+    envs = PROVIDER_ENV_MAP[provider]
+    if provider == "openrouter":
+        for name in _OPENROUTER_KEY_FALLBACK:
+            if os.getenv(name):
+                return name
+        return None
+    return envs
+
+
+def _provider_key_value(provider: str) -> str | None:
+    name = _provider_key(provider)
+    return os.getenv(name) if name else None
+
+
 def list_providers() -> dict[str, bool]:
-    return {name: bool(os.getenv(env)) for name, env in PROVIDER_ENV_MAP.items()}
+    return {name: _provider_key_value(name) is not None for name in PROVIDER_ENV_MAP}
 
 
 def _provider_present(provider: str) -> bool:
-    return bool(os.getenv(PROVIDER_ENV_MAP[provider]))
+    return _provider_key_value(provider) is not None
 
 
 def _list_models_sync(provider: str) -> list[str]:
@@ -85,6 +109,14 @@ def _list_models_sync(provider: str) -> list[str]:
             )
             resp.raise_for_status()
             return sorted(m["id"] for m in resp.json().get("data", []))
+        elif provider == "openrouter":
+            key = _provider_key_value("openrouter")
+            base = settings.OPENROUTER_BASE_URL.rstrip("/")
+            headers = {"Authorization": f"Bearer {key}"} if key else None
+            resp = httpx.get(f"{base}/models", headers=headers, timeout=10)
+            resp.raise_for_status()
+            # OpenRouter exposes `/api/v1/models` as `{data: [{id, ...}]}`.
+            return sorted(m.get("id", "") for m in resp.json().get("data", []) if m.get("id"))
         elif provider == "google":
             from google import genai as google_genai
             client = google_genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -170,7 +202,18 @@ _PREFERRED_TOOL_MODELS: dict[str, list[str]] = {
         "llama-4-maverick",
         "llama-3.1-8b-instant",
     ],
+    "openrouter": [
+        "openai/gpt-4o",
+        "openai/gpt-4o-mini",
+        "anthropic/claude-3.5-sonnet",
+        "anthropic/claude-3.7-sonnet",
+        "meta-llama/llama-3.3-70b",
+    ],
 }
+
+# Order in which providers are considered when none is explicitly preferred.
+# OpenRouter is first so direct AI calls default to it when configured.
+_PROVIDER_PRIORITY: list[str] = ["openrouter", "groq", "openai", "google", "mistral", "omniroute"]
 
 
 def _is_chat_model(model: str) -> bool:
@@ -193,13 +236,19 @@ def _resolve_default_model(provider: str) -> str:
 
 
 def _pick_provider(preferred: Optional[str] = None) -> str:
-    available = [p for p, ok in list_providers().items() if ok]
+    by_name = list_providers()
+    available = [p for p, ok in by_name.items() if ok]
     if preferred:
         if preferred in available:
             return preferred
         logger.warning("Preferred provider '%s' not available, falling back.", preferred)
     if not available:
         raise RuntimeError("No LLM API keys configured.")
+    # Honor the explicit priority order (OpenRouter first) so direct AI calls
+    # default to OpenRouter when any key is present.
+    for name in _PROVIDER_PRIORITY:
+        if name in available:
+            return name
     return available[0]
 
 
@@ -226,6 +275,15 @@ def get_llm(
             model=resolved_model,
             temperature=0.7,
             timeout=60,
+        )
+    elif provider == "openrouter":
+        return ChatOpenAI(
+            base_url=settings.OPENROUTER_BASE_URL,
+            api_key=_provider_key_value("openrouter"),
+            model=resolved_model,
+            temperature=0.7,
+            timeout=120,
+            default_headers={"HTTP-Referer": settings.SERVICE_NAME, "X-Title": "Propel"},
         )
     elif provider == "groq":
         return ChatGroq(model=resolved_model, temperature=0.7)

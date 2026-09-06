@@ -11,6 +11,7 @@ from agents.llm.router import router as llm_router
 from agents.pdf_thumbnails.router import router as pdf_thumbnails_router
 from agents.categorize.router import router as categorize_router
 from agents.autofill.router import router as autofill_router
+from agents.direct.router import router as direct_router
 
 all_routers = [
     job_extractor_router,
@@ -26,4 +27,5 @@ all_routers = [
     pdf_thumbnails_router,
     categorize_router,
     autofill_router,
+    direct_router,
 ]

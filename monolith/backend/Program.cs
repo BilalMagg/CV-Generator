@@ -114,6 +114,11 @@ builder.Services.AddHttpClient("agents", c =>
 
     builder.Services.AddHttpClient<ICategorizationClient, CategorizationClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/categorize"));
     builder.Services.AddHttpClient<IAutofillClient, AutofillClient>(c => c.BaseAddress = new Uri($"{agentBase}/api/agents/autofill/"));
+    builder.Services.AddHttpClient<IDirectAiClient, DirectAiClient>(c =>
+    {
+        c.BaseAddress = new Uri($"{agentBase}/api/direct/");
+        c.Timeout = TimeSpan.FromMinutes(3);
+    });
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 // Background services

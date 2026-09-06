@@ -103,11 +103,25 @@
 .compose-section { margin-bottom: 16px; }
 
 .compose-label {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-2);
   margin-bottom: 6px;
+}
+
+.compose-ai-btn {
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: .6;
+    cursor: default;
+  }
 }
 
 .compose-input, .compose-textarea {
