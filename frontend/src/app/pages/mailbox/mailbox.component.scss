@@ -141,6 +141,22 @@
 
 .compose-textarea { resize: vertical; min-height: 140px; line-height: 1.5; }
 
+.draft-hint-section {
+  margin-top: -6px;
+
+  .compose-hint-input {
+    resize: vertical;
+    min-height: 46px;
+    line-height: 1.5;
+  }
+
+  .hint-muted {
+    font-weight: 400;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+}
+
 .compose-contact-list {
   margin-top: 6px;
   max-height: 140px;
@@ -769,6 +785,14 @@
 .contacts-actions { display: flex; gap: 6px; align-items: center; }
 .active-filter { background: var(--bg-2) !important; color: oklch(0.5 0.12 80) !important; border-color: oklch(0.8 0.08 80) !important; }
 .contacts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.load-more-btn {
+  display: block; width: 100%; margin-top: 14px;
+  padding: 9px; border: 1px dashed var(--border); border-radius: 8px;
+  background: transparent; color: var(--text-2); font-size: 12.5px; font-weight: 500;
+  cursor: pointer; transition: background 0.12s, border-color 0.12s;
+  &:hover:not(:disabled) { background: var(--bg-2); border-color: var(--text-4); }
+  &:disabled { opacity: .55; cursor: default; }
+}
 .contact-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; transition: border-color 0.12s, box-shadow 0.12s; cursor: pointer; position: relative; &:hover { border-color: var(--text-4); box-shadow: 0 2px 8px oklch(0.5 0.01 80 / 0.06); } }
 .contact-card-header { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
 .fav-btn { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; color: var(--text-4); transition: color 0.1s, background 0.1s; &:hover { background: var(--bg-2); color: oklch(0.5 0.12 80); } &.fav-active { color: oklch(0.55 0.16 75); } }
@@ -816,8 +840,6 @@
   transition: background 0.1s;
   &:hover { background: var(--bg-2); }
 }
-
-.file-label { cursor: pointer; }
 
 .mb-btn-sm {
   padding: 4px 10px;
@@ -1050,6 +1072,14 @@
 .contact-modal-name { font-size: 13px; font-weight: 500; color: var(--text); }
 .contact-modal-email { font-size: 12px; color: var(--text-3); }
 .contact-modal-empty { padding: 24px; text-align: center; color: var(--text-3); font-size: 13px; }
+.modal-load-more {
+  display: block; width: 100%;
+  padding: 8px; border: none; border-top: 1px solid var(--border);
+  background: transparent; color: var(--text-2); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: background 0.12s;
+  &:hover:not(:disabled) { background: var(--bg-2); }
+  &:disabled { opacity: .55; cursor: default; }
+}
 .contact-modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
 
 /* Reusable schedule templates tab */

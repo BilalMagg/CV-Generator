@@ -82,6 +82,12 @@ export class MailboxComponent implements OnInit {
   contactsTotal = signal(0);
   contactSearch = signal('');
   showFavoritesOnly = signal(false);
+  contactsPage = signal(1);
+  contactsHasMore = signal(false);
+  private readonly CONTACTS_PAGE_SIZE = 50;
+  private contactSearchTimer: ReturnType<typeof setTimeout> | null = null;
+  private modalContactTimer: ReturnType<typeof setTimeout> | null = null;
+  private composeContactTimer: ReturnType<typeof setTimeout> | null = null;
   contactDetailView = signal(false);
   selectedContactDetail = signal<ContactDto | null>(null);
   contactHistory = signal<EmailMessageDto[]>([]);
@@ -106,9 +112,11 @@ export class MailboxComponent implements OnInit {
   schedulesLoading = signal(false);
 
   composeRecipientSearch = signal('');
+  composeSuggestions = signal<ContactDto[]>([]);
   composeRecipients = signal<ContactDto[]>([]);
   composeSubject = signal('');
   composeBody = signal('');
+  draftHint = signal('');
   composeSending = signal(false);
   composeAi = signal(false);
 
@@ -430,27 +438,43 @@ export class MailboxComponent implements OnInit {
     [...this.contacts()].sort((a, b) => a.name.localeCompare(b.name))
   );
 
-  filteredContacts = computed(() => {
-    const q = this.composeRecipientSearch().toLowerCase();
-    let list = this.contacts();
-    if (this.showFavoritesOnly()) list = list.filter(c => c.isFavorite);
-    if (!q) return list;
-    return list.filter(c =>
-      c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)
-    );
-  });
+  /** Compose autocomplete — results are fetched server-side (debounced) since the contact book can be large. */
+  filteredContacts = computed(() => this.composeSuggestions());
 
   modalFilteredContacts = computed(() => {
-    const q = this.modalContactSearch().toLowerCase();
     let list = this.sortedContacts();
     if (this.showFavoritesOnly()) list = list.filter(c => c.isFavorite);
-    if (q) {
-      list = list.filter(c =>
-        c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)
-      );
-    }
     return list;
   });
+
+  onComposeSearch(v: string) {
+    this.composeRecipientSearch.set(v);
+    const term = v.trim();
+    if (this.composeContactTimer) clearTimeout(this.composeContactTimer);
+    if (term.length < 2) { this.composeSuggestions.set([]); return; }
+    this.composeContactTimer = setTimeout(async () => {
+      try {
+        const res = await this.contactApi.getContacts({ search: term, pageSize: 8 });
+        this.composeSuggestions.set(res.success && res.data ? res.data.items : []);
+      } catch { this.composeSuggestions.set([]); }
+    }, 250);
+  }
+
+  onContactSearch(v: string) {
+    this.contactSearch.set(v);
+    if (this.contactSearchTimer) clearTimeout(this.contactSearchTimer);
+    this.contactSearchTimer = setTimeout(() => this.loadContacts(true), 300);
+  }
+
+  onModalContactSearch(v: string) {
+    this.modalContactSearch.set(v);
+    if (this.modalContactTimer) clearTimeout(this.modalContactTimer);
+    this.modalContactTimer = setTimeout(() => this.loadContacts(true, v.trim()), 300);
+  }
+
+  loadMoreContacts() { this.loadContacts(false); }
+
+  loadMoreModalContacts() { this.loadContacts(false, this.modalContactSearch()); }
 
   async ngOnInit() {
     this.applyQueryParams();
@@ -505,16 +529,24 @@ export class MailboxComponent implements OnInit {
     } catch {}
   }
 
-  async loadContacts() {
+  async loadContacts(reset = true, search?: string) {
+    const term = search ?? this.contactSearch();
+    const page = reset ? 1 : this.contactsPage() + 1;
     this.contactsLoading.set(true);
     try {
       const res = await this.contactApi.getContacts({
-        search: this.contactSearch(),
+        search: term || undefined,
         favorite: this.showFavoritesOnly() || undefined,
+        page,
+        pageSize: this.CONTACTS_PAGE_SIZE,
       });
       if (res.success && res.data) {
-        this.contacts.set(res.data.items);
+        const items = res.data.items;
+        const merged = reset ? items : [...this.contacts(), ...(items ?? [])];
+        this.contacts.set(merged);
         this.contactsTotal.set(res.data.total);
+        this.contactsPage.set(page);
+        this.contactsHasMore.set(merged.length < res.data.total);
       }
     } catch {} finally { this.contactsLoading.set(false); this.refreshing.set(false); }
   }
@@ -650,7 +682,7 @@ export class MailboxComponent implements OnInit {
         companyName: company,
         recipientName: name,
         contactType: 'recruiter',
-        considerations: '',
+        considerations: this.draftHint().trim(),
         language: 'English',
       });
       const data = res?.data;
@@ -817,14 +849,6 @@ export class MailboxComponent implements OnInit {
     this.loadContacts();
   }
 
-  async importCsv(fileEvent: Event) {
-    const file = (fileEvent.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    await this.contactApi.importCsv(text);
-    this.loadContacts();
-  }
-
   async importFromOffers() {
     await this.contactApi.importFromOffers();
     this.loadContacts();
@@ -978,10 +1002,13 @@ export class MailboxComponent implements OnInit {
     this.modalSelectedIds.set(new Set(current.map(c => c.id)));
     this.modalContactSearch.set('');
     this.showContactModal.set(true);
+    this.loadContacts(true, '');
   }
 
   closeContactModal() {
     this.showContactModal.set(false);
+    // The modal's server-side search filled `contacts()`; reset to the list's own filters.
+    this.loadContacts(true);
   }
 
   toggleModalContact(c: ContactDto) {

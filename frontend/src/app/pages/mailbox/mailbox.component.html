@@ -52,7 +52,7 @@
           <div class="mb-card">
             <div class="compose-section">
               <label class="compose-label">Recipients</label>
-              <input class="compose-input" placeholder="Search contacts…" [ngModel]="composeRecipientSearch()" (ngModelChange)="composeRecipientSearch.set($event)" />
+              <input class="compose-input" placeholder="Search contacts…" [ngModel]="composeRecipientSearch()" (ngModelChange)="onComposeSearch($event)" />
               @if (filteredContacts().length) {
                 <div class="compose-contact-list">
                   @for (c of filteredContacts(); track c.id) {
@@ -87,6 +87,10 @@
             <div class="compose-section">
               <label class="compose-label">Message</label>
               <textarea class="compose-textarea" rows="10" placeholder="Write your email…" [ngModel]="composeBody()" (ngModelChange)="composeBody.set($event)"></textarea>
+            </div>
+            <div class="compose-section draft-hint-section">
+              <label class="compose-label">AI hint <span class="hint-muted">optional — guides the draft (it already fills your name &amp; background from your profile)</span></label>
+              <textarea class="compose-input compose-hint-input" rows="2" placeholder="e.g. Mention my PFE IoT internship, keep it short and natural…" [ngModel]="draftHint()" (ngModelChange)="draftHint.set($event)"></textarea>
             </div>
             @if (attemptCandidates().length > 0) {
               <div class="attempt-log-bar">
@@ -282,7 +286,7 @@
               <div class="detail-body-preview">
                 <div class="detail-label">Message</div>
                 <div class="detail-message">{{ email.body }}</div>
-              </div>
+</div>
             </div>
           </div>
         }
@@ -363,7 +367,7 @@
       } @else {
         <div class="contacts-view">
           <div class="contacts-toolbar">
-            <input class="contacts-search" placeholder="Search by name, email, company…" [ngModel]="contactSearch()" (ngModelChange)="contactSearch.set($event); loadContacts()" />
+            <input class="contacts-search" placeholder="Search by name, email, company…" [ngModel]="contactSearch()" (ngModelChange)="onContactSearch($event)" />
             <div class="contacts-actions">
               <button class="mb-btn-secondary" [class.active-filter]="showFavoritesOnly()" (click)="showFavoritesOnly.set(!showFavoritesOnly()); loadContacts()">
                 <svg viewBox="0 0 14 14" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.5"><path d="M7 1l1.5 4.6h5l-4 3 1.5 4.4L7 10.2l-4 2.8L4.5 8.6l-4-3h5L7 1z"/></svg>
@@ -371,10 +375,6 @@
               </button>
               <button class="mb-btn-secondary" (click)="startNewContact()">Add Contact</button>
               <button class="mb-btn-secondary" (click)="importFromOffers()">Import From Offers</button>
-              <label class="mb-btn-secondary file-label">
-                Import CSV
-                <input type="file" accept=".csv" (change)="importCsv($event)" hidden />
-              </label>
               <button class="mb-btn-secondary" (click)="sheetImportOpen.set(true)">Import Sheet</button>
             </div>
           </div>
@@ -411,7 +411,7 @@
             </div>
           }
 
-          @if (contactsLoading()) {
+          @if (contactsLoading() && contacts().length === 0) {
             <div class="mb-loading">Loading contacts…</div>
           } @else if (contacts().length === 0) {
             <div class="empty-state">
@@ -439,6 +439,11 @@
                 </div>
               }
             </div>
+            @if (contactsHasMore() || contactsLoading()) {
+              <button class="load-more-btn" (click)="loadMoreContacts()" [disabled]="contactsLoading()">
+                {{ contactsLoading() ? 'Loading…' : `Show more (${contacts().length} of ${contactsTotal()})` }}
+              </button>
+            }
           }
         </div>
       }
@@ -748,8 +753,8 @@
         </div>
         <div class="contact-modal-body">
           <div class="contact-modal-toolbar">
-            <input class="contact-modal-search" placeholder="Search contacts…" [ngModel]="modalContactSearch()" (ngModelChange)="modalContactSearch.set($event)" />
-            <button class="mb-btn-sm modal-fav-toggle" [class.active]="showFavoritesOnly()" (click)="showFavoritesOnly.set(!showFavoritesOnly())">
+            <input class="contact-modal-search" placeholder="Search contacts…" [ngModel]="modalContactSearch()" (ngModelChange)="onModalContactSearch($event)" />
+            <button class="mb-btn-sm modal-fav-toggle" [class.active]="showFavoritesOnly()" (click)="showFavoritesOnly.set(!showFavoritesOnly()); loadContacts(true, modalContactSearch())">
               <svg viewBox="0 0 14 14" fill="none" width="11" height="11" stroke="currentColor" stroke-width="1.5"><path d="M7 1l1.5 4.6h5l-4 3 1.5 4.4L7 10.2l-4 2.8L4.5 8.6l-4-3h5L7 1z"/></svg>
             </button>
           </div>
@@ -768,6 +773,11 @@
             }
             @if (modalFilteredContacts().length === 0) {
               <div class="contact-modal-empty">No contacts found.</div>
+            }
+            @if (contactsHasMore() || contactsLoading()) {
+              <button class="modal-load-more" (click)="loadMoreModalContacts()" [disabled]="contactsLoading()">
+                {{ contactsLoading() ? 'Loading…' : `Show more (${contacts().length} of ${contactsTotal()})` }}
+              </button>
             }
           </div>
         </div>
