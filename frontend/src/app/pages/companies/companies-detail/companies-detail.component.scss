@@ -49,17 +49,11 @@
 
   &:hover { background: oklch(0.92 0.04 25); }
 }
-.head-actions .btn-ghost,
-.head-actions .btn-primary {
+.head-actions .btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   text-decoration: none;
-}
-
-.head-actions .btn-ghost.accent {
-  color: oklch(0.55 0.18 250);
-  border-color: color-mix(in srgb, oklch(0.55 0.18 250) 40%, var(--border));
 }
 
 // ── Company header card ──────────────────────────────────────────────────────

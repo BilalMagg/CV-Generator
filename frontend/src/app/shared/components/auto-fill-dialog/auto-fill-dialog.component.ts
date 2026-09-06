@@ -32,10 +32,6 @@ export class AutoFillDialogComponent {
   /** Emits the extracted field->value map when the user confirms. */
   filled = output<Record<string, any>>();
 
-  fieldLabel(name: string): string {
-    return this.fields().find(f => f.name === name)?.label || name;
-  }
-
   openModal(): void {
     this.resetState();
   }
@@ -75,22 +71,19 @@ export class AutoFillDialogComponent {
       if (Object.keys(populated).length === 0) {
         this.toast.error('Could not extract any fields. Try giving a more detailed description.');
         this.result.set(null);
-      } else {
-        this.result.set(populated);
+        return;
       }
+      // Auto-apply: emit the filled values straight into the form and close.
+      this.filled.emit(populated);
+      this.result.set(populated);
+      this.open.set(false);
+      this.toast.success(`Auto-filled ${Object.keys(populated).length} field(s) — review before saving`);
     } catch {
       this.toast.error('Auto-fill failed. Please try again in a moment.');
       this.error.set('The auto-fill service could not extract the details. Check that the AI agents are running, then try again.');
     } finally {
       this.loading.set(false);
     }
-  }
-
-  apply(): void {
-    const values = this.result();
-    if (!values) return;
-    this.filled.emit(values);
-    this.open.set(false);
   }
 
   close(): void {

@@ -9,13 +9,13 @@
     @if (company(); as c) {
 <div class="head-actions">
         <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
-        <button class="btn-ghost" (click)="generateDesc()">Generate description</button>
-        <button class="btn-ghost" (click)="openEdit()">
+        <button class="btn btn-secondary" (click)="generateDesc()">Generate description</button>
+        <button class="btn btn-secondary" (click)="openEdit()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
           Edit
         </button>
-        <button class="btn-ghost" (click)="onDelete()">Delete</button>
-        <a class="btn-primary" [routerLink]="['/applications/new']" [queryParams]="{ companyName: c.name }">
+        <button class="btn btn-secondary" (click)="onDelete()">Delete</button>
+        <a class="btn btn-secondary" [routerLink]="['/applications/new']" [queryParams]="{ companyName: c.name }">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add application
         </a>
@@ -112,7 +112,7 @@
           @if (applications().length === 0) {
             <div class="panel empty-panel">
               <p>No applications at this company yet.</p>
-              <a class="btn-primary sm" [routerLink]="['/applications/new']" [queryParams]="{ companyName: c.name }">Add application</a>
+              <a class="btn btn-primary btn-sm" [routerLink]="['/applications/new']" [queryParams]="{ companyName: c.name }">Add application</a>
             </div>
           } @else {
             <div class="panel app-list">
@@ -165,7 +165,7 @@
           @if (contacts().length === 0) {
             <div class="panel empty-panel">
               <p>No contacts linked to this company.</p>
-              <a class="btn-primary sm" [routerLink]="['/mailbox']" [queryParams]="{ tab: 'contacts', newContact: 1, company: c.name }">Add contact</a>
+              <a class="btn btn-primary btn-sm" [routerLink]="['/mailbox']" [queryParams]="{ tab: 'contacts', newContact: 1, company: c.name }">Add contact</a>
             </div>
           } @else {
             <div class="panel contact-list">

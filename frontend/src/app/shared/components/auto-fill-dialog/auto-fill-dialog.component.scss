@@ -95,42 +95,10 @@
   font-size: 12px;
 }
 
-.af-result {
-  border: 1px solid var(--border, #e1e4ea);
-  border-radius: 10px;
-  padding: 12px 14px;
-  background: var(--bg, #fafbfc);
-
-  h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text-2, #4b4b4b); }
-}
-
-.af-result-list {
-  display: grid;
-  gap: 6px;
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-.af-result-row {
-  display: flex;
-  gap: 10px;
-  font-size: 12.5px;
-
-  .af-fkey {
-    flex: 0 0 38%;
-    color: var(--text-3, #6b6b6b);
-    text-transform: capitalize;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .af-fval {
-    flex: 1;
-    color: var(--text, #1b1b1b);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.af-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-3, #8a8a8a);
 }
 
 .af-modal-foot {

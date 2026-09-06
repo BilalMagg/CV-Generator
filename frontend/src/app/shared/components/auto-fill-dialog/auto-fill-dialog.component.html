@@ -25,23 +25,11 @@
       </div>
 
       <div class="af-error" *ngIf="error()">{{ error() }}</div>
-
-      <div class="af-result" *ngIf="result() as values">
-        <h4>Extracted details</h4>
-        <div class="af-result-list">
-          <div class="af-result-row" *ngFor="let v of values | keyvalue">
-            <span class="af-fkey">{{ fieldLabel(v.key) }}</span>
-            <span class="af-fval">{{ v.value }}</span>
-          </div>
-        </div>
-      </div>
+      <p class="af-hint" *ngIf="!error() && !loading()">Extracted fields are applied to the form immediately — you can then edit them or run auto-fill again.</p>
     </div>
 
     <div class="af-modal-foot">
-      <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
-      <button type="button" class="btn btn-primary" [disabled]="!result()" (click)="apply()">
-        Apply to form
-      </button>
+      <button type="button" class="btn btn-ghost" (click)="close()">Close</button>
     </div>
   </div>
 </div>
