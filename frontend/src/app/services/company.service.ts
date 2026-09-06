@@ -11,6 +11,11 @@ export interface CompanyDto {
   location?: string | null;
   country?: string | null;
   locationUrl?: string | null;
+  region?: string | null;
+  sector?: string | null;
+  foundedYear?: number | null;
+  linkedinUrl?: string | null;
+  size?: string | null;
   note?: string | null;
   description?: string | null;
   applicationsCount?: number;
@@ -26,6 +31,11 @@ export interface CreateCompanyDto {
   location?: string;
   country?: string;
   locationUrl?: string;
+  region?: string;
+  sector?: string;
+  foundedYear?: number;
+  linkedinUrl?: string;
+  size?: string;
   note?: string;
   description?: string;
 }
@@ -36,6 +46,11 @@ export interface UpdateCompanyDto {
   location?: string;
   country?: string;
   locationUrl?: string;
+  region?: string;
+  sector?: string;
+  foundedYear?: number;
+  linkedinUrl?: string;
+  size?: string;
   note?: string;
   description?: string;
 }

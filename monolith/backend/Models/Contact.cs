@@ -9,6 +9,9 @@ public class Contact
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
+    public string? Mobile { get; set; }
+    public string? Fax { get; set; }
+    public string? Address { get; set; }
     public string? Company { get; set; }
     public string? Position { get; set; }
     public string? Notes { get; set; }

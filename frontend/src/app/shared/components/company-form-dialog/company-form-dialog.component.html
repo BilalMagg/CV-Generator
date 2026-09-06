@@ -6,7 +6,7 @@
         <button class="icon-btn" (click)="close()">✕</button>
       </div>
       <div class="modal-afbar">
-        <button type="button" class="btn-ghost af-btn" (click)="openAutofill()">
+        <button type="button" class="btn btn-primary" (click)="openAutofill()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16M6 16l2-6m0 0l4-6 4 6m-8 0h8m-2 6l2-6"/></svg>
           Auto-fill from text
         </button>
@@ -44,6 +44,30 @@
           <label>Map link</label>
           <input type="url" [(ngModel)]="formLocationUrl" placeholder="https://maps.google.com/…" name="coLocUrl">
         </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Region</label>
+            <input type="text" [(ngModel)]="formRegion" placeholder="e.g. Casablanca-Settat" name="coRegion">
+          </div>
+          <div class="form-group">
+            <label>Industry / Sector</label>
+            <input type="text" [(ngModel)]="formSector" placeholder="e.g. IT services" name="coSector">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Founded year</label>
+            <input type="number" min="1800" max="2100" [(ngModel)]="formFoundedYear" placeholder="e.g. 2023" name="coFounded">
+          </div>
+          <div class="form-group">
+            <label>Employee size</label>
+            <input type="text" [(ngModel)]="formSize" placeholder="e.g. 10-50 employees" name="coSize">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>LinkedIn</label>
+          <input type="url" [(ngModel)]="formLinkedinUrl" placeholder="https://www.linkedin.com/company/…" name="coLinkedin">
+        </div>
         <div class="form-group">
           <label>Note</label>
           <textarea rows="3" [(ngModel)]="formNote" placeholder="Anything worth remembering about this company…" name="coNote"></textarea>
@@ -54,8 +78,8 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button class="btn-ghost" (click)="close()">Cancel</button>
-        <button class="btn-primary" [disabled]="saving()" (click)="save()">
+        <button class="btn btn-secondary" (click)="close()">Cancel</button>
+        <button class="btn btn-primary" [disabled]="saving()" (click)="save()">
           {{ saving() ? 'Saving…' : (editing() ? 'Save changes' : 'Add company') }}
         </button>
       </div>

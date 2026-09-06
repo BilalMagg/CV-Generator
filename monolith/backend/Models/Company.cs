@@ -28,6 +28,20 @@ public class Company
     [MaxLength(500)]
     public string? LocationUrl { get; set; }
 
+    [MaxLength(200)]
+    public string? Region { get; set; }
+
+    [MaxLength(200)]
+    public string? Sector { get; set; }
+
+    public int? FoundedYear { get; set; }
+
+    [MaxLength(500)]
+    public string? LinkedInUrl { get; set; }
+
+    [MaxLength(100)]
+    public string? Size { get; set; }
+
     public string? Note { get; set; }
 
     public string? Description { get; set; }

@@ -33,6 +33,11 @@ export class CompanyFormDialogComponent implements OnChanges {
   formLocation = signal('');
   formCountry = signal('Morocco');
   formLocationUrl = signal('');
+  formRegion = signal('');
+  formSector = signal('');
+  formFoundedYear = signal('');
+  formLinkedinUrl = signal('');
+  formSize = signal('');
   formNote = signal('');
   formDescription = signal('');
 
@@ -49,6 +54,11 @@ export class CompanyFormDialogComponent implements OnChanges {
     { name: 'formLocation', label: 'City', type: 'text' },
     { name: 'formCountry', label: 'Country', type: 'text' },
     { name: 'formLocationUrl', label: 'Location URL', type: 'url' },
+    { name: 'formRegion', label: 'Region', type: 'text' },
+    { name: 'formSector', label: 'Industry / Sector', type: 'text' },
+    { name: 'formFoundedYear', label: 'Founded year', type: 'number' },
+    { name: 'formLinkedinUrl', label: 'LinkedIn URL', type: 'url' },
+    { name: 'formSize', label: 'Employee size', type: 'text' },
     { name: 'formNote', label: 'Note', type: 'textarea' },
     { name: 'formDescription', label: 'Description', type: 'textarea' },
   ];
@@ -67,6 +77,11 @@ export class CompanyFormDialogComponent implements OnChanges {
       this.formCountry.set(countries.has(country.toLowerCase()) ? country : 'Morocco');
     }
     if (values['formLocationUrl'] !== undefined) this.formLocationUrl.set(String(values['formLocationUrl']));
+    if (values['formRegion'] !== undefined) this.formRegion.set(String(values['formRegion']));
+    if (values['formSector'] !== undefined) this.formSector.set(String(values['formSector']));
+    if (values['formFoundedYear'] !== undefined) this.formFoundedYear.set(String(values['formFoundedYear']));
+    if (values['formLinkedinUrl'] !== undefined) this.formLinkedinUrl.set(String(values['formLinkedinUrl']));
+    if (values['formSize'] !== undefined) this.formSize.set(String(values['formSize']));
     if (values['formNote'] !== undefined) this.formNote.set(String(values['formNote']));
     if (values['formDescription'] !== undefined) this.formDescription.set(String(values['formDescription']));
   }
@@ -80,6 +95,11 @@ export class CompanyFormDialogComponent implements OnChanges {
       this.formLocation.set(c.location ?? '');
       this.formCountry.set(c.country || 'Morocco');
       this.formLocationUrl.set(c.locationUrl ?? '');
+      this.formRegion.set(c.region ?? '');
+      this.formSector.set(c.sector ?? '');
+      this.formFoundedYear.set(c.foundedYear ? String(c.foundedYear) : '');
+      this.formLinkedinUrl.set(c.linkedinUrl ?? '');
+      this.formSize.set(c.size ?? '');
       this.formNote.set(c.note ?? '');
       this.formDescription.set(c.description ?? '');
     } else {
@@ -88,6 +108,11 @@ export class CompanyFormDialogComponent implements OnChanges {
       this.formLocation.set('');
       this.formCountry.set('Morocco');
       this.formLocationUrl.set('');
+      this.formRegion.set('');
+      this.formSector.set('');
+      this.formFoundedYear.set('');
+      this.formLinkedinUrl.set('');
+      this.formSize.set('');
       this.formNote.set('');
       this.formDescription.set('');
     }
@@ -111,6 +136,11 @@ export class CompanyFormDialogComponent implements OnChanges {
         location: this.formLocation().trim() || undefined,
         country: this.formCountry(),
         locationUrl: this.formLocationUrl().trim() || undefined,
+        region: this.formRegion().trim() || undefined,
+        sector: this.formSector().trim() || undefined,
+        foundedYear: this.formFoundedYear().trim() ? Number(this.formFoundedYear().trim()) : undefined,
+        linkedinUrl: this.formLinkedinUrl().trim() || undefined,
+        size: this.formSize().trim() || undefined,
         note: this.formNote().trim() || undefined,
         description: this.formDescription().trim() || undefined,
       };

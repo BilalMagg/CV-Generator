@@ -9,6 +9,11 @@ public class CompanyDto
     public string? Location { get; set; }
     public string Country { get; set; } = "Morocco";
     public string? LocationUrl { get; set; }
+    public string? Region { get; set; }
+    public string? Sector { get; set; }
+    public int? FoundedYear { get; set; }
+    public string? LinkedInUrl { get; set; }
+    public string? Size { get; set; }
     public string? Note { get; set; }
     public string? Description { get; set; }
     public int ApplicationsCount { get; set; }
@@ -25,6 +30,11 @@ public class CreateCompanyDto
     public string? Location { get; set; }
     public string? Country { get; set; }
     public string? LocationUrl { get; set; }
+    public string? Region { get; set; }
+    public string? Sector { get; set; }
+    public int? FoundedYear { get; set; }
+    public string? LinkedInUrl { get; set; }
+    public string? Size { get; set; }
     public string? Note { get; set; }
     public string? Description { get; set; }
 }
@@ -36,6 +46,11 @@ public class UpdateCompanyDto
     public string? Location { get; set; }
     public string? Country { get; set; }
     public string? LocationUrl { get; set; }
+    public string? Region { get; set; }
+    public string? Sector { get; set; }
+    public int? FoundedYear { get; set; }
+    public string? LinkedInUrl { get; set; }
+    public string? Size { get; set; }
     public string? Note { get; set; }
     public string? Description { get; set; }
 }

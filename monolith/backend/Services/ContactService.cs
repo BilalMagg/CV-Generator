@@ -84,6 +84,9 @@ public class ContactService : IContactService
             Name = dto.Name.Trim(),
             Email = dto.Email.Trim().ToLower(),
             Phone = dto.Phone,
+            Mobile = dto.Mobile,
+            Fax = dto.Fax,
+            Address = dto.Address,
             Company = dto.Company,
             Position = dto.Position,
             Notes = dto.Notes,
@@ -111,6 +114,9 @@ public class ContactService : IContactService
             c.Email = dto.Email.Trim().ToLower();
         }
         if (dto.Phone is not null) c.Phone = dto.Phone;
+        if (dto.Mobile is not null) c.Mobile = dto.Mobile;
+        if (dto.Fax is not null) c.Fax = dto.Fax;
+        if (dto.Address is not null) c.Address = dto.Address;
         if (dto.Company is not null) c.Company = dto.Company;
         if (dto.Position is not null) c.Position = dto.Position;
         if (dto.Notes is not null) c.Notes = dto.Notes;
@@ -168,36 +174,52 @@ public class ContactService : IContactService
         var companyIdx = headers.IndexOf("company");
         var positionIdx = headers.IndexOf("position");
         var phoneIdx = headers.IndexOf("phone");
+        var mobileIdx = headers.IndexOf("mobile");
+        var faxIdx = headers.IndexOf("fax");
+        var addressIdx = headers.IndexOf("address");
 
-        if (nameIdx < 0 || emailIdx < 0) return 0;
+        if (nameIdx < 0) return 0;
 
-        // Dedup within the file and against existing contacts (by email).
-        var seenEmails = (await _db.Set<Contact>()
-            .Where(c => c.UserId == userId)
-            .Select(c => c.Email.ToLower())
-            .ToListAsync())
-            .ToHashSet();
+        // Dedup by email when present; phone-only rows dedup on company|name|phone.
+        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var c in _db.Set<Contact>().Where(c => c.UserId == userId))
+        {
+            if (!string.IsNullOrWhiteSpace(c.Email)) seenKeys.Add("email:" + c.Email.Trim().ToLower());
+            else if (!string.IsNullOrWhiteSpace(c.Company) || !string.IsNullOrWhiteSpace(c.Name))
+                seenKeys.Add("by:" + (c.Company ?? "").Trim().ToLower() + "|" + c.Name.Trim().ToLower() + "|" + (c.Phone ?? ""));
+        }
 
         var contacts = new List<Contact>();
         foreach (var cols in rows.Skip(1))
         {
-            if (cols.Count <= Math.Max(nameIdx, emailIdx)) continue;
-            var name = cols[nameIdx];
-            var email = cols[emailIdx].Trim().ToLower();
-            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email)) continue;
-            var at = email.IndexOf('@');
-            if (at < 1 || at == email.Length - 1 || !email[(at + 1)..].Contains('.')) continue;
-            if (!seenEmails.Add(email)) continue;
+            if (cols.Count <= nameIdx) continue;
+            var name = cols[nameIdx].Trim();
+            var email = emailIdx >= 0 && cols.Count > emailIdx ? cols[emailIdx].Trim().ToLower() : "";
+            var phone = phoneIdx >= 0 && cols.Count > phoneIdx ? cols[phoneIdx].Trim() : "";
+            if (name.Length == 0 || (email.Length == 0 && phone.Length == 0)) continue;
+            if (email.Length > 0)
+            {
+                var at = email.IndexOf('@');
+                if (at < 1 || at == email.Length - 1 || !email[(at + 1)..].Contains('.')) continue;
+            }
+
+            var key = email.Length > 0
+                ? "email:" + email
+                : "by:" + (companyIdx >= 0 && cols.Count > companyIdx ? cols[companyIdx] : "").Trim().ToLower() + "|" + name.ToLower() + "|" + phone;
+            if (!seenKeys.Add(key)) continue;
 
             contacts.Add(new Contact
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Name = name.Trim(),
+                Name = name,
                 Email = email,
-                Phone = phoneIdx >= 0 && cols.Count > phoneIdx ? cols[phoneIdx] : null,
-                Company = companyIdx >= 0 && cols.Count > companyIdx ? cols[companyIdx] : null,
-                Position = positionIdx >= 0 && cols.Count > positionIdx ? cols[positionIdx] : null,
+                Phone = phone.Length > 0 ? phone : null,
+                Mobile = mobileIdx >= 0 && cols.Count > mobileIdx ? cols[mobileIdx].Trim() : null,
+                Fax = faxIdx >= 0 && cols.Count > faxIdx ? cols[faxIdx].Trim() : null,
+                Address = addressIdx >= 0 && cols.Count > addressIdx ? cols[addressIdx].Trim() : null,
+                Company = companyIdx >= 0 && cols.Count > companyIdx ? cols[companyIdx].Trim() : null,
+                Position = positionIdx >= 0 && cols.Count > positionIdx ? cols[positionIdx].Trim() : null,
                 Source = "csv"
             });
         }
@@ -273,6 +295,7 @@ public class ContactService : IContactService
     private static ContactDto Map(Contact c) => new()
     {
         Id = c.Id, UserId = c.UserId, Name = c.Name, Email = c.Email, Phone = c.Phone,
+        Mobile = c.Mobile, Fax = c.Fax, Address = c.Address,
         Company = c.Company, Position = c.Position, Notes = c.Notes,
         Source = c.Source, IsFavorite = c.IsFavorite, AvatarBase64 = c.AvatarBase64,
         CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt

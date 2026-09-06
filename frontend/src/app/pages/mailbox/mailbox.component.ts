@@ -124,6 +124,9 @@ export class MailboxComponent implements OnInit {
   contactFormName = signal('');
   contactFormEmail = signal('');
   contactFormPhone = signal('');
+  contactFormMobile = signal('');
+  contactFormFax = signal('');
+  contactFormAddress = signal('');
   contactFormCompany = signal('');
   contactFormPosition = signal('');
   contactFormNotes = signal('');
@@ -134,6 +137,9 @@ export class MailboxComponent implements OnInit {
     { name: 'contactFormName', label: 'Name', type: 'text' },
     { name: 'contactFormEmail', label: 'Email', type: 'text' },
     { name: 'contactFormPhone', label: 'Phone', type: 'text' },
+    { name: 'contactFormMobile', label: 'Mobile', type: 'text' },
+    { name: 'contactFormFax', label: 'Fax', type: 'text' },
+    { name: 'contactFormAddress', label: 'Address', type: 'text' },
     { name: 'contactFormCompany', label: 'Company', type: 'text' },
     { name: 'contactFormPosition', label: 'Position', type: 'text' },
     { name: 'contactFormNotes', label: 'Notes', type: 'textarea' },
@@ -147,6 +153,9 @@ export class MailboxComponent implements OnInit {
     if (values['contactFormName'] !== undefined) this.contactFormName.set(String(values['contactFormName']));
     if (values['contactFormEmail'] !== undefined) this.contactFormEmail.set(String(values['contactFormEmail']));
     if (values['contactFormPhone'] !== undefined) this.contactFormPhone.set(String(values['contactFormPhone']));
+    if (values['contactFormMobile'] !== undefined) this.contactFormMobile.set(String(values['contactFormMobile']));
+    if (values['contactFormFax'] !== undefined) this.contactFormFax.set(String(values['contactFormFax']));
+    if (values['contactFormAddress'] !== undefined) this.contactFormAddress.set(String(values['contactFormAddress']));
     if (values['contactFormCompany'] !== undefined) this.contactFormCompany.set(String(values['contactFormCompany']));
     if (values['contactFormPosition'] !== undefined) this.contactFormPosition.set(String(values['contactFormPosition']));
     if (values['contactFormNotes'] !== undefined) this.contactFormNotes.set(String(values['contactFormNotes']));
@@ -472,6 +481,9 @@ export class MailboxComponent implements OnInit {
       this.contactFormName.set('');
       this.contactFormEmail.set('');
       this.contactFormPhone.set('');
+      this.contactFormMobile.set('');
+      this.contactFormFax.set('');
+      this.contactFormAddress.set('');
       this.contactFormCompany.set(params.get('company') ?? '');
       this.contactFormPosition.set('');
     }
@@ -762,6 +774,9 @@ export class MailboxComponent implements OnInit {
     this.contactFormName.set('');
     this.contactFormEmail.set('');
     this.contactFormPhone.set('');
+    this.contactFormMobile.set('');
+    this.contactFormFax.set('');
+    this.contactFormAddress.set('');
     this.contactFormCompany.set('');
     this.contactFormPosition.set('');
     this.contactFormNotes.set('');
@@ -773,6 +788,9 @@ export class MailboxComponent implements OnInit {
     this.contactFormName.set(c.name);
     this.contactFormEmail.set(c.email);
     this.contactFormPhone.set(c.phone || '');
+    this.contactFormMobile.set(c.mobile || '');
+    this.contactFormFax.set(c.fax || '');
+    this.contactFormAddress.set(c.address || '');
     this.contactFormCompany.set(c.company || '');
     this.contactFormPosition.set(c.position || '');
     this.contactFormNotes.set(c.notes || '');
@@ -783,6 +801,9 @@ export class MailboxComponent implements OnInit {
       name: this.contactFormName(),
       email: this.contactFormEmail(),
       phone: this.contactFormPhone() || undefined,
+      mobile: this.contactFormMobile() || undefined,
+      fax: this.contactFormFax() || undefined,
+      address: this.contactFormAddress() || undefined,
       company: this.contactFormCompany() || undefined,
       position: this.contactFormPosition() || undefined,
       notes: this.contactFormNotes() || undefined,

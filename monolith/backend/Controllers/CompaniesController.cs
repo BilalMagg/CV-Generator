@@ -53,6 +53,7 @@ public class CompaniesController : BaseApiController
             query = query.Where(c =>
                 c.Name.ToLower().Contains(term) ||
                 (c.Location != null && c.Location.ToLower().Contains(term)) ||
+                (c.Sector != null && c.Sector.ToLower().Contains(term)) ||
                 (c.Country != null && c.Country.ToLower().Contains(term)) ||
                 (c.Note != null && c.Note.ToLower().Contains(term)));
         }
@@ -207,6 +208,11 @@ public class CompaniesController : BaseApiController
             Location = dto.Location,
             Country = string.IsNullOrWhiteSpace(dto.Country) ? "Morocco" : dto.Country.Trim(),
             LocationUrl = dto.LocationUrl,
+            Region = dto.Region,
+            Sector = dto.Sector,
+            FoundedYear = dto.FoundedYear,
+            LinkedInUrl = dto.LinkedInUrl,
+            Size = dto.Size,
             Note = dto.Note,
             Description = dto.Description
         };
@@ -245,6 +251,11 @@ public class CompaniesController : BaseApiController
             company.Country = country.Length == 0 ? "Morocco" : country;
         }
         if (dto.LocationUrl != null) company.LocationUrl = dto.LocationUrl;
+        if (dto.Region != null) company.Region = dto.Region;
+        if (dto.Sector != null) company.Sector = dto.Sector;
+        if (dto.FoundedYear.HasValue) company.FoundedYear = dto.FoundedYear;
+        if (dto.LinkedInUrl != null) company.LinkedInUrl = dto.LinkedInUrl;
+        if (dto.Size != null) company.Size = dto.Size;
         if (dto.Note != null) company.Note = dto.Note;
         if (dto.Description != null) company.Description = dto.Description;
         company.UpdatedAt = DateTime.UtcNow;
@@ -293,6 +304,11 @@ public class CompaniesController : BaseApiController
         Location = c.Location,
         Country = c.Country,
         LocationUrl = c.LocationUrl,
+        Region = c.Region,
+        Sector = c.Sector,
+        FoundedYear = c.FoundedYear,
+        LinkedInUrl = c.LinkedInUrl,
+        Size = c.Size,
         Note = c.Note,
         Description = c.Description,
         CreatedAt = c.CreatedAt,

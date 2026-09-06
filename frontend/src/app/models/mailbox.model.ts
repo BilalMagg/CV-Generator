@@ -4,6 +4,9 @@ export interface ContactDto {
   name: string;
   email: string;
   phone?: string;
+  mobile?: string;
+  fax?: string;
+  address?: string;
   company?: string;
   position?: string;
   source?: string;
@@ -18,6 +21,9 @@ export interface CreateContactDto {
   name: string;
   email: string;
   phone?: string;
+  mobile?: string;
+  fax?: string;
+  address?: string;
   company?: string;
   position?: string;
   notes?: string;
@@ -29,6 +35,9 @@ export interface UpdateContactDto {
   name?: string;
   email?: string;
   phone?: string;
+  mobile?: string;
+  fax?: string;
+  address?: string;
   company?: string;
   position?: string;
   notes?: string;

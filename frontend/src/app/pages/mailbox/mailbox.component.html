@@ -77,7 +77,11 @@
               </button>
             </div>
             <div class="compose-section">
-              <label class="compose-label">Subject</label>
+              <label class="compose-label">Subject
+                <button class="mb-btn-ghost compose-ai-btn" (click)="generateDraft()" [disabled]="composeAi()">
+                  {{ composeAi() ? 'Drafting…' : '✨ AI Draft' }}
+                </button>
+              </label>
               <input class="compose-input" placeholder="Enter subject…" [ngModel]="composeSubject()" (ngModelChange)="composeSubject.set($event)" />
             </div>
             <div class="compose-section">
@@ -387,12 +391,15 @@
             <div class="mb-card contact-form">
               <div class="contact-form-head">
                 <h3>{{ editingContactId() ? 'Edit Contact' : 'New Contact' }}</h3>
-                <button type="button" class="mb-btn-ghost" (click)="openContactAutofill()">Auto-fill</button>
+                <button type="button" class="mb-btn-primary" (click)="openContactAutofill()">Auto-fill</button>
               </div>
               <div class="form-grid">
                 <input placeholder="Name" [ngModel]="contactFormName()" (ngModelChange)="contactFormName.set($event)" />
                 <input placeholder="Email" [ngModel]="contactFormEmail()" (ngModelChange)="contactFormEmail.set($event)" />
                 <input placeholder="Phone" [ngModel]="contactFormPhone()" (ngModelChange)="contactFormPhone.set($event)" />
+                <input placeholder="Mobile" [ngModel]="contactFormMobile()" (ngModelChange)="contactFormMobile.set($event)" />
+                <input placeholder="Fax" [ngModel]="contactFormFax()" (ngModelChange)="contactFormFax.set($event)" />
+                <input placeholder="Address" [ngModel]="contactFormAddress()" (ngModelChange)="contactFormAddress.set($event)" />
                 <input placeholder="Company" [ngModel]="contactFormCompany()" (ngModelChange)="contactFormCompany.set($event)" />
                 <input placeholder="Position" [ngModel]="contactFormPosition()" (ngModelChange)="contactFormPosition.set($event)" />
               </div>

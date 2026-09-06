@@ -17,6 +17,11 @@ public class CompanyImportRow
     public string? Location { get; set; }
     public string? Country { get; set; }
     public string? LocationUrl { get; set; }
+    public string? Region { get; set; }
+    public string? Sector { get; set; }
+    public int? FoundedYear { get; set; }
+    public string? LinkedInUrl { get; set; }
+    public string? Size { get; set; }
     public string? Note { get; set; }
 }
 
@@ -27,6 +32,9 @@ public class ContactImportRow
     public string? Role { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }
+    public string? Mobile { get; set; }
+    public string? Fax { get; set; }
+    public string? Address { get; set; }
 }
 
 public class ApplicationImportRow
@@ -90,9 +98,15 @@ public class ImportsController : BaseApiController
                 if (byName.TryGetValue(key, out var dup))
                 {
                     // Enrich the existing entry with any new info.
-                    dup.WebsiteUrl ??= row.WebsiteUrl;
-                    dup.Location ??= row.Location;
-                    dup.LocationUrl ??= row.LocationUrl;
+                    dup.WebsiteUrl ??= ToUrl(row.WebsiteUrl);
+                    dup.Location ??= row.Location?.Trim();
+                    dup.LocationUrl ??= ToUrl(row.LocationUrl);
+                    dup.Region ??= row.Region?.Trim();
+                    dup.Sector ??= row.Sector?.Trim();
+                    dup.LinkedInUrl ??= ToUrl(row.LinkedInUrl);
+                    if (dup.FoundedYear is null && row.FoundedYear is > 1800 and < 2100) dup.FoundedYear = row.FoundedYear;
+                    if (string.IsNullOrWhiteSpace(dup.Size)) dup.Size = DecodeEmployeeSize(row.Size);
+                    if (string.IsNullOrWhiteSpace(dup.Country)) dup.Country = string.IsNullOrWhiteSpace(row.Country) ? "Morocco" : row.Country.Trim();
                     dup.Note ??= row.Note;
                     result.Skipped++;
                     continue;
@@ -103,10 +117,15 @@ public class ImportsController : BaseApiController
                     Id = Guid.NewGuid(),
                     UserId = userId,
                     Name = name,
-                    WebsiteUrl = row.WebsiteUrl,
-                    Location = row.Location,
+                    WebsiteUrl = ToUrl(row.WebsiteUrl),
+                    Location = row.Location?.Trim(),
                     Country = string.IsNullOrWhiteSpace(row.Country) ? "Morocco" : row.Country.Trim(),
-                    LocationUrl = row.LocationUrl,
+                    LocationUrl = ToUrl(row.LocationUrl),
+                    Region = row.Region?.Trim(),
+                    Sector = row.Sector?.Trim(),
+                    FoundedYear = row.FoundedYear is > 1800 and < 2100 ? row.FoundedYear : null,
+                    LinkedInUrl = ToUrl(row.LinkedInUrl),
+                    Size = DecodeEmployeeSize(row.Size),
                     Note = row.Note
                 };
                 _db.Companies.Add(company);
@@ -133,8 +152,15 @@ public class ImportsController : BaseApiController
             return BadRequest(ApiResponse<ImportResultDto>.Error("No rows provided"));
 
         var result = new ImportResultDto();
-        var existingEmails = (await _db.Contacts.Where(c => c.UserId == userId).Select(c => c.Email).ToListAsync())
-            .Select(e => e.ToLower()).ToHashSet();
+        var existing = await _db.Contacts.Where(c => c.UserId == userId).ToListAsync();
+        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var c in existing)
+        {
+            if (!string.IsNullOrWhiteSpace(c.Email))
+                seenKeys.Add("email:" + Normalize(c.Email));
+            else if (!string.IsNullOrWhiteSpace(c.Company) || !string.IsNullOrWhiteSpace(c.Name))
+                seenKeys.Add("by:" + Normalize(c.Company ?? "") + "|" + Normalize(c.Name) + "|" + (c.Phone ?? ""));
+        }
 
         foreach (var (row, idx) in rows.Select((r, i) => (r, i)))
         {
@@ -142,14 +168,20 @@ public class ImportsController : BaseApiController
             {
                 var name = row.Name?.Trim() ?? "";
                 var email = row.Email?.Trim().ToLower() ?? "";
-                if (name.Length == 0 || email.Length == 0 || !IsValidEmail(email))
+                var phone = row.Phone?.Trim() ?? "";
+                if (name.Length == 0) { result.Skipped++; continue; }
+                if (email.Length == 0 && phone.Length == 0) { result.Skipped++; continue; }
+                if (email.Length > 0 && !IsValidEmail(email))
                 {
+                    result.Errors.Add($"Row {idx + 1}: invalid email '{email}' for '{name}'");
                     result.Skipped++;
-                    if (name.Length > 0 && email.Length > 0 && !IsValidEmail(email))
-                        result.Errors.Add($"Row {idx + 1}: invalid email '{email}' for '{name}'");
                     continue;
                 }
-                if (!existingEmails.Add(email)) { result.Skipped++; continue; }
+
+                var key = email.Length > 0
+                    ? "email:" + email
+                    : "by:" + Normalize(row.Company ?? "") + "|" + Normalize(name) + "|" + phone;
+                if (!seenKeys.Add(key)) { result.Skipped++; continue; }
 
                 _db.Contacts.Add(new Contact
                 {
@@ -157,9 +189,12 @@ public class ImportsController : BaseApiController
                     UserId = userId,
                     Name = name,
                     Email = email,
-                    Phone = row.Phone,
-                    Company = row.Company,
-                    Position = row.Role,
+                    Phone = phone.Length > 0 ? phone : null,
+                    Mobile = row.Mobile?.Trim(),
+                    Fax = row.Fax?.Trim(),
+                    Address = row.Address?.Trim(),
+                    Company = row.Company?.Trim(),
+                    Position = row.Role?.Trim(),
                     Source = "import"
                 });
                 result.Imported++;
@@ -338,6 +373,42 @@ public class ImportsController : BaseApiController
 
     private static bool IsValidEmail(string email) =>
         email.Contains('@') && email.Contains('.') && !email.Contains(' ') && email.Length >= 5;
+
+    /// <summary>Adds a scheme to bare URLs (e.g. 'serviclic.net' → 'https://serviclic.net').</summary>
+    private static string? ToUrl(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var v = raw.Trim();
+        if (v.Length == 0 || v.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            v.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return v;
+        return "https://" + v;
+    }
+
+    /// <summary>Decodes compact employee-size codes seen in scraper exports (e.g. '01-Oct' → '1-10', 'Nov-50' → '11-50'); passthrough otherwise.</summary>
+    private static string? DecodeEmployeeSize(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var value = raw.Trim();
+        if (value.Length > 12) return value;
+
+        var months = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["jan"] = "1", ["feb"] = "2", ["mar"] = "3", ["apr"] = "4", ["may"] = "5", ["jun"] = "6",
+            ["jul"] = "7", ["aug"] = "8", ["sep"] = "9", ["oct"] = "10", ["nov"] = "11", ["dec"] = "12"
+        };
+
+        var parts = value.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length != 2) return value;
+
+        var numbers = new List<string>();
+        foreach (var p in parts)
+        {
+            if (months.TryGetValue(p, out var m)) numbers.Add(m);
+            else if (int.TryParse(p, out var n)) numbers.Add(n.ToString());
+            else return value;
+        }
+        return string.Join("-", numbers);
+    }
 
     private static string Truncate(string? s, int max) =>
         string.IsNullOrEmpty(s) ? s! : (s.Length <= max ? s : s[..max]);
