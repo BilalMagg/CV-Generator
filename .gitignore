@@ -75,3 +75,6 @@ cv-generator.sln
 
 .claude/
 AGENTS.md
+
+#datasets
+docs/datasets/
