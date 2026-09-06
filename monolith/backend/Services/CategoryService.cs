@@ -11,6 +11,7 @@ public interface ICategoryService
 {
     Task<List<CategoryNodeDto>> GetTreeAsync(Guid userId, string scope);
     Task<List<CategorySearchResult>> SearchAsync(Guid userId, List<Guid> nodeIds, List<string>? sourceTypes = null);
+    Task<List<CategorySearchResult>> SearchByTextAsync(Guid userId, List<string> scopes, string text);
     Task SetTagsAsync(Guid userId, string sourceType, Guid sourceId, List<Guid> nodeIds);
     Task<List<Guid>> GetTagsAsync(Guid userId, string sourceType, Guid sourceId);
     Task<List<ScopeTagsDto>> GetTagsForScopeAsync(Guid userId, string sourceType);
@@ -117,6 +118,33 @@ public class CategoryService : ICategoryService
             })
             .OrderByDescending(r => r.Score)
             .ToList();
+    }
+
+    /// <summary>
+    /// Deterministic taxonomy search driven by free text (no LLM): keyword-matches the text
+    /// against the user's category nodes (name + keywords, per scope) for the given scopes,
+    /// then returns the tagged entities ranked by distinct matched-node count.
+    /// Used to surface the most job-relevant skills/experiences/projects without a model call.
+    /// </summary>
+    public async Task<List<CategorySearchResult>> SearchByTextAsync(Guid userId, List<string> scopes, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || scopes == null || scopes.Count == 0)
+            return new List<CategorySearchResult>();
+
+        var matched = new HashSet<Guid>();
+        foreach (var scope in scopes)
+        {
+            var nodes = await _db.CategoryNodes
+                .Where(n => n.Scope == scope && (n.UserId == null || n.UserId == userId))
+                .ToListAsync();
+            foreach (var id in KeywordMatch(text, nodes))
+                matched.Add(id);
+        }
+
+        if (matched.Count == 0)
+            return new List<CategorySearchResult>();
+
+        return await SearchAsync(userId, matched.ToList(), scopes);
     }
 
     public async Task SetTagsAsync(Guid userId, string sourceType, Guid sourceId, List<Guid> nodeIds)
