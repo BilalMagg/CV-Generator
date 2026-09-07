@@ -52,24 +52,16 @@ public class UsersController : ControllerBase
         if (string.IsNullOrEmpty(keycloakId))
             return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid token"));
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
-        if (user == null)
+        var email = User.FindFirstValue("email") ?? "";
+        var firstName = User.FindFirstValue("given_name") ?? "";
+        var lastName = User.FindFirstValue("family_name") ?? "";
+
+        var (user, created) = await GetOrCreateUserAsync(keycloakId, email, firstName, lastName);
+        await _db.SaveChangesAsync();
+
+        if (created)
         {
-            user = new User
-            {
-                KeycloakId = keycloakId,
-                FirstName = User.FindFirstValue("given_name") ?? "",
-                LastName = User.FindFirstValue("family_name") ?? "",
-                Email = User.FindFirstValue("email") ?? "",
-                Role = Role.USER,
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true
-            };
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync();
-
             _logger.LogInformation("Created user {Id} from JWT (sub={KeycloakId})", user.Id, keycloakId);
-
             await _eventBus.PublishAsync(new UserCreatedEvent(user.Id, user.Email, user.FirstName, user.LastName));
         }
 
@@ -84,42 +76,70 @@ public class UsersController : ControllerBase
         if (string.IsNullOrEmpty(keycloakId))
             return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid token"));
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
-
+        var email = User.FindFirstValue("email") ?? "";
         var firstName = User.FindFirstValue("given_name") ?? "";
         var lastName = User.FindFirstValue("family_name") ?? "";
-        var email = User.FindFirstValue("email") ?? "";
 
-        if (user == null)
-        {
-            user = new User
-            {
-                KeycloakId = keycloakId,
-                FirstName = firstName,
-                LastName = lastName,
-                Email = email,
-                Role = Role.USER,
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true
-            };
-            _db.Users.Add(user);
-            _logger.LogInformation("Created user {Id} via sync", user.Id);
-        }
-        else
-        {
-            user.FirstName = firstName;
-            user.LastName = lastName;
-            user.Email = email;
-
-            await _db.SaveChangesAsync();
-            return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
-        }
-
+        var (user, created) = await GetOrCreateUserAsync(keycloakId, email, firstName, lastName);
         await _db.SaveChangesAsync();
 
-        await _eventBus.PublishAsync(new UserCreatedEvent(user.Id, user.Email, user.FirstName, user.LastName));
+        if (created)
+        {
+            _logger.LogInformation("Created user {Id} via sync", user.Id);
+            await _eventBus.PublishAsync(new UserCreatedEvent(user.Id, user.Email, user.FirstName, user.LastName));
+        }
 
         return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
+    }
+
+    /// <summary>
+    /// Returns the current user's local row for a Keycloak identity, creating it when needed.
+    /// If the row exists by email but its Keycloak sub changed (e.g. a Keycloak account was
+    /// recreated with the same email), the existing row is adopted — updating the sub — instead
+    /// of inserting a duplicate (which would violate the unique IX_users_Email index).
+    /// </summary>
+    private async Task<(User User, bool Created)> GetOrCreateUserAsync(string keycloakId, string email, string firstName, string lastName)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.KeycloakId == keycloakId);
+
+        if (user != null)
+        {
+            RefreshIdentity(user, keycloakId, email, firstName, lastName);
+            return (user, false);
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var byEmail = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.Trim().ToLower());
+            if (byEmail != null)
+            {
+                _logger.LogWarning("Adopting user {Id} (email) for new Keycloak sub={KeycloakId}", byEmail.Id, keycloakId);
+                RefreshIdentity(byEmail, keycloakId, email, firstName, lastName);
+                return (byEmail, false);
+            }
+        }
+
+        user = new User
+        {
+            KeycloakId = keycloakId,
+            FirstName = firstName,
+            LastName = lastName,
+            Email = email,
+            Role = Role.USER,
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        _db.Users.Add(user);
+
+        return (user, true);
+    }
+
+    private static void RefreshIdentity(User user, string keycloakId, string email, string firstName, string lastName)
+    {
+        user.KeycloakId = keycloakId;
+        if (!string.IsNullOrWhiteSpace(email)) user.Email = email.Trim();
+        if (!string.IsNullOrWhiteSpace(firstName)) user.FirstName = firstName;
+        if (!string.IsNullOrWhiteSpace(lastName)) user.LastName = lastName;
     }
 
     [HttpPost]
@@ -178,6 +198,7 @@ public class UsersController : ControllerBase
         user.DesiredSalaryMin = dto.DesiredSalaryMin;
         user.DesiredSalaryMax = dto.DesiredSalaryMax;
         user.ProfessionalTitles = dto.ProfessionalTitles;
+        if (dto.ProfilePhotoKey != null) user.ProfilePhotoKey = string.IsNullOrWhiteSpace(dto.ProfilePhotoKey) ? null : dto.ProfilePhotoKey.Trim();
 
         await _db.SaveChangesAsync();
         SearchSyncHelper.TriggerSync(_scopeFactory, user.Id, _logger, "User.Update");
@@ -204,6 +225,7 @@ public class UsersController : ControllerBase
         u.Headline, u.Bio, u.City, u.Country, u.AuthorizedCountry,
         u.RequiresVisaSponsorship, u.NoticePeriod, u.EmploymentTypes,
         u.RemotePreference, u.WillingToRelocate, u.DesiredJobTitle,
-        u.DesiredSalaryMin, u.DesiredSalaryMax, u.ProfessionalTitles
+        u.DesiredSalaryMin, u.DesiredSalaryMax, u.ProfessionalTitles,
+        u.ProfilePhotoKey
     );
 }

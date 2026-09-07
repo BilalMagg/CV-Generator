@@ -44,12 +44,26 @@ public class CurrentUserService : ICurrentUserService
             return user.Id;
         }
 
+        // Keycloak sub may have changed (account recreated with the same email).
+        // Adopt the existing row by email instead of creating a duplicate.
+        var email = ctx.User.FindFirstValue("email") ?? "";
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var byEmail = db.Users.FirstOrDefault(u => u.Email.ToLower() == email.Trim().ToLower());
+            if (byEmail != null)
+            {
+                byEmail.KeycloakId = sub;
+                db.SaveChanges();
+                return byEmail.Id;
+            }
+        }
+
         user = new User
         {
             KeycloakId = sub,
             FirstName = ctx.User.FindFirstValue("given_name") ?? "",
             LastName = ctx.User.FindFirstValue("family_name") ?? "",
-            Email = ctx.User.FindFirstValue("email") ?? "",
+            Email = email,
             Role = Role.USER,
             CreatedAt = DateTime.UtcNow,
             IsActive = true,
