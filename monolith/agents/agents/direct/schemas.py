@@ -49,3 +49,50 @@ class DirectMessageResponse(BaseModel):
     message: str
     channel: str = "LinkedIn"
     language: str = "English"
+
+
+class LinkedInRequest(BaseModel):
+    """Generate LinkedIn content (post / comment / message, NOT job-application messages).
+
+    Tool-specific fields are optional for the other tools (each tool uses only its
+    fields). Provider/model default to the global OpenRouter-first selection and can
+    be overridden per user.
+    """
+
+    tool: str = "post"  # post | comment | message
+    language: str = "English"
+    tone: str = "professional"  # professional | enthusiastic | storytelling | honest
+    length: str = "medium"  # short | medium | long
+    variants: int = 1
+
+    # post
+    context_type: str = ""  # hackathon | project | event | achievement | learning | other | ""
+    context: str = ""
+    mentions: List[str] = []
+    include_hashtags: bool = True
+    hashtag_count: int = 3
+
+    # comment
+    target_text: str = ""  # the post/comment being replied to
+    points: List[str] = []
+
+    # message (non-apply, personal/professional networking)
+    recipient_name: str = ""
+    relationship: str = "network"  # network | colleague | alumni | event | other
+    purpose: str = "introduction"  # introduction | thanks | follow-up | referral | coffee_chat | other
+    recipient_context: str = ""
+    sender_context: str = ""  # what the author wants to say about themselves / the reason
+
+    provider: Optional[str] = None
+    model: Optional[str] = None
+
+
+class LinkedInVariant(BaseModel):
+    title: str = ""  # post headline; empty for comments/messages
+    text: str
+    hashtags: str = ""  # post only, "#a #b" list
+
+
+class LinkedInResponse(BaseModel):
+    tool: str
+    variants: List[LinkedInVariant]

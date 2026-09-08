@@ -193,6 +193,31 @@ public class DirectAiController : ControllerBase
         return Ok(ApiResponse<DirectChatResultDto>.Ok(result));
     }
 
+    /// <summary>Generate LinkedIn posts / comments / messages (NOT job-application messages).</summary>
+    [HttpPost("linkedin")]
+    public async Task<IActionResult> LinkedIn([FromBody] LinkedInRequestDto request)
+    {
+        await ResolveProviderAsync(request);
+
+        var tool = (request.Tool ?? "").Trim().ToLowerInvariant();
+        if (tool != "post" && tool != "comment" && tool != "message")
+            return BadRequest(ApiResponse<object>.Error("Tool must be one of: post, comment, message"));
+        request.Tool = tool;
+
+        if (tool == "post" && string.IsNullOrWhiteSpace(request.Context))
+            return BadRequest(ApiResponse<object>.Error("Provide the post context so the assistant has something to write about"));
+        if (tool == "comment" && string.IsNullOrWhiteSpace(request.TargetText))
+            return BadRequest(ApiResponse<object>.Error("Paste the post/comment you want to reply to"));
+        if (tool == "message" && string.IsNullOrWhiteSpace(request.RecipientName))
+            return BadRequest(ApiResponse<object>.Error("Provide the recipient name for the message"));
+
+        var result = await _client.GenerateLinkedInAsync(request);
+        if (result == null)
+            return StatusCode(502, ApiResponse<object>.Error("AI assistant could not be reached"));
+
+        return Ok(ApiResponse<LinkedInResultDto>.Ok(result));
+    }
+
     private async Task ResolveProviderAsync(object request)
     {
         var userId = _currentUser.UserId;
@@ -216,6 +241,10 @@ public class DirectAiController : ControllerBase
             case DirectChatRequestDto c:
                 c.Provider ??= string.IsNullOrWhiteSpace(provider) ? null : provider;
                 c.Model ??= string.IsNullOrWhiteSpace(model) ? null : model;
+                break;
+            case LinkedInRequestDto l:
+                l.Provider ??= string.IsNullOrWhiteSpace(provider) ? null : provider;
+                l.Model ??= string.IsNullOrWhiteSpace(model) ? null : model;
                 break;
         }
     }

@@ -1,0 +1,287 @@
+<div class="page">
+  <header class="page-head">
+    <div>
+      <h1>Tools</h1>
+      <p class="sub">Independent everyday helpers — AI-written LinkedIn posts, comments and messages.</p>
+    </div>
+  </header>
+
+<nav class="tool-tabs">
+    @for (t of tabs; track t.value) {
+      <button
+        type="button"
+        class="tool-tab"
+        [class.on]="tool() === t.value"
+        (click)="tool.set(t.value)"
+      >{{ t.label }}</button>
+    }
+  </nav>
+
+  <div class="tool-body">
+    <div class="form-panel">
+      @switch (tool()) {
+        @case ('post') {
+          <label class="fld">
+            <span>What is it about?</span>
+            <select [ngModel]="contextType()" (ngModelChange)="contextType.set($event)">
+              @for (o of contextTypes; track o.value) {
+                <option [value]="o.value">{{ o.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="fld">
+            <span>Context <em class="req">*</em></span>
+            <textarea
+              rows="6"
+              placeholder="What happened? What did you build / learn / organize? Add concrete details (tools, team, outcome) so the post is grounded."
+              [ngModel]="contextText()" (ngModelChange)="contextText.set($event)"
+            ></textarea>
+          </label>
+
+          <label class="fld">
+            <span>People to mention <em class="hint">one per line — names or @handles</em></span>
+            <textarea
+              rows="3"
+              placeholder="Sara Lee
+@john_doe"
+              [ngModel]="mentionsText()" (ngModelChange)="mentionsText.set($event)"
+            ></textarea>
+          </label>
+
+          <div class="row-opts">
+            <label class="fld">
+              <span>Tone</span>
+              <select [ngModel]="tone()" (ngModelChange)="tone.set($event)">
+                @for (o of tones; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="fld">
+              <span>Length</span>
+              <select [ngModel]="length()" (ngModelChange)="length.set($event)">
+                @for (o of lengths; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="fld">
+              <span>Variants</span>
+              <select [ngModel]="variants()" (ngModelChange)="variants.set(+$event)">
+                <option [value]="1">1</option>
+                <option [value]="2">2</option>
+                <option [value]="3">3</option>
+              </select>
+            </label>
+            <label class="fld">
+              <span>Language</span>
+              <select [ngModel]="language()" (ngModelChange)="language.set($event)">
+                @for (l of languages; track l) {
+                  <option [value]="l">{{ l }}</option>
+                }
+              </select>
+            </label>
+            <label class="fld chk">
+              <input type="checkbox" [ngModel]="includeHashtags()" (ngModelChange)="includeHashtags.set($event)" />
+              Hashtags
+              <select class="mini" [ngModel]="hashtagCount()" (ngModelChange)="hashtagCount.set(+$event)">
+                <option [value]="2">2</option>
+                <option [value]="3">3</option>
+                <option [value]="5">5</option>
+              </select>
+            </label>
+          </div>
+        }
+
+        @case ('comment') {
+          <label class="fld">
+            <span>Post / comment to reply to <em class="req">*</em></span>
+            <textarea
+              rows="6"
+              placeholder="Paste the post or comment you want to engage with here."
+              [ngModel]="targetText()" (ngModelChange)="targetText.set($event)"
+            ></textarea>
+          </label>
+
+          <label class="fld">
+            <span>Your points <em class="hint">one per line</em></span>
+            <textarea
+              rows="3"
+              placeholder="Agree because…
+We did the same at our hackathon…"
+              [ngModel]="pointsText()" (ngModelChange)="pointsText.set($event)"
+            ></textarea>
+          </label>
+
+          <div class="row-opts">
+            <label class="fld">
+              <span>Tone</span>
+              <select [ngModel]="tone()" (ngModelChange)="tone.set($event)">
+                @for (o of tones; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="fld">
+              <span>Length</span>
+              <select [ngModel]="length()" (ngModelChange)="length.set($event)">
+                @for (o of lengths; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="fld">
+              <span>Variants</span>
+              <select [ngModel]="variants()" (ngModelChange)="variants.set(+$event)">
+                <option [value]="1">1</option>
+                <option [value]="2">2</option>
+                <option [value]="3">3</option>
+              </select>
+            </label>
+            <label class="fld">
+              <span>Language</span>
+              <select [ngModel]="language()" (ngModelChange)="language.set($event)">
+                @for (l of languages; track l) {
+                  <option [value]="l">{{ l }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        }
+
+        @case ('message') {
+          <div class="row-opts">
+            <label class="fld">
+              <span>Recipient name <em class="req">*</em></span>
+              <input type="text" placeholder="e.g. Leila Benali" [ngModel]="recipientName()" (ngModelChange)="recipientName.set($event)" />
+            </label>
+            <label class="fld">
+              <span>Relationship</span>
+              <select [ngModel]="relationship()" (ngModelChange)="relationship.set($event)">
+                @for (o of relationships; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="fld">
+              <span>Purpose</span>
+              <select [ngModel]="purpose()" (ngModelChange)="purpose.set($event)">
+                @for (o of purposes; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+            </label>
+          </div>
+
+          <label class="fld">
+            <span>What do they know / shared context?</span>
+            <textarea
+              rows="4"
+              placeholder="How you met, what you discussed, what they did, mutual connections…"
+              [ngModel]="recipientContext()" (ngModelChange)="recipientContext.set($event)"
+            ></textarea>
+          </label>
+
+          <label class="fld">
+            <span>What to say about you</span>
+            <textarea
+              rows="4"
+              placeholder="Relevant background or the reason you're reaching out (or pull something from your career below)."
+              [ngModel]="senderContext()" (ngModelChange)="senderContext.set($event)"
+            ></textarea>
+          </label>
+
+          <div class="row-opts">
+            <label class="fld">
+              <span>Tone</span>
+              <select [ngModel]="tone()" (ngModelChange)="tone.set($event)">
+                @for (o of tones; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="fld">
+              <span>Variants</span>
+              <select [ngModel]="variants()" (ngModelChange)="variants.set(+$event)">
+                <option [value]="1">1</option>
+                <option [value]="2">2</option>
+                <option [value]="3">3</option>
+              </select>
+            </label>
+            <label class="fld">
+              <span>Language</span>
+              <select [ngModel]="language()" (ngModelChange)="language.set($event)">
+                @for (l of languages; track l) {
+                  <option [value]="l">{{ l }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        }
+      }
+
+      <details class="career-picker">
+        <summary>
+          <span>Pull facts from My Career</span>
+          @if (careerLoading()) { <em class="dim">loading…</em> }
+        </summary>
+        @if (!careerLoaded()) {
+          <button type="button" class="btn btn-secondary btn-sm" (click)="loadCareer()" [disabled]="careerLoading()">
+            {{ careerLoading() ? 'Loading…' : 'Load my projects & experiences' }}
+          </button>
+        } @else if (careerItems().length === 0) {
+          <p class="dim">Nothing in My Career yet — add content there to reuse it here.</p>
+        } @else {
+          <div class="career-list">
+            @for (item of careerItems(); track item.key) {
+              <button type="button" class="career-item" (click)="pickCareer(item)">
+                <span class="career-source">{{ item.source === 'project' ? 'Project' : 'Experience' }}</span>
+                {{ item.label }}
+              </button>
+            }
+          </div>
+        }
+      </details>
+
+      <div class="gen-row">
+        <button type="button" class="btn btn-primary" (click)="generate()" [disabled]="loading()">
+          @if (loading()) {
+            <span class="spinner"></span> Generating…
+          } @else {
+            ✨ Generate {{ tool() === 'post' ? 'post' : tool() === 'comment' ? 'comment' : 'message' }}
+          }
+        </button>
+      </div>
+    </div>
+
+    <div class="results-panel">
+      @if (error()) {
+        <div class="err-banner">{{ error() }}</div>
+      }
+
+      @if (loading()) {
+        <div class="loading-note">The AI service is writing{{ '…' }}</div>
+      } @else if (results().length > 0) {
+        <div class="res-head">
+          <span class="res-count">{{ results().length }} {{ generatedTool() === 'post' ? 'post' : generatedTool() === 'comment' ? 'comment' : 'message' }}{{ results().length > 1 ? 's' : '' }}</span>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="generate()">Regenerate</button>
+        </div>
+        <div class="res-list">
+          @for (v of results(); track $index) {
+            <div class="res-card">
+              @if (v.title) { <div class="res-title">{{ v.title }}</div> }
+              <p class="res-text">{{ v.text }}</p>
+              @if (v.hashtags) { <div class="res-hashtags">{{ v.hashtags }}</div> }
+              <div class="res-actions">
+                <button type="button" class="btn btn-secondary btn-sm" (click)="copy(v)">Copy</button>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-note">Fill the form and hit Generate — the drafts will appear here.</div>
+      }
+    </div>
+  </div>
+</div>

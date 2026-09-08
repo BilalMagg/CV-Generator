@@ -5,13 +5,17 @@ import re
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from shared.llm.fallback import ainvoke_with_fallback
+from shared.tools.json_utils import parse_llm_json
 from agents.direct.schemas import (
     DirectChatRequest,
     DirectChatResponse,
     DirectMessageRequest,
     DirectMessageResponse,
+    LinkedInRequest,
+    LinkedInResponse,
+    LinkedInVariant,
 )
-from agents.direct.prompt import get_message_messages
+from agents.direct.prompt import get_linkedin_messages, get_message_messages
 
 logger = logging.getLogger(__name__)
 
@@ -88,3 +92,59 @@ async def chat(req: DirectChatRequest) -> DirectChatResponse:
         max_tokens=req.max_tokens,
     )
     return DirectChatResponse(text=content)
+
+
+async def generate_linkedin(req: LinkedInRequest) -> LinkedInResponse:
+    """Generate LinkedIn posts / comments / messages (NOT job-application messages).
+
+    Parses the model's JSON via the shared robust parser; retries once when the
+    result has no usable variants; degrades to a single raw-text variant otherwise.
+    """
+    tool = (req.tool or "post").strip().lower()
+    variants = max(1, min(int(req.variants or 1), 3))
+
+    for attempt in (1, 2):
+        system, user = get_linkedin_messages(req)
+        _, content = await ainvoke_with_fallback(
+            [SystemMessage(content=system), HumanMessage(content=user)],
+            preferred_provider=req.provider,
+            model=req.model,
+            temperature=0.8,
+            max_tokens=2600,
+        )
+        result = _parse_linkedin(content, tool, variants)
+        if result.variants:
+            return result
+        logger.warning("linkedin: attempt %s produced no usable variants", attempt)
+
+    # Degraded fallback: present the whole raw reply as a single variant.
+    return LinkedInResponse(tool=tool, variants=[LinkedInVariant(text=content.strip() or "")])
+
+
+def _parse_linkedin(content: str, tool: str, variants: int) -> LinkedInResponse:
+    data = parse_llm_json(content)
+    raw_variants = data.get("variants") if isinstance(data, dict) else None
+    parsed: list = []
+    if isinstance(raw_variants, list):
+        for item in raw_variants[: variants]:
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text") or "").strip()
+            if not text:
+                continue
+            parsed.append(
+                LinkedInVariant(
+                    title=str(item.get("title") or "").strip(),
+                    text=text,
+                    hashtags=str(item.get("hashtags") or "").strip(),
+                )
+            )
+    elif isinstance(data, dict) and str(data.get("text") or "").strip():
+        parsed.append(
+            LinkedInVariant(
+                title=str(data.get("title") or "").strip(),
+                text=str(data["text"]).strip(),
+                hashtags=str(data.get("hashtags") or "").strip(),
+            )
+        )
+    return LinkedInResponse(tool=tool, variants=parsed)

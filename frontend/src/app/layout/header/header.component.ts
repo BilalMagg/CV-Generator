@@ -49,6 +49,7 @@ export class HeaderComponent {
     '/companies/:id':          'Company Details',
     '/company-research':       'Company Research',
     '/company-research/:id':   'Research Details',
+    '/tools':                  'Tools',
     '/settings':               'Settings',
   };
 

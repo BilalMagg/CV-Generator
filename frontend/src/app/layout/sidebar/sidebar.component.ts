@@ -68,6 +68,7 @@ export class SidebarComponent {
     { label: 'Job Offers', route: '/job-offers', icon: 'briefcase', exact: false, group: 'library' },
     { label: 'Companies', route: '/companies', icon: 'building', exact: false, group: 'library' },
     { label: 'Research', route: '/company-research', icon: 'research', exact: false, group: 'library' },
+    { label: 'Tools', route: '/tools', icon: 'tools', exact: false, group: 'library' },
   ];
 
   user = computed(() => this.authService.currentUser());

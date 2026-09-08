@@ -47,6 +47,7 @@ import { DocumentsImagesComponent } from './pages/documents/documents-images.com
 import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
 import { EntityListComponent } from './pages/entity-list/entity-list.component';
 import { EntityFormComponent } from './shared/entity-form/entity-form.component';
+import { ToolsHubComponent } from './pages/tools/tools-hub.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -121,5 +122,6 @@ export const routes: Routes = [
   { path: 'companies/:id', component: CompaniesDetailComponent, canActivate: [authGuard] },
   { path: 'company-research', component: CompanyResearchComponent, canActivate: [authGuard] },
   { path: 'company-research/:id', component: CompanyResearchDetailComponent, canActivate: [authGuard] },
+  { path: 'tools', component: ToolsHubComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: '' },
 ];
