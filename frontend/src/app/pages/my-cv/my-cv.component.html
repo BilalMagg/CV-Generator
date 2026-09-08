@@ -66,6 +66,20 @@
         </svg>
         Interests
       </a>
+      <a class="cv-nav-item" [routerLink]="['/my-career', 'hackathons']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}">
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M6 9H4.5a2.5 2.5 0 010-5H6m12 5h1.5a2.5 2.5 0 000-5H18"/>
+          <path d="M12 3v1m0 16v1m-7-9H4m16 0h1"/>
+          <rect x="6" y="9" width="12" height="11" rx="2"/>
+        </svg>
+        Hackathons
+      </a>
+      <a class="cv-nav-item" [routerLink]="['/my-career', 'academicactivities']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}">
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M22 10l-10-7L2 10l10 7z"/><path d="M6 12v5c0 2 3 4 6 4s6-2 6-4v-5"/>
+        </svg>
+        Scholar Activities
+      </a>
     </nav>
   </aside>
 

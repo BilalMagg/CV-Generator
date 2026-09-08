@@ -6,7 +6,7 @@
     </div>
   </header>
 
-<nav class="tool-tabs">
+  <nav class="tool-tabs">
     @for (t of tabs; track t.value) {
       <button
         type="button"
@@ -31,10 +31,10 @@
           </label>
 
           <label class="fld">
-            <span>Context <em class="req">*</em></span>
+            <span>Additional notes <em class="hint">(optional — add detail on top of career items)</em></span>
             <textarea
-              rows="6"
-              placeholder="What happened? What did you build / learn / organize? Add concrete details (tools, team, outcome) so the post is grounded."
+              rows="4"
+              placeholder="What happened? What did you build / learn / organize? Add concrete details."
               [ngModel]="contextText()" (ngModelChange)="contextText.set($event)"
             ></textarea>
           </label>
@@ -184,10 +184,10 @@ We did the same at our hackathon…"
           </label>
 
           <label class="fld">
-            <span>What to say about you</span>
+            <span>What to say about you <em class="hint">(or pull from career items below)</em></span>
             <textarea
               rows="4"
-              placeholder="Relevant background or the reason you're reaching out (or pull something from your career below)."
+              placeholder="Relevant background or the reason you're reaching out."
               [ngModel]="senderContext()" (ngModelChange)="senderContext.set($event)"
             ></textarea>
           </label>
@@ -221,28 +221,69 @@ We did the same at our hackathon…"
         }
       }
 
-      <details class="career-picker">
-        <summary>
-          <span>Pull facts from My Career</span>
-          @if (careerLoading()) { <em class="dim">loading…</em> }
-        </summary>
-        @if (!careerLoaded()) {
-          <button type="button" class="btn btn-secondary btn-sm" (click)="loadCareer()" [disabled]="careerLoading()">
-            {{ careerLoading() ? 'Loading…' : 'Load my projects & experiences' }}
-          </button>
-        } @else if (careerItems().length === 0) {
-          <p class="dim">Nothing in My Career yet — add content there to reuse it here.</p>
-        } @else {
-          <div class="career-list">
-            @for (item of careerItems(); track item.key) {
-              <button type="button" class="career-item" (click)="pickCareer(item)">
-                <span class="career-source">{{ item.source === 'project' ? 'Project' : 'Experience' }}</span>
-                {{ item.label }}
-              </button>
+      <!-- Career picker toggle -->
+      <div class="career-toggle">
+        <button
+          type="button"
+          class="career-btn"
+          [class.open]="careerPickerOpen()"
+          (click)="toggleCareerPicker()"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+          </svg>
+          <span>My Career</span>
+          @if (selectedCount() > 0) {
+            <span class="sel-badge">{{ selectedCount() }}</span>
+          }
+        </button>
+      </div>
+
+      <!-- Career picker panel -->
+      @if (careerPickerOpen()) {
+        <div class="career-panel">
+          @if (careerLoading()) {
+            <p class="career-loading">Loading your career content…</p>
+          } @else if (careerGroups().length === 0) {
+            <p class="career-empty">Nothing in My Career yet — add content there to reuse it here.</p>
+          } @else {
+            <div class="career-header">
+              <span class="career-hint">Select items to include in the AI context. Your notes are added alongside.</span>
+              @if (selectedCount() > 0) {
+                <button type="button" class="btn-clear" (click)="clearSelection()">Clear all</button>
+              }
+            </div>
+            @for (group of careerGroups(); track group.source) {
+              <div class="career-group">
+                <div class="group-head">
+                  <label class="group-check">
+                    <input
+                      type="checkbox"
+                      [checked]="isGroupFullySelected(group)"
+                      [indeterminate]="isGroupPartiallySelected(group)"
+                      (change)="selectAllInGroup(group)"
+                    />
+                    <span class="group-label">{{ group.label }}</span>
+                    <span class="group-count">{{ group.items.length }}</span>
+                  </label>
+                </div>
+                <div class="group-items">
+                  @for (item of group.items; track item.key) {
+                    <label class="career-item" [class.on]="isKeySelected(item.key)">
+                      <input
+                        type="checkbox"
+                        [checked]="isKeySelected(item.key)"
+                        (change)="toggleItem(item)"
+                      />
+                      <span class="item-label">{{ item.label }}</span>
+                    </label>
+                  }
+                </div>
+              </div>
             }
-          </div>
-        }
-      </details>
+          }
+        </div>
+      }
 
       <div class="gen-row">
         <button type="button" class="btn btn-primary" (click)="generate()" [disabled]="loading()">
@@ -261,7 +302,7 @@ We did the same at our hackathon…"
       }
 
       @if (loading()) {
-        <div class="loading-note">The AI service is writing{{ '…' }}</div>
+        <div class="loading-note">The AI service is writing…</div>
       } @else if (results().length > 0) {
         <div class="res-head">
           <span class="res-count">{{ results().length }} {{ generatedTool() === 'post' ? 'post' : generatedTool() === 'comment' ? 'comment' : 'message' }}{{ results().length > 1 ? 's' : '' }}</span>
@@ -280,7 +321,7 @@ We did the same at our hackathon…"
           }
         </div>
       } @else {
-        <div class="empty-note">Fill the form and hit Generate — the drafts will appear here.</div>
+        <div class="empty-note">Select career items or add context, then hit Generate.</div>
       }
     </div>
   </div>

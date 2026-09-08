@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpService } from '@app/services/http.service';
@@ -13,11 +13,19 @@ import {
   LinkedInVariant,
 } from '@app/models/tools.model';
 
+type CareerSource = 'project' | 'experience' | 'hackathon' | 'academicactivity';
+
 interface CareerItem {
   key: string;
   label: string;
   text: string;
-  source: 'project' | 'experience';
+  source: CareerSource;
+}
+
+interface CareerGroup {
+  label: string;
+  source: CareerSource;
+  items: CareerItem[];
 }
 
 interface Option {
@@ -39,7 +47,7 @@ export class ToolsHubComponent {
 
   tool = signal<LinkedInToolType>('post');
 
-  // Shared options
+  // Shared
   tone = signal<LinkedInTone>('professional');
   length = signal<LinkedInLength>('medium');
   variants = signal(2);
@@ -70,9 +78,13 @@ export class ToolsHubComponent {
   generatedTool = signal<LinkedInToolType>('post');
 
   // Career picker
-  careerItems = signal<CareerItem[]>([]);
+  careerGroups = signal<CareerGroup[]>([]);
   careerLoading = signal(false);
   careerLoaded = signal(false);
+  careerPickerOpen = signal(false);
+  selectedKeys = signal<Set<string>>(new Set());
+
+  selectedCount = computed(() => this.selectedKeys().size);
 
   readonly tones: Option[] = [
     { value: 'professional', label: 'Professional' },
@@ -120,6 +132,87 @@ export class ToolsHubComponent {
     return text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
   }
 
+  // --- Career picker ---
+
+  toggleCareerPicker(): void {
+    const next = !this.careerPickerOpen();
+    this.careerPickerOpen.set(next);
+    if (next && !this.careerLoaded()) this.loadCareer();
+  }
+
+  isKeySelected(key: string): boolean {
+    return this.selectedKeys().has(key);
+  }
+
+  toggleItem(item: CareerItem): void {
+    const set = new Set(this.selectedKeys());
+    if (set.has(item.key)) {
+      set.delete(item.key);
+    } else {
+      set.add(item.key);
+    }
+    this.selectedKeys.set(set);
+  }
+
+  selectAllInGroup(group: CareerGroup): void {
+    const set = new Set(this.selectedKeys());
+    const allSelected = group.items.every((i) => set.has(i.key));
+    for (const item of group.items) {
+      if (allSelected) {
+        set.delete(item.key);
+      } else {
+        set.add(item.key);
+      }
+    }
+    this.selectedKeys.set(set);
+  }
+
+  isGroupFullySelected(group: CareerGroup): boolean {
+    return group.items.length > 0 && group.items.every((i) => this.selectedKeys().has(i.key));
+  }
+
+  isGroupPartiallySelected(group: CareerGroup): boolean {
+    return !this.isGroupFullySelected(group) && group.items.some((i) => this.selectedKeys().has(i.key));
+  }
+
+  clearSelection(): void {
+    this.selectedKeys.set(new Set());
+  }
+
+  /** Compose the full context string from selected career items + free text. */
+  private composeContext(): string {
+    const allItems = this.careerGroups().flatMap((g) => g.items);
+    const selected = allItems.filter((i) => this.selectedKeys().has(i.key));
+    const parts: string[] = [];
+    for (const item of selected) {
+      parts.push(item.text);
+    }
+    const freeText = this.contextText().trim();
+    if (freeText) parts.push(freeText);
+    return parts.join('\n\n---\n\n');
+  }
+
+  /** Compose sender context from selected career items + free text (for messages). */
+  private composeSenderContext(): string {
+    const allItems = this.careerGroups().flatMap((g) => g.items);
+    const selected = allItems.filter((i) => this.selectedKeys().has(i.key));
+    const parts: string[] = selected.map((i) => i.text);
+    const freeText = this.senderContext().trim();
+    if (freeText) parts.push(freeText);
+    return parts.join('\n\n');
+  }
+
+  /** Compose post points from selected career items + free text (for comments). */
+  private composePoints(): string[] {
+    const allItems = this.careerGroups().flatMap((g) => g.items);
+    const selected = allItems.filter((i) => this.selectedKeys().has(i.key));
+    const parts = selected.map((i) => i.label);
+    const freeLines = this.splitLines(this.pointsText());
+    return [...parts, ...freeLines];
+  }
+
+  // --- Generate ---
+
   async generate(): Promise<void> {
     let request: LinkedInRequest;
     try {
@@ -156,8 +249,8 @@ export class ToolsHubComponent {
     };
     switch (this.tool()) {
       case 'post': {
-        const context = this.contextText().trim();
-        if (!context) throw new Error('Describe what the post is about so the assistant has material to write');
+        const context = this.composeContext();
+        if (!context) throw new Error('Add context — select career items or describe what the post is about');
         return {
           ...base,
           tool: 'post',
@@ -169,12 +262,14 @@ export class ToolsHubComponent {
         };
       }
       case 'comment': {
-        if (!this.targetText().trim()) throw new Error('Paste the post or comment you want to reply to');
+        const points = this.composePoints();
+        if (!this.targetText().trim() && points.length === 0)
+          throw new Error('Paste the post or comment you want to reply to');
         return {
           ...base,
           tool: 'comment',
           targetText: this.targetText().trim(),
-          points: this.splitLines(this.pointsText()),
+          points,
         };
       }
       case 'message': {
@@ -186,7 +281,7 @@ export class ToolsHubComponent {
           relationship: this.relationship(),
           purpose: this.purpose(),
           recipientContext: this.recipientContext().trim(),
-          senderContext: this.senderContext().trim(),
+          senderContext: this.composeSenderContext(),
         };
       }
     }
@@ -204,48 +299,70 @@ export class ToolsHubComponent {
     if (this.careerLoaded() || this.careerLoading()) return;
     this.careerLoading.set(true);
     try {
-      const [projectsRes, experiencesRes] = await Promise.all([
+      const [projectsRes, experiencesRes, hackathonsRes, academicRes] = await Promise.all([
         this.http.get<ApiResponse<any[]>>('/api/user-content/projects'),
         this.http.get<ApiResponse<any[]>>('/api/user-content/experiences'),
+        this.http.get<ApiResponse<any[]>>('/api/user-content/hackathons'),
+        this.http.get<ApiResponse<any[]>>('/api/user-content/academicactivities'),
       ]);
-      const items: CareerItem[] = [];
-      for (const p of projectsRes.data ?? []) {
-        const body = [p.description, p.achievementsJson ? JSON.parse(p.achievementsJson) : '']
-          .filter(Boolean)
-          .join(' — ');
-        items.push({
-          key: `project:${p.id}`,
-          label: `[Project] ${p.title}${p.role ? ` (${p.role})` : ''}`,
-          text: `Project "${p.title}"${p.role ? ` (role: ${p.role})` : ''}:\n${body}`.trim(),
-          source: 'project',
-        });
-      }
-      for (const e of experiencesRes.data ?? []) {
+
+      const groups: CareerGroup[] = [];
+
+      // Projects
+      const projItems: CareerItem[] = (projectsRes.data ?? []).map((p: any) => {
+        let tech = '';
+        if (p.technologiesJson) {
+          try {
+            const parsed = JSON.parse(p.technologiesJson);
+            tech = Array.isArray(parsed) ? parsed.join(', ') : String(parsed);
+          } catch { tech = String(p.technologiesJson); }
+        }
+        const desc = p.description || '';
+        const role = p.role ? ` as ${p.role}` : '';
+        const text = [`Project: "${p.title}"${role}`, desc, tech ? `Tech: ${tech}` : '']
+          .filter(Boolean).join('\n');
+        return { key: `project:${p.id}`, label: p.title, text, source: 'project' as CareerSource };
+      });
+      if (projItems.length) groups.push({ label: 'Projects', source: 'project', items: projItems });
+
+      // Experiences
+      const expItems: CareerItem[] = (experiencesRes.data ?? []).map((e: any) => {
         const company = e.company ? ` at ${e.company}` : '';
-        items.push({
-          key: `experience:${e.id}`,
-          label: `[Experience] ${e.title}${company}`,
-          text: `Experience: ${e.title}${company}${e.description ? `:\n${e.description}` : ''}`,
-          source: 'experience',
-        });
-      }
-      this.careerItems.set(items);
+        const loc = e.location ? ` (${e.location})` : '';
+        const desc = e.description || '';
+        const text = [`Experience: ${e.title}${company}${loc}`, desc].filter(Boolean).join('\n');
+        return { key: `experience:${e.id}`, label: `${e.title}${company}`, text, source: 'experience' as CareerSource };
+      });
+      if (expItems.length) groups.push({ label: 'Experiences', source: 'experience', items: expItems });
+
+      // Hackathons
+      const hackItems: CareerItem[] = (hackathonsRes.data ?? []).map((h: any) => {
+        const org = h.organization ? ` (${h.organization})` : '';
+        const result = h.result ? ` — ${h.result}` : '';
+        const tech = h.technologies ? `\nTech: ${h.technologies}` : '';
+        const desc = h.description || '';
+        const text = [`Hackathon: "${h.name}"${org}${result}`, desc, tech].filter(Boolean).join('\n');
+        return { key: `hackathon:${h.id}`, label: h.name, text, source: 'hackathon' as CareerSource };
+      });
+      if (hackItems.length) groups.push({ label: 'Hackathons', source: 'hackathon', items: hackItems });
+
+      // Scholar Activities
+      const acadItems: CareerItem[] = (academicRes.data ?? []).map((a: any) => {
+        const org = a.organization ? ` (${a.organization})` : '';
+        const cat = a.category ? ` [${a.category}]` : '';
+        const result = a.result ? ` — ${a.result}` : '';
+        const desc = a.description || '';
+        const text = [`Activity: "${a.title}"${org}${cat}${result}`, desc].filter(Boolean).join('\n');
+        return { key: `academic:${a.id}`, label: a.title, text, source: 'academicactivity' as CareerSource };
+      });
+      if (acadItems.length) groups.push({ label: 'Scholar Activities', source: 'academicactivity', items: acadItems });
+
+      this.careerGroups.set(groups);
       this.careerLoaded.set(true);
     } catch {
       this.toast.error('Could not load your career content');
     } finally {
       this.careerLoading.set(false);
-    }
-  }
-
-  pickCareer(item: CareerItem): void {
-    if (this.tool() === 'post') {
-      this.contextType.set(item.source);
-      this.contextText.set(item.text);
-      this.toast.info(`Filled post context from ${item.label}`);
-    } else {
-      this.senderContext.set(item.text);
-      this.toast.info('Filled sender context (what to say about you)');
     }
   }
 }

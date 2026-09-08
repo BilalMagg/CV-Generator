@@ -22,6 +22,8 @@ namespace CV_Generator.Models
         public string? Result { get; set; } // e.g. "Winner", "Finalist"
         [MaxLength(300)]
         public string? ProjectUrl { get; set; }
+        public int? TeamSize { get; set; }
+        public string? Technologies { get; set; }
         
         [Required]
         public Guid UserId { get; set; }

@@ -39,6 +39,9 @@ public class AcademicActivitiesController : ApiControllerBase
             Organization = a.Organization,
             Role = a.Role,
             Description = a.Description,
+            Category = a.Category,
+            Url = a.Url,
+            Result = a.Result,
             StartDate = a.StartDate,
             EndDate = a.EndDate,
             UserId = a.UserId,
@@ -61,6 +64,9 @@ public class AcademicActivitiesController : ApiControllerBase
             Organization = a.Organization,
             Role = a.Role,
             Description = a.Description,
+            Category = a.Category,
+            Url = a.Url,
+            Result = a.Result,
             StartDate = a.StartDate,
             EndDate = a.EndDate,
             UserId = a.UserId,
@@ -78,6 +84,9 @@ public class AcademicActivitiesController : ApiControllerBase
             Organization = dto.Organization,
             Role = dto.Role,
             Description = dto.Description,
+            Category = dto.Category,
+            Url = dto.Url,
+            Result = dto.Result,
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
             UserId = RequiredUserId,
@@ -95,6 +104,9 @@ public class AcademicActivitiesController : ApiControllerBase
             Organization = a.Organization,
             Role = a.Role,
             Description = a.Description,
+            Category = a.Category,
+            Url = a.Url,
+            Result = a.Result,
             StartDate = a.StartDate,
             EndDate = a.EndDate,
             UserId = a.UserId,
@@ -113,6 +125,9 @@ public class AcademicActivitiesController : ApiControllerBase
         a.Organization = dto.Organization;
         a.Role = dto.Role;
         a.Description = dto.Description;
+        a.Category = dto.Category;
+        a.Url = dto.Url;
+        a.Result = dto.Result;
         a.StartDate = dto.StartDate;
         a.EndDate = dto.EndDate;
         a.SortOrder = dto.SortOrder;
@@ -127,6 +142,9 @@ public class AcademicActivitiesController : ApiControllerBase
             Organization = a.Organization,
             Role = a.Role,
             Description = a.Description,
+            Category = a.Category,
+            Url = a.Url,
+            Result = a.Result,
             StartDate = a.StartDate,
             EndDate = a.EndDate,
             UserId = a.UserId,

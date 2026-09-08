@@ -17,6 +17,11 @@ namespace CV_Generator.Models
         [MaxLength(150)]
         public string? Role { get; set; }
         public string? Description { get; set; }
+        [MaxLength(100)]
+        public string? Category { get; set; } // e.g. "Club", "Volunteer", "Research", "Competition", "Teaching"
+        [MaxLength(300)]
+        public string? Url { get; set; }
+        public string? Result { get; set; } // e.g. "1st place", "Published paper"
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         

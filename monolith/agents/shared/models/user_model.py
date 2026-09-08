@@ -86,6 +86,8 @@ class HackathonResponse(BaseModel):
     role: Optional[str] = None
     result: Optional[str] = None
     projectUrl: Optional[str] = None
+    teamSize: Optional[int] = None
+    technologies: Optional[str] = None
     sortOrder: int = 0
 
 
@@ -123,6 +125,9 @@ class AcademicActivityResponse(BaseModel):
     organization: Optional[str] = None
     role: Optional[str] = None
     description: Optional[str] = None
+    category: Optional[str] = None
+    url: Optional[str] = None
+    result: Optional[str] = None
     startDate: Optional[str] = None
     endDate: Optional[str] = None
     sortOrder: int = 0

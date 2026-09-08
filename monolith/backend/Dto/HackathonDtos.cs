@@ -16,6 +16,8 @@ public class CreateHackathonDto
     public string? Result { get; set; }
     [MaxLength(300)]
     public string? ProjectUrl { get; set; }
+    public int? TeamSize { get; set; }
+    public string? Technologies { get; set; }
     public int SortOrder { get; set; } = 0;
 }
 
@@ -33,6 +35,8 @@ public class UpdateHackathonDto
     public string? Result { get; set; }
     [MaxLength(300)]
     public string? ProjectUrl { get; set; }
+    public int? TeamSize { get; set; }
+    public string? Technologies { get; set; }
     public int SortOrder { get; set; } = 0;
 }
 
@@ -49,6 +53,8 @@ public class HackathonResponseDto
     public string? Result { get; set; }
     [MaxLength(300)]
     public string? ProjectUrl { get; set; }
+    public int? TeamSize { get; set; }
+    public string? Technologies { get; set; }
     public Guid UserId { get; set; }
     public int SortOrder { get; set; } = 0;
 }

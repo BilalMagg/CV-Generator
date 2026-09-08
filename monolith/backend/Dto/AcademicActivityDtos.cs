@@ -11,6 +11,11 @@ public class CreateAcademicActivityDto
     [MaxLength(150)]
     public string? Role { get; set; }
     public string? Description { get; set; }
+    [MaxLength(100)]
+    public string? Category { get; set; }
+    [MaxLength(300)]
+    public string? Url { get; set; }
+    public string? Result { get; set; }
     [Required]
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
@@ -26,6 +31,11 @@ public class UpdateAcademicActivityDto
     [MaxLength(150)]
     public string? Role { get; set; }
     public string? Description { get; set; }
+    [MaxLength(100)]
+    public string? Category { get; set; }
+    [MaxLength(300)]
+    public string? Url { get; set; }
+    public string? Result { get; set; }
     [Required]
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
@@ -39,6 +49,9 @@ public class AcademicActivityResponseDto
     public string? Organization { get; set; }
     public string? Role { get; set; }
     public string? Description { get; set; }
+    public string? Category { get; set; }
+    public string? Url { get; set; }
+    public string? Result { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public Guid UserId { get; set; }

@@ -44,6 +44,8 @@ public class HackathonsController : ApiControllerBase
             Role = h.Role,
             Result = h.Result,
             ProjectUrl = h.ProjectUrl,
+            TeamSize = h.TeamSize,
+            Technologies = h.Technologies,
             UserId = h.UserId,
             SortOrder = h.SortOrder
         }).ToList();
@@ -69,6 +71,8 @@ public class HackathonsController : ApiControllerBase
             Role = h.Role,
             Result = h.Result,
             ProjectUrl = h.ProjectUrl,
+            TeamSize = h.TeamSize,
+            Technologies = h.Technologies,
             UserId = h.UserId,
             SortOrder = h.SortOrder
         };
@@ -89,6 +93,8 @@ public class HackathonsController : ApiControllerBase
             Role = dto.Role,
             Result = dto.Result,
             ProjectUrl = dto.ProjectUrl,
+            TeamSize = dto.TeamSize,
+            Technologies = dto.Technologies,
             UserId = RequiredUserId,
             SortOrder = dto.SortOrder
         };
@@ -109,6 +115,8 @@ public class HackathonsController : ApiControllerBase
             Role = h.Role,
             Result = h.Result,
             ProjectUrl = h.ProjectUrl,
+            TeamSize = h.TeamSize,
+            Technologies = h.Technologies,
             UserId = h.UserId,
             SortOrder = h.SortOrder
         };
@@ -130,6 +138,8 @@ public class HackathonsController : ApiControllerBase
         h.Role = dto.Role;
         h.Result = dto.Result;
         h.ProjectUrl = dto.ProjectUrl;
+        h.TeamSize = dto.TeamSize;
+        h.Technologies = dto.Technologies;
         h.SortOrder = dto.SortOrder;
 
         await _db.SaveChangesAsync();
@@ -147,6 +157,8 @@ public class HackathonsController : ApiControllerBase
             Role = h.Role,
             Result = h.Result,
             ProjectUrl = h.ProjectUrl,
+            TeamSize = h.TeamSize,
+            Technologies = h.Technologies,
             UserId = h.UserId,
             SortOrder = h.SortOrder
         };

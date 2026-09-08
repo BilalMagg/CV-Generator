@@ -143,9 +143,9 @@ export class EntityListComponent implements OnInit {
       case 'sociallinks':
         return { title: item.platform, subtitle: item.url, typeLabel: 'Social Link' };
       case 'academicactivities':
-        return { title: item.title, subtitle: item.organization, typeLabel: 'Academic', footer: this.formatDate(item.startDate) };
+        return { title: item.title, subtitle: item.organization, typeLabel: 'Academic', meta: item.category ?? '', footer: this.formatDate(item.startDate) };
       case 'hackathons':
-        return { title: item.name, subtitle: item.role, typeLabel: 'Hackathon', meta: item.organization, footer: this.formatDate(item.date) };
+        return { title: item.name, subtitle: item.role, typeLabel: 'Hackathon', meta: item.organization, footer: item.result ? `🏆 ${item.result}` : this.formatDate(item.date) };
       default:
         return { title: item.name || item.title, typeLabel: this.entity };
     }
