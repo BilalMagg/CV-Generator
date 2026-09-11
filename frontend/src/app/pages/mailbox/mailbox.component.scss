@@ -721,7 +721,7 @@
 }
 
 /* Contact detail view */
-.contact-detail-main { flex: 1; display: grid; grid-template-columns: 260px 1fr; min-height: 0; overflow: hidden; border-top: 1px solid var(--border); }
+.contact-detail-main { flex: 1; display: grid; grid-template-columns: 320px 1fr; min-height: 0; overflow: hidden; border-top: 1px solid var(--border); }
 .contact-detail-aside { border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; align-items: center; padding: 24px 16px; overflow-y: auto; gap: 6px; .detail-back-btn { align-self: flex-start; } }
 .cd-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--bg-2); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--text-2); }
 .cd-avatar-wrap { position: relative; cursor: pointer; border-radius: 50%; margin-top: 12px; &:hover .cd-avatar-overlay { opacity: 1; } }
@@ -746,6 +746,8 @@
   box-sizing: border-box;
   &:focus { border-color: var(--text-4); }
 }
+
+textarea.cd-input { min-height: 96px; resize: vertical; }
 
 .cd-edit-actions {
   display: flex;

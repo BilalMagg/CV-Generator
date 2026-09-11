@@ -339,7 +339,7 @@
                 <input class="cd-input" placeholder="Position" [ngModel]="cdEditPosition()" (ngModelChange)="cdEditPosition.set($event)" />
                 <input class="cd-input" placeholder="Phone" [ngModel]="cdEditPhone()" (ngModelChange)="cdEditPhone.set($event)" />
                 <input class="cd-input" placeholder="LinkedIn URL" [ngModel]="cdEditLinkedin()" (ngModelChange)="cdEditLinkedin.set($event)" />
-                <textarea class="cd-input" rows="2" placeholder="Notes (your own language hints / context)" [ngModel]="cdEditNotes()" (ngModelChange)="cdEditNotes.set($event)"></textarea>
+                <textarea class="cd-input" rows="4" placeholder="Notes (your own language hints / context)" [ngModel]="cdEditNotes()" (ngModelChange)="cdEditNotes.set($event)"></textarea>
                 <div class="cd-edit-actions">
                   <button class="mb-btn-primary" (click)="saveContactDetail()">Save</button>
                   <button class="mb-btn-ghost" (click)="cancelContactEdit()">Cancel</button>
@@ -431,7 +431,7 @@
                 <input placeholder="Position" [ngModel]="contactFormPosition()" (ngModelChange)="contactFormPosition.set($event)" />
                 <input placeholder="LinkedIn URL" [ngModel]="contactFormLinkedin()" (ngModelChange)="contactFormLinkedin.set($event)" />
               </div>
-              <textarea class="cd-input" rows="2" placeholder="Notes (language hints / context)" [ngModel]="contactFormNotes()" (ngModelChange)="contactFormNotes.set($event)"></textarea>
+              <textarea class="cd-input" rows="4" placeholder="Notes (language hints / context)" [ngModel]="contactFormNotes()" (ngModelChange)="contactFormNotes.set($event)"></textarea>
               <div class="form-actions">
                 <button class="mb-btn-primary" (click)="saveContact()">Save</button>
                 <button class="mb-btn-ghost" (click)="showContactForm.set(false)">Cancel</button>

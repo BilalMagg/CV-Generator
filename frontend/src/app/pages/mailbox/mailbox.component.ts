@@ -629,6 +629,8 @@ export class MailboxComponent implements OnInit {
   }
 
   async loadContactHistory(contact: ContactDto) {
+    this.showContactForm.set(false);
+    this.cdEditing.set(false);
     this.contactDetailView.set(true);
     this.selectedContactDetail.set(contact);
     this.contactHistoryLoading.set(true);
