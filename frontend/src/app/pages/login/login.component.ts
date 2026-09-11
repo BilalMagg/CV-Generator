@@ -37,6 +37,14 @@ export class LoginComponent {
   signUpError = signal('');
   signUpSuccess = signal('');
 
+  resetVisible = signal(false);
+  resetEmail = '';
+  resetPassword = '';
+  resetConfirm = '';
+  resetLoading = signal(false);
+  resetError = signal('');
+  resetSuccess = signal('');
+
   toggleMode(): void {
     this.mode.update(m => m === 'sign-in' ? 'sign-up' : 'sign-in');
     this.signInError.set('');
@@ -104,5 +112,59 @@ export class LoginComponent {
 
   signInWithProvider(provider: string): void {
     this.authService.loginWithSso(provider);
+  }
+
+  showReset(): void {
+    this.resetVisible.set(true);
+    this.resetEmail = this.signInEmail;
+    this.resetError.set('');
+    this.resetSuccess.set('');
+  }
+
+  hideReset(): void {
+    this.resetVisible.set(false);
+    this.resetError.set('');
+    this.resetSuccess.set('');
+  }
+
+  async onResetPassword(): Promise<void> {
+    this.resetError.set('');
+    this.resetSuccess.set('');
+    if (!this.resetEmail.trim() || !this.resetPassword || !this.resetConfirm) {
+      this.resetError.set('All fields are required');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.resetEmail.trim())) {
+      this.resetError.set('Please enter a valid email address');
+      return;
+    }
+    if (this.resetPassword.length < 8) {
+      this.resetError.set('Password must be at least 8 characters');
+      return;
+    }
+    if (this.resetPassword !== this.resetConfirm) {
+      this.resetError.set('Passwords do not match');
+      return;
+    }
+    this.resetLoading.set(true);
+    try {
+      const result = await this.authService.resetPassword({
+        email: this.resetEmail.trim(),
+        password: this.resetPassword,
+      });
+      if (result.success) {
+        this.resetSuccess.set(result.message);
+        this.signInEmail = this.resetEmail.trim();
+        this.resetPassword = '';
+        this.resetConfirm = '';
+        setTimeout(() => this.hideReset(), 2500);
+      } else {
+        this.resetError.set(result.message);
+      }
+    } catch (err) {
+      this.resetError.set(err instanceof Error ? err.message : 'Password reset failed');
+    } finally {
+      this.resetLoading.set(false);
+    }
   }
 }

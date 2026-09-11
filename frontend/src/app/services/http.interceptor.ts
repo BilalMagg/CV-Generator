@@ -12,6 +12,7 @@ const AUTH_ENDPOINTS = [
   '/api/auth/register',
   '/api/auth/logout',
   '/api/auth/me',
+  '/api/auth/reset-password',
 ];
 
 // AI/agent endpoints make LLM round-trips (browser -> gateway -> monolith ->

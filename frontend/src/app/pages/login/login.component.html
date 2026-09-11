@@ -2,7 +2,8 @@
   <div class="forms-container">
     <div class="signin-signup">
 
-      <!-- Sign In -->
+      <!-- Sign In / Reset Password -->
+      @if (!resetVisible()) {
       <form class="sign-in-form" (ngSubmit)="onSignIn()" #signInForm="ngForm">
         <h2>Sign in</h2>
 
@@ -45,6 +46,8 @@
           }
         </button>
 
+        <button type="button" class="forgot-link" (click)="showReset()">Forgot password?</button>
+
         <div class="social-text">Or sign in with</div>
         <div class="social-media">
           <button type="button" class="social-icon" (click)="signInWithProvider('google')" title="Sign in with Google">
@@ -59,6 +62,67 @@
           <button type="button" class="btn-link" (click)="signInWithSso()">Sign in with SSO &rarr;</button>
         </p>
       </form>
+      } @else {
+      <!-- Reset Password -->
+      <form class="sign-in-form" (ngSubmit)="onResetPassword()" #resetForm="ngForm">
+        <h2>Reset Password</h2>
+        <p class="reset-subtitle">Enter your email and a new password.</p>
+
+        @if (resetError()) {
+          <div class="alert error">{{ resetError() }}</div>
+        }
+        @if (resetSuccess()) {
+          <div class="alert success">{{ resetSuccess() }}</div>
+        }
+
+        <div class="input-field">
+          <i class="ti ti-mail"></i>
+          <input
+            type="email"
+            name="resetEmail"
+            [(ngModel)]="resetEmail"
+            required
+            email
+            placeholder="Email"
+          />
+        </div>
+
+        <div class="input-field">
+          <i class="ti ti-lock"></i>
+          <input
+            type="password"
+            name="resetPassword"
+            [(ngModel)]="resetPassword"
+            required
+            minlength="8"
+            placeholder="New password (min 8 characters)"
+          />
+        </div>
+
+        <div class="input-field">
+          <i class="ti ti-lock"></i>
+          <input
+            type="password"
+            name="resetConfirm"
+            [(ngModel)]="resetConfirm"
+            required
+            placeholder="Confirm new password"
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary" [disabled]="resetLoading()">
+          @if (resetLoading()) {
+            <span class="spinner"></span> Updating...
+          } @else {
+            Update Password
+          }
+        </button>
+
+        <p class="sso-text">
+          <button type="button" class="btn-link" (click)="hideReset()">Back to sign in</button>
+        </p>
+      </form>
+      }
 
       <!-- Sign Up -->
       <form class="sign-up-form" (ngSubmit)="onSignUp()" #signUpForm="ngForm">

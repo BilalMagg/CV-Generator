@@ -96,4 +96,19 @@ export class AuthService {
       return { success: false, message: err instanceof Error ? err.message : 'Registration failed' };
     }
   }
+
+  async resetPassword(data: {
+    email: string;
+    password: string;
+  }): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await this.http.post<ApiResponse<object>>('/api/auth/reset-password', data);
+      if (response.success) {
+        return { success: true, message: response.message || 'Password updated' };
+      }
+      return { success: false, message: response.message || 'Password reset failed' };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'Password reset failed' };
+    }
+  }
 }

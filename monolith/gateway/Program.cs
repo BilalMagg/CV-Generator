@@ -501,6 +501,62 @@ app.MapPost("/api/auth/register", async (HttpContext ctx, IHttpClientFactory htt
 })
 .RequireCors("Default");
 
+// ── Password Reset (Keycloak admin API, no SMTP required) ────────────────────
+app.MapPost("/api/auth/reset-password", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var body = await ctx.Request.ReadFromJsonAsync<JsonElement>();
+        var email = body.GetProperty("email").GetString() ?? "";
+        var password = body.GetProperty("password").GetString() ?? "";
+
+        if (string.IsNullOrEmpty(email) || password.Length < 8)
+        {
+            ctx.Response.StatusCode = 400;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "A valid email and a password of at least 8 characters are required" });
+            return;
+        }
+
+        var adminToken = await GetKeycloakAdminTokenAsync(httpClientFactory);
+        if (adminToken == null)
+        {
+            ctx.Response.StatusCode = 502;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Failed to authenticate with Keycloak admin" });
+            return;
+        }
+
+        var keycloakUserId = await FindKeycloakUserIdByEmailAsync(httpClientFactory, adminToken, email);
+        if (string.IsNullOrEmpty(keycloakUserId))
+        {
+            ctx.Response.StatusCode = 404;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "No account found with this email." });
+            return;
+        }
+
+        var resetOk = await ResetKeycloakPasswordAsync(httpClientFactory, adminToken, keycloakUserId, password);
+        if (!resetOk)
+        {
+            ctx.Response.StatusCode = 502;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Failed to update the password. Please try again." });
+            return;
+        }
+
+        await ctx.Response.WriteAsJsonAsync(new { success = true, message = "Password updated. You can now sign in with your new password." });
+    }
+    catch (JsonException)
+    {
+        ctx.Response.StatusCode = 400;
+        await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid request body" });
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Password reset error: {ex.Message}");
+        ctx.Response.StatusCode = 500;
+        await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Password reset failed due to an internal error" });
+    }
+})
+.RequireCors("Default");
+
 // ── Proxy with token forwarding ──────────────────────────────────────────────
 app.MapReverseProxy(proxyApp =>
 {
@@ -642,6 +698,57 @@ async Task<string?> CreateKeycloakUserAsync(IHttpClientFactory factory, string a
     catch
     {
         return null;
+    }
+}
+
+async Task<string?> FindKeycloakUserIdByEmailAsync(IHttpClientFactory factory, string adminToken, string email)
+{
+    try
+    {
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
+
+        var response = await client.GetAsync(
+            $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/users?email={Uri.EscapeDataString(email)}");
+        if (!response.IsSuccessStatusCode) return null;
+
+        var users = await response.Content.ReadFromJsonAsync<List<JsonElement>>();
+        var first = users?.FirstOrDefault(u => u.TryGetProperty("id", out var id) && !string.IsNullOrEmpty(id.GetString()));
+        if (first == null || first.Value.ValueKind == JsonValueKind.Undefined) return null;
+
+        return first.Value.GetProperty("id").GetString();
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+async Task<bool> ResetKeycloakPasswordAsync(IHttpClientFactory factory, string adminToken, string userId, string newPassword)
+{
+    try
+    {
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
+
+        var credential = new
+        {
+            type = "password",
+            value = newPassword,
+            temporary = false,
+        };
+
+        var response = await client.PutAsJsonAsync(
+            $"{keycloakInternalUrl}/admin/realms/{keycloakRealm}/users/{userId}/reset-password",
+            credential);
+
+        return response.IsSuccessStatusCode;
+    }
+    catch
+    {
+        return false;
     }
 }
 
