@@ -28,6 +28,17 @@ export class CategoryService {
     return this.http.put<unknown>('/api/categories/tags', req);
   }
 
+  /** Create a new single-level category (root node) for a scope. */
+  async createNode(scope: string, name: string): Promise<TaxonomyNode | null> {
+    const res = await this.http.post<ApiResponse<TaxonomyNode>>('/api/categories', { scope, name });
+    return res.data ?? null;
+  }
+
+  /** Delete a user-created category (fails if any entity is tagged to it). */
+  async deleteNode(id: string): Promise<unknown> {
+    return this.http.delete<unknown>(`/api/categories/${id}`);
+  }
+
   /** All tag groupings for a whole scope: [{ sourceId, nodeIds }]. */
   async getTagsForScope(sourceType: string): Promise<{ sourceId: string; nodeIds: string[] }[]> {
     const res = await this.http.get<ApiResponse<{ sourceId: string; nodeIds: string[] }[]>>(

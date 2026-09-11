@@ -46,6 +46,7 @@ import { DocumentsTemplatesComponent } from './pages/documents/documents-templat
 import { DocumentsImagesComponent } from './pages/documents/documents-images.component';
 import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
 import { EntityListComponent } from './pages/entity-list/entity-list.component';
+import { SkillLibraryComponent } from './pages/skills/skill-library.component';
 import { EntityFormComponent } from './shared/entity-form/entity-form.component';
 import { ToolsHubComponent } from './pages/tools/tools-hub.component';
 
@@ -100,6 +101,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', redirectTo: 'projects', pathMatch: 'full' },
+      { path: 'skills', component: SkillLibraryComponent },
       { path: ':entity', component: EntityListComponent },
       { path: ':entity/add', component: EntityFormComponent },
       { path: ':entity/:id', component: EntityDetailsComponent },

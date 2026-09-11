@@ -18,6 +18,8 @@ public interface ICategoryService
     Task CategorizeEntityAsync(Guid userId, string sourceType, Guid sourceId);
     Task<List<Guid>> SuggestEntityAsync(Guid userId, string sourceType, Guid sourceId);
     Task<int> CategorizeScopeAsync(Guid userId, string scope);
+    Task<CategoryNodeDto?> CreateNodeAsync(Guid userId, string scope, string name);
+    Task<bool> DeleteNodeAsync(Guid userId, Guid nodeId);
 }
 
 public class CategoryService : ICategoryService
@@ -399,4 +401,56 @@ public class CategoryService : ICategoryService
             _ => new List<Guid>(),
         };
     }
+
+    public async Task<CategoryNodeDto?> CreateNodeAsync(Guid userId, string scope, string name)
+    {
+        name = name?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Category name is required");
+        if (name.Length > 60)
+            throw new ArgumentException("Category name must be 60 characters or fewer");
+        scope = scope?.Trim() ?? "";
+
+        var exists = await _db.CategoryNodes.AnyAsync(n =>
+            n.Scope == scope && n.ParentId == null &&
+            (n.UserId == null || n.UserId == userId) &&
+            n.Name.Trim().ToLower() == name.ToLower());
+        if (exists)
+            throw new ArgumentException($"A category named '{name}' already exists");
+
+        var node = new CategoryNode
+        {
+            Id = Guid.NewGuid(),
+            Scope = scope,
+            ParentId = null,
+            Name = name,
+            Domain = name,
+            Level = 0,
+            Path = "/" + Slug(name),
+            KeywordsJson = "[]",
+            IsSystem = false,
+            UserId = userId,
+        };
+        _db.CategoryNodes.Add(node);
+        await _db.SaveChangesAsync();
+        return ToDto(node, new Dictionary<Guid, CategoryNode>(), new Dictionary<Guid, int>());
+    }
+
+    public async Task<bool> DeleteNodeAsync(Guid userId, Guid nodeId)
+    {
+        var node = await _db.CategoryNodes
+            .FirstOrDefaultAsync(n => n.Id == nodeId && n.UserId == userId);
+        if (node is null) return false;
+
+        var used = await _db.EntityCategoryTags.AnyAsync(t => t.UserId == userId && t.CategoryNodeId == nodeId);
+        if (used)
+            throw new InvalidOperationException("Category is not empty — reassign or remove its skills first");
+
+        _db.CategoryNodes.Remove(node);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    private static string Slug(string s) => s.ToLowerInvariant()
+        .Replace("/", " ").Replace(" ", "-").Replace("&", "and").Replace("--", "-");
 }

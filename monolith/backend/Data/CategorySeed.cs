@@ -45,6 +45,7 @@ public static class CategorySeed
 
         // Existing install: keep tree fresh when the projects seed spec changes.
         await RefreshProjectsScopeAsync(db);
+        await RefreshSkillsScopeAsync(db);
     }
 
     private static async Task RefreshProjectsScopeAsync(AppDbContext db)
@@ -68,6 +69,74 @@ public static class CategorySeed
         await db.SaveChangesAsync();
 
         await AssignProjectTagsAsync(db);
+    }
+
+    /// <summary>
+    /// One-time migration of the skills taxonomy: the original scope was a deep facet
+    /// tree (Type → …, Technical → Frontend/Backend/DevOps/Data/AI · ML); the Skills
+    /// page now renders a single level of user-curated categories (containers). When the
+    /// legacy roots are still present, wipe the skills scope, plant the flat seed and
+    /// re-tag existing skills by their free-text `category`. User additions are NEVER
+    /// wiped (the guard requires exactly the legacy roots).
+    /// </summary>
+    private static async Task RefreshSkillsScopeAsync(AppDbContext db)
+    {
+        var rootPaths = (await db.CategoryNodes
+                .Where(n => n.Scope == "skills" && n.Level == 0)
+                .Select(n => n.Path.TrimStart('/'))
+                .ToListAsync())
+            .ToHashSet(StringComparer.Ordinal);
+
+        var legacyRoots = new HashSet<string>(StringComparer.Ordinal) { "type", "technical" };
+        if (!legacyRoots.IsSubsetOf(rootPaths) || rootPaths.Any(p => !legacyRoots.Contains(p)))
+            return;
+
+        db.CategoryNodes.RemoveRange(await db.CategoryNodes.Where(n => n.Scope == "skills").ToListAsync());
+        await db.SaveChangesAsync();
+
+        Plant(db, "skills", Skills());
+        await db.SaveChangesAsync();
+
+        await AssignSkillTagsAsync(db);
+    }
+
+    /// <summary>
+    /// After the skills taxonomy is flattened, tag existing skills whose `category`
+    /// text matches a flat node name so current skills land in containers immediately.
+    /// Tags are MANUAL so subsequent auto re-syncs keep them.
+    /// </summary>
+    private static async Task AssignSkillTagsAsync(AppDbContext db)
+    {
+        var byName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        foreach (var n in await db.CategoryNodes
+            .Where(n => n.Scope == "skills")
+            .Select(n => new { n.Id, n.Name })
+            .ToListAsync())
+        {
+            byName[n.Name] = n.Id;
+        }
+
+        var skills = await db.Skills
+            .Where(s => s.UserId != Guid.Empty && s.Category != null && s.Category.Trim() != "")
+            .ToListAsync();
+
+        foreach (var skill in skills)
+        {
+            var name = skill.Category!.Trim();
+            if (byName.TryGetValue(name, out var nodeId))
+            {
+                db.EntityCategoryTags.Add(new EntityCategoryTag
+                {
+                    UserId = skill.UserId,
+                    SourceType = "skills",
+                    SourceId = skill.Id,
+                    CategoryNodeId = nodeId,
+                    AssignedBy = "MANUAL",
+                });
+            }
+        }
+
+        await db.SaveChangesAsync();
     }
 
     /// <summary>
@@ -417,27 +486,17 @@ public static class CategorySeed
         }},
     };
 
-    // ── Skills ────────────────────────────────────────────────────────────────
+    // ── Skills (flat, user-curated) ──────────────────────────────────────────
+    // Single-level taxonomy: each root IS a container on the Skills page. Users
+    // can add/remove categories via the UI; seeds are planted on fresh DBs and
+    // after one-time legacy (deep tree) migration only.
     private static List<SeedNode> Skills() => new()
     {
-        new SeedNode { Name = "Type", Children = new()
-        {
-            new SeedNode { Name = "Programming Language" },
-            new SeedNode { Name = "Framework" },
-            new SeedNode { Name = "Library" },
-            new SeedNode { Name = "Tool" },
-            new SeedNode { Name = "Database" },
-            new SeedNode { Name = "Soft Skill" },
-            new SeedNode { Name = "Methodology" },
-        }},
-        new SeedNode { Name = "Technical", Children = new()
-        {
-            new SeedNode { Name = "Frontend" },
-            new SeedNode { Name = "Backend" },
-            new SeedNode { Name = "DevOps" },
-            new SeedNode { Name = "Data" },
-            new SeedNode { Name = "AI / ML" },
-        }},
+        new SeedNode { Name = "Frontend", Keywords = new(){ "frontend", "front-end", "angular", "react", "vue", "svelte", "html", "css", "tailwind", "typescript", "ui", "ux" } },
+        new SeedNode { Name = "Backend", Keywords = new(){ "backend", "back-end", "api", "server", "rest", "spring", "asp.net", ".net", "node", "express", "fastapi", "django", "microservice", "c#" } },
+        new SeedNode { Name = "Data", Keywords = new(){ "data", "sql", "database", "postgresql", "mysql", "mongodb", "pandas", "numpy", "python", "etl", "analytics" } },
+        new SeedNode { Name = "DevOps", Keywords = new(){ "devops", "docker", "kubernetes", "k8s", "linux", "ci/cd", "ci", "cd", "github actions", "terraform", "ansible", "cloud", "aws", "gcp" } },
+        new SeedNode { Name = "AI / ML", Keywords = new(){ "ai", "ml", "machine learning", "deep learning", "llm", "llms", "rag", "nlp", "pytorch", "tensorflow", "scikit-learn", "sklearn", "agents", "neural" } },
     };
 
     // ── Languages ─────────────────────────────────────────────────────────────

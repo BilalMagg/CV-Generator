@@ -1,0 +1,74 @@
+<div class="skill-library">
+  <div class="lib-header">
+    <div class="lib-title">
+      <h2>Skills</h2>
+      <p class="lib-sub" *ngIf="loading">Loading…</p>
+      <p class="lib-sub" *ngIf="!loading">{{ totalSkills() }} skill{{ totalSkills() === 1 ? '' : 's' }}</p>
+    </div>
+    <div class="lib-actions">
+      <input
+        class="search-input"
+        type="search"
+        placeholder="Search skills…"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+      <input
+        class="category-input"
+        type="text"
+        placeholder="New category…"
+        [(ngModel)]="newCategory"
+        (keydown.enter)="createCategory()"
+      />
+      <button type="button" class="btn btn-outline" (click)="createCategory()">Add category</button>
+      <button type="button" class="btn btn-secondary" (click)="refresh()">Refresh</button>
+      <button type="button" class="btn btn-primary" (click)="addSkill()">Add skill</button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!loading">
+    <div *ngIf="categories().length === 0 && skills().length === 0" class="lib-empty">
+      <p>No categories or skills yet.</p>
+      <button type="button" class="btn btn-primary" (click)="addSkill()">Add your first skill</button>
+    </div>
+
+    <div class="container-cards">
+      <section class="category-card" *ngFor="let group of containers()">
+        <header class="card-head" (click)="toggleCollapsed(group.id)">
+          <div class="card-title">
+            <svg class="chevron" [class.rotated]="!isCollapsed(group.id)" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+            <span class="cat-name">{{ group.name }}</span>
+            <span class="cat-count">{{ group.skills.length }}</span>
+          </div>
+          <div class="card-actions" (click)="$event.stopPropagation()">
+            <ng-container *ngIf="group.id !== 'uncategorized'">
+              <button type="button" class="icon-btn" title="Delete category" (click)="deleteCategory(group.id, group.name)">✕</button>
+            </ng-container>
+            <button type="button" class="small-btn" (click)="addSkill(group.id === 'uncategorized' ? undefined : group.name)">+ Add</button>
+          </div>
+        </header>
+
+        <div class="card-body" *ngIf="!isCollapsed(group.id)">
+          <ng-container *ngIf="group.skills.length; else emptyBody">
+            <div class="skill-row" *ngFor="let skill of group.skills" (click)="openSkill(skill.id)">
+              <span class="skill-name" [title]="skill.name">{{ skill.name }}</span>
+              <span class="skill-dots">
+                <span
+                  class="dot"
+                  *ngFor="let i of dots"
+                  [class.filled]="dotFill(skill.level, i)"
+                  [class.muted]="!dotFill(skill.level, i)"
+                ></span>
+              </span>
+            </div>
+          </ng-container>
+          <ng-template #emptyBody>
+            <p class="card-empty">No skills in this category yet.</p>
+          </ng-template>
+        </div>
+      </section>
+    </div>
+  </ng-container>
+</div>

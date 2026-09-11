@@ -29,8 +29,19 @@
       <div *ngFor="let field of fields" class="form-group" [class.full-width]="field.type === 'textarea'" [class.has-error]="fieldErrors[field.name]">
         <label [for]="field.name">{{ field.label }} <span *ngIf="field.required" class="required">*</span></label>
 
+        <!-- Skill Category select (skills-only): single-level container -->
+        <select *ngIf="isSkillCategory(field.name)"
+          [id]="field.name"
+          [(ngModel)]="form.category"
+          [name]="field.name"
+          (ngModelChange)="onSkillCategoryChange($event)"
+          class="form-control">
+          <option value="">Uncategorized</option>
+          <option *ngFor="let cat of skillCategoryNames()" [value]="cat">{{ cat }}</option>
+        </select>
+
         <!-- Text Input -->
-        <input *ngIf="field.type === 'text'" 
+        <input *ngIf="field.type === 'text' && !isHiddenField(field.name) && !isSkillCategory(field.name)" 
           [type]="field.type" 
           [id]="field.name" 
           [(ngModel)]="form[field.name]" 

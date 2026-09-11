@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { environment } from '@env/environment';
 import { ENTITY_FIELDS, EntityType, FieldConfig } from '@app/models/user-content.models';
 import { CategoryService } from '@app/services/category.service';
+import { TaxonomyNode } from '@app/models/category.model';
 import { ToastService } from '@app/services/toast.service';
 import { CategoryTreeComponent } from '@app/shared/components/category-tree/category-tree.component';
 import { AutoFillDialogComponent } from '@app/shared/components/auto-fill-dialog/auto-fill-dialog.component';
@@ -38,6 +39,10 @@ export class EntityFormComponent implements OnInit {
   saving = false;
   errorMessage: string | null = null;
   autofillOpen = signal(false);
+  skillCategories = signal<TaxonomyNode[]>([]);
+  prefillCategory: string | null = null;
+
+  skillCategoryNames = computed(() => this.skillCategories().map(c => c.name));
 
   autofillFields = computed(() => this.fields);
   entityLabel: string = '';
@@ -49,6 +54,7 @@ export class EntityFormComponent implements OnInit {
       this.fields = ENTITY_FIELDS[this.entity] || [];
       this.entityLabel = this.entity.replace(/s$/, '');
       this.loadCategoryNames();
+      this.loadSkillCategories();
 
       if (this.id) {
         this.initializeForm();
@@ -58,6 +64,55 @@ export class EntityFormComponent implements OnInit {
         this.initializeForm();
       }
     });
+    this.route.queryParamMap.subscribe(qp => {
+      this.prefillCategory = qp.get('category');
+    });
+  }
+
+  private isSkills(): boolean {
+    return this.entity.toLowerCase() === 'skills';
+  }
+
+  isHiddenField(name: string): boolean {
+    return this.isSkills() && name === 'subcategory';
+  }
+
+  isSkillCategory(name: string): boolean {
+    return this.isSkills() && name === 'category';
+  }
+
+  onSkillCategoryChange(name: string): void {
+    this.form.category = name;
+    this.applySkillCategory(name);
+  }
+
+  private applySkillCategory(name: string): void {
+    const clean = (name || '').trim();
+    if (!clean) {
+      this.selectedCategoryIds.set([]);
+      return;
+    }
+    const match = this.skillCategories().find(n => n.name.trim().toLowerCase() === clean.toLowerCase());
+    this.selectedCategoryIds.set(match ? [match.id] : []);
+  }
+
+  private loadSkillCategories(): void {
+    if (!this.isSkills()) return;
+    this.categoryService
+      .getTree('skills')
+      .then(nodes => {
+        this.skillCategories.set(nodes || []);
+        const prefill = this.prefillCategory;
+        if (prefill && !this.id) {
+          const match = (nodes || []).find(n => n.name.trim().toLowerCase() === prefill.trim().toLowerCase());
+          if (match) {
+            this.form.category = match.name;
+            this.applySkillCategory(match.name);
+          }
+          this.prefillCategory = null;
+        }
+      })
+      .catch(() => this.skillCategories.set([]));
   }
 
   private loadCategoryNames(): void {

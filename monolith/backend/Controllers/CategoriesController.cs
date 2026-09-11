@@ -74,6 +74,43 @@ public class CategoriesController : ControllerBase
         return Ok(ApiResponse<List<ScopeTagsDto>>.Ok(tags));
     }
 
+    /// POST /api/categories
+    /// Create a new single-level category (root node) for a scope, e.g. a skill container.
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CategoryCreateRequest request)
+    {
+        if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+        if (string.IsNullOrWhiteSpace(request.Scope)) return BadRequest(ApiResponse<object>.Error("scope is required"));
+        if (string.IsNullOrWhiteSpace(request.Name)) return BadRequest(ApiResponse<object>.Error("name is required"));
+        try
+        {
+            var node = await _service.CreateNodeAsync(UserId.Value, request.Scope.Trim().ToLowerInvariant(), request.Name);
+            return Ok(ApiResponse<CategoryNodeDto>.Ok(node));
+        }
+        catch (ArgumentException ex)
+        {
+            return Conflict(ApiResponse<object>.Error(ex.Message));
+        }
+    }
+
+    /// DELETE /api/categories/{id}
+    /// Remove a user-created category. Only allowed when no entity is tagged to it.
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+        try
+        {
+            var deleted = await _service.DeleteNodeAsync(UserId.Value, id);
+            if (!deleted) return NotFound(ApiResponse<object>.Error("Category not found"));
+            return Ok(ApiResponse<object>.Ok(null));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Error(ex.Message));
+        }
+    }
+
     /// POST /api/categories/categorize
     /// Recategorize an entity (or, if SourceId is omitted, the whole scope) using the user's taxonomy.
     [HttpPost("categorize")]

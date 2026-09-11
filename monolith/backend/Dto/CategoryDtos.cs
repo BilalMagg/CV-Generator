@@ -46,6 +46,12 @@ public class CategoryCategorizeRequest
     public string? SourceId { get; set; }
 }
 
+public class CategoryCreateRequest
+{
+    public string Scope { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+}
+
 public class ScopeTagsDto
 {
     public Guid SourceId { get; set; }
