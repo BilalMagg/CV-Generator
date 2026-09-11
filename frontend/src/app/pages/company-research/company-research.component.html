@@ -148,10 +148,10 @@
           </div>
 
           <div class="col-linkedin">
-            @if (company.linkedinUrl) {
-              <a class="site-link" [href]="company.linkedinUrl" target="_blank" rel="noopener" title="Open LinkedIn profile" (click)="$event.stopPropagation()">
+            @if (company.linkedInUrl) {
+              <a class="site-link" [href]="company.linkedInUrl" target="_blank" rel="noopener" title="Open LinkedIn profile" (click)="$event.stopPropagation()">
                 <i class="ti ti-brand-linkedin"></i>
-                {{ hostOf(company.linkedinUrl) }}
+                {{ hostOf(company.linkedInUrl) }}
               </a>
             } @else {
               <span class="no-site-tag dim">—</span>

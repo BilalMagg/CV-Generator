@@ -10,7 +10,7 @@ export interface ContactDto {
   address?: string;
   company?: string;
   position?: string;
-  linkedinUrl?: string;
+  linkedInUrl?: string;
   source?: string;
   notes?: string;
   avatarBase64?: string;
@@ -29,7 +29,7 @@ export interface CreateContactDto {
   address?: string;
   company?: string;
   position?: string;
-  linkedinUrl?: string;
+  linkedInUrl?: string;
   notes?: string;
   isFavorite?: boolean;
   avatarBase64?: string;
@@ -45,7 +45,7 @@ export interface UpdateContactDto {
   address?: string;
   company?: string;
   position?: string;
-  linkedinUrl?: string;
+  linkedInUrl?: string;
   notes?: string;
   isFavorite?: boolean;
   avatarBase64?: string;

@@ -662,7 +662,7 @@ export class MailboxComponent implements OnInit {
     this.cdEditCompany.set(contact.company || '');
     this.cdEditPosition.set(contact.position || '');
     this.cdEditPhone.set(contact.phone || '');
-    this.cdEditLinkedin.set(contact.linkedinUrl || '');
+    this.cdEditLinkedin.set(contact.linkedInUrl || '');
     this.cdEditNotes.set(contact.notes || '');
     this.cdEditing.set(true);
   }
@@ -680,7 +680,7 @@ export class MailboxComponent implements OnInit {
       company: this.cdEditCompany().trim() || undefined,
       position: this.cdEditPosition().trim() || undefined,
       phone: this.cdEditPhone().trim() || undefined,
-      linkedinUrl: this.cdEditLinkedin().trim() || undefined,
+      linkedInUrl: this.cdEditLinkedin().trim() || undefined,
       notes: this.cdEditNotes().trim() || undefined,
     };
     if (this.cdEditGender()) dto.gender = this.cdEditGender();
@@ -880,7 +880,7 @@ export class MailboxComponent implements OnInit {
     this.contactFormAddress.set(c.address || '');
     this.contactFormCompany.set(c.company || '');
     this.contactFormPosition.set(c.position || '');
-    this.contactFormLinkedin.set(c.linkedinUrl || '');
+    this.contactFormLinkedin.set(c.linkedInUrl || '');
     this.contactFormNotes.set(c.notes || '');
   }
 
@@ -895,7 +895,7 @@ export class MailboxComponent implements OnInit {
       address: this.contactFormAddress().trim() || undefined,
       company: this.contactFormCompany().trim() || undefined,
       position: this.contactFormPosition().trim() || undefined,
-      linkedinUrl: this.contactFormLinkedin().trim() || undefined,
+      linkedInUrl: this.contactFormLinkedin().trim() || undefined,
       notes: this.contactFormNotes().trim() || undefined,
     };
     if (this.editingContactId()) {

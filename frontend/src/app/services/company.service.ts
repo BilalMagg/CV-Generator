@@ -19,7 +19,7 @@ export interface CompanyDto {
   region?: string | null;
   sector?: string | null;
   foundedYear?: number | null;
-  linkedinUrl?: string | null;
+  linkedInUrl?: string | null;
   size?: string | null;
   logoUrl?: string | null;
   logoImageId?: string | null;
@@ -49,7 +49,7 @@ export interface CreateCompanyDto {
   region?: string;
   sector?: string;
   foundedYear?: number;
-  linkedinUrl?: string;
+  linkedInUrl?: string;
   size?: string;
   logoUrl?: string;
   logoImageId?: string;
@@ -66,7 +66,7 @@ export interface UpdateCompanyDto {
   region?: string;
   sector?: string;
   foundedYear?: number;
-  linkedinUrl?: string;
+  linkedInUrl?: string;
   size?: string;
   logoUrl?: string;
   logoImageId?: string;

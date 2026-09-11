@@ -179,7 +179,7 @@ export class CompaniesDetailComponent {
             company: ct.company?.trim() || company || undefined,
             email: ct.email || undefined,
             phone: ct.phone || undefined,
-            linkedinUrl: ct.linkedinUrl || undefined,
+            linkedInUrl: ct.linkedInUrl || undefined,
             notes: ct.notes || undefined,
           });
           ok++;

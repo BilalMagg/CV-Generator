@@ -377,7 +377,7 @@ export class ContactsExtractDialogComponent {
       address: r.address || undefined,
       company: r.company || undefined,
       position: r.position || undefined,
-      linkedinUrl: r.linkedinUrl || undefined,
+      linkedInUrl: r.linkedinUrl || undefined,
       notes: r.notes || undefined,
     });
     const toEmployee = (r: DraftContact) => ({
@@ -386,7 +386,7 @@ export class ContactsExtractDialogComponent {
       company: r.company || undefined,
       email: r.email || undefined,
       phone: r.phone || undefined,
-      linkedinUrl: r.linkedinUrl || undefined,
+      linkedInUrl: r.linkedinUrl || undefined,
       notes: r.notes || undefined,
     });
 

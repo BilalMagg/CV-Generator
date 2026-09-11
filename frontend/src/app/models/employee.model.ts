@@ -6,7 +6,7 @@ export interface EmployeeDto {
   company?: string;
   email?: string;
   phone?: string;
-  linkedinUrl?: string;
+  linkedInUrl?: string;
   notes?: string;
   source: string;
   createdAt: string;
@@ -19,7 +19,7 @@ export interface CreateEmployeeDto {
   company?: string;
   email?: string;
   phone?: string;
-  linkedinUrl?: string;
+  linkedInUrl?: string;
   notes?: string;
 }
 
@@ -29,7 +29,7 @@ export interface UpdateEmployeeDto {
   company?: string;
   email?: string;
   phone?: string;
-  linkedinUrl?: string;
+  linkedInUrl?: string;
   notes?: string;
 }
 

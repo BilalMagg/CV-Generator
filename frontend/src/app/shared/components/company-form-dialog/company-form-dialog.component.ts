@@ -183,7 +183,7 @@ export class CompanyFormDialogComponent implements OnChanges {
       this.formRegion.set(c.region ?? '');
       this.formSector.set(c.sector ?? '');
       this.formFoundedYear.set(c.foundedYear ? String(c.foundedYear) : '');
-      this.formLinkedinUrl.set(c.linkedinUrl ?? '');
+      this.formLinkedinUrl.set(c.linkedInUrl ?? '');
       this.formSize.set(c.size ?? '');
       this.formLogoUrl.set(c.logoUrl ?? '');
       this.formLogoImageId.set(c.logoImageId ?? '');
@@ -228,7 +228,7 @@ export class CompanyFormDialogComponent implements OnChanges {
         region: this.formRegion().trim() || undefined,
         sector: this.formSector().trim() || undefined,
         foundedYear: this.formFoundedYear().trim() ? Number(this.formFoundedYear().trim()) : undefined,
-        linkedinUrl: this.formLinkedinUrl().trim() || undefined,
+        linkedInUrl: this.formLinkedinUrl().trim() || undefined,
         size: this.formSize().trim() || undefined,
         logoUrl: this.formLogoUrl().trim() || '',
         logoImageId: this.formLogoImageId() || undefined,

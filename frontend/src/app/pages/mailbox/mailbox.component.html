@@ -351,7 +351,7 @@
               @if (detail.company) { <div class="cd-meta">{{ detail.company }}</div> }
               @if (detail.position) { <div class="cd-meta">{{ detail.position }}</div> }
               @if (detail.phone) { <div class="cd-meta">{{ detail.phone }}</div> }
-              <app-contact-quick-actions [linkedinUrl]="detail.linkedinUrl" [email]="detail.email" [phone]="detail.phone" />
+              <app-contact-quick-actions [linkedinUrl]="detail.linkedInUrl" [email]="detail.email" [phone]="detail.phone" />
               @if (detail.notes) { <div class="cd-notes">{{ detail.notes }}</div> }
               <div class="cd-actions">
                 <button class="mb-btn-sm" (click)="startContactEdit(detail)">Edit</button>
@@ -467,11 +467,11 @@
                   } @else {
                     <span>—</span>
                   }
-                  @if (c.linkedinUrl) {
-                    <a class="contact-chip-link" [href]="c.linkedinUrl" target="_blank" rel="noopener" (click)="$event.stopPropagation()">LinkedIn ↗</a>
+                  @if (c.linkedInUrl) {
+                    <a class="contact-chip-link" [href]="c.linkedInUrl" target="_blank" rel="noopener" (click)="$event.stopPropagation()">LinkedIn ↗</a>
                   }
                 </div>
-                  <app-contact-quick-actions [dense]="true" [linkedinUrl]="c.linkedinUrl" [email]="c.email" [phone]="c.phone" />
+                  <app-contact-quick-actions [dense]="true" [linkedinUrl]="c.linkedInUrl" [email]="c.email" [phone]="c.phone" />
                   <div class="contact-actions">
                     <button class="mb-btn-sm" (click)="$event.stopPropagation(); editContact(c)">Edit</button>
                     <button class="mb-btn-sm danger" (click)="$event.stopPropagation(); deleteContact(c.id)">Delete</button>
