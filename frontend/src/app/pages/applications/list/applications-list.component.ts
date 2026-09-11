@@ -14,6 +14,7 @@ import {
   PRIORITY_COLORS,
 } from '@app/models/application.model';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
+import { ConfirmService } from '@app/services/confirm.service';
 
 @Component({
   selector: 'app-applications-list',
@@ -24,6 +25,7 @@ import { RefreshButtonComponent } from '@app/shared/components/refresh-button/re
 })
 export class ApplicationsListComponent implements OnInit {
   private appService = inject(ApplicationService);
+  private confirm = inject(ConfirmService);
   protected router = inject(Router);
 
   applications = signal<ApplicationResponseDto[]>([]);
@@ -133,7 +135,7 @@ export class ApplicationsListComponent implements OnInit {
   }
 
   async onDelete(id: string) {
-    if (!confirm('Delete this application?')) return;
+    if (!(await this.confirm.confirm({ message: 'Delete this application?', variant: 'danger' }))) return;
     try { await this.appService.delete(id); this.loadData(); } catch { }
   }
 

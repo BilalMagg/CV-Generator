@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from '@app/services/documents.service';
 import { ToastService } from '@app/services/toast.service';
+import { ConfirmService } from '@app/services/confirm.service';
 import { extractError } from '@app/shared/error-utils';
 import { CvDocumentDto, CvTemplateDto, CvVersionDto } from '@app/models/document.model';
 
@@ -17,6 +18,7 @@ import { CvDocumentDto, CvTemplateDto, CvVersionDto } from '@app/models/document
 export class DocumentsCvsComponent implements OnInit, OnDestroy {
   private readonly service = inject(DocumentsService);
   private readonly toast = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   private readonly sanitizer = inject(DomSanitizer);
 
   cvs = signal<CvDocumentDto[]>([]);
@@ -201,7 +203,10 @@ export class DocumentsCvsComponent implements OnInit, OnDestroy {
   }
 
   async deleteCv(cv: CvDocumentDto): Promise<void> {
-    const confirmed = window.confirm(`Delete CV "${cv.title}"? This removes all its versions.`);
+    const confirmed = await this.confirm.confirm({
+      message: `Delete CV "${cv.title}"? This removes all its versions.`,
+      variant: 'danger',
+    });
     if (!confirmed) return;
     try {
       await this.service.deleteCv(cv.id);

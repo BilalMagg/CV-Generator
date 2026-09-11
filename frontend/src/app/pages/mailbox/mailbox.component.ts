@@ -13,6 +13,7 @@ import { ActivatedRoute } from '@angular/router';
 import { MailboxService } from '@app/services/mailbox.service';
 import { ContactService } from '@app/services/contact.service';
 import { ToastService } from '@app/services/toast.service';
+import { ConfirmService } from '@app/services/confirm.service';
 import { DocumentsService } from '@app/services/documents.service';
 import { AuthService } from '@app/services/auth.service';
 import { resolveTemplateVars, recipientGreeting, TemplateVarValues } from '@app/shared/template-vars';
@@ -88,6 +89,7 @@ export class MailboxComponent implements OnInit {
   private contactApi = inject(ContactService);
   private docApi = inject(DocumentsService);
   readonly toast = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   private readonly route = inject(ActivatedRoute);
   private readonly directAi = inject(DirectAiService);
   private readonly authSvc = inject(AuthService);
@@ -424,7 +426,7 @@ export class MailboxComponent implements OnInit {
   }
 
   async deleteTemplate(id: string) {
-    if (!confirm('Delete this template?')) return;
+    if (!(await this.confirm.confirm({ message: 'Delete this template?', variant: 'danger' }))) return;
     try {
       await this.service.deleteScheduleTemplate(id);
       this.toast.success('Template deleted');
@@ -1359,7 +1361,7 @@ export class MailboxComponent implements OnInit {
 
   async deleteFromDetail() {
     const s = this.selectedSchedule();
-    if (!s || !confirm(`Delete schedule "${s.name}"?`)) return;
+    if (!s || !(await this.confirm.confirm({ message: `Delete schedule "${s.name}"?`, variant: 'danger' }))) return;
     try {
       await this.service.deleteSchedule(s.id);
       this.toast.success('Schedule deleted');

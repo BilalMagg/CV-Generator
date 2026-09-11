@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ImageDto, ImageService } from '@app/services/image.service';
 import { UserProfileService } from '@app/services/user-profile.service';
 import { ToastService } from '@app/services/toast.service';
+import { ConfirmService } from '@app/services/confirm.service';
 import { ImagePickerComponent } from '@app/shared/components/image-picker/image-picker.component';
 
 const PAGE_SIZE = 40;
@@ -19,6 +20,7 @@ export class DocumentsImagesComponent implements OnInit {
   private readonly imagesApi = inject(ImageService);
   private readonly profileSvc = inject(UserProfileService);
   private readonly toast = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
 
   images = signal<ImageDto[]>([]);
   total = signal(0);
@@ -135,7 +137,7 @@ export class DocumentsImagesComponent implements OnInit {
   }
 
   async deleteImage(img: ImageDto): Promise<void> {
-    if (!confirm(`Delete "${img.name}"?`)) return;
+    if (!(await this.confirm.confirm({ message: `Delete "${img.name}"?`, variant: 'danger' }))) return;
     try {
       await this.imagesApi.delete(img.id);
       this.images.set(this.images().filter(i => i.id !== img.id));

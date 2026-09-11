@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CompanyService, CompanyDto } from '@app/services/company.service';
 import { ToastService } from '@app/services/toast.service';
+import { ConfirmService } from '@app/services/confirm.service';
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { CompanyFormDialogComponent } from '@app/shared/components/company-form-dialog/company-form-dialog.component';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
@@ -19,6 +20,7 @@ import { COUNTRIES } from '@app/shared/data/geo-data';
 export class CompaniesComponent implements OnInit {
   private readonly companyService = inject(CompanyService);
   private readonly toast = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
 
   companies = signal<CompanyDto[]>([]);
@@ -187,7 +189,7 @@ export class CompaniesComponent implements OnInit {
   }
 
   async onDelete(c: CompanyDto) {
-    if (!confirm(`Remove "${c.name}" from your list?`)) return;
+    if (!(await this.confirm.confirm({ message: `Remove "${c.name}" from your list?`, variant: 'danger' }))) return;
     try {
       await this.companyService.deleteCompany(c.id);
       this.toast.success('Company removed');

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CvGenerationService } from '@app/services/cv-generation.service';
+import { ConfirmService } from '@app/services/confirm.service';
 import { CvGenerationResult, EditCvSection, EditExperience, EditProject } from '@app/models/cv-generation.models';
 
 @Component({
@@ -146,6 +147,7 @@ export class EditCvComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private cvService = inject(CvGenerationService);
+  private confirm = inject(ConfirmService);
 
   loading = signal(true);
   saving = signal(false);
@@ -277,7 +279,7 @@ export class EditCvComponent implements OnInit {
     // In production, POST to a save endpoint
     await new Promise(r => setTimeout(r, 500));
     this.saving.set(false);
-    alert('Changes saved locally. In production, this would persist to the server.');
+    this.confirm.alert({ title: 'Changes saved', message: 'Changes saved locally. In production, this would persist to the server.' });
   }
 
   regenerateWithEdits() {

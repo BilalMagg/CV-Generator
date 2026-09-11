@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentsService } from '@app/services/documents.service';
 import { ToastService } from '@app/services/toast.service';
+import { ConfirmService } from '@app/services/confirm.service';
 import { extractError } from '@app/shared/error-utils';
 import { CvTemplateDto } from '@app/models/document.model';
 
@@ -17,6 +18,7 @@ import { CvTemplateDto } from '@app/models/document.model';
 export class DocumentsTemplatesComponent implements OnInit {
   private readonly service = inject(DocumentsService);
   private readonly toast = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
 
   @ViewChild('srcTa') srcTa?: ElementRef<HTMLTextAreaElement>;
@@ -378,9 +380,11 @@ export class DocumentsTemplatesComponent implements OnInit {
     }
     const unsupported = this.unsupportedKeys();
     if (unsupported.length > 0) {
-      const ok = window.confirm(
-        `These placeholder keys have no data source AND no example — they'll be skipped at render:\n- ${unsupported.join('\n- ')}\n\nSave anyway?`,
-      );
+      const ok = await this.confirm.confirm({
+        title: 'Unsupported placeholder keys',
+        message: `These placeholder keys have no data source AND no example — they'll be skipped at render:\n${unsupported.join('\n')}`,
+        confirmText: 'Save anyway',
+      });
       if (!ok) return;
     }
     const input = {
@@ -411,7 +415,10 @@ export class DocumentsTemplatesComponent implements OnInit {
 
   async deleteTemplate(template: CvTemplateDto): Promise<void> {
     if (template.isSystem) return;
-    const confirmed = window.confirm(`Delete template "${template.name}"?`);
+    const confirmed = await this.confirm.confirm({
+      message: `Delete template "${template.name}"?`,
+      variant: 'danger',
+    });
     if (!confirmed) return;
     try {
       await this.service.deleteTemplate(template.id);

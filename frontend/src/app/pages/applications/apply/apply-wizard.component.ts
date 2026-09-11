@@ -7,6 +7,7 @@ import { ApplyService } from '@app/services/apply.service';
 import { MailboxService } from '@app/services/mailbox.service';
 import { ContactService } from '@app/services/contact.service';
 import { ToastService } from '@app/services/toast.service';
+import { ConfirmService } from '@app/services/confirm.service';
 import { DocumentsService } from '@app/services/documents.service';
 import { AuthService } from '@app/services/auth.service';
 import { CreateContactDto } from '@app/models/mailbox.model';
@@ -53,6 +54,7 @@ export class ApplyWizardComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toast = inject(ToastService);
+  private confirm = inject(ConfirmService);
 
   step = signal<1 | 2 | 3 | 4>(1);
   cronPresets = CRON_PRESETS;
@@ -262,7 +264,7 @@ export class ApplyWizardComponent implements OnInit {
       const res = await this.extractionSvc.saveToLibrary(id);
       this.savedToLibrary.set(true);
       this.error.set('');
-      alert(`Saved to library: ${res.companyName}`);
+      this.confirm.alert({ title: 'Saved to library', message: `"${res.companyName}" was added to your job library.` });
     } catch (e: any) {
       this.error.set(e?.message || 'Failed to save to library');
     }

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CompanyService, CompanyDto } from '@app/services/company.service';
 import { ToastService } from '@app/services/toast.service';
+import { ConfirmService } from '@app/services/confirm.service';
 import { CompanyFormDialogComponent } from '@app/shared/components/company-form-dialog/company-form-dialog.component';
 import { ContactsExtractDialogComponent } from '@app/shared/components/contacts-extract-dialog/contacts-extract-dialog.component';
 import { ContactQuickActionsComponent } from '@app/shared/components/contact-quick-actions/contact-quick-actions.component';
@@ -38,6 +39,7 @@ export class CompaniesDetailComponent {
   private readonly contactService = inject(ContactService);
   private readonly employeeService = inject(EmployeeService);
   private readonly toast = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
 
   companyId = '';
   company = signal<CompanyDto | null>(null);
@@ -121,7 +123,7 @@ export class CompaniesDetailComponent {
 
   async onDelete() {
     const c = this.company();
-    if (!c || !confirm(`Remove "${c.name}" from your list?`)) return;
+    if (!c || !(await this.confirm.confirm({ message: `Remove "${c.name}" from your list?`, variant: 'danger' }))) return;
     try {
       await this.companyService.deleteCompany(c.id);
       this.toast.success('Company removed');
@@ -143,7 +145,7 @@ export class CompaniesDetailComponent {
   }
 
   async deleteEmployee(e: EmployeeDto) {
-    if (!confirm(`Remove "${e.name}" from this company's employees?`)) return;
+    if (!(await this.confirm.confirm({ message: `Remove "${e.name}" from this company's employees?`, variant: 'danger' }))) return;
     try {
       await this.employeeService.deleteById(e.id);
       this.employees.update(list => list.filter(x => x.id !== e.id));

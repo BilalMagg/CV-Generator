@@ -24,6 +24,7 @@ import {
 } from '@app/models/application.model';
 import { ContactDto, EmailMessageDto } from '@app/models/mailbox.model';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
+import { ConfirmService } from '@app/services/confirm.service';
 
 type AttemptForm = {
   channel: AttemptChannel;
@@ -43,6 +44,7 @@ type AttemptForm = {
 })
 export class ApplicationDetailComponent implements OnInit {
   private appService = inject(ApplicationService);
+  private confirm = inject(ConfirmService);
   private contactApi = inject(ContactService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -354,7 +356,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   async onDelete() {
     const app = this.application();
-    if (!app || !confirm('Delete this application?')) return;
+    if (!app || !(await this.confirm.confirm({ message: 'Delete this application?', variant: 'danger' }))) return;
     try { await this.appService.delete(app.id); this.router.navigate(['/applications/kanban']); }
     catch { }
   }
