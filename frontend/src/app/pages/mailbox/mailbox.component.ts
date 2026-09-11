@@ -673,15 +673,15 @@ export class MailboxComponent implements OnInit {
     const contact = this.selectedContactDetail();
     if (!contact) return;
     const dto: any = {
-      name: this.cdEditName(),
-      gender: this.cdEditGender() || undefined,
-      email: this.cdEditEmail(),
-      company: this.cdEditCompany() || undefined,
-      position: this.cdEditPosition() || undefined,
-      phone: this.cdEditPhone() || undefined,
-      linkedinUrl: this.cdEditLinkedin() || undefined,
-      notes: this.cdEditNotes() || undefined,
+      name: this.cdEditName().trim(),
+      email: this.cdEditEmail().trim() || undefined,
+      company: this.cdEditCompany().trim() || undefined,
+      position: this.cdEditPosition().trim() || undefined,
+      phone: this.cdEditPhone().trim() || undefined,
+      linkedinUrl: this.cdEditLinkedin().trim() || undefined,
+      notes: this.cdEditNotes().trim() || undefined,
     };
+    if (this.cdEditGender()) dto.gender = this.cdEditGender();
     const res = await this.contactApi.updateContact(contact.id, dto);
     if (res.success && res.data) {
       this.selectedContactDetail.set(res.data);
@@ -884,22 +884,22 @@ export class MailboxComponent implements OnInit {
 
   async saveContact() {
     const dto = {
-      name: this.contactFormName(),
-      gender: this.contactFormGender() || undefined,
-      email: this.contactFormEmail(),
-      phone: this.contactFormPhone() || undefined,
-      mobile: this.contactFormMobile() || undefined,
-      fax: this.contactFormFax() || undefined,
-      address: this.contactFormAddress() || undefined,
-      company: this.contactFormCompany() || undefined,
-      position: this.contactFormPosition() || undefined,
-      linkedinUrl: this.contactFormLinkedin() || undefined,
-      notes: this.contactFormNotes() || undefined,
+      name: this.contactFormName().trim(),
+      gender: this.contactFormGender().trim() || undefined,
+      email: this.contactFormEmail().trim() || undefined,
+      phone: this.contactFormPhone().trim() || undefined,
+      mobile: this.contactFormMobile().trim() || undefined,
+      fax: this.contactFormFax().trim() || undefined,
+      address: this.contactFormAddress().trim() || undefined,
+      company: this.contactFormCompany().trim() || undefined,
+      position: this.contactFormPosition().trim() || undefined,
+      linkedinUrl: this.contactFormLinkedin().trim() || undefined,
+      notes: this.contactFormNotes().trim() || undefined,
     };
     if (this.editingContactId()) {
       await this.contactApi.updateContact(this.editingContactId()!, dto);
     } else {
-      await this.contactApi.createContact(dto);
+      await this.contactApi.createContact({ ...dto, email: dto.email ?? '' });
     }
     this.showContactForm.set(false);
     this.loadContacts();
