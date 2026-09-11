@@ -5,6 +5,7 @@ public class ContactDto
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string? Gender { get; set; }
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public string? Mobile { get; set; }
@@ -24,6 +25,7 @@ public class ContactDto
 public class CreateContactDto
 {
     public string Name { get; set; } = string.Empty;
+    public string? Gender { get; set; }
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public string? Mobile { get; set; }
@@ -41,6 +43,7 @@ public class CreateContactDto
 public class UpdateContactDto
 {
     public string? Name { get; set; }
+    public string? Gender { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public string? Mobile { get; set; }

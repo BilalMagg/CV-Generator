@@ -14,6 +14,8 @@ import { MailboxService } from '@app/services/mailbox.service';
 import { ContactService } from '@app/services/contact.service';
 import { ToastService } from '@app/services/toast.service';
 import { DocumentsService } from '@app/services/documents.service';
+import { AuthService } from '@app/services/auth.service';
+import { resolveTemplateVars, recipientGreeting, TemplateVarValues } from '@app/shared/template-vars';
 import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
 import {
   ContactDto, EmailMessageDto, EmailScheduleDto, ScheduleHistoryItem,
@@ -55,6 +57,25 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
   },
 ];
 
+/** French job-application template auto-seeded into the template library, re-usable from compose. */
+const FR_APPLY_TEMPLATE: { name: string; subjectTemplate: string; bodyTemplate: string; variableDefaults: Record<string, string> } = {
+  name: 'Candidature (FR)',
+  subjectTemplate: 'Candidature – {{research}} – {{my_name}}',
+  bodyTemplate:
+    `Bonjour {{recipient_greeting}},\n\n` +
+    `Je suis {{my_name}}, étudiant à {{school}}, {{degree}}. ` +
+    `Je suis actuellement à la recherche {{research}}. ` +
+    `Je souhaite postuler à {{offer_phrase}}.\n\n` +
+    `Veuillez trouver mon CV en pièce jointe pour plus d'informations. ` +
+    `Je reste à votre disposition pour un entretien afin de vous présenter mon profil davantage.\n\n` +
+    `Cordialement,\n{{my_name}}`,
+  variableDefaults: {
+    school: "l'ENSA Tanger",
+    degree: '5ème année en génie informatique',
+    research: "d'un stage PFE",
+  },
+};
+
 @Component({
   selector: 'app-mailbox',
   standalone: true,
@@ -69,6 +90,7 @@ export class MailboxComponent implements OnInit {
   readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly directAi = inject(DirectAiService);
+  private readonly authSvc = inject(AuthService);
 
   view = signal<MailboxView>((localStorage.getItem('mailbox-view') as MailboxView) || 'compose');
 
@@ -102,6 +124,7 @@ export class MailboxComponent implements OnInit {
   cdEditPhone = signal('');
   cdEditLinkedin = signal('');
   cdEditNotes = signal('');
+  cdEditGender = signal('');
 
   history = signal<EmailMessageDto[]>([]);
   historyLoading = signal(false);
@@ -143,11 +166,13 @@ export class MailboxComponent implements OnInit {
   contactFormPosition = signal('');
   contactFormLinkedin = signal('');
   contactFormNotes = signal('');
+  contactFormGender = signal('');
   editingContactId = signal<string | null>(null);
   contactAutofillOpen = signal(false);
 
   contactAutofillFields: AutofillField[] = [
     { name: 'contactFormName', label: 'Name', type: 'text' },
+    { name: 'contactFormGender', label: 'Gender', type: 'select', options: ['male', 'female'] },
     { name: 'contactFormEmail', label: 'Email', type: 'text' },
     { name: 'contactFormPhone', label: 'Phone', type: 'text' },
     { name: 'contactFormMobile', label: 'Mobile', type: 'text' },
@@ -165,6 +190,7 @@ export class MailboxComponent implements OnInit {
 
   applyContactAutofill(values: Record<string, any>): void {
     if (values['contactFormName'] !== undefined) this.contactFormName.set(String(values['contactFormName']));
+    if (values['contactFormGender'] !== undefined) this.contactFormGender.set(String(values['contactFormGender']));
     if (values['contactFormEmail'] !== undefined) this.contactFormEmail.set(String(values['contactFormEmail']));
     if (values['contactFormPhone'] !== undefined) this.contactFormPhone.set(String(values['contactFormPhone']));
     if (values['contactFormMobile'] !== undefined) this.contactFormMobile.set(String(values['contactFormMobile']));
@@ -184,6 +210,17 @@ export class MailboxComponent implements OnInit {
   templates = EMAIL_TEMPLATES;
   activeTemplate = signal<string | null>(null);
   attachments = signal<File[]>([]);
+
+  // Re-usable (saved) templates surfaced in the compose aside + variable fill dialog.
+  composeSavedTemplates = signal<ScheduleTemplateDto[]>([]);
+  composeTemplatesLoading = signal(false);
+  private composeTemplatesLoaded = false;
+  fillOpen = signal(false);
+  fillTemplate = signal<ScheduleTemplateDto | null>(null);
+  fillName = signal('');
+  fillGender = signal('');
+  fillResearch = signal('');
+  fillOffer = signal('');
 
   // Documents picker inside the Attachments tab (CVs + their PDF versions).
   docCvs = signal<CvDocumentDto[]>([]);
@@ -286,7 +323,7 @@ export class MailboxComponent implements OnInit {
     this.editingTemplateId.set(null);
     this.tplName.set('');
     this.tplSubject.set('Application for {{company_name}}');
-    this.tplBody.set('Dear {{company_name}} hiring team,\n\nI am interested in the {{position}} role.\n\nBest regards,\n{{my_name}}');
+    this.tplBody.set('Dear {{company_name}} hiring team,\n\nI am very interested in your team and the work you do. Please find my CV attached.\n\nBest regards,\n{{my_name}}');
     this.tplCron.set('0 9 * * *');
     this.tplCvVersionId.set('');
     this.tplVarDefaultsJson.set('{\n  \n}');
@@ -496,6 +533,7 @@ export class MailboxComponent implements OnInit {
     this.loadHistory();
     this.loadSchedules();
     this.loadScheduleTemplates();
+    this.ensureComposeTemplates();
     this.loadGmailStatus();
   }
 
@@ -510,6 +548,7 @@ export class MailboxComponent implements OnInit {
       this.showContactForm.set(true);
       this.editingContactId.set(null);
       this.contactFormName.set('');
+      this.contactFormGender.set('');
       this.contactFormEmail.set('');
       this.contactFormPhone.set('');
       this.contactFormMobile.set('');
@@ -616,6 +655,7 @@ export class MailboxComponent implements OnInit {
 
   startContactEdit(contact: ContactDto) {
     this.cdEditName.set(contact.name);
+    this.cdEditGender.set(contact.gender || '');
     this.cdEditEmail.set(contact.email);
     this.cdEditCompany.set(contact.company || '');
     this.cdEditPosition.set(contact.position || '');
@@ -634,6 +674,7 @@ export class MailboxComponent implements OnInit {
     if (!contact) return;
     const dto: any = {
       name: this.cdEditName(),
+      gender: this.cdEditGender() || undefined,
       email: this.cdEditEmail(),
       company: this.cdEditCompany() || undefined,
       position: this.cdEditPosition() || undefined,
@@ -822,12 +863,14 @@ export class MailboxComponent implements OnInit {
     this.contactFormPosition.set('');
     this.contactFormLinkedin.set('');
     this.contactFormNotes.set('');
+    this.contactFormGender.set('');
   }
 
   editContact(c: ContactDto) {
     this.showContactForm.set(true);
     this.editingContactId.set(c.id);
     this.contactFormName.set(c.name);
+    this.contactFormGender.set(c.gender || '');
     this.contactFormEmail.set(c.email);
     this.contactFormPhone.set(c.phone || '');
     this.contactFormMobile.set(c.mobile || '');
@@ -842,6 +885,7 @@ export class MailboxComponent implements OnInit {
   async saveContact() {
     const dto = {
       name: this.contactFormName(),
+      gender: this.contactFormGender() || undefined,
       email: this.contactFormEmail(),
       phone: this.contactFormPhone() || undefined,
       mobile: this.contactFormMobile() || undefined,
@@ -951,8 +995,105 @@ export class MailboxComponent implements OnInit {
     this.activeTemplate.set(t.name);
   }
 
+  /** Load saved templates once for the compose aside and auto-seed the French apply template. */
+  async ensureComposeTemplates() {
+    if (this.composeTemplatesLoaded || this.composeTemplatesLoading()) return;
+    this.composeTemplatesLoading.set(true);
+    try {
+      const res = await this.service.getScheduleTemplates();
+      const list = res.success && res.data ? res.data : [];
+      this.composeSavedTemplates.set(list);
+      if (!list.some(t => t.name === FR_APPLY_TEMPLATE.name)) {
+        try {
+          await this.service.createScheduleTemplate({
+            name: FR_APPLY_TEMPLATE.name,
+            subjectTemplate: FR_APPLY_TEMPLATE.subjectTemplate,
+            bodyTemplate: FR_APPLY_TEMPLATE.bodyTemplate,
+            variableDefaults: FR_APPLY_TEMPLATE.variableDefaults,
+          });
+          const res2 = await this.service.getScheduleTemplates();
+          if (res2.success && res2.data) this.composeSavedTemplates.set(res2.data);
+        } catch {}
+      }
+    } catch {
+    } finally {
+      this.composeTemplatesLoading.set(false);
+      this.composeTemplatesLoaded = true;
+    }
+  }
+
+  openFillDialog(t: ScheduleTemplateDto) {
+    const recipient = this.composeRecipients()[0];
+    this.fillTemplate.set(t);
+    this.fillName.set(recipient?.name ?? '');
+    this.fillGender.set(recipient?.gender ?? '');
+    this.fillResearch.set(t.variableDefaults?.research ?? '');
+    this.fillOffer.set('');
+    this.fillOpen.set(true);
+  }
+
+  closeFillDialog() {
+    this.fillOpen.set(false);
+    this.fillTemplate.set(null);
+  }
+
+  /** Values used for the compose template preview + insert (mirrors the backend resolver). */
+  fillVarValues(): TemplateVarValues {
+    const user = this.authSvc.currentUser();
+    const name = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
+    const d = this.fillTemplate()?.variableDefaults ?? {};
+    const research = this.fillResearch() || d.research || '';
+    return {
+      recipient_name: this.fillName(),
+      recipient_greeting: recipientGreeting(this.fillName(), this.fillGender() || undefined),
+      school: d.school || '',
+      degree: d.degree || '',
+      research,
+      offer_phrase: this.fillOffer().trim(),
+      my_name: name,
+      my_email: user?.email ?? '',
+      my_phone: '',
+    };
+  }
+
+  fillPreviewSubject(): string {
+    const t = this.fillTemplate();
+    return t ? resolveTemplateVars(t.subjectTemplate, this.fillVarValues()) : '';
+  }
+
+  fillPreviewBody(): string {
+    const t = this.fillTemplate();
+    return t ? resolveTemplateVars(t.bodyTemplate, this.fillVarValues()) : '';
+  }
+
+  async insertFilledTemplate() {
+    const t = this.fillTemplate();
+    if (!t) return;
+    const values = this.fillVarValues();
+    this.composeSubject.set(resolveTemplateVars(t.subjectTemplate, values));
+    this.composeBody.set(resolveTemplateVars(t.bodyTemplate, values));
+    this.activeTemplate.set(t.name);
+    this.fillOpen.set(false);
+    if (t.cvVersionId) await this.attachVersionById(t.cvVersionId);
+    this.fillTemplate.set(null);
+    this.toast.success(`Template "${t.name}" applied — fill what remains, then send.`);
+  }
+
+  private async attachVersionById(versionId: string) {
+    await this.ensureDocumentsLoaded();
+    for (const cv of this.docCvs()) {
+      const v = cv.versions.find(x => x.id === versionId);
+      if (v) {
+        await this.attachDocVersion(cv, v);
+        return;
+      }
+    }
+    this.toast.error('Template CV not found in Documents');
+  }
+
   selectAsideTab(tab: 'templates' | 'attachments') {
     this.asideTab.set(tab);
+    if (tab === 'templates') void this.ensureComposeTemplates();
     if (tab === 'attachments') void this.ensureDocumentsLoaded();
   }
 

@@ -2,6 +2,7 @@ export interface ContactDto {
   id: string;
   userId: string;
   name: string;
+  gender?: string;
   email: string;
   phone?: string;
   mobile?: string;
@@ -20,6 +21,7 @@ export interface ContactDto {
 
 export interface CreateContactDto {
   name: string;
+  gender?: string;
   email: string;
   phone?: string;
   mobile?: string;
@@ -35,6 +37,7 @@ export interface CreateContactDto {
 
 export interface UpdateContactDto {
   name?: string;
+  gender?: string;
   email?: string;
   phone?: string;
   mobile?: string;

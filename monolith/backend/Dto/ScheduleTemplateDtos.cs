@@ -20,6 +20,21 @@ public class ScheduleVariableDefaults
 
     [JsonPropertyName("my_email")]
     public string? MyEmail { get; set; }
+
+    [JsonPropertyName("recipient_name")]
+    public string? RecipientName { get; set; }
+
+    [JsonPropertyName("school")]
+    public string? School { get; set; }
+
+    [JsonPropertyName("degree")]
+    public string? Degree { get; set; }
+
+    [JsonPropertyName("research")]
+    public string? Research { get; set; }
+
+    [JsonPropertyName("offer_phrase")]
+    public string? OfferPhrase { get; set; }
 }
 
 /// <summary>A file stored in MinIO and attached to a template/schedule at fire time.</summary>

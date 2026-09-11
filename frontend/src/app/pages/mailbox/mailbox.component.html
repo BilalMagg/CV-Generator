@@ -123,6 +123,19 @@
 
           @if (asideTab() === 'templates') {
             <div class="aside-body">
+              @if (composeTemplatesLoading() && composeSavedTemplates().length === 0) {
+                <div class="doc-loading">Loading saved templates…</div>
+              }
+              @if (composeSavedTemplates().length) {
+                <div class="aside-group-head">Saved</div>
+                @for (t of composeSavedTemplates(); track t.id) {
+                  <div class="template-item" [class.active]="activeTemplate() === t.name" (click)="openFillDialog(t)">
+                    <div class="template-name">{{ t.name }}</div>
+                    <div class="template-preview">{{ t.subjectTemplate }}</div>
+                  </div>
+                }
+                <div class="aside-group-sep"></div>
+              }
               @for (t of templates; track t.name) {
                 <div class="template-item" [class.active]="activeTemplate() === t.name" (click)="applyTemplate(t)">
                   <div class="template-name">{{ t.name }}</div>
@@ -316,6 +329,11 @@
             @if (cdEditing()) {
               <div class="cd-edit-fields">
                 <input class="cd-input" placeholder="Name" [ngModel]="cdEditName()" (ngModelChange)="cdEditName.set($event)" />
+                <select class="cd-input" [ngModel]="cdEditGender()" (ngModelChange)="cdEditGender.set($event)">
+                  <option value="">Gender (unknown / prefer not to say)</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
                 <input class="cd-input" placeholder="Email" [ngModel]="cdEditEmail()" (ngModelChange)="cdEditEmail.set($event)" />
                 <input class="cd-input" placeholder="Company" [ngModel]="cdEditCompany()" (ngModelChange)="cdEditCompany.set($event)" />
                 <input class="cd-input" placeholder="Position" [ngModel]="cdEditPosition()" (ngModelChange)="cdEditPosition.set($event)" />
@@ -399,6 +417,11 @@
               </div>
               <div class="form-grid">
                 <input placeholder="Name" [ngModel]="contactFormName()" (ngModelChange)="contactFormName.set($event)" />
+                <select [ngModel]="contactFormGender()" (ngModelChange)="contactFormGender.set($event)">
+                  <option value="">Gender (unknown / prefer not to say)</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
                 <input placeholder="Email" [ngModel]="contactFormEmail()" (ngModelChange)="contactFormEmail.set($event)" />
                 <input placeholder="Phone" [ngModel]="contactFormPhone()" (ngModelChange)="contactFormPhone.set($event)" />
                 <input placeholder="Mobile" [ngModel]="contactFormMobile()" (ngModelChange)="contactFormMobile.set($event)" />
@@ -865,6 +888,54 @@
           <button class="mb-btn-primary" [disabled]="!schedFormValid() || schedSaving()" (click)="saveSchedule()">
             {{ schedSaving() ? 'Saving…' : (editingScheduleId() ? 'Save changes' : 'Create schedule') }}
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (fillOpen() && fillTemplate()) {
+    <div class="modal-backdrop" (click)="closeFillDialog()">
+      <div class="fill-modal" (click)="$event.stopPropagation()">
+        <div class="contact-modal-header">
+          <h3>{{ fillTemplate()!.name }}</h3>
+          <button class="contact-modal-close" (click)="closeFillDialog()">&times;</button>
+        </div>
+        <div class="fill-modal-body">
+          <div class="sched-field">
+            <label>Recipient name <span class="req">*</span></label>
+            <input type="text" placeholder="e.g. Karim Alaoui" [ngModel]="fillName()" (ngModelChange)="fillName.set($event)">
+          </div>
+          <div class="sched-field">
+            <label>Recipient gender</label>
+            <select [ngModel]="fillGender()" (ngModelChange)="fillGender.set($event)">
+              <option value="">Unknown (neutral greeting)</option>
+              <option value="male">Male → "cher"</option>
+              <option value="female">Female → "chère"</option>
+            </select>
+            <span class="sched-hint">Used for the French greeting ({{ fillGender() === 'male' ? 'cher' : fillGender() === 'female' ? 'chère' : 'no title' }}).</span>
+          </div>
+          <div class="sched-field">
+            <label>Researching <span class="req">*</span></label>
+            <input type="text" placeholder="d'un stage PFE…" [ngModel]="fillResearch()" (ngModelChange)="fillResearch.set($event)">
+            <span class="sched-hint">Appears after "à la recherche". Default from the template: "{{ fillTemplate()!.variableDefaults?.research ?? '' }}".</span>
+          </div>
+          <div class="sched-field">
+            <label>Applying to <span class="req">*</span></label>
+            <input type="text" placeholder="votre offre de stage publiée sur LinkedIn…" [ngModel]="fillOffer()" (ngModelChange)="fillOffer.set($event)">
+            <span class="sched-hint">Continues "Je souhaite postuler à …".</span>
+          </div>
+          @if (fillTemplate()!.cvVersionId) {
+            <div class="fill-notes">The template's CV will be attached automatically.</div>
+          }
+          <div class="fill-preview">
+            <div class="fill-preview-title">Preview</div>
+            <div class="fill-preview-subject">{{ fillPreviewSubject() }}</div>
+            <pre class="fill-preview-body">{{ fillPreviewBody() }}</pre>
+          </div>
+        </div>
+        <div class="contact-modal-footer">
+          <button class="mb-btn-ghost" (click)="closeFillDialog()">Cancel</button>
+          <button class="mb-btn-primary" [disabled]="!fillName().trim() || !fillResearch().trim() || !fillOffer().trim()" (click)="insertFilledTemplate()">Insert into compose</button>
         </div>
       </div>
     </div>

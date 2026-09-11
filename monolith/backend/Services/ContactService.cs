@@ -51,6 +51,7 @@ public class ContactService : IContactService
                 Id = c.Id,
                 UserId = c.UserId,
                 Name = c.Name,
+                Gender = c.Gender,
                 Email = c.Email,
                 Phone = c.Phone,
                 Company = c.Company,
@@ -84,6 +85,7 @@ public class ContactService : IContactService
             UserId = userId,
             Name = dto.Name.Trim(),
             Email = dto.Email.Trim().ToLower(),
+            Gender = NormalizeNull(dto.Gender),
             Phone = NormalizeNull(dto.Phone),
             Mobile = NormalizeNull(dto.Mobile),
             Fax = NormalizeNull(dto.Fax),
@@ -115,6 +117,7 @@ public class ContactService : IContactService
             ValidateEmail(dto.Email);
             c.Email = dto.Email.Trim().ToLower();
         }
+        if (dto.Gender is not null) c.Gender = NormalizeNull(dto.Gender);
         if (dto.Phone is not null) c.Phone = NormalizeNull(dto.Phone);
         if (dto.Mobile is not null) c.Mobile = NormalizeNull(dto.Mobile);
         if (dto.Fax is not null) c.Fax = NormalizeNull(dto.Fax);
@@ -391,7 +394,7 @@ public class ContactService : IContactService
 
     private static ContactDto Map(Contact c) => new()
     {
-        Id = c.Id, UserId = c.UserId, Name = c.Name, Email = c.Email, Phone = c.Phone,
+        Id = c.Id, UserId = c.UserId, Name = c.Name, Gender = c.Gender, Email = c.Email, Phone = c.Phone,
         Mobile = c.Mobile, Fax = c.Fax, Address = c.Address,
         Company = c.Company, Position = c.Position,
         LinkedInUrl = c.LinkedInUrl, Notes = c.Notes,
