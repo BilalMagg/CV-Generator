@@ -25,6 +25,8 @@ interface ImportResult {
   imported: number;
   skipped: number;
   errors: string[];
+  categoriesCreated?: number;
+  createdCategories?: string[];
 }
 
 interface SheetAnalysis {
@@ -32,6 +34,15 @@ interface SheetAnalysis {
   mappedColumns: string[];
   requiredUnmapped: FieldDef[];
 }
+
+/** Per-category disposition chosen in the new-categories mapping popup. */
+type CategoryPlanMode = 'create' | 'existing' | 'uncategorized';
+interface CategoryPlanEntry {
+  mode: CategoryPlanMode;
+  /** Existing root category the row's category will be renamed to when mode='existing'. */
+  targetName?: string;
+}
+const UNCATEGORIZED_KEY = '__uncat__';
 
 export interface FieldDef {
   /** Backend/entity property the column feeds (e.g. 'name', 'sector'). */
@@ -90,6 +101,15 @@ const CATALOGS: Record<string, FieldDef[]> = {
     { field: 'portfolioSent', label: 'Portfolio sent', hint: 'true/yes/1/sent to flip the flag.', aliases: ['portfoliosent', 'portfolio', 'pf'] },
     { field: 'shouldApplyAgain', label: 'Re-apply?', hint: 'yes/no advice for re-applying.', aliases: ['shouldapplyagain', 'shouldiapplyagain', 'reapply'] },
     { field: 'notes', label: 'Notes', hint: 'Free text captured on the application.', aliases: ['notes', 'note', 'commentaire'] },
+  ],
+  skills: [
+    { field: 'name', label: 'Skill name', required: true, hint: 'Skill name — each row becomes one skill; duplicates are skipped.', aliases: ['name', 'skill', 'skillname', 'competence', 'compétence', 'nom'] },
+    { field: 'category', label: 'Category container', hint: 'e.g. Frontend, Cloud. Missing categories are created automatically.', aliases: ['category', 'categorie', 'catégorie', 'container'] },
+    { field: 'level', label: 'Level', hint: 'Beginner, Intermediate, Advanced or Expert (case-insensitive).', aliases: ['level', 'niveau'] },
+    { field: 'subcategory', label: 'Subcategory', hint: 'e.g. React, Node.js.', aliases: ['subcategory', 'souscategorie', 'sous-catégorie'] },
+    { field: 'yearsOfExperience', label: 'Years of experience', hint: 'A number (0-60).', aliases: ['yearsofexperience', 'years', 'annees', 'années'] },
+    { field: 'lastUsedYear', label: 'Last used year', hint: 'A 4-digit year.', aliases: ['lastusedyear', 'lastused', 'used', 'derniere'] },
+    { field: 'isCore', label: 'Core skill', hint: 'true/yes/1 marks it as a core skill.', aliases: ['iscore', 'core', 'essential', 'prioritaire'] },
   ],
 };
 
@@ -223,6 +243,45 @@ function pickBestHeader(def: FieldDef, headers: string[], used: Set<string>): st
     @if (open()) {
       <div class="backdrop" (click)="close()">
         <div class="dialog" (click)="$event.stopPropagation()">
+          @if (showCategoryMap()) {
+            <div class="map-backdrop" (click)="closeCategoryMap()">
+              <div class="map-dialog" (click)="$event.stopPropagation()">
+                <h3>New categories</h3>
+                <p class="hint">
+                  Your sheet uses {{ categoryPlanList().length }} categor{{ categoryPlanList().length === 1 ? 'y' : 'ies' }}
+                  that don't exist in your library yet. Choose what happens to each on import.
+                </p>
+                <div class="map-rows">
+                  @for (entry of categoryPlanList(); track entry.name) {
+                    <div class="map-row">
+                      <div class="map-info">
+                        <span class="chip">{{ entry.name }}</span>
+                        <small class="mode-hint">{{ planModeHint(entry) }}</small>
+                      </div>
+                      <select
+                        [ngModel]="planModeValue(entry)"
+                        (ngModelChange)="setPlanMode(entry.name, $event)"
+                      >
+                        <option value="">Create new category</option>
+                        <option [value]="uncatKey">Keep uncategorized</option>
+                        @if (existingSkillNames().length > 0) {
+                          <optgroup label="Move into existing category">
+                            @for (existing of existingSkillNames(); track existing) {
+                              <option [value]="existing">{{ existing }}</option>
+                            }
+                          </optgroup>
+                        }
+                      </select>
+                    </div>
+                  }
+                </div>
+                <div class="map-foot">
+                  <button class="btn ghost" (click)="closeCategoryMap()">Cancel</button>
+                  <button class="btn primary" (click)="applyPlan()">Apply & import {{ analysis().rows.length }} rows</button>
+                </div>
+              </div>
+            </div>
+          }
           <div class="head">
             <h2>Import {{ type() }}</h2>
             <button class="x" (click)="close()">✕</button>
@@ -278,6 +337,12 @@ function pickBestHeader(def: FieldDef, headers: string[], used: Set<string>): st
                       </div>
                     }
                   }
+
+                  @if (type() === 'skills' && missingCategories().length > 0) {
+                    <div class="preview bad">
+                      (*) {{ missingCategories().join(', ') }} — not in your categories yet and will be created on import.
+                    </div>
+                  }
                 </div>
 
                 <aside class="map-pane">
@@ -321,10 +386,18 @@ function pickBestHeader(def: FieldDef, headers: string[], used: Set<string>): st
               <div class="result-grid">
                 <div class="res ok"><span class="num">{{ result()!.imported }}</span>imported</div>
                 <div class="res skip"><span class="num">{{ result()!.skipped }}</span>skipped</div>
+                @if (result()!.categoriesCreated) {
+                  <div class="res ok"><span class="num">{{ result()!.categoriesCreated }}</span>categor{{ result()!.categoriesCreated === 1 ? 'y' : 'ies' }} created</div>
+                }
                 @if (result()!.errors.length > 0) {
                   <div class="res err"><span class="num">{{ result()!.errors.length }}</span>errors</div>
                 }
               </div>
+              @if (result()!.createdCategories; as created) {
+                @if (created.length > 0) {
+                  <p class="preview">Created: {{ created.join(', ') }}</p>
+                }
+              }
               @if (result()!.errors.length > 0) {
                 <ul class="err-list">
                   @for (e of result()!.errors.slice(0, 8); track e) {
@@ -347,7 +420,16 @@ function pickBestHeader(def: FieldDef, headers: string[], used: Set<string>): st
   `,
   styles: `
     .backdrop { position: fixed; inset: 0; background: rgb(0 0 0 / 35%); display: flex; align-items: center; justify-content: center; z-index: 200; }
-    .dialog { width: 1000px; max-width: calc(100vw - 32px); background: var(--surface, #fff); border-radius: 14px; box-shadow: 0 20px 60px rgb(0 0 0 / 25%); overflow: hidden; }
+    .dialog { width: 1000px; max-width: calc(100vw - 32px); background: var(--surface, #fff); border-radius: 14px; box-shadow: 0 20px 60px rgb(0 0 0 / 25%); overflow: hidden; position: relative; }
+    .map-backdrop { position: absolute; inset: 0; background: rgb(15 23 42 / 45%); backdrop-filter: blur(1px); display: flex; align-items: center; justify-content: center; z-index: 10; }
+    .map-dialog { width: 540px; max-width: calc(100% - 48px); max-height: 85%; overflow-y: auto; background: var(--surface, #fff); border-radius: 12px; box-shadow: 0 20px 60px rgb(0 0 0 / 30%); padding: 18px 20px; display: grid; gap: 12px; box-sizing: border-box; }
+    .map-dialog h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text); }
+    .map-rows { display: grid; gap: 12px; }
+    .map-row { display: grid; gap: 6px; }
+    .map-info { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .chip { background: oklch(0.95 0.05 250); color: oklch(0.45 0.18 265); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .mode-hint { font-size: 11.5px; color: var(--text-3); }
+    .map-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
     .head { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px 12px; }
     h2 { margin: 0; font-size: 16px; font-weight: 700; text-transform: capitalize; color: var(--text); }
     .x { border: none; background: transparent; cursor: pointer; color: var(--text-3); font-size: 14px; padding: 4px 8px; border-radius: 6px; }
@@ -400,6 +482,97 @@ export class SheetImportDialogComponent {
   fileName = signal('');
   busy = signal(false);
   result = signal<ImportResult | null>(null);
+
+  /** Existing skill-scope category names (for the missing-category warning). */
+  private existingSkillCategories = signal<string[]>([]);
+  private skillCategoriesLoaded = false;
+
+  /** Categories referenced by pasted skills rows that don't exist yet — they'll be created on import. */
+  protected missingCategories = computed(() => {
+    if (this.type() !== 'skills') return [];
+    const rows = this.analysis()?.rows ?? [];
+    const cats = new Set<string>();
+    for (const r of rows) {
+      const c = String(r['category'] ?? '').trim();
+      if (c) cats.add(c);
+    }
+    if (cats.size === 0) return [];
+    const existing = new Set(this.existingSkillCategories().map(c => c.trim().toLowerCase()));
+    return [...cats].filter(c => !existing.has(c.toLowerCase())).sort((a, b) => a.localeCompare(b));
+  });
+
+  /** Whether the new-categories mapping popup is shown (skills import only). */
+  showCategoryMap = signal(false);
+  readonly uncatKey = UNCATEGORIZED_KEY;
+  /** Private category plan (category name → disposition). */
+  private categoryPlan = signal<Record<string, CategoryPlanEntry> | null>(null);
+
+  /** Rows for the mapping popup: name + current mode (snapshot of missingCategories at open). */
+  protected categoryPlanList = computed(() => {
+    const plan = this.categoryPlan();
+    if (!plan) return [];
+    return Object.entries(plan)
+      .map(([name, entry]) => ({ name, ...entry }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  /** Existing root category names for the "move into" options. */
+  existingSkillNames(): string[] {
+    return [...this.existingSkillCategories()].sort((a, b) => a.localeCompare(b));
+  }
+
+  /** Select value for a plan row ('' = create, UNCATEGORIZED_KEY = keep uncategorized, else target). */
+  planModeValue(entry: { mode: CategoryPlanMode; targetName?: string }): string {
+    if (entry.mode === 'existing') return entry.targetName ?? '';
+    return entry.mode === 'uncategorized' ? UNCATEGORIZED_KEY : '';
+  }
+
+  planModeHint(entry: { mode: CategoryPlanMode; targetName?: string }): string {
+    if (entry.mode === 'existing') return `Skills will move into “${entry.targetName ?? '…'}”.`;
+    if (entry.mode === 'uncategorized') return "Skills won't be in any category.";
+    return 'A new container with this name will be created.';
+  }
+
+  closeCategoryMap(): void {
+    this.categoryPlan.set(null);
+    this.showCategoryMap.set(false);
+  }
+
+  openCategoryMap(): void {
+    const needed = this.missingCategories();
+    if (needed.length === 0) return;
+    this.categoryPlan.set(
+      Object.fromEntries(needed.map(name => [name, { mode: 'create' as CategoryPlanMode }])),
+    );
+    this.showCategoryMap.set(true);
+    void this.ensureSkillCategories();
+  }
+
+  setPlanMode(name: string, value: string): void {
+    const plan = this.categoryPlan();
+    if (!plan) return;
+    const next = { ...plan };
+    if (value === UNCATEGORIZED_KEY) next[name] = { mode: 'uncategorized' };
+    else if (value === '') next[name] = { mode: 'create' };
+    else next[name] = { mode: 'existing', targetName: value };
+    this.categoryPlan.set(next);
+  }
+
+  applyPlan(): void {
+    const plan = this.categoryPlan();
+    if (!plan) return;
+    const rows = this.analysis()?.rows ?? [];
+    const prepared = rows.map(r => {
+      const c = String(r['category'] ?? '').trim();
+      const entry = plan[c];
+      if (!entry) return r;
+      if (entry.mode === 'uncategorized') return { ...r, category: '' };
+      if (entry.mode === 'existing' && entry.targetName) return { ...r, category: entry.targetName };
+      return r;
+    });
+    this.closeCategoryMap();
+    void this.performImport(prepared);
+  }
 
   /** Headers detected on the first pasted line, in order. */
   sourceHeaders = signal<string[]>([]);
@@ -456,6 +629,19 @@ export class SheetImportDialogComponent {
     }
     this.mapping.set(next);
     this.autoMap();
+    if (this.type() === 'skills') void this.ensureSkillCategories();
+  }
+
+  private async ensureSkillCategories(): Promise<void> {
+    if (this.skillCategoriesLoaded) return;
+    this.skillCategoriesLoaded = true;
+    try {
+      const res = await this.http.get<ApiResponse<{ name: string }[]>>('/api/categories/tree?scope=skills');
+      this.existingSkillCategories.set((res.data ?? []).map(n => n.name).filter(Boolean));
+    } catch {
+      // Non-fatal: the warning just won't appear.
+      this.skillCategoriesLoaded = false;
+    }
   }
 
   /** Fills unmatched fields from header names/aliases; never overrides explicit choices. */
@@ -488,6 +674,7 @@ export class SheetImportDialogComponent {
   }
 
   refreshOnEdit(value: string): void {
+    if (this.showCategoryMap()) this.closeCategoryMap();
     this.raw.set(value);
     this.detect();
   }
@@ -530,6 +717,7 @@ export class SheetImportDialogComponent {
   }
 
   resetForAnother() {
+    this.closeCategoryMap();
     this.raw.set('');
     this.fileName.set('');
     this.result.set(null);
@@ -543,9 +731,17 @@ export class SheetImportDialogComponent {
     this.resetForAnother();
   }
 
-  async doImport() {
+  doImport() {
     const rows = this.analysis()?.rows ?? [];
     if (rows.length === 0) return;
+    if (this.type() === 'skills' && this.missingCategories().length > 0 && !this.showCategoryMap()) {
+      this.openCategoryMap();
+      return;
+    }
+    void this.performImport(rows);
+  }
+
+  private async performImport(rows: Record<string, unknown>[]) {
     this.busy.set(true);
     try {
       const res = await this.http.post<ApiResponse<ImportResult>>(`/api/imports/${this.type()}`, rows);

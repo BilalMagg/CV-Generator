@@ -56,8 +56,18 @@ public class SkillsController : ApiControllerBase
             SortOrder = dto.SortOrder
         };
 
+        var dupCheck = await IsDuplicateAsync(skill.UserId, skill.Name);
+        if (dupCheck ?? true) return Conflict(ApiResponse<Skill>.Error($"A skill named \"{skill.Name}\" already exists"));
+
         _db.Skills.Add(skill);
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Skills_UserId_NameNormalized", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return Conflict(ApiResponse<Skill>.Error($"A skill named \"{skill.Name}\" already exists"));
+        }
         SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Create", skill.Id);
 
         _logger.LogInformation("Created skill {Id}", skill.Id);
@@ -70,6 +80,9 @@ public class SkillsController : ApiControllerBase
         var skill = await _db.Skills.FindAsync(id);
         if (skill == null) return NotFound(ApiResponse<Skill>.Error("Skill not found"));
 
+        var dupCheck = await IsDuplicateAsync(skill.UserId, dto.Name, id);
+        if (dupCheck ?? true) return Conflict(ApiResponse<Skill>.Error($"A skill named \"{dto.Name}\" already exists"));
+
         skill.Name = dto.Name;
         skill.Level = dto.Level;
         skill.YearsOfExperience = dto.YearsOfExperience;
@@ -79,9 +92,115 @@ public class SkillsController : ApiControllerBase
         skill.IsCore = dto.IsCore;
         skill.SortOrder = dto.SortOrder;
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Skills_UserId_NameNormalized", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return Conflict(ApiResponse<Skill>.Error($"A skill named \"{dto.Name}\" already exists"));
+        }
         SearchSyncHelper.TriggerSync(_scopeFactory, skill.UserId, _logger, "Skill.Update", skill.Id);
         return Ok(ApiResponse<Skill>.Ok(skill));
+    }
+
+    /// <summary>True/False when a same-named skill exists for the user; null when the name is blank.</summary>
+    private async Task<bool?> IsDuplicateAsync(Guid userId, string name, Guid? selfId = null)
+    {
+        var key = Normalize(name);
+        if (key.Length == 0) return null;
+        return await _db.Skills.AnyAsync(s => s.UserId == userId && s.Id != selfId && Normalize(s.Name) == key);
+    }
+
+    [HttpPost("bulk-delete")]
+    public async Task<IActionResult> BulkDelete([FromBody] BulkSkillsRequest req)
+    {
+        if (req?.Ids is null || req.Ids.Count == 0)
+            return BadRequest(ApiResponse<object>.Error("No skills selected"));
+
+        var userId = RequiredUserId;
+        var ids = req.Ids.Distinct().ToList();
+        var skills = await _db.Skills.Where(s => s.UserId == userId && ids.Contains(s.Id)).ToListAsync();
+        if (skills.Count == 0) return NotFound(ApiResponse<object>.Error("No matching skills"));
+
+        var skillIds = skills.Select(s => s.Id).ToList();
+        var tags = await _db.EntityCategoryTags
+            .Where(t => t.UserId == userId && t.SourceType == "skills" && skillIds.Contains(t.SourceId))
+            .ToListAsync();
+        _db.EntityCategoryTags.RemoveRange(tags);
+        _db.Skills.RemoveRange(skills);
+        await _db.SaveChangesAsync();
+
+        foreach (var s in skills) SearchSyncHelper.TriggerSync(_scopeFactory, userId, _logger, "Skill.Delete", s.Id);
+        return Ok(ApiResponse<object>.Ok(new { deleted = skills.Count }, $"{skills.Count} skills deleted"));
+    }
+
+    /// <summary>
+    /// Swaps the category for many skills at once (keeps every other field untouched).
+    /// Category set to an existing root → re-tagged to it; a new name → the container is
+    /// created (same behaviour as import); null/empty → skills become uncategorized.
+    /// </summary>
+    [HttpPost("category")]
+    public async Task<IActionResult> MoveCategory([FromBody] SkillCategoryMoveRequest req)
+    {
+        if (req?.Ids is null || req.Ids.Count == 0)
+            return BadRequest(ApiResponse<object>.Error("No skills selected"));
+
+        var userId = RequiredUserId;
+        var ids = req.Ids.Distinct().ToList();
+        var skills = await _db.Skills.Where(s => s.UserId == userId && ids.Contains(s.Id)).ToListAsync();
+        if (skills.Count == 0) return NotFound(ApiResponse<object>.Error("No matching skills"));
+
+        var target = req.Category?.Trim();
+        Guid? nodeId = null;
+        if (!string.IsNullOrEmpty(target))
+        {
+            var node = await _db.CategoryNodes.FirstOrDefaultAsync(n =>
+                n.Scope == "skills" && n.ParentId == null && (n.UserId == null || n.UserId == userId) &&
+                n.Name != null && Normalize(n.Name) == Normalize(target));
+            if (node == null)
+            {
+                node = new CategoryNode
+                {
+                    Id = Guid.NewGuid(),
+                    Scope = "skills",
+                    ParentId = null,
+                    Name = target,
+                    Domain = target,
+                    Level = 0,
+                    Path = "/" + Slug(target),
+                    KeywordsJson = "[]",
+                    IsSystem = false,
+                    UserId = userId,
+                };
+                _db.CategoryNodes.Add(node);
+            }
+            nodeId = node.Id;
+        }
+
+        var skillIds = skills.Select(s => s.Id).ToList();
+        var existingTags = await _db.EntityCategoryTags
+            .Where(t => t.UserId == userId && t.SourceType == "skills" && skillIds.Contains(t.SourceId))
+            .ToListAsync();
+        _db.EntityCategoryTags.RemoveRange(existingTags);
+
+        foreach (var s in skills)
+        {
+            s.Category = string.IsNullOrEmpty(target) ? null : target;
+            if (nodeId.HasValue)
+                _db.EntityCategoryTags.Add(new EntityCategoryTag
+                {
+                    UserId = userId,
+                    SourceType = "skills",
+                    SourceId = s.Id,
+                    CategoryNodeId = nodeId.Value,
+                    AssignedBy = "MANUAL",
+                });
+        }
+        await _db.SaveChangesAsync();
+
+        foreach (var s in skills) SearchSyncHelper.TriggerSync(_scopeFactory, userId, _logger, "Skill.Update", s.Id);
+        return Ok(ApiResponse<object>.Ok(new { updated = skills.Count, category = string.IsNullOrEmpty(target) ? null : target }));
     }
 
     [HttpDelete("{id}")]
@@ -96,6 +215,18 @@ public class SkillsController : ApiControllerBase
         return NoContent();
     }
 
+    private static string Normalize(string s) => (s ?? "").Trim().ToLowerInvariant();
+
+    private static string Slug(string s)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var ch in s.Trim().ToLowerInvariant())
+            sb.Append(char.IsLetterOrDigit(ch) ? ch : '-');
+        return System.Text.RegularExpressions.Regex.Replace(sb.ToString(), "-+", "-").Trim('-');
+    }
+
     public record CreateSkillDto(string Name, string? Level, int? YearsOfExperience, Guid UserId, string? Category, string? Subcategory = null, int? LastUsedYear = null, bool IsCore = false, int SortOrder = 0);
     public record UpdateSkillDto(string Name, string? Level, int? YearsOfExperience, string? Category, string? Subcategory = null, int? LastUsedYear = null, bool IsCore = false, int SortOrder = 0);
+    public record BulkSkillsRequest(List<Guid> Ids);
+    public record SkillCategoryMoveRequest(List<Guid> Ids, string? Category);
 }

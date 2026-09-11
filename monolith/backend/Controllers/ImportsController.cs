@@ -61,6 +61,32 @@ public class ImportResultDto
     public int Imported { get; set; }
     public int Skipped { get; set; }
     public List<string> Errors { get; set; } = [];
+    /// <summary>Number of category containers auto-created for this import (skills import).</summary>
+    public int CategoriesCreated { get; set; }
+    public List<string> CreatedCategories { get; set; } = [];
+}
+
+public class SkillImportRow
+{
+    public string? Name { get; set; }
+    public string? Level { get; set; }
+    public string? Category { get; set; }
+    public string? Subcategory { get; set; }
+    public string? YearsOfExperience { get; set; }
+    public string? LastUsedYear { get; set; }
+    public string? IsCore { get; set; }
+}
+
+/// <summary>Canonical casing for skill levels.</summary>
+public static class SkillLevels
+{
+    public static readonly Dictionary<string, string> Map = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["beginner"] = "Beginner",
+        ["intermediate"] = "Intermediate",
+        ["advanced"] = "Advanced",
+        ["expert"] = "Expert",
+    };
 }
 
 [Route("api/imports")]
@@ -309,6 +335,116 @@ public class ImportsController : BaseApiController
         return Ok(ApiResponse<ImportResultDto>.Ok(result, $"{result.Imported} imported, {result.Skipped} skipped"));
     }
 
+    // ── Skills ───────────────────────────────────────────────────────────────
+    // Dedicated skills import (overrides the generic {entity} route): dedups by skill
+    // name, validates levels, and auto-creates missing category containers (root nodes
+    // on the skills scope) with MANUAL tags so the library shows them straight away.
+    [HttpPost("skills")]
+    public async Task<IActionResult> ImportSkills([FromBody] List<SkillImportRow> rows)
+    {
+        var userId = GetUserId();
+        if (rows is null || rows.Count == 0)
+            return BadRequest(ApiResponse<ImportResultDto>.Error("No rows provided"));
+
+        var result = new ImportResultDto();
+        var existing = await _db.Skills.Where(s => s.UserId == userId).ToListAsync();
+        var seenNames = new HashSet<string>(existing.Select(s => Normalize(s.Name)), StringComparer.Ordinal);
+
+        var nodes = await _db.CategoryNodes
+            .Where(n => n.Scope == "skills" && (n.UserId == null || n.UserId == userId))
+            .ToListAsync();
+        var nodesByName = nodes
+            .Where(n => n.ParentId == null)
+            .GroupBy(n => n.Name.Trim().ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (row, idx) in rows.Select((r, i) => (r, i)))
+        {
+            try
+            {
+                var name = row.Name?.Trim() ?? "";
+                if (name.Length == 0) { result.Skipped++; continue; }
+                if (!seenNames.Add(Normalize(name))) { result.Skipped++; continue; }
+
+                var level = row.Level?.Trim() ?? "";
+                if (level.Length > 0 && !SkillLevels.Map.TryGetValue(level, out level))
+                {
+                    result.Errors.Add($"Row {idx + 1}: unknown level '{row.Level}' for '{name}' — use Beginner, Intermediate, Advanced or Expert");
+                    result.Skipped++;
+                    continue;
+                }
+
+                var category = row.Category?.Trim() ?? "";
+                Guid? categoryNodeId = null;
+                if (category.Length > 0)
+                {
+                    var key = category.ToLowerInvariant();
+                    if (!nodesByName.TryGetValue(key, out var node))
+                    {
+                        node = new CategoryNode
+                        {
+                            Id = Guid.NewGuid(),
+                            Scope = "skills",
+                            ParentId = null,
+                            Name = category,
+                            Domain = category,
+                            Level = 0,
+                            Path = "/" + Slug(category),
+                            KeywordsJson = "[]",
+                            IsSystem = false,
+                            UserId = userId,
+                        };
+                        _db.CategoryNodes.Add(node);
+                        nodesByName[key] = node;
+                        result.CategoriesCreated++;
+                        result.CreatedCategories.Add(category);
+                    }
+                    categoryNodeId = node.Id;
+                }
+
+                var skill = new Skill
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Name = name,
+                    Level = level.Length > 0 ? level : null,
+                    Category = category.Length > 0 ? category : null,
+                    Subcategory = Truncate(row.Subcategory?.Trim(), 50),
+                    LastUsedYear = int.TryParse(row.LastUsedYear, out var lastUsed) ? lastUsed : null,
+                    IsCore = ParseBool(row.IsCore),
+                };
+                if (int.TryParse(row.YearsOfExperience, out var years) && years is >= 0 and <= 60)
+                    skill.YearsOfExperience = years;
+
+                _db.Skills.Add(skill);
+                if (categoryNodeId.HasValue)
+                {
+                    _db.EntityCategoryTags.Add(new EntityCategoryTag
+                    {
+                        UserId = userId,
+                        SourceType = "skills",
+                        SourceId = skill.Id,
+                        CategoryNodeId = categoryNodeId.Value,
+                        AssignedBy = "MANUAL",
+                    });
+                }
+                result.Imported++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Skills import row {Index} failed", idx);
+                result.Errors.Add($"Row {idx + 1}: {ex.Message}");
+                result.Skipped++;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        var message = $"{result.Imported} imported, {result.Skipped} skipped";
+        if (result.CategoriesCreated > 0)
+            message += $", {result.CategoriesCreated} categor{(result.CategoriesCreated == 1 ? "y" : "ies")} created";
+        return Ok(ApiResponse<ImportResultDto>.Ok(result, message));
+    }
+
     // ── Generic user-content (My Career) ─────────────────────────────────────
     private static readonly Dictionary<string, Type> UserContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -374,6 +510,15 @@ public class ImportsController : BaseApiController
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static string Normalize(string s) => s.Trim().ToLowerInvariant();
+
+    private static bool ParseBool(string? raw) =>
+        raw is not null && (raw.Trim().Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                            raw.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+                            raw.Trim() == "1" ||
+                            raw.Trim().Equals("y", StringComparison.OrdinalIgnoreCase));
+
+    private static string Slug(string s) => s.ToLowerInvariant()
+        .Replace("/", " ").Replace(" ", "-").Replace("&", "and").Replace("--", "-");
 
     private static string NormalizeEnum(string s) =>
         s.Trim().ToUpperInvariant().Replace(" ", "").Replace("-", "_");
