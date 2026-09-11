@@ -183,14 +183,12 @@ textarea {
   }
 }
 
-.career-panel {
+.career-entities {
   margin-top: 10px;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   background: #fafbfc;
   padding: 14px;
-  max-height: 360px;
-  overflow-y: auto;
 }
 
 .career-loading,
@@ -200,7 +198,7 @@ textarea {
   margin: 12px 0;
 }
 
-.career-header {
+.career-entities-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -226,61 +224,181 @@ textarea {
   }
 }
 
-.career-group {
-  margin-bottom: 12px;
+.entity-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
 
-  &:last-child {
-    margin-bottom: 0;
+.entity-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+
+  .entity-icon {
+    display: inline-flex;
+    color: #94a3b8;
+  }
+
+  .entity-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    border-color: var(--accent, #2f6fed);
+    background: #f0f6ff;
+    color: var(--accent, #2f6fed);
+
+    .entity-icon {
+      color: var(--accent, #2f6fed);
+    }
+  }
+
+  &.has-sel {
+    border-color: var(--accent, #2f6fed);
+    background: #eaf1ff;
+
+    .entity-icon {
+      color: var(--accent, #2f6fed);
+    }
   }
 }
 
-.group-head {
-  margin-bottom: 6px;
+.sel-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--accent, #2f6fed);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 6px;
 }
 
-.group-check {
+/* Entity modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.entity-modal {
+  background: #fff;
+  border-radius: 14px;
+  width: 520px;
+  max-width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #eef1f5;
+
+  .modal-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  .modal-sub {
+    margin: 3px 0 0;
+    font-size: 12.5px;
+    color: #94a3b8;
+  }
+}
+
+.modal-close {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #475569;
+  }
+}
+
+.modal-body {
+  padding: 14px 20px;
+  overflow-y: auto;
+}
+
+.modal-empty {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 10px 0;
+  text-align: center;
+  padding: 18px 0;
+}
+
+.select-all {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12.5px;
   font-weight: 700;
   color: #334155;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  margin-bottom: 10px;
   cursor: pointer;
 
   input[type='checkbox'] {
     accent-color: var(--accent, #2f6fed);
   }
 
-  .group-count {
-    font-size: 11px;
+  .draft-count {
+    margin-left: auto;
+    font-size: 12px;
     font-weight: 500;
     color: #94a3b8;
-    text-transform: none;
-    letter-spacing: 0;
   }
 }
 
-.group-items {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.modal-items {
+  display: flex;
+  flex-direction: column;
   gap: 5px;
-  padding-left: 4px;
-
-  @media (max-width: 600px) {
-    grid-template-columns: 1fr;
-  }
 }
 
-.career-item {
+.modal-item {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 10px;
+  gap: 9px;
+  padding: 9px 11px;
   border: 1px solid transparent;
-  border-radius: 7px;
-  font-size: 12.5px;
+  border-radius: 8px;
+  font-size: 13px;
   color: #475569;
   cursor: pointer;
   transition: all 0.1s ease;
@@ -290,7 +408,7 @@ textarea {
     flex-shrink: 0;
   }
 
-  .item-label {
+  .modal-item-label {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -306,6 +424,15 @@ textarea {
     border-color: var(--accent, #2f6fed);
     color: #1e40af;
   }
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #eef1f5;
+  background: #fafbfc;
 }
 
 .gen-row {

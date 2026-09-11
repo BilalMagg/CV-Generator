@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpService } from '@app/services/http.service';
@@ -84,7 +84,22 @@ export class ToolsHubComponent {
   careerPickerOpen = signal(false);
   selectedKeys = signal<Set<string>>(new Set());
 
-  selectedCount = computed(() => this.selectedKeys().size);
+  // Entity modal
+  activeGroup = signal<CareerGroup | null>(null);
+  draftKeys = signal<Set<string>>(new Set());
+
+  countFor(group: CareerGroup): number {
+    const set = this.selectedKeys();
+    return group.items.filter((i) => set.has(i.key)).length;
+  }
+
+  hasAnySelection(): boolean {
+    return this.careerGroups().some((g) => this.countFor(g) > 0);
+  }
+
+  hasAnyItems(): boolean {
+    return this.careerGroups().some((g) => g.items.length > 0);
+  }
 
   readonly tones: Option[] = [
     { value: 'professional', label: 'Professional' },
@@ -140,22 +155,35 @@ export class ToolsHubComponent {
     if (next && !this.careerLoaded()) this.loadCareer();
   }
 
-  isKeySelected(key: string): boolean {
-    return this.selectedKeys().has(key);
+  // --- Entity modal ---
+
+  openEntityModal(group: CareerGroup): void {
+    this.activeGroup.set(group);
+    this.draftKeys.set(new Set([...this.selectedKeys()].filter((k) => k.startsWith(`${group.source}:`))));
   }
 
-  toggleItem(item: CareerItem): void {
-    const set = new Set(this.selectedKeys());
+  closeEntityModal(): void {
+    this.activeGroup.set(null);
+  }
+
+  isDraftSelected(key: string): boolean {
+    return this.draftKeys().has(key);
+  }
+
+  toggleDraft(item: CareerItem): void {
+    const set = new Set(this.draftKeys());
     if (set.has(item.key)) {
       set.delete(item.key);
     } else {
       set.add(item.key);
     }
-    this.selectedKeys.set(set);
+    this.draftKeys.set(set);
   }
 
-  selectAllInGroup(group: CareerGroup): void {
-    const set = new Set(this.selectedKeys());
+  selectAllDraft(): void {
+    const group = this.activeGroup();
+    if (!group) return;
+    const set = new Set(this.draftKeys());
     const allSelected = group.items.every((i) => set.has(i.key));
     for (const item of group.items) {
       if (allSelected) {
@@ -164,15 +192,35 @@ export class ToolsHubComponent {
         set.add(item.key);
       }
     }
+    this.draftKeys.set(set);
+  }
+
+  isDraftAllSelected(): boolean {
+    const group = this.activeGroup();
+    if (!group || group.items.length === 0) return false;
+    return group.items.every((i) => this.draftKeys().has(i.key));
+  }
+
+  isDraftPartiallySelected(): boolean {
+    const group = this.activeGroup();
+    if (!group) return false;
+    const set = this.draftKeys();
+    return !group.items.every((i) => set.has(i.key)) && group.items.some((i) => set.has(i.key));
+  }
+
+  confirmDraft(): void {
+    const group = this.activeGroup();
+    if (!group) return;
+    const set = new Set(this.selectedKeys());
+    for (const item of group.items) {
+      if (this.draftKeys().has(item.key)) {
+        set.add(item.key);
+      } else {
+        set.delete(item.key);
+      }
+    }
     this.selectedKeys.set(set);
-  }
-
-  isGroupFullySelected(group: CareerGroup): boolean {
-    return group.items.length > 0 && group.items.every((i) => this.selectedKeys().has(i.key));
-  }
-
-  isGroupPartiallySelected(group: CareerGroup): boolean {
-    return !this.isGroupFullySelected(group) && group.items.some((i) => this.selectedKeys().has(i.key));
+    this.closeEntityModal();
   }
 
   clearSelection(): void {
@@ -323,7 +371,7 @@ export class ToolsHubComponent {
           .filter(Boolean).join('\n');
         return { key: `project:${p.id}`, label: p.title, text, source: 'project' as CareerSource };
       });
-      if (projItems.length) groups.push({ label: 'Projects', source: 'project', items: projItems });
+      groups.push({ label: 'Projects', source: 'project', items: projItems });
 
       // Experiences
       const expItems: CareerItem[] = (experiencesRes.data ?? []).map((e: any) => {
@@ -333,7 +381,7 @@ export class ToolsHubComponent {
         const text = [`Experience: ${e.title}${company}${loc}`, desc].filter(Boolean).join('\n');
         return { key: `experience:${e.id}`, label: `${e.title}${company}`, text, source: 'experience' as CareerSource };
       });
-      if (expItems.length) groups.push({ label: 'Experiences', source: 'experience', items: expItems });
+      groups.push({ label: 'Experiences', source: 'experience', items: expItems });
 
       // Hackathons
       const hackItems: CareerItem[] = (hackathonsRes.data ?? []).map((h: any) => {
@@ -344,7 +392,7 @@ export class ToolsHubComponent {
         const text = [`Hackathon: "${h.name}"${org}${result}`, desc, tech].filter(Boolean).join('\n');
         return { key: `hackathon:${h.id}`, label: h.name, text, source: 'hackathon' as CareerSource };
       });
-      if (hackItems.length) groups.push({ label: 'Hackathons', source: 'hackathon', items: hackItems });
+      groups.push({ label: 'Hackathons', source: 'hackathon', items: hackItems });
 
       // Scholar Activities
       const acadItems: CareerItem[] = (academicRes.data ?? []).map((a: any) => {
@@ -355,7 +403,7 @@ export class ToolsHubComponent {
         const text = [`Activity: "${a.title}"${org}${cat}${result}`, desc].filter(Boolean).join('\n');
         return { key: `academic:${a.id}`, label: a.title, text, source: 'academicactivity' as CareerSource };
       });
-      if (acadItems.length) groups.push({ label: 'Scholar Activities', source: 'academicactivity', items: acadItems });
+      groups.push({ label: 'Scholar Activities', source: 'academicactivity', items: acadItems });
 
       this.careerGroups.set(groups);
       this.careerLoaded.set(true);

@@ -233,54 +233,49 @@ We did the same at our hackathon…"
             <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
           </svg>
           <span>My Career</span>
-          @if (selectedCount() > 0) {
-            <span class="sel-badge">{{ selectedCount() }}</span>
-          }
         </button>
       </div>
 
-      <!-- Career picker panel -->
+      <!-- Career entity chips -->
       @if (careerPickerOpen()) {
-        <div class="career-panel">
+        <div class="career-entities">
           @if (careerLoading()) {
             <p class="career-loading">Loading your career content…</p>
-          } @else if (careerGroups().length === 0) {
+          } @else if (!hasAnyItems()) {
             <p class="career-empty">Nothing in My Career yet — add content there to reuse it here.</p>
           } @else {
-            <div class="career-header">
-              <span class="career-hint">Select items to include in the AI context. Your notes are added alongside.</span>
-              @if (selectedCount() > 0) {
+            <div class="career-entities-head">
+              <span class="career-hint">Pick an entity, then choose which items to include.</span>
+              @if (hasAnySelection()) {
                 <button type="button" class="btn-clear" (click)="clearSelection()">Clear all</button>
               }
             </div>
-            @for (group of careerGroups(); track group.source) {
-              <div class="career-group">
-                <div class="group-head">
-                  <label class="group-check">
-                    <input
-                      type="checkbox"
-                      [checked]="isGroupFullySelected(group)"
-                      [indeterminate]="isGroupPartiallySelected(group)"
-                      (change)="selectAllInGroup(group)"
-                    />
-                    <span class="group-label">{{ group.label }}</span>
-                    <span class="group-count">{{ group.items.length }}</span>
-                  </label>
-                </div>
-                <div class="group-items">
-                  @for (item of group.items; track item.key) {
-                    <label class="career-item" [class.on]="isKeySelected(item.key)">
-                      <input
-                        type="checkbox"
-                        [checked]="isKeySelected(item.key)"
-                        (change)="toggleItem(item)"
-                      />
-                      <span class="item-label">{{ item.label }}</span>
-                    </label>
+            <div class="entity-chips">
+              @for (group of careerGroups(); track group.source) {
+                <button type="button" class="entity-chip" [class.has-sel]="countFor(group) > 0" (click)="openEntityModal(group)">
+                  <span class="entity-icon">
+                    @switch (group.source) {
+                      @case ('project') {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+                      }
+                      @case ('experience') {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                      }
+                      @case ('hackathon') {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6m12 5h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M12 3v1m0 16v1m-7-9H4m16 0h1"/><rect x="6" y="9" width="12" height="11" rx="2"/></svg>
+                      }
+                      @case ('academicactivity') {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 10l-10-7L2 10l10 7z"/><path d="M6 12v5c0 2 3 4 6 4s6-2 6-4v-5"/></svg>
+                      }
+                    }
+                  </span>
+                  <span class="entity-name">{{ group.label }}</span>
+                  @if (countFor(group) > 0) {
+                    <span class="sel-badge">{{ countFor(group) }}</span>
                   }
-                </div>
-              </div>
-            }
+                </button>
+              }
+            </div>
           }
         </div>
       }
@@ -326,3 +321,57 @@ We did the same at our hackathon…"
     </div>
   </div>
 </div>
+
+<!-- Entity selection modal -->
+@if (activeGroup()) {
+  <div class="modal-overlay" (click)="closeEntityModal()">
+    <div class="entity-modal" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          <h3 class="modal-title">Select {{ activeGroup()!.label.toLowerCase() }}</h3>
+          <p class="modal-sub">Choose which items to include in the AI context.</p>
+        </div>
+        <button type="button" class="modal-close" (click)="closeEntityModal()" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        @if (activeGroup()!.items.length === 0) {
+          <p class="modal-empty">No {{ activeGroup()!.label.toLowerCase() }} yet — add them in My Career to reuse them here.</p>
+        } @else {
+        <label class="select-all">
+          <input
+            type="checkbox"
+            [checked]="isDraftAllSelected()"
+            [indeterminate]="isDraftPartiallySelected()"
+            (change)="selectAllDraft()"
+          />
+          <span>Select all</span>
+          <span class="draft-count">{{ draftKeys().size }}/{{ activeGroup()!.items.length }}</span>
+        </label>
+
+        <div class="modal-items">
+          @for (item of activeGroup()!.items; track item.key) {
+            <label class="modal-item" [class.on]="isDraftSelected(item.key)">
+              <input
+                type="checkbox"
+                [checked]="isDraftSelected(item.key)"
+                (change)="toggleDraft(item)"
+              />
+              <span class="modal-item-label">{{ item.label }}</span>
+            </label>
+          }
+        </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" (click)="closeEntityModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="confirmDraft()">
+          Confirm ({{ draftKeys().size }})
+        </button>
+      </div>
+    </div>
+  </div>
+}
