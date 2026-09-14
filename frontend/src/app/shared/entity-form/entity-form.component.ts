@@ -12,6 +12,24 @@ import { CategoryTreeComponent } from '@app/shared/components/category-tree/cate
 import { AutoFillDialogComponent } from '@app/shared/components/auto-fill-dialog/auto-fill-dialog.component';
 import { AutofillField } from '@app/services/autofill.service';
 
+export function toDateInputValue(value: unknown): string {
+  const s = String(value ?? '').trim();
+  if (!s) return '';
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  if (iso) {
+    const [, y, m, d] = iso;
+    const mm = Number(m);
+    const dd = Number(d);
+    if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return '';
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  const ym = /^(\d{4})-(\d{1,2})$/.exec(s);
+  if (ym) return `${ym[1]}-${ym[2].padStart(2, '0')}-01`;
+  const y = /^(\d{4})$/.exec(s);
+  if (y) return `${y[1]}-01-01`;
+  return '';
+}
+
 @Component({
   selector: 'app-entity-form',
   standalone: true,
@@ -211,8 +229,7 @@ export class EntityFormComponent implements OnInit {
         const n = Number(value);
         this.form[field.name] = isNaN(n) ? '' : n;
       } else if (field.type === 'date') {
-        const s = String(value);
-        this.form[field.name] = /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+        this.form[field.name] = toDateInputValue(value);
       } else if (field.type === 'select' && field.options) {
         const match = (field.options as string[]).find(o => o.toLowerCase() === String(value).toLowerCase());
         this.form[field.name] = match ?? String(value);

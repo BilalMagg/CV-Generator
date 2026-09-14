@@ -1,5 +1,6 @@
 <div class="entity-list-container">
-  <div class="entity-layout">
+  <div class="entity-layout" [class.no-tree]="!showTaxonomy">
+    @if (showTaxonomy) {
     <aside class="category-sidebar">
       <app-category-tree
         [scope]="entity"
@@ -8,6 +9,7 @@
         (selectedIdsChange)="onCategoryChange($event)"
       ></app-category-tree>
     </aside>
+    }
 
     <section class="entity-main">
       <div class="header-actions">

@@ -22,6 +22,7 @@ import {
 } from '@app/models/apply.model';
 import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
 import { EmailAttachmentPayload } from '@app/models/apply.model';
+import { resolveTemplateVars, recipientGreeting, TemplateVarValues } from '@app/shared/template-vars';
 
 interface CvOption {
   id: string;
@@ -214,37 +215,94 @@ export class ApplyWizardComponent implements OnInit {
       `Best regards,\n{{my_name}}`;
   }
 
-  useTemplate() {
-    const tpl = this.templates().find(t => t.id === this.selectedTemplateId());
-    if (!tpl) return;
-    const rendered = this.renderTemplate(tpl.subjectTemplate, tpl.bodyTemplate);
-    this.subject = rendered.subject;
-    this.body = rendered.body;
-    if (tpl.cvVersionId) this.selectedCvVersionId.set(tpl.cvVersionId);
+  // ── Email templates: pick a saved template → fill values → live preview → apply ──
+  fillOpen = signal(false);
+  fillTemplate = signal<ScheduleTemplateDto | null>(null);
+  fillName = signal('');
+  fillResearch = signal('');
+  fillOffer = signal('');
+
+  openFillDialog(t: ScheduleTemplateDto) {
+    this.fillTemplate.set(t);
+    this.fillName.set(this.recipientName);
+    this.fillResearch.set(t.variableDefaults?.research ?? '');
+    this.fillOffer.set(t.variableDefaults?.offer_phrase ?? '');
+    this.fillOpen.set(true);
   }
 
-  /** Client-side best-effort token resolution (mirrors backend TemplateVariableResolver). */
-  private resolveVars(text: string): string {
+  closeFillDialog() {
+    this.fillOpen.set(false);
+    this.fillTemplate.set(null);
+  }
+
+  /** Values used for the template fill dialog preview (mirrors mailbox compose). */
+  fillVarValues(): TemplateVarValues {
     const user = this.authSvc.currentUser();
-    const myName = user ? `${user.firstName} ${user.lastName}`.trim() : '';
-    const map: Record<string, string> = {
-      '{{company_name}}': this.companyName,
-      '{{company_description}}': this.companyDescription,
-      '{{my_name}}': myName,
-      '{{my_email}}': user?.email ?? '',
-      '{{my_phone}}': '',
+    const name = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
+    const d = this.fillTemplate()?.variableDefaults ?? {};
+    const research = this.fillResearch() || d.research || '';
+    return {
+      company_name: this.companyName,
+      company_description: this.companyDescription,
+      recipient_name: this.fillName(),
+      recipient_greeting: recipientGreeting(this.fillName()),
+      school: d.school || '',
+      degree: d.degree || '',
+      research,
+      offer_phrase: this.fillOffer().trim(),
+      my_name: name,
+      my_email: user?.email ?? '',
+      my_phone: '',
     };
-    return text.replace(/\{\{\s*(\w+)\s*\}\}/g,
-      (m, k) => map[m.toLowerCase()] ?? map[m] ?? map[`{{${k}}}`] ?? m);
   }
 
-  private renderTemplate(subjectTpl: string, bodyTpl: string) {
-    return { subject: this.resolveVars(subjectTpl), body: this.resolveVars(bodyTpl) };
+  fillPreviewSubject(): string {
+    const t = this.fillTemplate();
+    return t ? resolveTemplateVars(t.subjectTemplate, this.fillVarValues()) : '';
   }
 
-  /** Live preview of what the email will actually contain (variables resolved). */
-  previewSubject(): string { return this.resolveVars(this.subject); }
-  previewBody(): string { return this.resolveVars(this.body); }
+  fillPreviewBody(): string {
+    const t = this.fillTemplate();
+    return t ? resolveTemplateVars(t.bodyTemplate, this.fillVarValues()) : '';
+  }
+
+  async insertFilledTemplate() {
+    const t = this.fillTemplate();
+    if (!t) return;
+    const values = this.fillVarValues();
+    this.subject = resolveTemplateVars(t.subjectTemplate, values);
+    this.body = resolveTemplateVars(t.bodyTemplate, values);
+    if (t.cvVersionId) this.selectedCvVersionId.set(t.cvVersionId);
+    this.selectedTemplateId.set(t.id);
+    this.fillOpen.set(false);
+    this.fillTemplate.set(null);
+    this.toast.success(`Template "${t.name}" applied — review it, then continue.`);
+  }
+
+  /** Full token values for the live send preview (deliver step). */
+  private varValues(): TemplateVarValues {
+    const user = this.authSvc.currentUser();
+    const name = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
+    const tpl = this.templates().find(t => t.id === this.selectedTemplateId());
+    const d = tpl?.variableDefaults ?? {};
+    return {
+      company_name: this.companyName,
+      company_description: this.companyDescription,
+      recipient_name: this.recipientName,
+      recipient_greeting: recipientGreeting(this.recipientName),
+      school: d.school || '',
+      degree: d.degree || '',
+      research: d.research || '',
+      offer_phrase: d.offer_phrase || '',
+      my_name: name,
+      my_email: user?.email ?? '',
+      my_phone: '',
+    };
+  }
+
+  /** Live preview of what the email will actually contain (all variables resolved). */
+  previewSubject(): string { return resolveTemplateVars(this.subject, this.varValues()); }
+  previewBody(): string { return resolveTemplateVars(this.body, this.varValues()); }
 
   /** Exact list of files that will be attached, so nothing is a surprise at send time. */
   attachmentPreview(): string[] {
@@ -377,8 +435,8 @@ export class ApplyWizardComponent implements OnInit {
         recipientEmail: this.recipientEmail.trim(),
         recipientName: this.recipientName.trim() || undefined,
         contactNotes: this.contactNotes.trim() || undefined,
-        subject: this.subject.trim(),
-        body: this.body,
+        subject: resolveTemplateVars(this.subject.trim(), this.varValues()),
+        body: resolveTemplateVars(this.body, this.varValues()),
         cvVersionId: this.selectedCvVersionId() || undefined,
         attachments: attachments.length ? attachments : undefined,
         scheduleCron: this.deliverMode() === 'schedule'

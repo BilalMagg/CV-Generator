@@ -100,21 +100,27 @@
         <textarea [(ngModel)]="companyDescription" rows="2"></textarea>
       </div>
 
-      <div class="row">
-        <div class="fld">
-          <label>Recipient email</label>
-          <input type="text" [(ngModel)]="recipientEmail" placeholder="careers@company.com (optional for form/DM)" />
+      @if (prepMode() === 'email' || prepMode() === 'message') {
+        <div class="row">
+          @if (prepMode() === 'email') {
+            <div class="fld">
+              <label>Recipient email</label>
+              <input type="text" [(ngModel)]="recipientEmail" placeholder="careers@company.com" />
+            </div>
+          }
+          <div class="fld">
+            <label>Recipient name</label>
+            <input type="text" [(ngModel)]="recipientName" />
+          </div>
         </div>
-        <div class="fld">
-          <label>Recipient name</label>
-          <input type="text" [(ngModel)]="recipientName" />
-        </div>
-      </div>
+      }
 
-      <div class="fld">
-        <label>Contact notes (your own language hints)</label>
-        <input type="text" [(ngModel)]="contactNotes" placeholder="e.g. referred by Sara; avoid Tuesdays" />
-      </div>
+      @if (prepMode() === 'email' || prepMode() === 'message') {
+        <div class="fld">
+          <label>Contact notes (your own language hints)</label>
+          <input type="text" [(ngModel)]="contactNotes" placeholder="e.g. referred by Sara; avoid Tuesdays" />
+        </div>
+      }
 
       <div class="fld">
         <label>CV version (used as context)</label>
@@ -128,13 +134,20 @@
 
       @if (prepMode() === 'email') {
         <div class="fld">
-          <label>Prefill from template</label>
-          <select [(ngModel)]="selectedTemplateId" (change)="useTemplate()">
-            <option value="">— write manually —</option>
-            @for (t of templates(); track t.id) {
-              <option [value]="t.id">{{ t.name }}</option>
-            }
-          </select>
+          <label>Email template</label>
+          @if (!templates().length) {
+            <p class="hint">No saved templates yet — create reusable ones in Mailbox → Templates.</p>
+          } @else {
+            <p class="hint">Choose a saved template (e.g. your French CV letter) to prefill subject &amp; body — review the resolved values before sending.</p>
+            <div class="tpl-panel">
+              @for (t of templates(); track t.id) {
+                <button type="button" class="tpl-row" (click)="openFillDialog(t)">
+                  <span class="tpl-name">{{ t.name }}</span>
+                  <span class="tpl-sub">{{ t.subjectTemplate }}</span>
+                </button>
+              }
+            </div>
+          }
         </div>
 
         <div class="fld">
@@ -361,3 +374,39 @@
     </section>
   }
 </div>
+
+@if (fillOpen() && fillTemplate(); as t) {
+  <div class="tpl-overlay" (click)="closeFillDialog()">
+    <div class="tpl-modal" (click)="$event.stopPropagation()">
+      <div class="tpl-modal-head">
+        <h3>Use template — {{ t.name }}</h3>
+        <button class="tpl-close" (click)="closeFillDialog()">✕</button>
+      </div>
+      <div class="tpl-modal-body">
+        <div class="row">
+          <div class="fld">
+            <label>Recipient name {{ '{{recipient_name}}' }}</label>
+            <input type="text" [(ngModel)]="fillName" placeholder="First Last" />
+          </div>
+        </div>
+        <div class="fld">
+          <label>What you're looking for {{ '{{research}}' }}</label>
+          <input type="text" [(ngModel)]="fillResearch" placeholder="e.g. d'un stage PFE" />
+        </div>
+        <div class="fld">
+          <label>Offer phrase {{ '{{offer_phrase}}' }}</label>
+          <input type="text" [(ngModel)]="fillOffer" placeholder="e.g. the Frontend Developer position" />
+        </div>
+        <div class="tpl-preview">
+          <h4>Preview (resolved)</h4>
+          <div class="pv-row"><span class="pv-label">Subject</span><span class="pv-val">{{ fillPreviewSubject() }}</span></div>
+          <div class="pv-block"><span class="pv-label">Body</span><pre class="pv-body">{{ fillPreviewBody() }}</pre></div>
+        </div>
+      </div>
+      <div class="tpl-modal-foot">
+        <button class="btn" (click)="closeFillDialog()">Cancel</button>
+        <button class="btn primary" (click)="insertFilledTemplate()">Apply to email</button>
+      </div>
+    </div>
+  </div>
+}

@@ -274,3 +274,89 @@ textarea:focus, input[type="text"]:focus, select:focus {
   max-height: 360px;
   overflow: auto;
 }
+
+/* Email template picker (step 3) */
+.tpl-panel { display: flex; flex-direction: column; gap: 7px; }
+.tpl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  border: 1px solid #dce0ea;
+  background: #fff;
+  border-radius: 10px;
+  padding: 9px 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tpl-row:hover { border-color: #6366f1; background: color-mix(in srgb, #6366f1 4%, #fff); }
+.tpl-name { font-weight: 600; font-size: 0.82rem; color: #2a2f3c; white-space: nowrap; flex-shrink: 0; }
+.tpl-sub {
+  font-size: 0.78rem;
+  color: var(--muted, #8a8fa3);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Template fill dialog (preview before applying) */
+.tpl-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 20, 30, 0.45);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.tpl-modal {
+  background: #fff;
+  color: #2a2f3c;
+  border-radius: 14px;
+  width: min(600px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(10, 12, 20, 0.35);
+}
+.tpl-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #eef0f6;
+}
+.tpl-modal-head h3 { margin: 0; font-size: 1.02rem; letter-spacing: -0.01em; }
+.tpl-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: #9aa0b4;
+  padding: 4px;
+}
+.tpl-close:hover { color: #2a2f3c; }
+.tpl-modal-body { padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; }
+.tpl-modal-body .fld { width: 100%; }
+.tpl-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid #eef0f6;
+}
+.tpl-preview {
+  margin-top: 12px;
+  border: 1px dashed #cfd5e4;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #f7f8fc;
+}
+.tpl-preview h4 { margin: 0 0 8px; font-size: 0.8rem; color: #4b5063; text-transform: uppercase; letter-spacing: 0.04em; }

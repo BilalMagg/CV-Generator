@@ -833,7 +833,7 @@ textarea.cd-input { min-height: 96px; resize: vertical; }
 .contact-actions { display: flex; gap: 6px; justify-content: center; }
 .contact-form { margin-bottom: 16px; }
 .contact-form-head { display: flex; justify-content: space-between; align-items: center; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; input { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 13px; outline: none; &:focus { border-color: var(--text-4); } } }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; input, select { width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-body); outline: none; &:focus { border-color: var(--text-4); } } }
 .form-actions { display: flex; gap: 8px; }
 
 /* Buttons */

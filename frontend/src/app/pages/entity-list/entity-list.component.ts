@@ -41,6 +41,16 @@ export class EntityListComponent implements OnInit {
       'skills', 'languages', 'hackathons', 'interests', 'academicactivities',
     ]);
 
+    /** Entities with so few items that the category tree adds no value — hide it there. */
+    private readonly NO_TAXONOMY_SCOPES = new Set([
+      'languages',
+      'sociallinks',
+    ]);
+
+    get showTaxonomy(): boolean {
+      return this.TAXONOMY_SCOPES.has(this.entity) && !this.NO_TAXONOMY_SCOPES.has(this.entity);
+    }
+
   goToDetail(id: string){
     this.router.navigate(['/my-career', this.entity, id]);
   }
@@ -65,6 +75,15 @@ export class EntityListComponent implements OnInit {
       .catch(() => {
         this.matchedIds.set(null);
       });
+  }
+
+  /** Drop any active category filter (used on entities that have no tree). */
+  private clearCategoryFilter(): void {
+    if (this.selectedCategoryIds().length > 0 || this.matchedIds()) {
+      this.selectedCategoryIds.set([]);
+      this.matchedIds.set(null);
+      this.cdr.detectChanges();
+    }
   }
 
 
@@ -101,7 +120,10 @@ export class EntityListComponent implements OnInit {
   /** Attach taxonomy category names to each item so cards can show them. */
   private loadCategoryTags(): void {
     const scope = this.entity.toLowerCase();
-    if (!this.TAXONOMY_SCOPES.has(scope)) return;
+    if (!this.showTaxonomy) {
+      this.clearCategoryFilter();
+      return;
+    }
     Promise.all([
       this.categoryService.getTagsForScope(scope),
       this.categoryService.getNodeNameMap(scope),
