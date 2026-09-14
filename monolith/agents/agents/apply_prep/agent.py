@@ -3,6 +3,7 @@ import logging
 import re
 from typing import List
 from langchain_core.messages import SystemMessage, HumanMessage
+from shared.llm.fallback import ainvoke_with_fallback
 from agents.apply_prep.schemas import (
     FormResponsesRequest,
     MessageRequest,
@@ -127,10 +128,12 @@ async def generate_form_responses(req: FormResponsesRequest) -> FormResponsesRes
         f"QUESTIONS (answer each, in the same order):\n{fields_text}\n\n"
         f"Language: {req.language}"
     )
-    from shared.llm import get_llm
-    llm = get_llm(preferred_provider=req.provider, model=req.model)
-    resp = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=user)])
-    return _parse_form_responses(resp.content, req.fields)
+    _, content = await ainvoke_with_fallback(
+        [SystemMessage(content=system), HumanMessage(content=user)],
+        preferred_provider=req.provider,
+        model=req.model,
+    )
+    return _parse_form_responses(content, req.fields)
 
 
 def _parse_form_responses(content: str, fields: List[str]) -> FormResponsesResponse:
@@ -172,10 +175,12 @@ async def generate_message(req: MessageRequest) -> MessageResponse:
         f"Extra considerations from the candidate: {req.considerations or 'None'}\n\n"
         f"Language: {req.language}"
     )
-    from shared.llm import get_llm
-    llm = get_llm(preferred_provider=req.provider, model=req.model)
-    resp = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=user)])
-    return MessageResponse(message=_extract_message(resp.content))
+    _, content = await ainvoke_with_fallback(
+        [SystemMessage(content=system), HumanMessage(content=user)],
+        preferred_provider=req.provider,
+        model=req.model,
+    )
+    return MessageResponse(message=_extract_message(content))
 
 
 def _extract_message(content: str) -> str:

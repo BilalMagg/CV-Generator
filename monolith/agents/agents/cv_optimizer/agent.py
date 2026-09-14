@@ -10,6 +10,7 @@ from langgraph.prebuilt import ToolNode
 
 from shared.backend_client import get_user, get_user_experiences, get_user_projects, get_user_skills
 from shared.llm import get_llm
+from shared.llm.fallback import ainvoke_graph_with_fallback
 from agents.cv_optimizer.prompt import SYSTEM_PROMPT
 from agents.cv_optimizer.db import save_message, get_conversation_messages, create_conversation
 
@@ -22,10 +23,12 @@ class AgentState(TypedDict):
     conversation_id: Optional[str]
 
 
-def create_tool_graph(llm=None):
+def create_tool_graph(provider=None, model=None):
     from agents.cv_optimizer.tools import get_user_cv_content, analyze_cv_for_job, get_user_profile
     tools = [get_user_cv_content, analyze_cv_for_job, get_user_profile]
-    if llm is None:
+    if provider or model:
+        llm = get_llm(preferred_provider=provider, model=model)
+    else:
         llm = get_llm()
     llm = llm.bind_tools(tools)
 
@@ -54,24 +57,11 @@ def create_tool_graph(llm=None):
 class CVOptimizerAgent:
     def __init__(self):
         self.graph = create_tool_graph()
-        self._llm_provider = None
-        self._llm_model = None
-
-    def _ensure_graph(self, provider, model):
-        if provider is None and model is None:
-            return
-        if provider == self._llm_provider and model == self._llm_model:
-            return
-        self.graph = create_tool_graph(get_llm(preferred_provider=provider, model=model))
-        self._llm_provider = provider
-        self._llm_model = model
-        logger.info("cv-optimizer graph rebuilt for provider=%s model=%s", provider, model)
 
     async def chat(
         self, user_id: str, query: str, conversation_id: Optional[str] = None,
         workflow_id: Optional[str] = None, llm=None, provider=None, model=None,
     ) -> dict:
-        self._ensure_graph(provider, model)
         if not conversation_id:
             conversation_id = create_conversation(user_id)
         history = get_conversation_messages(conversation_id)
@@ -86,7 +76,12 @@ class CVOptimizerAgent:
         save_message(conversation_id, "user", query, user_id, msg_index=len(history))
 
         state = {"messages": messages, "user_id": user_id, "conversation_id": conversation_id}
-        result = await self.graph.ainvoke(state)
+        result = await ainvoke_graph_with_fallback(
+            lambda p, m: create_tool_graph(provider=p, model=m),
+            state,
+            preferred_provider=provider,
+            model=model,
+        )
         ai_message = result["messages"][-1]
         ai_content = ai_message.content if hasattr(ai_message, "content") else str(ai_message)
 

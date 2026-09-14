@@ -353,8 +353,7 @@ async def generate_cv_sections(
     profile = await _collect_profile(user_id)
 
     try:
-        from shared.llm import get_llm
-        llm = get_llm(preferred_provider=provider, model=model)
+        from shared.llm.fallback import ainvoke_with_fallback
 
         material: dict[str, Any] = {"profile": profile}
         for key in ("summary", "about", "target_role", "job_data", "profile"):
@@ -395,27 +394,30 @@ async def generate_cv_sections(
                 payload=json.dumps(material, ensure_ascii=False)[:30000],
             )
         )
-        response = await llm.ainvoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=human),
-        ])
-        text = response.content if hasattr(response, "content") else str(response)
+        _, text = await ainvoke_with_fallback(
+            [SystemMessage(content=system_prompt), HumanMessage(content=human)],
+            preferred_provider=provider,
+            model=model,
+        )
         try:
             sections = CvSections.model_validate(parse_llm_json(str(text)))
             _fill_header(cv_draft, profile, sections)
             return sections
         except Exception as e:
             logger.warning("CV sections JSON invalid, retrying once: %s", e)
-            retry = await llm.ainvoke([
-                SystemMessage(content=system_prompt),
-                HumanMessage(
-                    content=(
-                        "Your previous answer was not valid JSON:\n%s\n\n"
-                        "Reply ONLY with the strict JSON object." % str(e)
-                    )
-                ),
-            ])
-            retry_text = retry.content if hasattr(retry, "content") else str(retry)
+            _, retry_text = await ainvoke_with_fallback(
+                [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(
+                        content=(
+                            "Your previous answer was not valid JSON:\n%s\n\n"
+                            "Reply ONLY with the strict JSON object." % str(e)
+                        )
+                    ),
+                ],
+                preferred_provider=provider,
+                model=model,
+            )
             sections = CvSections.model_validate(parse_llm_json(str(retry_text)))
             _fill_header(cv_draft, profile, sections)
             return sections
@@ -476,8 +478,7 @@ async def generate_freeform_sections(
     if not blocks:
         return {}
     try:
-        from shared.llm import get_llm
-        llm = get_llm(preferred_provider=provider, model=model)
+        from shared.llm.fallback import ainvoke_with_fallback
 
         material = {
             "sections": sections.model_dump(),
@@ -511,11 +512,12 @@ async def generate_freeform_sections(
                 payload=json.dumps(material, ensure_ascii=False)[:25000],
             )
         )
-        response = await llm.ainvoke([
-            SystemMessage(content=_FREEFORM_SYSTEM_PROMPT),
-            HumanMessage(content=human),
-        ])
-        text = str(response.content if hasattr(response, "content") else response)
+        _, text = await ainvoke_with_fallback(
+            [SystemMessage(content=_FREEFORM_SYSTEM_PROMPT), HumanMessage(content=human)],
+            preferred_provider=provider,
+            model=model,
+        )
+        text = str(text)
         parsed = {int(m.group(1)): m.group(2).strip() for m in _SECTION_OUT_RE.finditer(text)}
         if not parsed:
             logger.warning("Free-form sections: no delimited blocks in LLM output")

@@ -131,31 +131,108 @@ def _is_skill_field(field: FieldDef) -> bool:
 
 
 def _normalize_date(val: Any) -> str:
-    s = str(val).strip()
+    s = _strip_accents(str(val)).strip()
     if not s:
         return ""
     # Already a clean date?
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        try:
+            mo, d = int(s[5:7]), int(s[8:10])
+            if not (1 <= mo <= 12 and 1 <= d <= 31):
+                return ""
+        except ValueError:
+            return ""
         return s
     # yyyy/mm/dd or yyyy.mm.dd
     m = re.search(r"(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})", s)
     if m:
-        y, mo, d = m.groups()
         try:
-            return f"{y}-{int(mo):02d}-{int(d):02d}"
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if not (1 <= mo <= 12 and 1 <= d <= 31):
+                return ""
+            return f"{y}-{mo:02d}-{d:02d}"
         except ValueError:
             return ""
-    # A month name
-    for fmt in ("%B %Y", "%b %Y", "%Y-%m-%d"):
+    # yyyy-mm (first of month)
+    m = re.fullmatch(r"(\d{4})[/.-](\d{1,2})", s)
+    if m:
         try:
-            return datetime.datetime.strptime(s, fmt).strftime("%Y-%m-%d")
+            y, mo = int(m.group(1)), int(m.group(2))
+            if not 1 <= mo <= 12:
+                return ""
+            return f"{y}-{mo:02d}-01"
         except ValueError:
-            continue
+            return ""
+    # day-first numeric: dd/mm/yyyy or dd.mm.yyyy (year-first already handled above)
+    m = re.search(r"(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})", s)
+    if m:
+        try:
+            a, b, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if a > 12:  # unambiguous day/month
+                d, mo = a, b
+            elif b > 12:  # unambiguous month/day
+                mo, d = a, b
+            else:  # ambiguous -> prefer EU day/month
+                d, mo = a, b
+            if not (1 <= mo <= 12 and 1 <= d <= 31):
+                return ""
+            return f"{y}-{mo:02d}-{d:02d}"
+        except ValueError:
+            return ""
+    # month/year, with optional day and French/English month names:
+    #   "juillet 2025", "7 juillet 2025", "1er septembre 2025",
+    #   "Jul 2025", "July, 2025", "5th july 2025"
+    m = _MONTH_RE.search(s)
+    if m:
+        try:
+            day = int(m.group("day")) if m.group("day") else 1
+            mo = _FRENCH_MONTHS[m.group("month").lower()]
+            y = int(m.group("year"))
+            if not (1 <= day <= 31 and 1 <= mo <= 12 and 1000 <= y <= 9999):
+                return ""
+            return f"{y}-{mo:02d}-{day:02d}"
+        except (TypeError, KeyError, ValueError):
+            return ""
     # Just a year -> Jan 1
     m = re.fullmatch(r"(\d{4})", s)
     if m:
         return f"{m.group(1)}-01-01"
-    return s
+    return ""
+
+
+def _strip_accents(value: str) -> str:
+    try:
+        import unicodedata
+
+        return "".join(
+            c for c in unicodedata.normalize("NFD", value) if unicodedata.category(c) != "Mn"
+        )
+    except Exception:
+        return value
+
+
+_FRENCH_MONTHS = {
+    "janvier": 1, "janv": 1, "january": 1, "jan": 1,
+    "fevrier": 2, "fevr": 2, "february": 2, "feb": 2,
+    "mars": 3, "march": 3, "mar": 3,
+    "avril": 4, "april": 4, "apr": 4,
+    "mai": 5, "may": 5,
+    "juin": 6, "june": 6, "jun": 6,
+    "juillet": 7, "juil": 7, "july": 7, "jul": 7,
+    "aout": 8, "august": 8, "aug": 8,
+    "septembre": 9, "sept": 9, "september": 9,
+    "octobre": 10, "oct": 10, "october": 10,
+    "novembre": 11, "nov": 11,
+    "decembre": 12, "dec": 12, "december": 12,
+}
+# Drop non-numeric sentinels and keep tokens, longest first ("septembre" wins over "sept").
+_MONTH_TOKENS = [k for k, v in _FRENCH_MONTHS.items() if v is not None]
+_MONTH_RE = re.compile(
+    r"(?P<day>\d{1,2})?\s*(?:er|e|nd|rd|th|st)?\s*"
+    r"(?P<month>" + "|".join(sorted(_MONTH_TOKENS, key=len, reverse=True)) + r")"
+    r"\s*(?:de\s+|[/.,-]\s*)?(?P<year>\d{4})",
+    re.IGNORECASE,
+)
 
 
 def _coerce(field: FieldDef, val: Any) -> Any:

@@ -7,7 +7,7 @@ provider can be flaky. This helper tries providers in priority order until one
 succeeds, so a single caller never has to know the whole provider list.
 """
 import logging
-from typing import List, Optional
+from typing import Any, Callable, List, Optional
 
 from langchain_core.messages import BaseMessage
 from langchain_core.language_models import BaseChatModel
@@ -88,6 +88,38 @@ async def ainvoke_with_fallback(
                 # Non-transient error (e.g. bad request from our prompt) => surface
                 # immediately rather than burning the fallback chain on a bad input.
                 # Still try the next provider once, to be resilient.
+                pass
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("No LLM provider configured.")
+
+
+async def ainvoke_graph_with_fallback(
+    build_graph: Callable[[Optional[str], Optional[str]], Any],
+    state: dict,
+    preferred_provider: Optional[str] = None,
+    model: Optional[str] = None,
+) -> Any:
+    """Invoke a tool-calling (LangGraph-style) agent across providers.
+
+    build_graph(provider, model) must return a graph with an async ``ainvoke``
+    (state in -> state out). Used by tool-calling agents (cv-optimizer) whose
+    LLM is bound to tools, so the whole graph is rebuilt per provider.
+    """
+    order = _fallback_order(preferred_provider, model)
+    last_exc: Optional[Exception] = None
+    for provider in order:
+        if _provider_should_skip(provider):
+            continue
+        try:
+            graph = build_graph(provider, model)
+            result = await graph.ainvoke(state)
+            logger.info("Agent graph invoked on provider=%s", provider)
+            return result
+        except Exception as e:  # noqa: BLE001
+            last_exc = e
+            logger.warning("Agent graph call failed on provider=%s: %s", provider, e)
+            if not _is_retryable(e):
                 pass
     if last_exc is not None:
         raise last_exc

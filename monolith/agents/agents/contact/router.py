@@ -19,10 +19,10 @@ async def generate_contact_email(request: ContactRequest):
             user_name, request.company_name,
             request.job_title or "Position", request.contact_type, request.language,
         )
-        from shared.llm import get_llm
-        llm = get_llm(preferred_provider=request.provider, model=request.model)
-        response = await llm.ainvoke(messages)
-        content = response.content
+        from shared.llm.fallback import ainvoke_with_fallback
+        _, content = await ainvoke_with_fallback(
+            messages, preferred_provider=request.provider, model=request.model,
+        )
         lines = content.strip().split("\n")
         subject = lines[0].replace("Subject:", "").strip() if lines else "Job Application"
         body = "\n".join(lines[1:]).strip() if len(lines) > 1 else content
