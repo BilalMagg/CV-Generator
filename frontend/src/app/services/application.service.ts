@@ -16,6 +16,7 @@ import {
   CreateAttemptDto,
   UpdateAttemptDto,
   ContactSummaryDto,
+  FollowUpAction,
   ApiResponse,
 } from '../models/application.model';
 import { CalendarEventDto } from '@app/models/calendar-event.model';
@@ -71,6 +72,10 @@ export class ApplicationService {
 
   async update(id: string, dto: UpdateApplicationDto): Promise<ApiResponse<ApplicationResponseDto>> {
     return this.http.put<ApiResponse<ApplicationResponseDto>>(`/api/applications/${id}`, dto);
+  }
+
+  async actionFollowUp(id: string, action: FollowUpAction): Promise<ApiResponse<ApplicationResponseDto>> {
+    return this.http.patch<ApiResponse<ApplicationResponseDto>>(`/api/applications/${id}/follow-up`, { action });
   }
 
   async delete(id: string): Promise<void> {

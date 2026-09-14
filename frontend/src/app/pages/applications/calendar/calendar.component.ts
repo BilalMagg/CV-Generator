@@ -13,7 +13,7 @@ import {
 } from '@app/models/reminder.model';
 import { CalendarEventDto } from '@app/models/calendar-event.model';
 import { CalendarConfigurationDto } from '@app/models/calendar-configuration.model';
-import { STATUS_LABELS, STATUS_ORDER } from '@app/models/application.model';
+import { STATUS_LABELS, STATUS_ORDER, FollowUpAction } from '@app/models/application.model';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 interface CalendarEvent {
@@ -77,6 +77,11 @@ export class CalendarComponent implements OnInit {
     reminderOffset: 'OneDay' as ReminderOffsetType,
   };
 
+  // Follow-up action modal: decide when a deadline reminder is clicked
+  followUpActionOpen = signal(false);
+  followUpActionEvent = signal<CalendarEvent | null>(null);
+  followUpActionSaving = signal(false);
+
   statusOptions = STATUS_OPTIONS;
   statusLabels = STATUS_LABELS;
 
@@ -106,7 +111,9 @@ export class CalendarComponent implements OnInit {
 
     const selected = cfg?.selectedStatuses ?? [];
     for (const e of this.appEvents()) {
-      if (selected.length === 0 || this.isStatusInFilter(e.type, selected)) {
+      // Follow-up reminders are action items — always show them regardless of
+      // the status filter so overdue decisions are never hidden.
+      if (e.type === 'follow-up' || selected.length === 0 || this.isStatusInFilter(e.type, selected)) {
         events.push({
           id: e.applicationId,
           date: new Date(e.date + 'T00:00:00'),
@@ -409,6 +416,34 @@ export class CalendarComponent implements OnInit {
     d.setMonth(d.getMonth() + 1);
     this.currentMonth.set(d);
     this.loadAppEvents();
+  }
+
+  openFollowUpAction(ev: CalendarEvent) {
+    this.followUpActionEvent.set(ev);
+    this.followUpActionOpen.set(true);
+  }
+
+  closeFollowUpAction() {
+    this.followUpActionOpen.set(false);
+    this.followUpActionEvent.set(null);
+  }
+
+  async applyFollowUpDecision(decision: FollowUpAction) {
+    const ev = this.followUpActionEvent();
+    if (!ev || ev.source !== 'application') return;
+    this.followUpActionSaving.set(true);
+    this.error.set('');
+    try {
+      const res = await this.appSvc.actionFollowUp(ev.id, decision);
+      if (res.success) await this.loadAppEvents();
+      else this.error.set(res.message || 'Failed to update follow-up');
+    } catch (e: any) {
+      this.error.set('Failed to update follow-up');
+      console.error(e);
+    } finally {
+      this.followUpActionSaving.set(false);
+      this.closeFollowUpAction();
+    }
   }
 
   toggleView(view: 'month' | 'week') {

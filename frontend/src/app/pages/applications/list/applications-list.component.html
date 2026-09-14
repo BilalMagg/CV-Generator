@@ -94,7 +94,11 @@
             <tr [routerLink]="['/applications', app.id]">
               <td>
                 <div class="co-cell">
-                  <div class="co-logo" [style.background]="logoBg(app.companyName)">{{ app.companyName[0] }}</div>
+                  @if (app.companyLogoUrl) {
+                    <img class="co-logo" [src]="app.companyLogoUrl" [alt]="app.companyName + ' logo'" loading="lazy" (error)="$event.target.hidden = true">
+                  } @else {
+                    <div class="co-logo" [style.background]="logoBg(app.companyName)">{{ app.companyName[0] }}</div>
+                  }
                   <div>
                     <div class="co-name">
                       <span class="prio-dot" [style.background]="priorityColor(app.priority)" [title]="'Priority: ' + PRIORITY_LABELS[app.priority || 'MEDIUM']"></span>
@@ -105,7 +109,7 @@
                 </div>
               </td>
               <td>
-                <select class="status-sel" [attr.data-status]="app.status" (change)="onInlineStatusChange(app, $event)" (click)="$event.stopPropagation()" [value]="app.status">
+                <select class="status-sel" [attr.data-status]="app.status" (change)="onInlineStatusChange(app, $event)" (click)="$event.stopPropagation()" [ngModel]="app.status">
                   @for (s of ALL_STATUSES; track s) {
                     <option [value]="s">{{ STATUS_LABELS[s] }}</option>
                   }

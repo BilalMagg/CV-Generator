@@ -84,7 +84,9 @@
             }
             <div class="day-events">
               @for (ev of visibleEventsForDay(cell.day, cell.month, cell.year); track ev.id + ev.type) {
-                <div class="event-pill" [ngClass]="'ev-' + ev.type" [title]="ev.subtitle">{{ ev.title }}</div>
+                <div class="event-pill" [ngClass]="'ev-' + ev.type" [title]="ev.subtitle"
+                  [class.clickable]="ev.type === 'follow-up' && ev.source === 'application'"
+                  (click)="(ev.type === 'follow-up' && ev.source === 'application') ? openFollowUpAction(ev) : null">{{ ev.title }}</div>
               }
               @if (hiddenCountForDay(cell.day, cell.month, cell.year) > 0) {
                 <div class="more-link" (click)="showDayPopover(cell.day, cell.month, cell.year)">
@@ -113,7 +115,8 @@
           <div class="loading-msg">Loading…</div>
         }
         @for (ev of calendarEvents().slice(0, 20); track ev.id + ev.type) {
-          <div class="upcoming-item">
+          <div class="upcoming-item" [class.clickable]="ev.type === 'follow-up' && ev.source === 'application'"
+            (click)="(ev.type === 'follow-up' && ev.source === 'application') ? openFollowUpAction(ev) : null">
             <div class="date-chip">
               <span class="chip-month">{{ ev.date | date:'MMM' | uppercase }}</span>
               <span class="chip-day">{{ ev.date | date:'d' }}</span>
@@ -205,6 +208,42 @@
           <button class="btn-submit" (click)="submit()" [disabled]="saving()">
             {{ saving() ? 'Creating…' : 'Create Reminder' }}
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Follow-up decision modal -->
+  @if (followUpActionOpen(); as ev) {
+    <div class="modal-overlay" (click)="closeFollowUpAction()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Reply reminder</h3>
+          <button class="close-btn" (click)="closeFollowUpAction()">✕</button>
+        </div>
+        <div class="modal-body">
+          @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+          @if (followUpActionEvent(); as fev) {
+            <p style="margin:0 0 12px">
+              <strong>{{ fev.title }}</strong><br>
+              <span style="color:var(--text-3)">{{ fev.subtitle }}</span>
+            </p>
+            <p style="font-size:13px;color:var(--text-3);margin:0 0 14px">
+              How did this application go?
+            </p>
+          }
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button class="btn-cancel" style="background:oklch(0.94 0.05 30)" [disabled]="followUpActionSaving()"
+              (click)="applyFollowUpDecision('REJECTED')">Rejected</button>
+            <button class="btn-cancel" style="background:oklch(0.93 0.06 150)" [disabled]="followUpActionSaving()"
+              (click)="applyFollowUpDecision('ACCEPTED')">Accepted</button>
+            <button class="btn-cancel" style="background:oklch(0.94 0.04 250)" [disabled]="followUpActionSaving()"
+              (click)="applyFollowUpDecision('INTERVIEW')">Interview</button>
+            <button class="btn-submit" [disabled]="followUpActionSaving()"
+              (click)="applyFollowUpDecision('KEEP')">
+              {{ followUpActionSaving() ? 'Saving…' : 'Keep as-is' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>

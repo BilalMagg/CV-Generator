@@ -20,6 +20,7 @@ interface StatCard {
 interface FollowUpItem {
   id: string;
   company: string;
+  companyLogoUrl?: string;
   role: string;
   timeAgo: string;
 }
@@ -167,6 +168,7 @@ export class DashboardComponent implements OnInit {
     return awaiting.slice(0, 5).map(a => ({
       id: a.id,
       company: a.companyName,
+      companyLogoUrl: a.companyLogoUrl,
       role: a.positionTitle,
       timeAgo: this.relativeTime(a.updatedAt),
     }));

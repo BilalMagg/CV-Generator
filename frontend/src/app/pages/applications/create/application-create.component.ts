@@ -17,6 +17,7 @@ import {
   AttemptChannel,
   AttemptInitiatedBy,
   ContactSummaryDto,
+  attemptChannelFields,
   STATUS_LABELS,
   PRIORITY_LABELS,
   PRIORITY_ORDER,
@@ -252,70 +253,7 @@ export class ApplicationCreateComponent implements OnInit {
   ];
 
   /** Which attempt fields apply per channel (email gets subject, web form gets the URL, …). */
-  readonly channelFields = computed<{
-    subject: boolean;
-    message: boolean;
-    messageLabel: string;
-    messagePlaceholder: string;
-    recipientName: boolean;
-    recipientContact: boolean;
-    recipientContactLabel: string;
-    recipientContactPlaceholder: string;
-  }>(() => {
-    switch (this.channel()) {
-      case 'EMAIL_GMAIL':
-      case 'EMAIL_SMTP':
-        return {
-          subject: true, message: true, messageLabel: 'Message',
-          messagePlaceholder: 'What did you send? Paste the message here…',
-          recipientName: true, recipientContact: true,
-          recipientContactLabel: 'Recipient email', recipientContactPlaceholder: 'name@email.com',
-        };
-      case 'WHATSAPP':
-        return {
-          subject: false, message: true, messageLabel: 'WhatsApp message',
-          messagePlaceholder: 'Paste the text you sent…',
-          recipientName: false, recipientContact: true,
-          recipientContactLabel: 'Recipient phone', recipientContactPlaceholder: '+212 6 00 00 00 00',
-        };
-      case 'LINKEDIN_MESSAGE':
-        return {
-          subject: false, message: true, messageLabel: 'Message',
-          messagePlaceholder: 'Paste the message you sent…',
-          recipientName: false, recipientContact: true,
-          recipientContactLabel: 'Recipient profile URL', recipientContactPlaceholder: 'linkedin.com/in/…',
-        };
-      case 'LINKEDIN_CONNECTION':
-        return {
-          subject: false, message: true, messageLabel: 'Connection note',
-          messagePlaceholder: 'Short note accompanying the connection request…',
-          recipientName: false, recipientContact: true,
-          recipientContactLabel: 'Recipient profile URL', recipientContactPlaceholder: 'linkedin.com/in/…',
-        };
-      case 'WEB_FORM':
-        return {
-          subject: false, message: false, messageLabel: '',
-          messagePlaceholder: '',
-          recipientName: false, recipientContact: true,
-          recipientContactLabel: 'Form URL', recipientContactPlaceholder: 'https://jobs.company.com/apply…',
-        };
-      case 'IN_PERSON':
-        return {
-          subject: false, message: true, messageLabel: 'Notes',
-          messagePlaceholder: 'Where and when did you apply? What was discussed?',
-          recipientName: false, recipientContact: false,
-          recipientContactLabel: '', recipientContactPlaceholder: '',
-        };
-      case 'OTHER':
-      default:
-        return {
-          subject: false, message: true, messageLabel: 'Notes',
-          messagePlaceholder: 'Anything worth remembering about this application…',
-          recipientName: false, recipientContact: false,
-          recipientContactLabel: '', recipientContactPlaceholder: '',
-        };
-    }
-  });
+  readonly channelFields = computed(() => attemptChannelFields(this.channel()));
 
   get isFormValid(): boolean {
     return this.companyName().trim().length > 0 && this.positionTitle().trim().length > 0;

@@ -84,7 +84,11 @@
       <div class="followup-list">
         @for (item of followUpItems(); track item.id) {
           <div class="followup-row">
-            <div class="followup-logo" [style.background]="logoBg(item.company)">{{ logoText(item.company) }}</div>
+            @if (item.companyLogoUrl) {
+              <img class="followup-logo" [src]="item.companyLogoUrl" [alt]="item.company + ' logo'" loading="lazy" (error)="$event.target.hidden = true">
+            } @else {
+              <div class="followup-logo" [style.background]="logoBg(item.company)">{{ logoText(item.company) }}</div>
+            }
             <div class="followup-body">
               <div class="followup-company">{{ item.company }}</div>
               <div class="followup-role">{{ item.role }}</div>
