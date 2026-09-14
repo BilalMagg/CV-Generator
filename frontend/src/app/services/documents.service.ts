@@ -9,6 +9,8 @@ import {
   CvTemplateDto,
   CvTemplateInput,
   CvUpdateInput,
+  CoverLetterDto,
+  CoverLetterInput,
 } from '../models/document.model';
 
 @Injectable({ providedIn: 'root' })
@@ -81,5 +83,46 @@ export class DocumentsService {
 
   deleteTemplate(id: string): Promise<void> {
     return this.http.delete<void>(`/api/cv/templates/${id}`);
+  }
+
+  // ── Cover letters ─────────────────────────────────────────────────────
+
+  listCoverLetters(): Promise<ApiResponse<CoverLetterDto[]>> {
+    return this.http.get<ApiResponse<CoverLetterDto[]>>('/api/cover-letters');
+  }
+
+  createCoverLetter(input: CoverLetterInput): Promise<ApiResponse<CoverLetterDto>> {
+    return this.http.post<ApiResponse<CoverLetterDto>>('/api/cover-letters', input);
+  }
+
+  updateCoverLetter(id: string, input: CoverLetterInput): Promise<ApiResponse<CoverLetterDto>> {
+    return this.http.put<ApiResponse<CoverLetterDto>>(`/api/cover-letters/${id}`, input);
+  }
+
+  deleteCoverLetter(id: string): Promise<void> {
+    return this.http.delete<void>(`/api/cover-letters/${id}`);
+  }
+
+  uploadCoverLetter(file: File, title: string, companyId?: string | null): Promise<ApiResponse<CoverLetterDto>> {
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    fd.append('title', title);
+    if (companyId) fd.append('companyId', companyId);
+    return this.http.post<ApiResponse<CoverLetterDto>>('/api/cover-letters/upload', fd);
+  }
+
+  coverLetterVersionFileUrl(versionId: string, download = false): string {
+    return `${environment.apiUrl}/api/cover-letters/versions/${versionId}/file${download ? '?download=1' : ''}`;
+  }
+
+  coverLetterVersionThumbnailUrl(versionId: string): string {
+    return `${environment.apiUrl}/api/cover-letters/versions/${versionId}/thumbnail`;
+  }
+
+  getCoverLetterVersionFileBlob(versionId: string): Promise<Blob> {
+    const url = `${environment.apiUrl}/api/cover-letters/versions/${versionId}/file`;
+    return firstValueFrom(
+      this.httpClient.get(url, { responseType: 'blob', withCredentials: true }),
+    );
   }
 }

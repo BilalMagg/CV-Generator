@@ -58,6 +58,8 @@ public class AppDbContext : DbContext
     public DbSet<CvTemplate> CvTemplates => Set<CvTemplate>();
     public DbSet<ScheduleTemplate> ScheduleTemplates => Set<ScheduleTemplate>();
     public DbSet<UserImage> UserImages => Set<UserImage>();
+    public DbSet<CoverLetter> CoverLetters => Set<CoverLetter>();
+    public DbSet<CoverLetterVersion> CoverLetterVersions => Set<CoverLetterVersion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -80,6 +82,18 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(e => e.CvId);
             entity.HasMany(e => e.Sections).WithOne(e => e.Version).HasForeignKey(e => e.VersionId);
+        });
+
+        modelBuilder.Entity<CoverLetter>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasMany(e => e.Versions).WithOne(e => e.CoverLetter).HasForeignKey(e => e.CoverLetterId);
+        });
+
+        modelBuilder.Entity<CoverLetterVersion>(entity =>
+        {
+            entity.HasIndex(e => e.CoverLetterId);
         });
 
         modelBuilder.Entity<Application>(entity =>

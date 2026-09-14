@@ -42,6 +42,7 @@ import { JobOffersComponent } from './pages/job-offers/job-offers.component';
 import { PersonalInfoComponent } from './pages/personal-info/personal-info.component';
 import { DocumentsLayoutComponent } from './pages/documents/documents-layout.component';
 import { DocumentsCvsComponent } from './pages/documents/documents-cvs.component';
+import { DocumentsCoverLettersComponent } from './pages/documents/documents-cover-letters.component';
 import { DocumentsTemplatesComponent } from './pages/documents/documents-templates.component';
 import { DocumentsImagesComponent } from './pages/documents/documents-images.component';
 import { EntityDetailsComponent } from './pages/entity-details/entity-details.component';
@@ -116,6 +117,7 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'cvs', pathMatch: 'full' },
       { path: 'cvs', component: DocumentsCvsComponent },
+      { path: 'letters', component: DocumentsCoverLettersComponent },
       { path: 'templates', component: DocumentsTemplatesComponent },
       { path: 'images', component: DocumentsImagesComponent },
     ],

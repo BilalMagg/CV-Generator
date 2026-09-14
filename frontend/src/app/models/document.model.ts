@@ -46,3 +46,36 @@ export interface CvTemplateInput {
   templateType: 'latex' | 'html' | 'pdf';
   content: string;
 }
+
+// ── Cover letters ────────────────────────────────────────────────────────────
+
+export interface CoverLetterVersionDto {
+  id: string;
+  coverLetterId: string;
+  versionNumber: number;
+  label: string;
+  fileUrl?: string | null;
+  pdfUrl?: string | null;
+  thumbnailUrl?: string | null;
+  createdAt: string;
+}
+
+export interface CoverLetterDto {
+  id: string;
+  userId: string;
+  title: string;
+  companyId?: string | null;
+  companyName?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  versions: CoverLetterVersionDto[];
+}
+
+export interface CoverLetterInput {
+  title: string;
+  companyId?: string | null;
+  isActive?: boolean;
+  text?: string;
+  includeTitleInPdf?: boolean;
+}
