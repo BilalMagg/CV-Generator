@@ -26,3 +26,10 @@ public enum ApplicationPriority
     MEDIUM,
     HIGH
 }
+
+public enum FollowUpStatus
+{
+    NONE,
+    PENDING,
+    ACTIONED
+}

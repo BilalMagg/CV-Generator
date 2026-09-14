@@ -3,6 +3,7 @@ using System;
 using CV_Generator.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using Pgvector;
 namespace CV_Generator.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914115921_AddApplicationAttachments")]
+    partial class AddApplicationAttachments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -277,12 +280,6 @@ namespace CV_Generator.Migrations
                         .IsRequired()
                         .HasMaxLength(280)
                         .HasColumnType("character varying(280)");
-
-                    b.Property<DateTime?>("FollowUpDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("FollowUpStatus")
-                        .HasColumnType("integer");
 
                     b.Property<string>("InternshipType")
                         .HasMaxLength(50)

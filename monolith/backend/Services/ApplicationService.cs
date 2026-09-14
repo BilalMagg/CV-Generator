@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using CV_Generator.Data;
 using CV_Generator.Dto;
@@ -27,7 +28,8 @@ public class ApplicationService : IApplicationService
             .Take(pageSize)
             .ToListAsync();
 
-        return new ApplicationListDto(apps.Select(MapToDto).ToList(), total, page, pageSize);
+        var companies = await BuildCompanyLookupAsync(userId);
+        return new ApplicationListDto(apps.Select(a => MapToDto(a, companies)).ToList(), total, page, pageSize);
     }
 
     public async Task<ApplicationResponseDto?> GetByIdAsync(Guid id, Guid userId)
@@ -36,7 +38,9 @@ public class ApplicationService : IApplicationService
             .Include(a => a.StatusHistory.OrderByDescending(h => h.ChangedAt))
             .Include(a => a.Attempts.OrderBy(t => t.AttemptNumber))
             .FirstOrDefaultAsync(a => a.Id == id && a.CandidateId == userId);
-        return app == null ? null : MapToDtoWithHistory(app);
+        if (app == null) return null;
+        var companies = await BuildCompanyLookupAsync(userId);
+        return MapToDtoWithHistory(app, companies);
     }
 
     public async Task<DuplicateCheckResponseDto> CheckDuplicatesAsync(Guid userId, DuplicateCheckRequestDto dto)
@@ -87,7 +91,8 @@ public class ApplicationService : IApplicationService
             Status = initialStatus,
             AppliedAt = initialStatus == ApplicationStatus.SAVED ? null : (dto.AppliedAt ?? DateTime.UtcNow),
             UpdatedAt = DateTime.UtcNow,
-            Notes = dto.Notes
+            Notes = dto.Notes,
+            AttachmentsJson = dto.Attachments is { Count: > 0 } ? JsonSerializer.Serialize(dto.Attachments) : null
         };
         app.Fingerprint = FingerprintHelper.ComputeFor(app);
 
@@ -99,7 +104,7 @@ public class ApplicationService : IApplicationService
         _logger.LogInformation("Application created {Id} ({Origin}, {Status}) for user {User}",
             app.Id, origin, initialStatus, userId);
 
-        return MapToDtoWithHistory(await ReloadAsync(app.Id));
+        return MapToDtoWithHistory(await ReloadAsync(app.Id), await BuildCompanyLookupAsync(userId));
     }
 
     public async Task<ApplicationResponseDto?> UpdateStatusAsync(Guid id, UpdateStatusDto dto, Guid userId)
@@ -119,13 +124,49 @@ public class ApplicationService : IApplicationService
 
         app.Status = newStatus;
         app.UpdatedAt = DateTime.UtcNow;
+
+        // A decided/reply state satisfies the follow-up reminder.
+        if (app.FollowUpStatus == FollowUpStatus.PENDING && FollowUpStatusResolvedBy(newStatus))
+            app.FollowUpStatus = FollowUpStatus.ACTIONED;
+
         await _db.SaveChangesAsync();
 
         await RecordHistoryAsync(id, oldStatus, newStatus, userId.ToString(), dto.Comment);
 
         _logger.LogInformation("Application {Id} status updated from {Old} to {New}", id, oldStatus, newStatus);
 
-        return MapToDtoWithHistory(await ReloadAsync(id));
+        return MapToDtoWithHistory(await ReloadAsync(id), await BuildCompanyLookupAsync(userId));
+    }
+
+    public async Task<ApplicationResponseDto?> ApplyFollowUpActionAsync(Guid id, FollowUpActionDto dto, Guid userId)
+    {
+        var app = await _db.Applications.FirstOrDefaultAsync(a => a.Id == id && a.CandidateId == userId);
+        if (app == null) return null;
+
+        ApplicationStatus? newStatus = null;
+        switch (dto.Action.ToUpperInvariant())
+        {
+            case "REJECTED": newStatus = ApplicationStatus.REJECTED; break;
+            case "ACCEPTED": newStatus = ApplicationStatus.ACCEPTED; break;
+            case "INTERVIEW": newStatus = ApplicationStatus.INTERVIEW; break;
+            case "KEEP": break;
+            default: throw new ArgumentException($"Invalid follow-up action '{dto.Action}'");
+        }
+
+        var oldStatus = app.Status;
+        if (newStatus.HasValue && newStatus.Value != oldStatus)
+        {
+            app.Status = newStatus.Value;
+            app.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            await RecordHistoryAsync(id, oldStatus, newStatus.Value, userId.ToString(), "Resolved from follow-up reminder");
+        }
+
+        app.FollowUpStatus = FollowUpStatus.ACTIONED;
+        app.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return MapToDtoWithHistory(await ReloadAsync(id), await BuildCompanyLookupAsync(userId));
     }
 
     public async Task<ApplicationResponseDto?> UpdateDetailsAsync(Guid id, UpdateApplicationDto dto, Guid userId)
@@ -156,12 +197,41 @@ public class ApplicationService : IApplicationService
                 throw new ArgumentException($"Invalid priority value '{dto.Priority}'");
             app.Priority = parsedPriority;
         }
+        if (dto.Attachments != null)
+            app.AttachmentsJson = dto.Attachments.Count > 0 ? JsonSerializer.Serialize(dto.Attachments) : null;
+        // CV sent with this apply: optional. Guid.Empty clears it; otherwise the
+        // version must be one of the user's CV versions (absent field = unchanged).
+        if (dto.CvVersionId.HasValue)
+        {
+            if (dto.CvVersionId == Guid.Empty)
+            {
+                app.CvVersionId = null;
+            }
+            else
+            {
+                var owned = await _db.CvVersions.AnyAsync(v => v.Id == dto.CvVersionId.Value && v.Cv.UserId == userId);
+                if (!owned) throw new ArgumentException("CV version not found");
+                app.CvVersionId = dto.CvVersionId.Value;
+            }
+        }
+        // Follow-up reminder: explicit clear flag wins; otherwise a provided date
+        // schedules a pending reminder (absent fields = unchanged).
+        if (dto.ClearFollowUp)
+        {
+            app.FollowUpDate = null;
+            app.FollowUpStatus = FollowUpStatus.NONE;
+        }
+        else if (dto.FollowUpDate.HasValue)
+        {
+            app.FollowUpDate = dto.FollowUpDate.Value.Date;
+            app.FollowUpStatus = FollowUpStatus.PENDING;
+        }
 
         app.Fingerprint = FingerprintHelper.ComputeFor(app);
         app.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return MapToDtoWithHistory(await ReloadAsync(id));
+        return MapToDtoWithHistory(await ReloadAsync(id), await BuildCompanyLookupAsync(userId));
     }
 
     public async Task<bool> DeleteAsync(Guid id, Guid userId)
@@ -410,7 +480,7 @@ public class ApplicationService : IApplicationService
                     && a.AppliedAt >= from
                     && a.AppliedAt <= to)
                 .Select(a => new CalendarEventDto(
-                    a.AppliedAt!.Value.ToString("yyyy-MM-dd"),
+                    a.AppliedAt!.Value.ToLocalTime().ToString("yyyy-MM-dd"),
                     "applied",
                     "Applied at " + a.CompanyName,
                     a.Id,
@@ -422,6 +492,33 @@ public class ApplicationService : IApplicationService
             events.AddRange(appliedEvents);
         }
 
+        // Pending follow-up reminders: surface on their deadline date, and clamp
+        // overdue ones (deadline passed before the viewed range) to the range start.
+        var followUpRaw = await _db.Applications
+            .Where(a => a.CandidateId == userId
+                && a.FollowUpStatus == FollowUpStatus.PENDING
+                && a.FollowUpDate != null)
+            .Select(a => new CalendarEventDto(
+                a.FollowUpDate!.Value.ToLocalTime().ToString("yyyy-MM-dd"),
+                "follow-up",
+                "No reply from " + a.CompanyName,
+                a.Id,
+                a.CompanyName,
+                a.PositionTitle
+            ))
+            .ToListAsync();
+
+        var fromDateLocal = from.ToLocalTime().Date;
+        var toDateLocal = to.ToLocalTime().Date;
+        var followUpEvents = followUpRaw
+            .Select(e => DateTime.TryParse(e.Date, out var d) && d.Date < fromDateLocal
+                ? e with { Date = fromDateLocal.ToString("yyyy-MM-dd") }
+                : e)
+            .Where(e => DateTime.TryParse(e.Date, out var d) && d.Date >= fromDateLocal && d.Date <= toDateLocal)
+            .ToList();
+
+        events.AddRange(followUpEvents);
+
         var statusEvents = await _db.ApplicationStatusHistories
             .Include(h => h.Application)
             .Where(h => h.Application != null
@@ -431,7 +528,7 @@ public class ApplicationService : IApplicationService
                 && parsedStatuses.Contains(h.NewStatus)
                 && h.NewStatus != ApplicationStatus.APPLIED)
             .Select(h => new CalendarEventDto(
-                h.ChangedAt.ToString("yyyy-MM-dd"),
+                h.ChangedAt.ToLocalTime().ToString("yyyy-MM-dd"),
                 h.NewStatus.ToString().ToLower(),
                 h.Application!.CompanyName + " - " + h.NewStatus.ToString(),
                 h.ApplicationId,
@@ -457,6 +554,7 @@ public class ApplicationService : IApplicationService
                 .OrderBy(t => t.AttemptNumber)
                 .ToListAsync();
         await HydrateAttemptContactsAsync(attempts);
+        await HydrateAttemptCoverLettersAsync(attempts);
 
         return attempts.Select(MapAttemptToDto).ToList();
     }
@@ -487,6 +585,8 @@ public class ApplicationService : IApplicationService
         if (contact != null && dto.RecipientContact == null)
             dto = dto with { RecipientContact = contact.Email };
 
+        var coverLetterVersion = await ResolveCoverLetterVersionAsync(dto.CoverLetterVersionId, userId);
+
         var attempt = new ApplicationAttempt
         {
             ApplicationId = applicationId,
@@ -501,6 +601,7 @@ public class ApplicationService : IApplicationService
             ContactId = contact?.Id,
             ChannelMetadataJson = dto.ChannelMetadataJson,
             CvVersionId = dto.CvVersionId,
+            CoverLetterVersionId = coverLetterVersion?.Id,
             SentAt = status == AttemptStatus.SENT ? dto.SentAt ?? DateTime.UtcNow : dto.SentAt,
             FailureReason = dto.FailureReason
         };
@@ -509,6 +610,7 @@ public class ApplicationService : IApplicationService
         await _db.SaveChangesAsync();
 
         attempt.Contact = contact;
+        attempt.CoverLetterTitle = coverLetterVersion?.CoverLetter.Title;
 
         if (attempt.Status == AttemptStatus.SENT)
             await ApplySentSideEffectsAsync(app, attempt, userId.ToString());
@@ -548,6 +650,8 @@ public class ApplicationService : IApplicationService
         }
         if (dto.ChannelMetadataJson != null) attempt.ChannelMetadataJson = dto.ChannelMetadataJson;
         if (dto.CvVersionId.HasValue) attempt.CvVersionId = dto.CvVersionId.Value;
+        if (dto.CoverLetterVersionId.HasValue)
+            attempt.CoverLetterVersionId = (await ResolveCoverLetterVersionAsync(dto.CoverLetterVersionId.Value, userId))!.Id;
         if (dto.FailureReason != null) attempt.FailureReason = dto.FailureReason;
         if (dto.SentAt.HasValue) attempt.SentAt = dto.SentAt.Value;
 
@@ -564,6 +668,7 @@ public class ApplicationService : IApplicationService
         }
 
         await HydrateAttemptContactsAsync(new List<ApplicationAttempt> { attempt });
+        await HydrateAttemptCoverLettersAsync(new List<ApplicationAttempt> { attempt });
 
         _logger.LogInformation("Attempt {AttemptId} updated: {Old} → {New}",
             attemptId, oldStatus, attempt.Status);
@@ -618,7 +723,8 @@ public class ApplicationService : IApplicationService
             .OrderByDescending(a => a.UpdatedAt)
             .ToListAsync();
 
-        return apps.Select(MapToDtoWithHistory).ToList();
+        var companies = await BuildCompanyLookupAsync(userId);
+        return apps.Select(a => MapToDtoWithHistory(a, companies)).ToList();
     }
 
     /// <summary>
@@ -635,7 +741,8 @@ public class ApplicationService : IApplicationService
             .OrderByDescending(a => a.AppliedAt ?? a.UpdatedAt)
             .ToListAsync();
 
-        return apps.Select(MapToDtoWithHistory).ToList();
+        var companies = await BuildCompanyLookupAsync(userId);
+        return apps.Select(a => MapToDtoWithHistory(a, companies)).ToList();
     }
 
     /// <summary>
@@ -778,6 +885,34 @@ public class ApplicationService : IApplicationService
                 t.Contact = c;
     }
 
+    private async Task HydrateAttemptCoverLettersAsync(List<ApplicationAttempt> attempts)
+    {
+        var ids = attempts.Where(t => t.CoverLetterVersionId.HasValue).Select(t => t.CoverLetterVersionId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return;
+
+        var versions = await _db.CoverLetterVersions.AsNoTracking()
+            .Where(v => ids.Contains(v.Id))
+            .Include(v => v.CoverLetter)
+            .ToListAsync();
+        var map = versions.ToDictionary(v => v.Id);
+
+        foreach (var t in attempts)
+            if (t.CoverLetterVersionId.HasValue && map.TryGetValue(t.CoverLetterVersionId.Value, out var v))
+                t.CoverLetterTitle = v.CoverLetter.Title;
+    }
+
+    /// <summary>Validates a cover letter version belongs to the user; null when none supplied.</summary>
+    private async Task<CoverLetterVersion?> ResolveCoverLetterVersionAsync(Guid? versionId, Guid userId)
+    {
+        if (versionId is not { } id) return null;
+        var version = await _db.CoverLetterVersions.AsNoTracking()
+            .Include(v => v.CoverLetter)
+            .FirstOrDefaultAsync(v => v.Id == id && v.CoverLetter.UserId == userId);
+        if (version == null)
+            throw new ArgumentException("Invalid cover letter version");
+        return version;
+    }
+
     private async Task<Application> ReloadAsync(Guid id)
         => await _db.Applications
             .Include(a => a.StatusHistory.OrderByDescending(h => h.ChangedAt))
@@ -800,24 +935,97 @@ public class ApplicationService : IApplicationService
 
     // ── Mapping ─────────────────────────────────────────────────────────────────
 
-    private static ApplicationResponseDto MapToDto(Application a) => new(
-        a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
-        a.CompanyName, a.PositionTitle, a.OfferSource,
-        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString(),
-        a.InternshipType, a.Priority.ToString()
-    );
+    /// <summary>
+    /// The user's companies keyed by normalized name, so application DTOs can carry
+    /// the matched CompanyId + LogoUrl (same name-join rule the UI/controllers use).
+    /// </summary>
+    private async Task<Dictionary<string, (Guid? Id, string? LogoUrl)>> BuildCompanyLookupAsync(Guid userId)
+    {
+        var companies = await _db.Companies.AsNoTracking()
+            .Where(c => c.UserId == userId)
+            .Select(c => new { c.Name, c.Id, c.LogoUrl })
+            .ToListAsync();
 
-    private static ApplicationResponseDto MapToDtoWithHistory(Application a) => new(
-        a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
-        a.CompanyName, a.PositionTitle, a.OfferSource,
-        a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString(),
-        a.InternshipType, a.Priority.ToString(),
-        a.StatusHistory?.Select(h => new StatusHistoryDto(
-            h.Id, h.OldStatus?.ToString(), h.NewStatus.ToString(),
-            h.ChangedAt, h.ChangedBy, h.Comment
-        )).ToList(),
-        a.Attempts?.Select(MapAttemptToDto).ToList()
-    );
+        var map = new Dictionary<string, (Guid?, string?)>(StringComparer.Ordinal);
+        foreach (var c in companies)
+        {
+            if (string.IsNullOrWhiteSpace(c.Name)) continue;
+            map[c.Name.Trim().ToLower()] = (c.Id, c.LogoUrl);
+        }
+        return map;
+    }
+
+    private ApplicationResponseDto MapToDto(Application a, IReadOnlyDictionary<string, (Guid? Id, string? LogoUrl)> companies)
+    {
+        var company = a.CompanyName is { Length: > 0 } n ? companies.GetValueOrDefault(n.Trim().ToLower(), (null, null)) : (null, null);
+        return new(
+            a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
+            a.CompanyName, company.Id, company.LogoUrl, a.PositionTitle, a.OfferSource,
+            a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString(),
+            a.InternshipType, a.Priority.ToString(),
+            Attachments: DeserializeAttachments(a),
+            FollowUpDate: a.FollowUpDate,
+            FollowUpStatus: a.FollowUpStatus.ToString()
+        );
+    }
+
+    private ApplicationResponseDto MapToDtoWithHistory(Application a, IReadOnlyDictionary<string, (Guid? Id, string? LogoUrl)> companies)
+    {
+        var company = a.CompanyName is { Length: > 0 } n ? companies.GetValueOrDefault(n.Trim().ToLower(), (null, null)) : (null, null);
+        return new(
+            a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
+            a.CompanyName, company.Id, company.LogoUrl, a.PositionTitle, a.OfferSource,
+            a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString(),
+            a.InternshipType, a.Priority.ToString(),
+            a.StatusHistory?.Select(h => new StatusHistoryDto(
+                h.Id, h.OldStatus?.ToString(), h.NewStatus.ToString(),
+                h.ChangedAt, h.ChangedBy, h.Comment
+            )).ToList(),
+            a.Attempts?.Select(MapAttemptToDto).ToList(),
+            DeserializeAttachments(a),
+            a.FollowUpDate,
+            a.FollowUpStatus.ToString()
+        );
+    }
+
+    private static List<ScheduleAttachmentRef>? DeserializeAttachments(Application a)
+    {
+        if (string.IsNullOrWhiteSpace(a.AttachmentsJson)) return null;
+        try { return JsonSerializer.Deserialize<List<ScheduleAttachmentRef>>(a.AttachmentsJson); }
+        catch { return null; }
+    }
+
+    /// <summary>Statuses that satisfy a pending follow-up reminder (a reply was received or the case is closed).</summary>
+    private static bool FollowUpStatusResolvedBy(ApplicationStatus status) =>
+        status is ApplicationStatus.INTERVIEW or ApplicationStatus.OFFER or ApplicationStatus.ACCEPTED
+            or ApplicationStatus.REJECTED or ApplicationStatus.WITHDRAWN;
+
+    /// <summary>Fetches a single attachment ref (ownership-checked by application).
+    /// The MinIO object itself must still be guarded by the caller.</summary>
+    public async Task<ScheduleAttachmentRef?> GetAttachmentAsync(Guid applicationId, int index, Guid userId)
+    {
+        var app = await EnsureOwnedAsync(applicationId, userId);
+        var attachments = DeserializeAttachments(app);
+        if (attachments is null || index < 0 || index >= attachments.Count) return null;
+        return attachments[index];
+    }
+
+    /// <summary>Removes an attachment by index and persists the trimmed list.</summary>
+    public async Task<ApplicationResponseDto?> RemoveAttachmentAsync(Guid applicationId, int index, Guid userId)
+    {
+        var app = await _db.Applications.FirstOrDefaultAsync(a => a.Id == applicationId && a.CandidateId == userId);
+        if (app == null) return null;
+
+        var attachments = DeserializeAttachments(app) ?? new List<ScheduleAttachmentRef>();
+        if (index < 0 || index >= attachments.Count) return null;
+
+        attachments.RemoveAt(index);
+        app.AttachmentsJson = attachments.Count > 0 ? JsonSerializer.Serialize(attachments) : null;
+        app.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return MapToDtoWithHistory(await ReloadAsync(applicationId), await BuildCompanyLookupAsync(userId));
+    }
 
     private static AttemptResponseDto MapAttemptToDto(ApplicationAttempt t) => new(
         t.Id, t.ApplicationId, t.AttemptNumber,
@@ -827,7 +1035,7 @@ public class ApplicationService : IApplicationService
         t.Contact is null ? null : new ContactSummaryDto(
             t.Contact.Id, t.Contact.Name, t.Contact.Email,
             t.Contact.Company, t.Contact.Position, t.Contact.IsFavorite),
-        t.ChannelMetadataJson, t.CvVersionId,
+        t.ChannelMetadataJson, t.CvVersionId, t.CoverLetterVersionId, t.CoverLetterTitle,
         t.SentAt, t.FailureReason, t.CreatedAt, t.UpdatedAt
     );
 }
