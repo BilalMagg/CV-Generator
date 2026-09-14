@@ -7,5 +7,5 @@ public interface IGmailSendService
     /// <summary>Sends via the user's Gmail and returns the Gmail message/thread ids.</summary>
     Task<(string? MessageId, string? ThreadId)> SendWithAttachmentAsync(
         Guid userId, string to, string subject, string body,
-        string? cvPdfUrl = null, IReadOnlyList<EmailAttachmentDto>? attachments = null);
+        string? cvPdfUrl = null, string? cvTitle = null, IReadOnlyList<EmailAttachmentDto>? attachments = null);
 }

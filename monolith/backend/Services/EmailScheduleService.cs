@@ -289,7 +289,7 @@ public class EmailScheduleService
             return (0, 0);
         }
 
-        var cvPdfUrl = await ResolveCvPdfUrlAsync(schedule.CvVersionId);
+        var (cvPdfUrl, cvTitle) = await ResolveCvPdfUrlAsync(schedule.CvVersionId);
         var extraAttachments = await BuildFireAttachmentsAsync(schedule.AttachmentRefsJson);
         cvPdfUrl = await SkipDuplicateCvAsync(cvPdfUrl, extraAttachments);
 
@@ -299,7 +299,7 @@ public class EmailScheduleService
         {
             try
             {
-                await _gmail.SendWithAttachmentAsync(userId, contact.Email, schedule.Subject, schedule.Body, cvPdfUrl, extraAttachments);
+                await _gmail.SendWithAttachmentAsync(userId, contact.Email, schedule.Subject, schedule.Body, cvPdfUrl, cvTitle, extraAttachments);
 
                 _db.Set<EmailMessage>().Add(new EmailMessage
                 {
@@ -429,12 +429,13 @@ public class EmailScheduleService
         return byCompany;
     }
 
-    private async Task<string?> ResolveCvPdfUrlAsync(Guid? cvVersionId)
+    private async Task<(string? PdfUrl, string? Title)> ResolveCvPdfUrlAsync(Guid? cvVersionId)
     {
-        if (cvVersionId is null) return null;
+        if (cvVersionId is null) return (null, null);
         var cv = await _db.CvVersions.AsNoTracking()
+            .Include(v => v.Cv)
             .FirstOrDefaultAsync(v => v.Id == cvVersionId.Value);
-        return cv?.PdfUrl;
+        return (cv?.PdfUrl, cv?.Cv.Title);
     }
 
     /// <summary>

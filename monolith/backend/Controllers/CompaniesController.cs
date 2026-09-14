@@ -276,6 +276,7 @@ public class CompaniesController : BaseApiController
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
         if (company is null) return NotFound(ApiResponse<CompanyDto>.Error("Company not found"));
 
+        var oldName = company.Name;
         if (dto.Name != null)
         {
             var name = dto.Name.Trim();
@@ -289,6 +290,7 @@ public class CompaniesController : BaseApiController
                 return Conflict(ApiResponse<CompanyDto>.Error($"'{duplicate.Name}' is already in your list"));
             company.Name = name;
         }
+        var renamed = !company.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase);
         if (dto.WebsiteUrl != null) company.WebsiteUrl = dto.WebsiteUrl;
         if (dto.Location != null) company.Location = dto.Location;
         if (dto.Country != null)
@@ -314,6 +316,16 @@ public class CompaniesController : BaseApiController
         company.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+        if (renamed)
+        {
+            await _db.Contacts
+                .Where(c => c.UserId == userId && c.Company != null &&
+                            c.Company.Trim().ToLower() == oldName.Trim().ToLower())
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.Company, company.Name));
+            await _db.Applications
+                .Where(a => a.CandidateId == userId && a.CompanyName.Trim().ToLower() == oldName.Trim().ToLower())
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.CompanyName, company.Name));
+        }
         SearchSyncHelper.TriggerSync(_scopeFactory, company.UserId, _logger, "Company.Update");
         return Ok(ApiResponse<CompanyDto>.Ok(Map(company)));
     }
@@ -325,8 +337,13 @@ public class CompaniesController : BaseApiController
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
         if (company is null) return NotFound(ApiResponse<object>.Error("Company not found"));
 
+        var deletedName = company.Name;
         _db.Companies.Remove(company);
         await _db.SaveChangesAsync();
+        await _db.Contacts
+            .Where(c => c.UserId == userId && c.Company != null &&
+                        c.Company.Trim().ToLower() == deletedName.Trim().ToLower())
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Company, (string?)null));
         SearchSyncHelper.TriggerSync(_scopeFactory, company.UserId, _logger, "Company.Delete");
         return Ok(ApiResponse<object>.Ok(null, "Company deleted"));
     }

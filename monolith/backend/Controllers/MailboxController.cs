@@ -278,7 +278,7 @@ public class MailboxController : BaseApiController
             try
             {
                 var (messageId, threadId) = await _gmailSendSvc.SendWithAttachmentAsync(
-                    userId, contact.Email, dto.Subject, dto.Body, null, dto.Attachments);
+                    userId, contact.Email, dto.Subject, dto.Body, null, null, dto.Attachments);
 
                 firstMessageId ??= messageId;
                 firstThreadId ??= threadId;

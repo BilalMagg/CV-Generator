@@ -42,7 +42,7 @@ public class GmailSendService : IGmailSendService
 
     public async Task<(string? MessageId, string? ThreadId)> SendWithAttachmentAsync(
         Guid userId, string to, string subject, string body,
-        string? cvPdfUrl = null, IReadOnlyList<CV_Generator.Dto.EmailAttachmentDto>? attachments = null)
+        string? cvPdfUrl = null, string? cvTitle = null, IReadOnlyList<CV_Generator.Dto.EmailAttachmentDto>? attachments = null)
     {
         var connection = await _db.Set<GmailConnection>()
             .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsRevoked);
@@ -65,7 +65,7 @@ public class GmailSendService : IGmailSendService
         message.To.Add(new MailboxAddress("", to));
         message.Subject = subject;
 
-        var bodyBuilder = new BodyBuilder { HtmlBody = body };
+        var bodyBuilder = new BodyBuilder { TextBody = body };
 
         if (!string.IsNullOrWhiteSpace(cvPdfUrl))
         {
@@ -73,8 +73,7 @@ public class GmailSendService : IGmailSendService
             {
                 using var httpClient = _httpClientFactory.CreateClient();
                 var pdfBytes = await httpClient.GetByteArrayAsync(cvPdfUrl);
-                var fileName = Path.GetFileName(new Uri(cvPdfUrl).AbsolutePath);
-                if (string.IsNullOrWhiteSpace(fileName)) fileName = "cv.pdf";
+                var fileName = SanitizeFileName(cvTitle, fallbackUrl: cvPdfUrl, fallbackName: "cv.pdf");
 
                 bodyBuilder.Attachments.Add(fileName, pdfBytes, ContentType.Parse("application/pdf"));
                 _logger.LogInformation("Attached PDF from {Url} ({Size} bytes)", cvPdfUrl, pdfBytes.Length);
@@ -107,8 +106,9 @@ public class GmailSendService : IGmailSendService
 
         message.Body = bodyBuilder.ToMessageBody();
 
-        var raw = Convert.ToBase64String(
-            System.Text.Encoding.UTF8.GetBytes(message.ToString()));
+        using var rawStream = new MemoryStream();
+        message.WriteTo(rawStream);
+        var raw = Convert.ToBase64String(rawStream.ToArray());
 
         var gmailMessage = new Message { Raw = raw };
 
@@ -163,5 +163,26 @@ public class GmailSendService : IGmailSendService
         }
 
         return credential;
+    }
+
+    /// <summary>
+    /// Produces a human-readable PDF filename from the CV title.
+    /// Falls back to extracting the name from the MinIO URL, then to a default.
+    /// </summary>
+    private static string SanitizeFileName(string? cvTitle, string? fallbackUrl, string fallbackName = "CV.pdf")
+    {
+        var name = string.IsNullOrWhiteSpace(cvTitle) ? null : cvTitle.Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            name = new string(name.Where(c => !invalid.Contains(c)).ToArray()).Trim();
+        }
+        if (string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(fallbackUrl))
+        {
+            try { name = Path.GetFileName(new Uri(fallbackUrl).AbsolutePath); } catch { /* ignore bad URL */ }
+        }
+        if (string.IsNullOrWhiteSpace(name)) name = fallbackName;
+        if (!name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)) name += ".pdf";
+        return name;
     }
 }

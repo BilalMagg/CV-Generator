@@ -119,11 +119,12 @@ public class ApplyService
         }
 
         // Send now
-        var cvPdfUrl = await SkipDuplicateCvAsync(await ResolveCvPdfUrlAsync(dto.CvVersionId), dto.Attachments);
+        var (cvPdfUrl, cvTitle) = await ResolveCvPdfUrlAsync(dto.CvVersionId);
+        cvPdfUrl = await SkipDuplicateCvAsync(cvPdfUrl, dto.Attachments);
         try
         {
             var (messageId, threadId) = await _gmail.SendWithAttachmentAsync(
-                userId, contact.Email, subject, body, cvPdfUrl, dto.Attachments);
+                userId, contact.Email, subject, body, cvPdfUrl, cvTitle, dto.Attachments);
 
             var connection = await _db.Set<GmailConnection>()
                 .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsRevoked);
@@ -272,11 +273,13 @@ public class ApplyService
         return contact;
     }
 
-    private async Task<string?> ResolveCvPdfUrlAsync(Guid? cvVersionId)
+    private async Task<(string? PdfUrl, string? Title)> ResolveCvPdfUrlAsync(Guid? cvVersionId)
     {
-        if (cvVersionId is null) return null;
-        var cv = await _db.CvVersions.AsNoTracking().FirstOrDefaultAsync(v => v.Id == cvVersionId.Value);
-        return cv?.PdfUrl;
+        if (cvVersionId is null) return (null, null);
+        var cv = await _db.CvVersions.AsNoTracking()
+            .Include(v => v.Cv)
+            .FirstOrDefaultAsync(v => v.Id == cvVersionId.Value);
+        return (cv?.PdfUrl, cv?.Cv.Title);
     }
 
     /// <summary>
