@@ -60,6 +60,7 @@ public class AppDbContext : DbContext
     public DbSet<UserImage> UserImages => Set<UserImage>();
     public DbSet<CoverLetter> CoverLetters => Set<CoverLetter>();
     public DbSet<CoverLetterVersion> CoverLetterVersions => Set<CoverLetterVersion>();
+    public DbSet<SavedToolContent> SavedToolContent => Set<SavedToolContent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -201,6 +202,11 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.Company);
+        });
+
+        modelBuilder.Entity<SavedToolContent>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
         });
 
         modelBuilder.Entity<Company>(entity =>

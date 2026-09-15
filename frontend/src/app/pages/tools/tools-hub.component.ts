@@ -12,6 +12,7 @@ import {
   LinkedInTone,
   LinkedInToolType,
   LinkedInVariant,
+  SavedToolContent,
   ToolTab,
 } from '@app/models/tools.model';
 
@@ -91,6 +92,18 @@ export class ToolsHubComponent {
   adjustInstruction = signal('');
   adjustVariants = signal(2);
 
+  // Saved library
+  savedItems = signal<SavedToolContent[]>([]);
+  savedLoading = signal(false);
+  savedLoaded = signal(false);
+  savedError = signal('');
+  /** Saved item currently being reworked/updated/reverted/deleted. */
+  applyingTo = signal<string | null>(null);
+  /** Saved item opened in the adjust modal (null = adjusting a fresh variant). */
+  adjustingItem = signal<SavedToolContent | null>(null);
+  /** Index of the result card whose Save is in flight. */
+  savingId = signal<number | null>(null);
+
   // Career picker
   careerGroups = signal<CareerGroup[]>([]);
   careerLoading = signal(false);
@@ -156,6 +169,7 @@ export class ToolsHubComponent {
     { value: 'comment', label: 'Comment' },
     { value: 'message', label: 'Message' },
     { value: 'emojify', label: 'Emojies' },
+    { value: 'saved', label: 'Saved' },
   ];
 
   readonly emojiPresets: Option[] = [
@@ -300,6 +314,10 @@ export class ToolsHubComponent {
   private lastRequest: LinkedInRequest | null = null;
 
   async generate(): Promise<void> {
+    if (this.tool() === 'saved') {
+      await this.loadSaved();
+      return;
+    }
     if (this.tool() === 'emojify') {
       await this.runEmojify();
       return;
@@ -375,11 +393,23 @@ export class ToolsHubComponent {
     this.adjustBaseText.set(parts.join('\n\n'));
     this.adjustInstruction.set('');
     this.adjustVariants.set(this.variants());
+    this.adjustingItem.set(null);
+    this.adjustOpen.set(true);
+  }
+
+  openAdjustFromLibrary(item: SavedToolContent): void {
+    this.adjustBaseText.set([item.title, item.text, item.hashtags].filter(Boolean).join('\n\n'));
+    this.adjustInstruction.set('');
+    this.adjustVariants.set(this.variants());
+    this.adjustingItem.set(item);
     this.adjustOpen.set(true);
   }
 
   closeAdjust(): void {
-    if (!this.loading()) this.adjustOpen.set(false);
+    if (!this.loading()) {
+      this.adjustOpen.set(false);
+      if (!this.error()) this.adjustingItem.set(null);
+    }
   }
 
   async submitAdjust(): Promise<void> {
@@ -395,24 +425,151 @@ export class ToolsHubComponent {
     }
 
     let request: LinkedInRequest;
-    try {
-      request = this.buildRequest();
-    } catch (e) {
-      // Adjust mode relaxes the source-field requirement — fall back to the last
-      // successful request so the tool/context still travels with the rework.
-      if (this.lastRequest) {
-        request = { ...this.lastRequest };
-      } else {
-        this.toast.error(e instanceof Error ? e.message : 'Please fill the required fields');
-        return;
+    const item = this.adjustingItem();
+    if (item) {
+      // Adjusting a saved library item: (re)generate against that item's tool
+      // with the shared tone/length settings — no source-form fields needed.
+      request = {
+        tool: (item.tool as LinkedInToolType),
+        language: this.language(),
+        tone: this.tone(),
+        length: this.length(),
+        variants: this.adjustVariants(),
+        baseText,
+        adjustment,
+      };
+    } else {
+      try {
+        request = this.buildRequest();
+      } catch (e) {
+        // Adjust mode relaxes the source-field requirement — fall back to the last
+        // successful request so the tool/context still travels with the rework.
+        if (this.lastRequest) {
+          request = { ...this.lastRequest };
+        } else {
+          this.toast.error(e instanceof Error ? e.message : 'Please fill the required fields');
+          return;
+        }
       }
+      request.variants = this.adjustVariants();
+      request.baseText = baseText;
+      request.adjustment = adjustment;
     }
-    request.variants = this.adjustVariants();
-    request.baseText = baseText;
-    request.adjustment = adjustment;
 
     await this.runGenerate(request);
-    if (!this.error()) this.adjustOpen.set(false);
+    if (!this.error()) {
+      this.adjustOpen.set(false);
+      if (item) {
+        // Library rework: apply the first new variant back to the item so the
+        // original stays recoverable via "Restore original".
+        const first = this.results()[0];
+        if (first) {
+          await this.updateSavedFromVariant(item, first);
+        }
+        this.adjustingItem.set(null);
+      }
+    }
+  }
+
+  // --- Saved library ---
+
+  toolLabel(tool: ToolTab): string {
+    if (tool === 'emojify') return 'Emojies';
+    if (tool === 'saved') return 'Saved';
+    return tool;
+  }
+
+  async loadSaved(force = false): Promise<void> {
+    if (this.savedLoaded() && !force) return;
+    if (this.savedLoading()) return;
+    this.savedLoading.set(true);
+    this.savedError.set('');
+    try {
+      const res = await this.service.listSaved();
+      this.savedItems.set(res.data ?? []);
+      this.savedLoaded.set(true);
+    } catch (e) {
+      this.savedError.set(e instanceof Error ? e.message : 'Could not load your saved content.');
+    } finally {
+      this.savedLoading.set(false);
+    }
+  }
+
+  async saveVariant(variant: LinkedInVariant): Promise<void> {
+    const idx = this.results().indexOf(variant);
+    if (idx >= 0) this.savingId.set(idx);
+    try {
+      await this.service.createSaved({
+        tool: this.generatedTool(),
+        title: variant.title || undefined,
+        text: variant.text,
+        hashtags: variant.hashtags || undefined,
+      });
+      this.toast.success('Saved to your library');
+      if (this.savedLoaded()) await this.loadSaved(true);
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : 'Could not save — try again');
+    } finally {
+      this.savingId.set(null);
+    }
+  }
+
+  /** Put a reworked variant back into a library item (its OriginalText is preserved for revert). */
+  async updateSavedFromVariant(item: SavedToolContent, variant: LinkedInVariant): Promise<void> {
+    this.applyingTo.set(item.id);
+    try {
+      await this.service.updateSaved(item.id, {
+        title: variant.title || item.title,
+        text: variant.text,
+        hashtags: variant.hashtags || item.hashtags,
+      });
+      this.toast.success('Saved item updated — you can still restore the original');
+      await this.loadSaved(true);
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : 'Could not update the saved item');
+    } finally {
+      this.applyingTo.set(null);
+    }
+  }
+
+  async revertSaved(item: SavedToolContent): Promise<void> {
+    this.applyingTo.set(item.id);
+    try {
+      await this.service.revertSaved(item.id);
+      this.toast.success('Restored the original text');
+      await this.loadSaved(true);
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : 'Could not restore the original');
+    } finally {
+      this.applyingTo.set(null);
+    }
+  }
+
+  async deleteSaved(item: SavedToolContent): Promise<void> {
+    this.applyingTo.set(item.id);
+    try {
+      await this.service.deleteSaved(item.id);
+      this.toast.success('Deleted');
+      this.savedItems.set(this.savedItems().filter((i) => i.id !== item.id));
+    } catch (e) {
+      this.toast.error(e instanceof Error ? e.message : 'Could not delete — try again');
+    } finally {
+      this.applyingTo.set(null);
+    }
+  }
+
+  relativeTime(iso: string): string {
+    const d = new Date(iso).getTime();
+    if (Number.isNaN(d)) return '';
+    const diff = Date.now() - d;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(iso).toLocaleDateString();
   }
 
   private buildRequest(): LinkedInRequest {

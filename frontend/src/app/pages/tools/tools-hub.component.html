@@ -12,12 +12,65 @@
         type="button"
         class="tool-tab"
         [class.on]="tool() === t.value"
-        (click)="tool.set(t.value)"
+        (click)="tool.set(t.value); t.value === 'saved' && loadSaved()"
       >{{ t.label }}</button>
     }
   </nav>
 
-  <div class="tool-body">
+  <div class="tool-body" [class.saved-body]="tool() === 'saved'">
+    @if (tool() === 'saved') {
+      <div class="saved-panel">
+        <div class="saved-head">
+          <span class="saved-title">Your library</span>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="loadSaved(true)" [disabled]="savedLoading()">
+            {{ savedLoading() ? 'Loading…' : 'Refresh' }}
+          </button>
+        </div>
+
+        @if (savedError()) {
+          <div class="err-banner">{{ savedError() }}</div>
+        }
+
+        @if (savedLoading() && !savedLoaded()) {
+          <p class="saved-note">Loading your saved content…</p>
+        } @else if (savedItems().length === 0) {
+          <p class="saved-note">
+            Nothing saved yet. Generate a post, comment or message, then hit <strong>Save</strong> on any result to keep it here.
+          </p>
+        } @else {
+          <div class="saved-list">
+            @for (item of savedItems(); track item.id) {
+              <div class="saved-card">
+                <div class="saved-card-top">
+                  <span class="saved-tool-chip">{{ toolLabel(item.tool) }}</span>
+                  @if (item.title) { <span class="saved-card-title">{{ item.title }}</span> }
+                  @if (item.isAdjusted) {
+                    <span class="saved-adjusted-chip" title="This item was reworked — its original text is kept for revert.">Reworked</span>
+                  }
+                  <span class="saved-when">{{ relativeTime(item.updatedAt || item.createdAt) }}</span>
+                </div>
+                <p class="res-text">{{ item.text }}</p>
+                @if (item.hashtags) { <div class="res-hashtags">{{ item.hashtags }}</div> }
+                <div class="res-actions">
+                  @if (item.tool !== 'emojify') {
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="openAdjustFromLibrary(item)">Adjust</button>
+                  }
+                  @if (item.isAdjusted) {
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="revertSaved(item)" [disabled]="applyingTo() === item.id">
+                      {{ applyingTo() === item.id ? 'Restoring…' : 'Restore original' }}
+                    </button>
+                  }
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="copy({ title: item.title, text: item.text, hashtags: item.hashtags })">Copy</button>
+                  <button type="button" class="btn btn-ghost btn-sm saved-delete" (click)="deleteSaved(item)" [disabled]="applyingTo() === item.id">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    } @else {
     <div class="form-panel">
       @switch (tool()) {
         @case ('post') {
@@ -278,7 +331,7 @@ We did the same at our hackathon…"
       }
 
       <!-- Career picker toggle -->
-      @if (tool() !== 'emojify') {
+      @if (tool() !== 'emojify' && tool() !== 'saved') {
       <div class="career-toggle">
         <button
           type="button"
@@ -295,7 +348,7 @@ We did the same at our hackathon…"
       }
 
       <!-- Career entity chips -->
-      @if (tool() !== 'emojify' && careerPickerOpen()) {
+      @if (tool() !== 'emojify' && tool() !== 'saved' && careerPickerOpen()) {
         <div class="career-entities">
           @if (careerLoading()) {
             <p class="career-loading">Loading your career content…</p>
@@ -375,6 +428,9 @@ We did the same at our hackathon…"
                 @if (generatedTool() !== 'emojify') {
                   <button type="button" class="btn btn-ghost btn-sm" (click)="openAdjust(v)">Adjust</button>
                 }
+                <button type="button" class="btn btn-ghost btn-sm" (click)="saveVariant(v)" [disabled]="savingId() === $index">
+                  {{ savingId() === $index ? 'Saving…' : 'Save' }}
+                </button>
                 <button type="button" class="btn btn-secondary btn-sm" (click)="copy(v)">Copy</button>
               </div>
             </div>
@@ -386,6 +442,7 @@ We did the same at our hackathon…"
           : 'Select career items or add context, then hit Generate.' }}</div>
       }
     </div>
+    }
   </div>
 </div>
 
@@ -449,8 +506,17 @@ We did the same at our hackathon…"
     <div class="adjust-modal" (click)="$event.stopPropagation()">
       <div class="modal-head">
         <div>
-          <h3 class="modal-title">Adjust this {{ generatedTool() }}</h3>
-          <p class="modal-sub">Fine-tune the draft you already like instead of regenerating from scratch.</p>
+          <h3 class="modal-title">
+            @if (adjustingItem()) { Rework saved {{ toolLabel(adjustingItem()!.tool) }} }
+            @else { Adjust this {{ generatedTool() }} }
+          </h3>
+          <p class="modal-sub">
+            @if (adjustingItem()) {
+              The original stays in your library — you can restore it any time after applying a rework.
+            } @else {
+              Fine-tune the draft you already like instead of regenerating from scratch.
+            }
+          </p>
         </div>
         <button type="button" class="modal-close" (click)="closeAdjust()" aria-label="Close">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>

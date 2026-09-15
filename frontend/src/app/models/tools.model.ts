@@ -1,5 +1,5 @@
 export type LinkedInToolType = 'post' | 'comment' | 'message';
-export type ToolTab = LinkedInToolType | 'emojify';
+export type ToolTab = LinkedInToolType | 'emojify' | 'saved';
 export type LinkedInTone = 'professional' | 'enthusiastic' | 'storytelling' | 'honest';
 export type LinkedInLength = 'short' | 'medium' | 'long';
 export type EmojifyDensity = 'low' | 'medium' | 'high';
@@ -51,4 +51,30 @@ export interface EmojifyVariant {
 
 export interface EmojifyResult {
   variants: EmojifyVariant[];
+}
+
+export interface SavedToolContent {
+  id: string;
+  userId: string;
+  tool: ToolTab;
+  title: string;
+  text: string;
+  hashtags: string;
+  originalText: string;
+  isAdjusted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSavedToolContent {
+  tool: ToolTab;
+  title?: string;
+  text: string;
+  hashtags?: string;
+}
+
+export interface UpdateSavedToolContent {
+  title?: string | null;
+  text?: string | null;
+  hashtags?: string | null;
 }
