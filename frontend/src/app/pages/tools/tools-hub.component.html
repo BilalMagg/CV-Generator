@@ -310,6 +310,7 @@ We did the same at our hackathon…"
               <p class="res-text">{{ v.text }}</p>
               @if (v.hashtags) { <div class="res-hashtags">{{ v.hashtags }}</div> }
               <div class="res-actions">
+                <button type="button" class="btn btn-ghost btn-sm" (click)="openAdjust(v)">Adjust</button>
                 <button type="button" class="btn btn-secondary btn-sm" (click)="copy(v)">Copy</button>
               </div>
             </div>
@@ -370,6 +371,63 @@ We did the same at our hackathon…"
         <button type="button" class="btn btn-ghost" (click)="closeEntityModal()">Cancel</button>
         <button type="button" class="btn btn-primary" (click)="confirmDraft()">
           Confirm ({{ draftKeys().size }})
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Adjust variant modal -->
+@if (adjustOpen()) {
+  <div class="modal-overlay" (click)="closeAdjust()">
+    <div class="adjust-modal" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          <h3 class="modal-title">Adjust this {{ generatedTool() }}</h3>
+          <p class="modal-sub">Fine-tune the draft you already like instead of regenerating from scratch.</p>
+        </div>
+        <button type="button" class="modal-close" (click)="closeAdjust()" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body adjust-body">
+        <label class="fld">
+          <span>Your draft <em class="hint">(edit freely — this is what gets revised)</em></span>
+          <textarea
+            rows="8"
+            class="adjust-base"
+            [ngModel]="adjustBaseText()" (ngModelChange)="adjustBaseText.set($event)"
+          ></textarea>
+        </label>
+
+        <label class="fld">
+          <span>What to change / add <em class="req">*</em></span>
+          <textarea
+            rows="4"
+            placeholder="e.g. mention @sara_dev and the hackathon win, add that I worked with Spring Boot, shorten the intro, make it warmer…"
+            [ngModel]="adjustInstruction()" (ngModelChange)="adjustInstruction.set($event)"
+          ></textarea>
+        </label>
+
+        <label class="fld">
+          <span>Variants</span>
+          <select [ngModel]="adjustVariants()" (ngModelChange)="adjustVariants.set(+$event)">
+            <option [value]="1">1</option>
+            <option [value]="2">2</option>
+            <option [value]="3">3</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" (click)="closeAdjust()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="submitAdjust()" [disabled]="loading()">
+          @if (loading()) {
+            <span class="spinner"></span> Adjusting…
+          } @else {
+            ✨ Apply & regenerate {{ adjustVariants() }}
+          }
         </button>
       </div>
     </div>

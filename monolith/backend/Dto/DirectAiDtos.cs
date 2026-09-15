@@ -66,6 +66,10 @@ public class LinkedInRequestDto
     public string RecipientContext { get; set; } = "";
     public string SenderContext { get; set; } = "";
 
+    // rework an existing draft (adjust mode)
+    public string BaseText { get; set; } = "";
+    public string Adjustment { get; set; } = "";
+
     public string? Provider { get; set; }
     public string? Model { get; set; }
 }

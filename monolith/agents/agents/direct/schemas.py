@@ -83,6 +83,12 @@ class LinkedInRequest(BaseModel):
     recipient_context: str = ""
     sender_context: str = ""  # what the author wants to say about themselves / the reason
 
+    # rework an existing draft (adjust mode): base_text = the draft the user liked,
+    # adjustment = the instructions describing what to change/integrate. When both are
+    # non-empty the generator revises base_text instead of writing from scratch.
+    base_text: str = ""
+    adjustment: str = ""
+
     provider: Optional[str] = None
     model: Optional[str] = None
 

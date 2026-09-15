@@ -130,12 +130,26 @@ def _json_contract(tool: str, variants: int) -> str:
 def get_linkedin_messages(req: LinkedInRequest) -> Tuple[str, str]:
     tool = (req.tool or "post").strip().lower()
     variants = max(1, min(int(req.variants or 1), 3))
+    adjustment = (req.adjustment or "").strip()
+    rework = bool(adjustment) and bool((req.base_text or "").strip())
 
     system_parts = [
         f"You are a LinkedIn ghostwriter. Write in {req.language or 'English'} with a "
         f"{_TONE_DESCRIPTIONS.get(req.tone, _TONE_DESCRIPTIONS['professional'])} tone.",
         _length_guidance(tool, req.length or "medium"),
     ]
+
+    if rework:
+        system_parts.append(
+            "This is a REWORK of an existing draft the user has approved the direction of.\n"
+            "Rules:\n"
+            f"1. Revise the provided BASE DRAFT so it fully addresses the ADJUSTMENTS below — "
+            f"integrate everything requested (people to mention, details, tone shifts, parts to add).\n"
+            "2. Keep what already works: same voice, structure and strengths from the BASE DRAFT "
+            "unless the ADJUSTMENTS explicitly change them.\n"
+            "3. Stay grounded in the draft + original CONTEXT — never invent facts that appear in neither.\n"
+            "4. Do NOT mention 'the draft' or 'the adjustments' — the output must read as a finished piece.\n"
+        )
 
     if tool == "post":
         ctype = _CONTEXT_TYPES.get(req.context_type, _CONTEXT_TYPES["other"])
@@ -180,6 +194,9 @@ def get_linkedin_messages(req: LinkedInRequest) -> Tuple[str, str]:
     system = "\n\n".join(system_parts) + "\n\n" + _json_contract(tool, variants)
 
     lines = [f"Language: {req.language or 'English'}", f"Tone: {req.tone or 'professional'}", f"Length guide: {req.length or 'medium'}"]
+    if rework:
+        lines.append(_field("BASE DRAFT", req.base_text))
+        lines.append(_field("ADJUSTMENTS", adjustment))
     if tool == "post":
         if req.context_type:
             lines.append(f"Context type: {req.context_type}")

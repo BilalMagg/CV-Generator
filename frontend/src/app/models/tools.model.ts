@@ -20,6 +20,8 @@ export interface LinkedInRequest {
   purpose?: string;
   recipientContext?: string;
   senderContext?: string;
+  baseText?: string;
+  adjustment?: string;
 }
 
 export interface LinkedInVariant {

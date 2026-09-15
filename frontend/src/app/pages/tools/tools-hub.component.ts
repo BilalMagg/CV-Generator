@@ -77,6 +77,12 @@ export class ToolsHubComponent {
   results = signal<LinkedInVariant[]>([]);
   generatedTool = signal<LinkedInToolType>('post');
 
+  // Adjust (rework a liked variant)
+  adjustOpen = signal(false);
+  adjustBaseText = signal('');
+  adjustInstruction = signal('');
+  adjustVariants = signal(2);
+
   // Career picker
   careerGroups = signal<CareerGroup[]>([]);
   careerLoading = signal(false);
@@ -261,6 +267,8 @@ export class ToolsHubComponent {
 
   // --- Generate ---
 
+  private lastRequest: LinkedInRequest | null = null;
+
   async generate(): Promise<void> {
     let request: LinkedInRequest;
     try {
@@ -269,7 +277,10 @@ export class ToolsHubComponent {
       this.toast.error(e instanceof Error ? e.message : 'Please fill the required fields');
       return;
     }
+    await this.runGenerate(request);
+  }
 
+  private async runGenerate(request: LinkedInRequest): Promise<void> {
     this.loading.set(true);
     this.error.set('');
     try {
@@ -280,12 +291,60 @@ export class ToolsHubComponent {
       } else {
         this.results.set(variants);
         this.generatedTool.set(request.tool);
+        this.lastRequest = request;
       }
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Generation failed. Check that the AI service is running.');
     } finally {
       this.loading.set(false);
     }
+  }
+
+  // --- Adjust (rework a liked variant) ---
+
+  openAdjust(variant: LinkedInVariant): void {
+    const parts = [variant.title, variant.text, variant.hashtags].filter(Boolean);
+    this.adjustBaseText.set(parts.join('\n\n'));
+    this.adjustInstruction.set('');
+    this.adjustVariants.set(this.variants());
+    this.adjustOpen.set(true);
+  }
+
+  closeAdjust(): void {
+    if (!this.loading()) this.adjustOpen.set(false);
+  }
+
+  async submitAdjust(): Promise<void> {
+    const baseText = this.adjustBaseText().trim();
+    const adjustment = this.adjustInstruction().trim();
+    if (!baseText) {
+      this.toast.error('The draft to adjust is empty');
+      return;
+    }
+    if (!adjustment) {
+      this.toast.error('Describe what you want to change before generating');
+      return;
+    }
+
+    let request: LinkedInRequest;
+    try {
+      request = this.buildRequest();
+    } catch (e) {
+      // Adjust mode relaxes the source-field requirement — fall back to the last
+      // successful request so the tool/context still travels with the rework.
+      if (this.lastRequest) {
+        request = { ...this.lastRequest };
+      } else {
+        this.toast.error(e instanceof Error ? e.message : 'Please fill the required fields');
+        return;
+      }
+    }
+    request.variants = this.adjustVariants();
+    request.baseText = baseText;
+    request.adjustment = adjustment;
+
+    await this.runGenerate(request);
+    if (!this.error()) this.adjustOpen.set(false);
   }
 
   private buildRequest(): LinkedInRequest {

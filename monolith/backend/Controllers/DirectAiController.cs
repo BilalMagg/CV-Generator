@@ -204,12 +204,18 @@ public class DirectAiController : ControllerBase
             return BadRequest(ApiResponse<object>.Error("Tool must be one of: post, comment, message"));
         request.Tool = tool;
 
-        if (tool == "post" && string.IsNullOrWhiteSpace(request.Context))
-            return BadRequest(ApiResponse<object>.Error("Provide the post context so the assistant has something to write about"));
-        if (tool == "comment" && string.IsNullOrWhiteSpace(request.TargetText))
-            return BadRequest(ApiResponse<object>.Error("Paste the post/comment you want to reply to"));
-        if (tool == "message" && string.IsNullOrWhiteSpace(request.RecipientName))
-            return BadRequest(ApiResponse<object>.Error("Provide the recipient name for the message"));
+        // Adjust mode: revising a liked draft — base text + adjustment carry the content,
+        // so the usual per-tool source fields are not required.
+        var isAdjust = !string.IsNullOrWhiteSpace(request.BaseText) && !string.IsNullOrWhiteSpace(request.Adjustment);
+        if (!isAdjust)
+        {
+            if (tool == "post" && string.IsNullOrWhiteSpace(request.Context))
+                return BadRequest(ApiResponse<object>.Error("Provide the post context so the assistant has something to write about"));
+            if (tool == "comment" && string.IsNullOrWhiteSpace(request.TargetText))
+                return BadRequest(ApiResponse<object>.Error("Paste the post/comment you want to reply to"));
+            if (tool == "message" && string.IsNullOrWhiteSpace(request.RecipientName))
+                return BadRequest(ApiResponse<object>.Error("Provide the recipient name for the message"));
+        }
 
         var result = await _client.GenerateLinkedInAsync(request);
         if (result == null)
