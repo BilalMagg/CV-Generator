@@ -2,7 +2,7 @@
   <header class="page-head">
     <div>
       <h1>Tools</h1>
-      <p class="sub">Independent everyday helpers — AI-written LinkedIn posts, comments and messages.</p>
+      <p class="sub">Independent everyday helpers — AI-written LinkedIn posts, comments and messages, plus an Emojier that adds emojis to any text.</p>
     </div>
   </header>
 
@@ -219,9 +219,66 @@ We did the same at our hackathon…"
             </label>
           </div>
         }
+
+        @case ('emojify') {
+          <label class="fld">
+            <span>Your text <em class="req">*</em></span>
+            <textarea
+              rows="8"
+              placeholder="Paste the post, comment, message or email you want to embellish with emojis. The text is kept verbatim — only emojis are added."
+              [ngModel]="emojiText()" (ngModelChange)="emojiText.set($event)"
+            ></textarea>
+          </label>
+
+          <label class="fld">
+            <span>Style</span>
+            <select [ngModel]="emojiPreset()" (ngModelChange)="emojiPreset.set($event)">
+              @for (o of emojiPresets; track o.value) {
+                <option [value]="o.value">{{ o.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="fld">
+            <span>Your own instruction <em class="hint">(optional — overrides nothing, only adds)</em></span>
+            <textarea
+              rows="3"
+              placeholder="e.g. one emoji per paragraph, only 🤝🤩, keep it sober, no eyes-roll emojis…"
+              [ngModel]="emojiHint()" (ngModelChange)="emojiHint.set($event)"
+            ></textarea>
+          </label>
+
+          <div class="row-opts">
+            <label class="fld">
+              <span>Amount</span>
+              <select [ngModel]="emojiDensity()" (ngModelChange)="emojiDensity.set($event)">
+                @for (o of densities; track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="fld">
+              <span>Variants</span>
+              <select [ngModel]="variants()" (ngModelChange)="variants.set(+$event)">
+                <option [value]="1">1</option>
+                <option [value]="2">2</option>
+                <option [value]="3">3</option>
+              </select>
+            </label>
+            <label class="fld">
+              <span>Language</span>
+              <select [ngModel]="language()" (ngModelChange)="language.set($event)">
+                @for (l of languages; track l) {
+                  <option [value]="l">{{ l }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        }
       }
 
       <!-- Career picker toggle -->
+      @if (tool() !== 'emojify') {
       <div class="career-toggle">
         <button
           type="button"
@@ -235,9 +292,10 @@ We did the same at our hackathon…"
           <span>My Career</span>
         </button>
       </div>
+      }
 
       <!-- Career entity chips -->
-      @if (careerPickerOpen()) {
+      @if (tool() !== 'emojify' && careerPickerOpen()) {
         <div class="career-entities">
           @if (careerLoading()) {
             <p class="career-loading">Loading your career content…</p>
@@ -285,7 +343,11 @@ We did the same at our hackathon…"
           @if (loading()) {
             <span class="spinner"></span> Generating…
           } @else {
-            ✨ Generate {{ tool() === 'post' ? 'post' : tool() === 'comment' ? 'comment' : 'message' }}
+            @if (tool() === 'emojify') {
+              ✨ Add emojis
+            } @else {
+              ✨ Generate {{ tool() === 'post' ? 'post' : tool() === 'comment' ? 'comment' : 'message' }}
+            }
           }
         </button>
       </div>
@@ -300,7 +362,7 @@ We did the same at our hackathon…"
         <div class="loading-note">The AI service is writing…</div>
       } @else if (results().length > 0) {
         <div class="res-head">
-          <span class="res-count">{{ results().length }} {{ generatedTool() === 'post' ? 'post' : generatedTool() === 'comment' ? 'comment' : 'message' }}{{ results().length > 1 ? 's' : '' }}</span>
+          <span class="res-count">{{ results().length }} {{ genLabel(results().length > 1) }}</span>
           <button type="button" class="btn btn-ghost btn-sm" (click)="generate()">Regenerate</button>
         </div>
         <div class="res-list">
@@ -310,14 +372,18 @@ We did the same at our hackathon…"
               <p class="res-text">{{ v.text }}</p>
               @if (v.hashtags) { <div class="res-hashtags">{{ v.hashtags }}</div> }
               <div class="res-actions">
-                <button type="button" class="btn btn-ghost btn-sm" (click)="openAdjust(v)">Adjust</button>
+                @if (generatedTool() !== 'emojify') {
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="openAdjust(v)">Adjust</button>
+                }
                 <button type="button" class="btn btn-secondary btn-sm" (click)="copy(v)">Copy</button>
               </div>
             </div>
           }
         </div>
       } @else {
-        <div class="empty-note">Select career items or add context, then hit Generate.</div>
+        <div class="empty-note">{{ tool() === 'emojify'
+          ? 'Paste your text, pick a style, then hit Add emojis.'
+          : 'Select career items or add context, then hit Generate.' }}</div>
       }
     </div>
   </div>

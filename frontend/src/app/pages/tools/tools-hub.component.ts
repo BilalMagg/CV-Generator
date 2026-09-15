@@ -6,11 +6,13 @@ import { LinkedInToolService } from '@app/services/linkedin-tool.service';
 import { ToastService } from '@app/services/toast.service';
 import { ApiResponse } from '@app/models/application.model';
 import {
+  EmojifyDensity,
   LinkedInLength,
   LinkedInRequest,
   LinkedInTone,
   LinkedInToolType,
   LinkedInVariant,
+  ToolTab,
 } from '@app/models/tools.model';
 
 type CareerSource = 'project' | 'experience' | 'hackathon' | 'academicactivity';
@@ -45,7 +47,7 @@ export class ToolsHubComponent {
   private readonly http = inject(HttpService);
   private readonly toast = inject(ToastService);
 
-  tool = signal<LinkedInToolType>('post');
+  tool = signal<ToolTab>('post');
 
   // Shared
   tone = signal<LinkedInTone>('professional');
@@ -71,11 +73,17 @@ export class ToolsHubComponent {
   recipientContext = signal('');
   senderContext = signal('');
 
+  // Emojies
+  emojiText = signal('');
+  emojiPreset = signal('');
+  emojiHint = signal('');
+  emojiDensity = signal<EmojifyDensity>('medium');
+
   // Run state
   loading = signal(false);
   error = signal('');
   results = signal<LinkedInVariant[]>([]);
-  generatedTool = signal<LinkedInToolType>('post');
+  generatedTool = signal<ToolTab>('post');
 
   // Adjust (rework a liked variant)
   adjustOpen = signal(false);
@@ -143,14 +151,36 @@ export class ToolsHubComponent {
   ];
   readonly languages = ['English', 'French', 'Arabic'];
 
-  readonly tabs: { value: LinkedInToolType; label: string }[] = [
+  readonly tabs: { value: ToolTab; label: string }[] = [
     { value: 'post', label: 'Post' },
     { value: 'comment', label: 'Comment' },
     { value: 'message', label: 'Message' },
+    { value: 'emojify', label: 'Emojies' },
+  ];
+
+  readonly emojiPresets: Option[] = [
+    { value: '', label: 'My own instruction' },
+    { value: 'one emoji per paragraph, placed at the most impactful point', label: 'One per paragraph' },
+    { value: 'only subtle, professional emojis — keep it corporate', label: 'Professional & subtle' },
+    { value: 'uplifting and enthusiastic — make it feel celebratory', label: 'Celebratory' },
+    { value: 'playful and light, like a chat with friends', label: 'Fun & light' },
+    { value: 'very minimal — a single emoji at the very end', label: 'Minimal' },
+  ];
+  readonly densities: Option[] = [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
   ];
 
   splitLines(text: string): string[] {
     return text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  }
+
+  genLabel(plural: boolean): string {
+    const g = this.generatedTool();
+    if (g === 'emojify') return plural ? 'texts' : 'text';
+    const base = g === 'post' ? 'post' : g === 'comment' ? 'comment' : 'message';
+    return plural ? base + 's' : base;
   }
 
   // --- Career picker ---
@@ -270,6 +300,10 @@ export class ToolsHubComponent {
   private lastRequest: LinkedInRequest | null = null;
 
   async generate(): Promise<void> {
+    if (this.tool() === 'emojify') {
+      await this.runEmojify();
+      return;
+    }
     let request: LinkedInRequest;
     try {
       request = this.buildRequest();
@@ -278,6 +312,40 @@ export class ToolsHubComponent {
       return;
     }
     await this.runGenerate(request);
+  }
+
+  private async runEmojify(): Promise<void> {
+    const text = this.emojiText().trim();
+    if (!text) {
+      this.toast.error('Paste the text you want to add emojis to');
+      return;
+    }
+    const hintParts = [this.emojiPreset() ? 'Preset: ' + this.emojiPreset() : '', this.emojiHint().trim()]
+      .filter(Boolean)
+      .join('\n');
+
+    this.loading.set(true);
+    this.error.set('');
+    this.generatedTool.set('emojify');
+    try {
+      const res = await this.service.emojify({
+        text,
+        hint: hintParts,
+        density: this.emojiDensity(),
+        language: this.language(),
+        variants: this.variants(),
+      });
+      const variants = (res.data?.variants ?? []).map((v) => ({ title: '', text: v.text, hashtags: '' }));
+      if (variants.length === 0) {
+        this.error.set('The assistant returned nothing usable — try again or rephrase the hint.');
+      } else {
+        this.results.set(variants);
+      }
+    } catch (e) {
+      this.error.set(e instanceof Error ? e.message : 'Generation failed. Check that the AI service is running.');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   private async runGenerate(request: LinkedInRequest): Promise<void> {
@@ -390,6 +458,9 @@ export class ToolsHubComponent {
           recipientContext: this.recipientContext().trim(),
           senderContext: this.composeSenderContext(),
         };
+      }
+      default: {
+        throw new Error('Pick a LinkedIn tool to generate');
       }
     }
   }

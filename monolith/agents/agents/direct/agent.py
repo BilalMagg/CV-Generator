@@ -11,11 +11,14 @@ from agents.direct.schemas import (
     DirectChatResponse,
     DirectMessageRequest,
     DirectMessageResponse,
+    EmojifyRequest,
+    EmojifyResponse,
+    EmojifyVariant,
     LinkedInRequest,
     LinkedInResponse,
     LinkedInVariant,
 )
-from agents.direct.prompt import get_linkedin_messages, get_message_messages
+from agents.direct.prompt import get_emojify_messages, get_linkedin_messages, get_message_messages
 
 logger = logging.getLogger(__name__)
 
@@ -148,3 +151,45 @@ def _parse_linkedin(content: str, tool: str, variants: int) -> LinkedInResponse:
             )
         )
     return LinkedInResponse(tool=tool, variants=parsed)
+
+
+async def generate_emojify(req: EmojifyRequest) -> EmojifyResponse:
+    """Insert emojis into the user's text per the hint + density (no rewriting).
+
+    Retries once when no usable variant comes back; degrades to the raw reply as a
+    single variant otherwise.
+    """
+    req.normalize()
+    if not req.text:
+        return EmojifyResponse(variants=[EmojifyVariant(text="")])
+
+    for attempt in (1, 2):
+        system, user = get_emojify_messages(req)
+        _, content = await ainvoke_with_fallback(
+            [SystemMessage(content=system), HumanMessage(content=user)],
+            preferred_provider=req.provider,
+            model=req.model,
+            temperature=0.5,
+            max_tokens=2000,
+        )
+        result = _parse_emojify(content, req.variants)
+        if result.variants:
+            return result
+        logger.warning("emojify: attempt %s produced no usable variants", attempt)
+
+    return EmojifyResponse(variants=[EmojifyVariant(text=content.strip() or req.text)])
+
+
+def _parse_emojify(content: str, variants: int) -> EmojifyResponse:
+    data = parse_llm_json(content)
+    parsed: list = []
+
+    raw_variants = data.get("variants") if isinstance(data, dict) else None
+    if isinstance(raw_variants, list):
+        for item in raw_variants[:variants]:
+            if isinstance(item, dict) and str(item.get("text") or "").strip():
+                parsed.append(EmojifyVariant(text=str(item["text"]).strip()))
+    elif isinstance(data, dict) and str(data.get("text") or "").strip():
+        parsed.append(EmojifyVariant(text=str(data["text"]).strip()))
+
+    return EmojifyResponse(variants=parsed)

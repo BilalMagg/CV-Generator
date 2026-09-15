@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from agents.direct.schemas import DirectMessageRequest, LinkedInRequest
+from agents.direct.schemas import DirectMessageRequest, EmojifyRequest, LinkedInRequest
 
 
 def _job_block(req: DirectMessageRequest) -> str:
@@ -215,4 +215,58 @@ def get_linkedin_messages(req: LinkedInRequest) -> Tuple[str, str]:
         lines.append(_field("SENDER CONTEXT", req.sender_context))
 
     user = "\n\n".join(l for l in lines if l)
+    return system, user
+
+
+_EMOJI_DENSITY_GUIDANCE = {
+    "low": "very restrained — insert only 0-2 emojis across the whole text, and only where "
+    "they genuinely add meaning (a professional tip of the cap). Never crowd a sentence.",
+    "medium": "balanced — sprinkle a few emojis at natural emphasis points (roughly one per "
+    "paragraph or per 400-600 characters, whichever is rarer), matching the mood of each line.",
+    "high": "generous — liberally punctuate with emojis to make the text feel playful and "
+    "energetic, but keep it readable and never more than ~2 stacked at one spot.",
+}
+
+
+def get_emojify_messages(req: EmojifyRequest) -> Tuple[str, str]:
+    """Prompt for the Emojier tool: insert emojis into existing text, no rewriting."""
+    density = req.density if req.density in _EMOJI_DENSITY_GUIDANCE else "medium"
+    style_guide = _EMOJI_DENSITY_GUIDANCE[density]
+
+    system_parts = [
+        "You are an emoji editor. Your ONLY job is to insert emojis into the provided TEXT.",
+        "Hard rules:\n"
+        "1. Never rewrite, reword, reorder, shorten, expand, or refactor the text — the "
+        "characters must remain exactly as given, except for the emoji characters you add and "
+        "the whitespace you may adjust around them.\n"
+        "2. Do not add any wording, hashtags, punctuation, or content of your own.\n"
+        "3. Keep the text in its original language; pick emojis that fit that language's "
+        "audience and the meaning of each sentence.\n"
+        "4. Do not insert emojis inside URLs, email addresses, @handles, code snippets, or "
+        "hashtag fragments.\n"
+        "5. If the text already contains emojis, keep them and only add others where they "
+        "improve the text.\n"
+        "6. Match emoji choices to the tone of the text: leave formal/grave text essentially "
+        "untouched beyond what the density allows, and enliven casual/celebratory text more freely.",
+    ]
+    if req.hint:
+        system_parts.append(
+            "The user's emoji constraint must be followed strictly:\n" + req.hint
+        )
+    system_parts.append(
+        f"Density: {density} — {style_guide}\n"
+        'Respond ONLY with a JSON object of the form {"variants": [{"text": <the text with '
+        f'emojis inserted>]}} with EXACTLY {req.variants} distinct variant(s). '
+        "Each variant is the same base text with its own emoji treatment. "
+        "Do not add any commentary, markdown, or prose outside the JSON."
+    )
+
+    system = "\n\n".join(system_parts)
+
+    user = (
+        f"Language: {req.language or 'English'}\n"
+        f"Density: {density}\n"
+        f"Constraint: {req.hint or '(none - use your best judgement)'}\n\n"
+        f"TEXT:\n{req.text}"
+    )
     return system, user

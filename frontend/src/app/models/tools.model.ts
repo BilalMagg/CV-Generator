@@ -1,6 +1,8 @@
 export type LinkedInToolType = 'post' | 'comment' | 'message';
+export type ToolTab = LinkedInToolType | 'emojify';
 export type LinkedInTone = 'professional' | 'enthusiastic' | 'storytelling' | 'honest';
 export type LinkedInLength = 'short' | 'medium' | 'long';
+export type EmojifyDensity = 'low' | 'medium' | 'high';
 
 export interface LinkedInRequest {
   tool: LinkedInToolType;
@@ -33,4 +35,20 @@ export interface LinkedInVariant {
 export interface LinkedInResult {
   tool: string;
   variants: LinkedInVariant[];
+}
+
+export interface EmojifyRequest {
+  text: string;
+  hint?: string;
+  density: EmojifyDensity;
+  language?: string;
+  variants?: number;
+}
+
+export interface EmojifyVariant {
+  text: string;
+}
+
+export interface EmojifyResult {
+  variants: EmojifyVariant[];
 }

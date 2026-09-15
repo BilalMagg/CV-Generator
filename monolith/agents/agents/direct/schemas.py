@@ -102,3 +102,39 @@ class LinkedInVariant(BaseModel):
 class LinkedInResponse(BaseModel):
     tool: str
     variants: List[LinkedInVariant]
+
+
+_EMOJIFY_DENSITIES = {"low", "medium", "high"}
+
+
+class EmojifyRequest(BaseModel):
+    """Insert emojis into an existing text guided by the user's hint + density.
+
+    The tool only ADDS emoji characters — it never rewrites, rewords, shortens,
+    or adds new content to the provided text. Plain text edit surface: feed it any
+    post, comment, message, or email draft.
+    """
+
+    text: str = ""
+    hint: str = ""  # free-form + preset instructions ("one emoji per paragraph", "professional only", …)
+    density: str = "medium"  # low | medium | high
+    language: str = "English"
+    variants: int = 1
+    provider: Optional[str] = None
+    model: Optional[str] = None
+
+    def normalize(self) -> None:
+        self.text = (self.text or "").strip()
+        self.hint = (self.hint or "").strip()
+        self.density = ((self.density or "") or "medium").strip().lower()
+        if self.density not in _EMOJIFY_DENSITIES:
+            self.density = "medium"
+        self.variants = max(1, min(int(self.variants or 1), 3))
+
+
+class EmojifyVariant(BaseModel):
+    text: str
+
+
+class EmojifyResponse(BaseModel):
+    variants: List[EmojifyVariant]

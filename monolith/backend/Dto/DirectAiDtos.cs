@@ -86,3 +86,24 @@ public class LinkedInResultDto
     public string Tool { get; set; } = "post";
     public List<LinkedInVariantDto> Variants { get; set; } = new();
 }
+
+public class EmojifyRequestDto
+{
+    public string Text { get; set; } = "";
+    public string Hint { get; set; } = "";
+    public string Density { get; set; } = "medium"; // low | medium | high
+    public string Language { get; set; } = "English";
+    public int Variants { get; set; } = 1;
+    public string? Provider { get; set; }
+    public string? Model { get; set; }
+}
+
+public class EmojifyVariantDto
+{
+    public string Text { get; set; } = "";
+}
+
+public class EmojifyResultDto
+{
+    public List<EmojifyVariantDto> Variants { get; set; } = new();
+}

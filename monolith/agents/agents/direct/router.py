@@ -7,10 +7,12 @@ from agents.direct.schemas import (
     DirectChatResponse,
     DirectMessageRequest,
     DirectMessageResponse,
+    EmojifyRequest,
+    EmojifyResponse,
     LinkedInRequest,
     LinkedInResponse,
 )
-from agents.direct.agent import generate_message, chat, generate_linkedin
+from agents.direct.agent import generate_message, chat, generate_linkedin, generate_emojify
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/direct", tags=["direct"])
@@ -41,6 +43,15 @@ async def direct_linkedin(request: LinkedInRequest):
     except Exception as e:  # noqa: BLE001
         logger.exception("direct: linkedin content generation failed")
         raise HTTPException(status_code=500, detail=f"LinkedIn content generation failed: {str(e)}")
+
+
+@router.post("/emojify", response_model=EmojifyResponse)
+async def direct_emojify(request: EmojifyRequest):
+    try:
+        return await generate_emojify(request)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("direct: emoji insertion failed")
+        raise HTTPException(status_code=500, detail=f"Emoji insertion failed: {str(e)}")
 
 
 @router.get("/health")

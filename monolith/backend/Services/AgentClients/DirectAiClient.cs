@@ -9,6 +9,7 @@ public interface IDirectAiClient
     Task<DirectMessageResultDto?> GenerateMessageAsync(DirectMessageRequestDto request, CancellationToken cancellationToken = default);
     Task<DirectChatResultDto?> ChatAsync(DirectChatRequestDto request, CancellationToken cancellationToken = default);
     Task<LinkedInResultDto?> GenerateLinkedInAsync(LinkedInRequestDto request, CancellationToken cancellationToken = default);
+    Task<EmojifyResultDto?> EmojifyAsync(EmojifyRequestDto request, CancellationToken cancellationToken = default);
 }
 
 public class DirectAiClient : IDirectAiClient
@@ -57,5 +58,16 @@ public class DirectAiClient : IDirectAiClient
             throw new HttpRequestException($"direct-ai returned {(int)response.StatusCode}: {errorBody}");
         }
         return await response.Content.ReadFromJsonAsync<LinkedInResultDto>(SnakeCaseOptions, cancellationToken);
+    }
+
+    public async Task<EmojifyResultDto?> EmojifyAsync(EmojifyRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var response = await _client.PostAsJsonAsync("emojify", request, SnakeCaseOptions, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException($"direct-ai returned {(int)response.StatusCode}: {errorBody}");
+        }
+        return await response.Content.ReadFromJsonAsync<EmojifyResultDto>(SnakeCaseOptions, cancellationToken);
     }
 }

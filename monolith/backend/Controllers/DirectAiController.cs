@@ -224,6 +224,24 @@ public class DirectAiController : ControllerBase
         return Ok(ApiResponse<LinkedInResultDto>.Ok(result));
     }
 
+    /// <summary>Insert emojis into the user's text per hint + density (no rewriting).</summary>
+    [HttpPost("emojify")]
+    public async Task<IActionResult> Emojify([FromBody] EmojifyRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Text))
+            return BadRequest(ApiResponse<object>.Error("Provide the text you want to add emojis to"));
+        if (request.Density is not ("low" or "medium" or "high"))
+            request.Density = "medium";
+        request.Variants = Math.Clamp(request.Variants, 1, 3);
+
+        await ResolveProviderAsync(request);
+        var result = await _client.EmojifyAsync(request);
+        if (result == null)
+            return StatusCode(502, ApiResponse<object>.Error("AI assistant could not be reached"));
+
+        return Ok(ApiResponse<EmojifyResultDto>.Ok(result));
+    }
+
     private async Task ResolveProviderAsync(object request)
     {
         var userId = _currentUser.UserId;
@@ -251,6 +269,10 @@ public class DirectAiController : ControllerBase
             case LinkedInRequestDto l:
                 l.Provider ??= string.IsNullOrWhiteSpace(provider) ? null : provider;
                 l.Model ??= string.IsNullOrWhiteSpace(model) ? null : model;
+                break;
+            case EmojifyRequestDto e:
+                e.Provider ??= string.IsNullOrWhiteSpace(provider) ? null : provider;
+                e.Model ??= string.IsNullOrWhiteSpace(model) ? null : model;
                 break;
         }
     }
