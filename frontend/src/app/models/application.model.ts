@@ -22,7 +22,8 @@ export type AttemptChannel =
   | 'LINKEDIN_CONNECTION'
   | 'WEB_FORM'
   | 'IN_PERSON'
-  | 'OTHER';
+  | 'OTHER'
+  | 'LINKEDIN_APPLY';
 
 export type AttemptInitiatedBy = 'USER' | 'AI_AGENT' | 'SCHEDULE';
 
@@ -209,6 +210,18 @@ export interface MonthlyTrendDto {
   withdrawn: number;
 }
 
+export interface DailyTrendDto {
+  date: string;
+  saved: number;
+  applied: number;
+  screening: number;
+  interview: number;
+  offer: number;
+  accepted: number;
+  rejected: number;
+  withdrawn: number;
+}
+
 export interface StatisticsTrendsDto {
   current: ApplicationStatisticsDto;
   monthlyTrends: MonthlyTrendDto[];
@@ -220,6 +233,7 @@ export interface AnalyticsSummaryDto {
   averageResponseTimeDays: number | null;
   distinctCompanies: number;
   monthlyTrends: MonthlyTrendDto[];
+  dailyTrends: DailyTrendDto[];
   priorityCounts: Record<string, number>;
   originCounts: Record<string, number>;
   channelCounts: Record<string, number>;
@@ -347,6 +361,7 @@ export const ATTEMPT_CHANNEL_LABELS: Record<AttemptChannel, string> = {
   WHATSAPP: 'WhatsApp',
   LINKEDIN_MESSAGE: 'LinkedIn message',
   LINKEDIN_CONNECTION: 'LinkedIn connection',
+  LINKEDIN_APPLY: 'LinkedIn apply',
   WEB_FORM: 'Web form',
   IN_PERSON: 'In person',
   OTHER: 'Other',
@@ -402,6 +417,13 @@ export function attemptChannelFields(channel: AttemptChannel): AttemptChannelFie
         messagePlaceholder: 'Short note accompanying the connection request…',
         recipientName: false, recipientContact: true,
         recipientContactLabel: 'Recipient profile URL', recipientContactPlaceholder: 'linkedin.com/in/…',
+      };
+    case 'LINKEDIN_APPLY':
+      return {
+        subject: false, message: false, messageLabel: '',
+        messagePlaceholder: '',
+        recipientName: false, recipientContact: true,
+        recipientContactLabel: 'Job posting URL', recipientContactPlaceholder: 'https://www.linkedin.com/jobs/view/…',
       };
     case 'WEB_FORM':
       return {

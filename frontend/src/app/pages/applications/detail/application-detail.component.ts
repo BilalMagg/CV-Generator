@@ -419,7 +419,7 @@ export class ApplicationDetailComponent implements OnInit {
         recipientName: cfg.recipientName ? (f.recipientName.trim() || undefined) : undefined,
         recipientContact: cfg.recipientContact ? (f.recipientContact.trim() || undefined) : undefined,
         contactId: this.selectedContactId() ?? undefined,
-        channelMetadataJson: (f.channel === 'WEB_FORM' && f.recipientContact.trim())
+        channelMetadataJson: ((f.channel === 'WEB_FORM' || f.channel === 'LINKEDIN_APPLY') && f.recipientContact.trim())
           ? JSON.stringify({ formUrl: f.recipientContact.trim() })
           : undefined,
         coverLetterVersionId: f.coverLetterVersionId ?? null,
