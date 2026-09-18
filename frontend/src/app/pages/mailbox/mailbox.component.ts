@@ -16,7 +16,15 @@ import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
 import { DocumentsService } from '@app/services/documents.service';
 import { AuthService } from '@app/services/auth.service';
-import { resolveTemplateVars, recipientGreeting, TemplateVarValues } from '@app/shared/template-vars';
+import { CompanyService } from '@app/services/company.service';
+import {
+  resolveTemplateVars,
+  recipientGreeting,
+  TemplateVarValues,
+  extractTemplateVars,
+  templateVarLabel,
+  TEMPLATE_AUTO_OPTIONAL,
+} from '@app/shared/template-vars';
 import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
 import {
   ContactDto, EmailMessageDto, EmailScheduleDto, ScheduleHistoryItem,
@@ -33,6 +41,14 @@ interface EmailTemplate {
   name: string;
   subject: string;
   body: string;
+}
+
+/** One dynamic fill field rendered for a variable token used by the selected template. */
+interface FillVarField {
+  token: string;
+  label: string;
+  hint?: string;
+  required?: boolean;
 }
 
 const EMAIL_TEMPLATES: EmailTemplate[] = [
@@ -93,6 +109,7 @@ export class MailboxComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly directAi = inject(DirectAiService);
   private readonly authSvc = inject(AuthService);
+  private readonly companySvc = inject(CompanyService);
 
   view = signal<MailboxView>((localStorage.getItem('mailbox-view') as MailboxView) || 'compose');
 
@@ -219,10 +236,11 @@ export class MailboxComponent implements OnInit {
   private composeTemplatesLoaded = false;
   fillOpen = signal(false);
   fillTemplate = signal<ScheduleTemplateDto | null>(null);
-  fillName = signal('');
+  /** Dynamic fill fields — one per {{token}} that the selected template actually uses. */
+  fillVars = signal<FillVarField[]>([]);
+  /** Current input values keyed by token (lowercase). */
+  fillValues = signal<Record<string, string>>({});
   fillGender = signal('');
-  fillResearch = signal('');
-  fillOffer = signal('');
 
   // Documents picker inside the Attachments tab (CVs + their PDF versions).
   docCvs = signal<CvDocumentDto[]>([]);
@@ -1026,38 +1044,111 @@ export class MailboxComponent implements OnInit {
     }
   }
 
-  openFillDialog(t: ScheduleTemplateDto) {
+  async openFillDialog(t: ScheduleTemplateDto) {
     const recipient = this.composeRecipients()[0];
-    this.fillTemplate.set(t);
-    this.fillName.set(recipient?.name ?? '');
+    const tokens = extractTemplateVars(t.subjectTemplate, t.bodyTemplate);
+    const user = this.authSvc.currentUser();
+    const name = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
+    const d = t.variableDefaults ?? {};
+    const company = await this.lookupCompanyInfo(recipient?.company).catch(() => null);
     this.fillGender.set(recipient?.gender ?? '');
-    this.fillResearch.set(t.variableDefaults?.research ?? '');
-    this.fillOffer.set('');
+    const values: Record<string, string> = {};
+    const fields: FillVarField[] = [];
+    for (const token of tokens) {
+      const [value, hint] = this.autoFillValue(token, d, recipient, name, company);
+      values[token] = value;
+      fields.push({ token, label: templateVarLabel(token), hint, required: !TEMPLATE_AUTO_OPTIONAL.has(token) });
+    }
+    this.fillTemplate.set(t);
+    this.fillVars.set(fields);
+    this.fillValues.set(values);
     this.fillOpen.set(true);
+  }
+
+  /** Look up a company by name so domaine/web_company auto-fill from real data. */
+  private async lookupCompanyInfo(companyName?: string | null): Promise<{ sector?: string; websiteUrl?: string } | null> {
+    const name = (companyName ?? '').trim();
+    if (!name) return null;
+    try {
+      const res = await this.companySvc.getCompanies({ search: name, pageSize: 20 });
+      const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const target = norm(name);
+      const items = res.data?.items ?? [];
+      const hit = items.find(c => c.name && norm(c.name) === target);
+      const src = hit ?? items[0];
+      if (!src) return null;
+      return { sector: src.sector ?? undefined, websiteUrl: src.websiteUrl ?? undefined };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Derive a starting value + hint for one template variable from compose context/company. */
+  private autoFillValue(
+    token: string,
+    d: ScheduleTemplateDto['variableDefaults'],
+    recipient: ContactDto | undefined,
+    userName: string,
+    company: { sector?: string; websiteUrl?: string } | null,
+  ): [string, string | undefined] {
+    const user = this.authSvc.currentUser();
+    const recipientName = recipient?.name ?? '';
+    switch (token) {
+      case 'recipient_name': return [recipientName, recipientName ? 'From the selected recipient' : undefined];
+      case 'recipient_greeting': return [recipientGreeting(recipientName, this.fillGender() || undefined), 'Derived from recipient name'];
+      case 'school': return [d?.school ?? '', 'Template default'];
+      case 'degree': return [d?.degree ?? '', 'Template default'];
+      case 'research': return [d?.research ?? '', 'Template default'];
+      case 'offer_phrase': return [d?.offer_phrase ?? '', 'Template default'];
+      case 'company_name': return [recipient?.company ?? '', 'From the selected recipient'];
+      case 'my_name': return [userName, 'From your profile'];
+      case 'my_email': return [user?.email ?? '', 'From your profile'];
+      case 'my_phone': return ['', ''];
+      // User-requested: domaine=role/sector, web_company=company website
+      case 'domaine': return [company?.sector ?? '', 'Company sector'];
+      case 'web_company': return [company?.websiteUrl ?? '', 'Company website'];
+      default: return ['', undefined];
+    }
   }
 
   closeFillDialog() {
     this.fillOpen.set(false);
     this.fillTemplate.set(null);
+    this.fillVars.set([]);
+    this.fillValues.set({});
+  }
+
+  setFillValue(token: string, value: string) {
+    this.fillValues.update(v => {
+      const next = { ...v, [token]: value };
+      if (token === 'recipient_name' && 'recipient_greeting' in next) {
+        next['recipient_greeting'] = recipientGreeting(value, this.fillGender() || undefined);
+      }
+      return next;
+    });
+  }
+
+  /** The template uses {{recipient_greeting}} → show the gender picker that drives it. */
+  fillUsesGreeting(): boolean {
+    return this.fillVars().some(v => v.token === 'recipient_greeting');
+  }
+
+  onFillGenderChange(gender: string) {
+    this.fillGender.set(gender);
+    const name = this.fillValues()['recipient_name'] ?? '';
+    if (this.fillUsesGreeting()) {
+      this.setFillValue('recipient_greeting', recipientGreeting(name, gender || undefined));
+    }
+  }
+
+  /** Every required variable has a value; optional/derived tokens may stay blank. */
+  fillValid(): boolean {
+    return this.fillVars().every(v => !v.required || !!this.fillValues()[v.token]?.trim());
   }
 
   /** Values used for the compose template preview + insert (mirrors the backend resolver). */
   fillVarValues(): TemplateVarValues {
-    const user = this.authSvc.currentUser();
-    const name = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
-    const d = this.fillTemplate()?.variableDefaults ?? {};
-    const research = this.fillResearch() || d.research || '';
-    return {
-      recipient_name: this.fillName(),
-      recipient_greeting: recipientGreeting(this.fillName(), this.fillGender() || undefined),
-      school: d.school || '',
-      degree: d.degree || '',
-      research,
-      offer_phrase: this.fillOffer().trim(),
-      my_name: name,
-      my_email: user?.email ?? '',
-      my_phone: '',
-    };
+    return { ...this.fillValues() };
   }
 
   fillPreviewSubject(): string {

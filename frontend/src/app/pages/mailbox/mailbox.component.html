@@ -901,29 +901,29 @@
           <button class="contact-modal-close" (click)="closeFillDialog()">&times;</button>
         </div>
         <div class="fill-modal-body">
-          <div class="sched-field">
-            <label>Recipient name <span class="req">*</span></label>
-            <input type="text" placeholder="e.g. Karim Alaoui" [ngModel]="fillName()" (ngModelChange)="fillName.set($event)">
-          </div>
-          <div class="sched-field">
-            <label>Recipient gender</label>
-            <select [ngModel]="fillGender()" (ngModelChange)="fillGender.set($event)">
-              <option value="">Unknown (neutral greeting)</option>
-              <option value="male">Male → "cher"</option>
-              <option value="female">Female → "chère"</option>
-            </select>
-            <span class="sched-hint">Used for the French greeting ({{ fillGender() === 'male' ? 'cher' : fillGender() === 'female' ? 'chère' : 'no title' }}).</span>
-          </div>
-          <div class="sched-field">
-            <label>Researching <span class="req">*</span></label>
-            <input type="text" placeholder="d'un stage PFE…" [ngModel]="fillResearch()" (ngModelChange)="fillResearch.set($event)">
-            <span class="sched-hint">Appears after "à la recherche". Default from the template: "{{ fillTemplate()!.variableDefaults?.research ?? '' }}".</span>
-          </div>
-          <div class="sched-field">
-            <label>Applying to <span class="req">*</span></label>
-            <input type="text" placeholder="votre offre de stage publiée sur LinkedIn…" [ngModel]="fillOffer()" (ngModelChange)="fillOffer.set($event)">
-            <span class="sched-hint">Continues "Je souhaite postuler à …".</span>
-          </div>
+          @for (v of fillVars(); track v.token) {
+            <div class="sched-field">
+              <label>{{ v.label }} <code>{{ '{{' + v.token + '}}' }}</code> @if (v.required) {<span class="req">*</span>}</label>
+              <input type="text" [ngModel]="fillValues()[v.token]" (ngModelChange)="setFillValue(v.token, $event)" placeholder="{{ v.hint || 'Fill in a value' }}" />
+              @if (v.hint) {
+                <span class="sched-hint">{{ v.hint }}</span>
+              }
+            </div>
+          }
+          @if (fillUsesGreeting()) {
+            <div class="sched-field">
+              <label>Recipient gender</label>
+              <select [ngModel]="fillGender()" (ngModelChange)="onFillGenderChange($event)">
+                <option value="">Unknown (neutral greeting)</option>
+                <option value="male">Male → "cher"</option>
+                <option value="female">Female → "chère"</option>
+              </select>
+              <span class="sched-hint">Used for the greeting ({{ fillGender() === 'male' ? 'cher' : fillGender() === 'female' ? 'chère' : 'no title' }}).</span>
+            </div>
+          }
+          @if (fillVars().length === 0) {
+            <p class="hint">This template uses no variables.</p>
+          }
           @if (fillTemplate()!.cvVersionId) {
             <div class="fill-notes">The template's CV will be attached automatically.</div>
           }
@@ -935,7 +935,7 @@
         </div>
         <div class="contact-modal-footer">
           <button class="mb-btn-ghost" (click)="closeFillDialog()">Cancel</button>
-          <button class="mb-btn-primary" [disabled]="!fillName().trim() || !fillResearch().trim() || !fillOffer().trim()" (click)="insertFilledTemplate()">Insert into compose</button>
+          <button class="mb-btn-primary" [disabled]="!fillValid()" (click)="insertFilledTemplate()">Insert into compose</button>
         </div>
       </div>
     </div>

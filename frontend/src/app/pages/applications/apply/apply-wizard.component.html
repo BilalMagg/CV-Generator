@@ -383,20 +383,18 @@
         <button class="tpl-close" (click)="closeFillDialog()">✕</button>
       </div>
       <div class="tpl-modal-body">
-        <div class="row">
+        @for (v of fillVars(); track v.token) {
           <div class="fld">
-            <label>Recipient name {{ '{{recipient_name}}' }}</label>
-            <input type="text" [(ngModel)]="fillName" placeholder="First Last" />
+            <label>{{ v.label }} <code>{{ '{{' + v.token + '}}' }}</code> @if (v.required) {<span class="req">*</span>}</label>
+            <input type="text" [ngModel]="fillValues()[v.token]" (ngModelChange)="setFillValue(v.token, $event)" placeholder="{{ v.hint || 'Fill in a value' }}" />
+            @if (v.hint) {
+              <span class="sched-hint">{{ v.hint }}</span>
+            }
           </div>
-        </div>
-        <div class="fld">
-          <label>What you're looking for {{ '{{research}}' }}</label>
-          <input type="text" [(ngModel)]="fillResearch" placeholder="e.g. d'un stage PFE" />
-        </div>
-        <div class="fld">
-          <label>Offer phrase {{ '{{offer_phrase}}' }}</label>
-          <input type="text" [(ngModel)]="fillOffer" placeholder="e.g. the Frontend Developer position" />
-        </div>
+        }
+        @if (fillVars().length === 0) {
+          <p class="hint">This template uses no variables.</p>
+        }
         <div class="tpl-preview">
           <h4>Preview (resolved)</h4>
           <div class="pv-row"><span class="pv-label">Subject</span><span class="pv-val">{{ fillPreviewSubject() }}</span></div>
@@ -405,7 +403,7 @@
       </div>
       <div class="tpl-modal-foot">
         <button class="btn" (click)="closeFillDialog()">Cancel</button>
-        <button class="btn primary" (click)="insertFilledTemplate()">Apply to email</button>
+        <button class="btn primary" [disabled]="!fillValid()" (click)="insertFilledTemplate()">Apply to email</button>
       </div>
     </div>
   </div>
