@@ -6,6 +6,7 @@ public record AnalyticsSummaryDto(
     double? AverageResponseTimeDays,
     int DistinctCompanies,
     List<MonthlyTrendDto> MonthlyTrends,
+    List<DailyTrendDto> DailyTrends,
     Dictionary<string, int> PriorityCounts,
     Dictionary<string, int> OriginCounts,
     Dictionary<string, int> ChannelCounts,

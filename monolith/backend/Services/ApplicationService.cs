@@ -310,6 +310,7 @@ public class ApplicationService : IApplicationService
     {
         var stats = await GetStatisticsAsync(userId);
         var monthly = await GetMonthlyTrendsAsync(userId);
+        var daily = await GetDailyTrendsAsync(userId);
         var avg = await GetAverageResponseTimeAsync(userId);
 
         var apps = _db.Applications.Where(a => a.CandidateId == userId);
@@ -353,7 +354,7 @@ public class ApplicationService : IApplicationService
 
         var email = await GetEmailStatsAsync(userId);
 
-        return new AnalyticsSummaryDto(stats, avg, distinctCompanies, monthly, priorityCounts, originCounts, channelCounts, funnel, topCompanies, email);
+        return new AnalyticsSummaryDto(stats, avg, distinctCompanies, monthly, daily, priorityCounts, originCounts, channelCounts, funnel, topCompanies, email);
     }
 
     private async Task<EmailStatsDto> GetEmailStatsAsync(Guid userId)
@@ -399,6 +400,40 @@ public class ApplicationService : IApplicationService
             var s = r.Status.ToDictionary(x => x.Status, x => x.Count);
             return new MonthlyTrendDto(
                 r.Year, r.Month,
+                s.GetValueOrDefault(ApplicationStatus.SAVED, 0),
+                s.GetValueOrDefault(ApplicationStatus.APPLIED, 0),
+                s.GetValueOrDefault(ApplicationStatus.SCREENING, 0),
+                s.GetValueOrDefault(ApplicationStatus.INTERVIEW, 0),
+                s.GetValueOrDefault(ApplicationStatus.OFFER, 0),
+                s.GetValueOrDefault(ApplicationStatus.ACCEPTED, 0),
+                s.GetValueOrDefault(ApplicationStatus.REJECTED, 0),
+                s.GetValueOrDefault(ApplicationStatus.WITHDRAWN, 0)
+            );
+        }).ToList();
+    }
+
+    private async Task<List<DailyTrendDto>> GetDailyTrendsAsync(Guid userId, int days = 30)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-days);
+
+        var raw = await _db.Applications
+            .Where(a => a.CandidateId == userId && a.AppliedAt != null && a.AppliedAt >= cutoff)
+            .GroupBy(a => new { a.AppliedAt!.Value.Date })
+            .Select(g => new
+            {
+                Date = g.Key.Date,
+                Status = g.GroupBy(a => a.Status)
+                    .Select(sg => new { Status = sg.Key, Count = sg.Count() })
+                    .ToList()
+            })
+            .OrderBy(x => x.Date)
+            .ToListAsync();
+
+        return raw.Select(r =>
+        {
+            var s = r.Status.ToDictionary(x => x.Status, x => x.Count);
+            return new DailyTrendDto(
+                r.Date,
                 s.GetValueOrDefault(ApplicationStatus.SAVED, 0),
                 s.GetValueOrDefault(ApplicationStatus.APPLIED, 0),
                 s.GetValueOrDefault(ApplicationStatus.SCREENING, 0),

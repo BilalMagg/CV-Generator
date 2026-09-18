@@ -144,23 +144,23 @@
         }
       </section>
 
-      <!-- Monthly stacked -->
+      <!-- Daily stacked -->
       <section class="card span-2">
         <div class="card-head">
           <h2>Applications over time</h2>
           <div class="period-toggle">
-            @for (p of [3, 6, 12]; track p) {
-              <button class="chip" [class.active]="periodMonths() === p" (click)="setPeriod(p)">{{ p }}m</button>
+            @for (d of [7, 14, 30]; track d) {
+              <button class="chip" [class.active]="periodDays() === d" (click)="setPeriod(d)">{{ d }}d</button>
             }
-            <button class="chip" [class.active]="periodMonths() === 0" (click)="setPeriod(0)">All</button>
+            <button class="chip" [class.active]="periodDays() === 0" (click)="setPeriod(0)">All</button>
           </div>
         </div>
-        @if (monthlyStacked().length === 0) {
-          <div class="muted">No monthly data yet.</div>
+        @if (dailyStacked().length === 0) {
+          <div class="muted">No daily data yet.</div>
         } @else {
           <ngx-charts-bar-vertical-stacked
             [view]="[640, 280]"
-            [results]="monthlyStacked()"
+            [results]="dailyStacked()"
             [customColors]="statusColors()"
             [xAxis]="true"
             [yAxis]="true"

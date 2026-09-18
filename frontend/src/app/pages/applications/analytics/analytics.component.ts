@@ -3,13 +3,16 @@ import { CommonModule } from '@angular/common';
 import { NgxChartsModule } from '@swimlane/ngx-charts';
 import { ApplicationService } from '@app/services/application.service';
 import {
-  AnalyticsSummaryDto, MonthlyTrendDto, ApplicationStatus,
+  AnalyticsSummaryDto, DailyTrendDto, ApplicationStatus,
   STATUS_ORDER, STATUS_LABELS, STATUS_COLORS,
   ATTEMPT_CHANNEL_LABELS,
 } from '@app/models/application.model';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const DAY_LABEL = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+const DAY_LABEL_YEAR = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 interface KpiCard { label: string; value: string; sub: string; color: string; }
 interface FunnelRow { label: string; count: number; pct: number; color: string; }
@@ -29,7 +32,7 @@ export class AnalyticsComponent implements OnInit {
   summary = signal<AnalyticsSummaryDto | null>(null);
   loading = signal(true);
   refreshing = signal(false);
-  periodMonths = signal(6);
+  periodDays = signal(7);
 
   ngOnInit() { this.load(); }
 
@@ -41,7 +44,7 @@ export class AnalyticsComponent implements OnInit {
   }
 
   onRefresh() { this.refreshing.set(true); this.load(); }
-  setPeriod(months: number) { this.periodMonths.set(months); }
+  setPeriod(days: number) { this.periodDays.set(days); }
 
   stats = computed(() => this.summary()?.statistics ?? {
     total: 0, saved: 0, applied: 0, screening: 0, interview: 0, offer: 0, accepted: 0, rejected: 0, withdrawn: 0,
@@ -118,18 +121,21 @@ export class AnalyticsComponent implements OnInit {
       .sort((a, b) => b.value - a.value);
   });
 
-  filteredTrends = computed<MonthlyTrendDto[]>(() => {
-    const trends = this.summary()?.monthlyTrends ?? [];
-    const cutoff = this.periodMonths();
+  filteredDailyTrends = computed<DailyTrendDto[]>(() => {
+    const trends = this.summary()?.dailyTrends ?? [];
+    const cutoff = this.periodDays();
     return cutoff > 0 ? trends.slice(-cutoff) : trends;
   });
 
-  monthlyStacked = computed(() =>
-    this.filteredTrends().map(d => ({
-      name: MONTH_LABELS[d.month - 1] + (d.year !== new Date().getFullYear() ? ` ${d.year}` : ''),
+  dailyStacked = computed(() => {
+    const now = new Date();
+    return this.filteredDailyTrends().map(d => ({
+      name: new Date(d.date).getFullYear() !== now.getFullYear()
+        ? DAY_LABEL_YEAR.format(new Date(d.date))
+        : DAY_LABEL.format(new Date(d.date)),
       series: STATUS_ORDER.map(st => ({ name: STATUS_LABELS[st], value: (d as unknown as Record<string, number>)[st.toLowerCase()] ?? 0 })),
-    }))
-  );
+    }));
+  });
 
   hasData = computed(() => this.stats().total > 0);
 }
