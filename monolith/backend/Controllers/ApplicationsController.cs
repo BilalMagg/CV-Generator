@@ -43,7 +43,9 @@ public class ApplicationsController : ControllerBase
         [FromQuery] DateTime? appliedFrom = null,
         [FromQuery] DateTime? appliedTo = null,
         [FromQuery] DateTime? updatedFrom = null,
-        [FromQuery] DateTime? updatedTo = null)
+        [FromQuery] DateTime? updatedTo = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] string? sortDir = null)
     {
         if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
         if (page < 1) page = 1;
@@ -54,7 +56,7 @@ public class ApplicationsController : ControllerBase
             : null;
 
         var result = await _service.GetAllAsync(UserId.Value, page, pageSize, statusArr, search,
-            appliedFrom, appliedTo, updatedFrom, updatedTo);
+            appliedFrom, appliedTo, updatedFrom, updatedTo, sortBy, sortDir);
         return Ok(ApiResponse<ApplicationListDto>.Ok(result));
     }
 

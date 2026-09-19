@@ -17,19 +17,33 @@ public class ApplicationService : IApplicationService
         _logger = logger;
     }
 
-    public async Task<ApplicationListDto> GetAllAsync(Guid userId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null)
+    public async Task<ApplicationListDto> GetAllAsync(Guid userId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null, string? sortBy = null, string? sortDir = null)
     {
         var query = BuildFilteredQuery(userId, statuses, search, appliedFrom, appliedTo, updatedFrom, updatedTo);
         var total = await query.CountAsync();
-        var apps = await query
-            .OrderBy(a => a.AppliedAt == null)
-            .ThenByDescending(a => a.AppliedAt)
+        var apps = await ApplySorting(query, sortBy, sortDir)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
         var companies = await BuildCompanyLookupAsync(userId);
         return new ApplicationListDto(apps.Select(a => MapToDto(a, companies)).ToList(), total, page, pageSize);
+    }
+
+    private static IQueryable<Application> ApplySorting(IQueryable<Application> query, string? sortBy, string? sortDir)
+    {
+        var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+        return sortBy?.ToLowerInvariant() switch
+        {
+            "updated" => desc ? query.OrderByDescending(a => a.UpdatedAt) : query.OrderBy(a => a.UpdatedAt),
+            "company" => desc ? query.OrderByDescending(a => a.CompanyName) : query.OrderBy(a => a.CompanyName),
+            "priority" => desc
+                ? query.OrderByDescending(a => a.Priority)
+                : query.OrderBy(a => a.Priority),
+            _ => desc
+                ? query.OrderBy(a => a.AppliedAt == null).ThenByDescending(a => a.AppliedAt)
+                : query.OrderBy(a => a.AppliedAt == null).ThenBy(a => a.AppliedAt),
+        };
     }
 
     public async Task<ApplicationResponseDto?> GetByIdAsync(Guid id, Guid userId)
@@ -835,12 +849,12 @@ public class ApplicationService : IApplicationService
         if (appliedFrom.HasValue)
             query = query.Where(a => a.AppliedAt != null && a.AppliedAt >= appliedFrom.Value);
         if (appliedTo.HasValue)
-            query = query.Where(a => a.AppliedAt != null && a.AppliedAt <= appliedTo.Value);
+            query = query.Where(a => a.AppliedAt != null && a.AppliedAt < appliedTo.Value.Date.AddDays(1));
 
         if (updatedFrom.HasValue)
             query = query.Where(a => a.UpdatedAt >= updatedFrom.Value);
         if (updatedTo.HasValue)
-            query = query.Where(a => a.UpdatedAt <= updatedTo.Value);
+            query = query.Where(a => a.UpdatedAt < updatedTo.Value.Date.AddDays(1));
 
         return query;
     }

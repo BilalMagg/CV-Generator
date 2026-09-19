@@ -37,6 +37,8 @@ export class ApplicationService {
     appliedTo?: string;
     updatedFrom?: string;
     updatedTo?: string;
+    sortBy?: string;
+    sortDir?: string;
   }): Promise<ApiResponse<ApplicationListDto>> {
     const qs = new URLSearchParams();
     if (params?.candidateId) qs.set('candidateId', params.candidateId);
@@ -48,6 +50,8 @@ export class ApplicationService {
     if (params?.appliedTo) qs.set('appliedTo', params.appliedTo);
     if (params?.updatedFrom) qs.set('updatedFrom', params.updatedFrom);
     if (params?.updatedTo) qs.set('updatedTo', params.updatedTo);
+    if (params?.sortBy) qs.set('sortBy', params.sortBy);
+    if (params?.sortDir) qs.set('sortDir', params.sortDir);
     const query = qs.toString();
     return this.http.get<ApiResponse<ApplicationListDto>>(
       `/api/applications${query ? `?${query}` : ''}`,
