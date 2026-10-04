@@ -5,9 +5,6 @@ from typing import Optional, Any
 from shared.backend_client import (
     get_user, get_user_experiences, get_user_projects, get_user_skills,
 )
-from shared.tools.pdf_utils import get_chunks_from_text
-from shared.tools.rag_utils import retrieve_context_from_text
-from agents.search.schemas import SearchResultItem
 
 logger = logging.getLogger(__name__)
 
@@ -32,43 +29,6 @@ def _substr_match(a: str, b: str) -> bool:
     if not na or not nb:
         return False
     return na in nb or nb in na
-
-
-async def get_cv_text_chunks(user_id: str) -> list[str]:
-    experiences = await get_user_experiences(user_id)
-    projects = await get_user_projects(user_id)
-    skills = await get_user_skills(user_id)
-    text_parts = []
-    for exp in experiences:
-        text_parts.append(f"{exp.title} at {exp.company or 'Unknown'}")
-        if exp.description:
-            text_parts.append(exp.description)
-        for detail in exp.experienceDetails:
-            text_parts.append(f"{detail.title}: {detail.description or ''}")
-    for proj in projects:
-        text_parts.append(f"{proj.title} (Project)")
-        if proj.description:
-            text_parts.append(proj.description)
-    for skill in skills:
-        skill_text = skill.name
-        if skill.proficiency:
-            skill_text += f" ({skill.proficiency})"
-        text_parts.append(skill_text)
-    full_text = "\n".join(text_parts)
-    return get_chunks_from_text(full_text)
-
-
-async def search_similar_cv_content(
-    query: str, workflow_id: str, user_id: str, min_score: float = 0.20
-) -> list[SearchResultItem]:
-    context = await retrieve_context_from_text(query, workflow_id, user_id, min_score)
-    if not context:
-        return []
-    chunks = context.split("\n---\n")
-    return [
-        SearchResultItem(content=chunk.strip(), score=0.0, source="vector_search")
-        for chunk in chunks if chunk.strip()
-    ]
 
 
 async def match_candidate_profile(user_id: str, job_requirements: dict) -> dict[str, Any]:

@@ -18,9 +18,6 @@ class Settings(BaseSettings):
     OMNIROUTE_BASE_URL: str = "http://localhost:20128/v1"
     OMNIROUTE_API_KEY: str | None = None
     OMNIROUTE_MODEL: str = "auto/best-coding"
-    OMNIROUTE_EMBEDDING_MODEL: str = "together/mxbai-embed-large-v1"
-    # Local embedding model (sentence-transformers). Preferred over API providers.
-    LOCAL_EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
 
     # Per-provider default chat models (final fallback behind the live catalog).
     GROQ_MODEL: str = "llama-3.3-70b-versatile"

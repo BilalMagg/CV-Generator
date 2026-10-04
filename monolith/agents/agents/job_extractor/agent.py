@@ -3,8 +3,7 @@ from typing import Optional
 
 from shared.llm.fallback import ainvoke_with_fallback
 from shared.tools.json_utils import parse_llm_json
-from shared.tools.pdf_utils import extract_text_from_pdf_url, get_chunks_from_text
-from shared.tools.rag_utils import retrieve_context_from_pdf_url
+from shared.tools.pdf_utils import extract_text_from_pdf_url
 from agents.job_extractor.prompt import get_job_extractor_messages, JOB_EXTRACTOR_PROMPT
 from agents.job_extractor.schemas import JobExtractionResult
 
@@ -37,10 +36,7 @@ async def extract_job_from_url(url: str, language: str = "English", workflow_id:
 
 
 async def extract_job_from_text(text: str, language: str = "English", workflow_id: str = "", user_id: str = "", provider: Optional[str] = None, model: Optional[str] = None) -> JobExtractionResult:
-    context = None
-    if workflow_id and user_id:
-        context = await retrieve_context_from_pdf_url(text, workflow_id, user_id)
-    messages = get_job_extractor_messages(text, JOB_EXTRACTOR_PROMPT, context or "")
+    messages = get_job_extractor_messages(text, JOB_EXTRACTOR_PROMPT, "")
     _, content = await ainvoke_with_fallback(messages, preferred_provider=provider, model=model)
     return _parse_job_result(content)
 

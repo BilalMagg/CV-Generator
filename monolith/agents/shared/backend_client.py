@@ -159,27 +159,3 @@ async def get_project(project_id: UUID) -> ProjectResponse | None:
 async def get_workflow(workflow_id: UUID) -> WorkflowResponse:
     data = await _get(f"/api/workflows/{workflow_id}")
     return WorkflowResponse.model_validate(data)
-
-
-async def check_vectors_status(user_id: UUID) -> bool:
-    client = get_client()
-    response = await client.get(f"/api/vectors/status/{user_id}")
-    if response.status_code == 200:
-        return response.json().get("data", False)
-    return False
-
-
-async def sync_vectors(user_id: UUID, chunks: list) -> bool:
-    client = get_client()
-    payload = {"userId": str(user_id), "chunks": chunks}
-    response = await client.post("/api/vectors/sync", json=payload)
-    return response.status_code == 200
-
-
-async def search_vectors(user_id: UUID, query_text: str, query_vector: list, limit: int = 15) -> list:
-    client = get_client()
-    payload = {"userId": str(user_id), "queryText": query_text, "queryVector": query_vector, "limit": limit}
-    response = await client.post("/api/vectors/search", json=payload)
-    if response.status_code == 200:
-        return response.json().get("data", [])
-    return []

@@ -34,7 +34,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? Environment.GetEnvironmentVariable("CONNECTION_STRING")
     ?? "Host=localhost;Port=5432;Database=cv_monolith;Username=postgres;Password=postgres";
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString, o => o.UseVector()));
+    options.UseNpgsql(connectionString));
 
 // Auth
 var jwtAuthority = Environment.GetEnvironmentVariable("JWT_AUTHORITY")
@@ -111,7 +111,6 @@ builder.Services.AddScoped<IApplyPrepService, ApplyPrepService>();
 builder.Services.AddScoped<WorkflowExecutionService>();
 builder.Services.AddScoped<TemplateRenderService>();
 builder.Services.AddScoped<IBimeService, BimeService>();
-builder.Services.AddScoped<ISearchSyncService, SearchSyncService>();
 builder.Services.AddScoped<ILlmSettingsService, LlmSettingsService>();
 builder.Services.AddScoped<IAgentLlmSettingsService, AgentLlmSettingsService>();
 builder.Services.AddHttpClient("agents", c =>

@@ -6,7 +6,6 @@ from agents.contact.router import router as contact_router
 from agents.crawler.router import router as crawler_router
 from agents.apply_prep.router import router as apply_prep_router
 from agents.bime.router import router as bime_router
-from agents.embeddings.router import router as embeddings_router
 from agents.llm.router import router as llm_router
 from agents.pdf_thumbnails.router import router as pdf_thumbnails_router
 from agents.categorize.router import router as categorize_router
@@ -23,7 +22,6 @@ all_routers = [
     crawler_router,
     apply_prep_router,
     bime_router,
-    embeddings_router,
     llm_router,
     pdf_thumbnails_router,
     categorize_router,

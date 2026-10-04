@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Pgvector; // Required for pgvector support
 
 
 namespace CV_Generator.Models;
@@ -26,10 +25,6 @@ public class JobOffer
 
     [Required]
     public required string RawDescription { get; set; }
-
-    // Maps to pgvector extension in PostgreSQL
-    [Column(TypeName = "vector(1536)")]
-    public Vector? DescriptionVector { get; set; }
 
     public int? RequiredExperienceYears { get; set; }
 

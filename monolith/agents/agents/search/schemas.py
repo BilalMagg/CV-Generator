@@ -1,32 +1,4 @@
-from typing import Optional
 from pydantic import BaseModel
-
-
-class SearchRequest(BaseModel):
-    query: str
-    workflow_id: str
-    user_id: str
-    # Job description for similarity scoring
-    target_job_title: Optional[str] = None
-    target_job_description: Optional[str] = None
-    target_required_skills: Optional[list[str]] = None
-    target_preferred_skills: Optional[list[str]] = None
-
-
-class SearchResultItem(BaseModel):
-    content: str
-    score: float
-    source: str
-
-
-class SearchResponse(BaseModel):
-    results: list[SearchResultItem]
-    query: str
-
-
-class SimilarityScore(BaseModel):
-    score: float
-    explanation: str
 
 
 class ProfileMatchRequest(BaseModel):

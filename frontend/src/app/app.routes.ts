@@ -32,7 +32,6 @@ import { MyCvComponent } from './pages/my-cv/my-cv.component';
 import { AgentsHubComponent } from './pages/agents-hub/agents-hub.component';
 import { AgentGuideComponent } from './pages/agents-hub/agent-guide/agent-guide.component';
 import { JobExtractorWorkspaceComponent } from './pages/agents-hub/job-extractor-workspace/job-extractor-workspace.component';
-import { SearchAgentWorkspaceComponent } from './pages/agents-hub/search-agent-workspace/search-agent-workspace.component';
 import { TemplateAgentComponent } from './pages/agents-hub/template-agent/template-agent.component';
 import { ExtractionResultComponent } from './pages/agents-hub/extraction-result/extraction-result.component';
 import { AgentConfigComponent } from './pages/agents-hub/agent-config/agent-config.component';
@@ -89,7 +88,6 @@ export const routes: Routes = [
   },  { path: 'agents-hub', component: AgentsHubComponent, canActivate: [authGuard] },
   { path: 'agents-hub/guide/:id', component: AgentGuideComponent, canActivate: [authGuard] },
   { path: 'agents-hub/job-extractor', component: JobExtractorWorkspaceComponent, canActivate: [authGuard] },
-  { path: 'agents-hub/search-agent', component: SearchAgentWorkspaceComponent, canActivate: [authGuard] },
   { path: 'agents-hub/template-agent', component: TemplateAgentComponent, canActivate: [authGuard] },
   { path: 'agents-hub/job-extractor/result/:id', component: ExtractionResultComponent, canActivate: [authGuard] },
   { path: 'agents-hub/config', component: AgentConfigComponent, canActivate: [authGuard] },

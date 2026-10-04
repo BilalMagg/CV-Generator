@@ -15,38 +15,33 @@ public static class SearchSyncHelper
         ["AcademicActivity"] = "academicactivities",
     };
 
+    /// <summary>
+    /// Auto-categorize an entity after it changes (hybrid LLM + keyword tagging,
+    /// preserving manual tags). Embedding/vector sync was removed 2026-10-04 —
+    /// discovery is category-tree taxonomy based, so this now only maintains
+    /// category tags.
+    /// </summary>
     public static void TriggerSync(IServiceScopeFactory scopeFactory, Guid userId, ILogger logger, string source, Guid entityId = default)
     {
+        if (entityId == default ||
+            source.EndsWith(".Create", StringComparison.Ordinal) ||
+            !ScopeMap.TryGetValue(source.Split('.')[0], out var scopeName))
+        {
+            return;
+        }
+
         _ = Task.Run(async () =>
         {
             try
             {
                 using var scope = scopeFactory.CreateScope();
-                var syncService = scope.ServiceProvider.GetRequiredService<ISearchSyncService>();
-                await syncService.SyncUserAsync(userId);
-                logger.LogDebug("Search sync completed for user {UserId} after {Source}", userId, source);
-
-                // Hybrid category tagging (LLM + keyword), preserving any manual tags.
-                // Skipped on CREATE: the auto-categorizer was over-tagging unrelated facets
-                // (new extraction-derived project). Categories are set via the form instead.
-                if (entityId != default &&
-                    !source.EndsWith(".Create", StringComparison.Ordinal) &&
-                    ScopeMap.TryGetValue(source.Split('.')[0], out var scopeName))
-                {
-                    try
-                    {
-                        var categoryService = scope.ServiceProvider.GetRequiredService<ICategoryService>();
-                        await categoryService.CategorizeEntityAsync(userId, scopeName, entityId);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogWarning(ex, "Category tagging skipped for user {UserId} entity {Scope}/{EntityId}", userId, scopeName, entityId);
-                    }
-                }
+                var categoryService = scope.ServiceProvider.GetRequiredService<ICategoryService>();
+                await categoryService.CategorizeEntityAsync(userId, scopeName, entityId);
+                logger.LogDebug("Category tags updated for user {UserId} entity {Scope}/{EntityId} after {Source}", userId, scopeName, entityId, source);
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Search sync failed for user {UserId} after {Source}", userId, source);
+                logger.LogWarning(ex, "Category tagging skipped for user {UserId} entity {Scope}/{EntityId}", userId, scopeName, entityId);
             }
         });
     }
