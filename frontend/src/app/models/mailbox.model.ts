@@ -117,7 +117,15 @@ export interface SendEmailResult {
   sent: number;
   failed: number;
   total: number;
+  needsReauth?: boolean;
   loggedAttempt?: LoggedAttemptInfo | null;
+}
+
+export interface GmailStatusInfo {
+  connected: boolean;
+  needsReauth?: boolean;
+  email?: string;
+  connectedAt?: string;
 }
 
 export interface EmailHistoryResponse {

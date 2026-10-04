@@ -1,0 +1,49 @@
+<div class="company-field">
+  <input
+    type="text"
+    class="company-input"
+    [placeholder]="placeholder()"
+    [ngModel]="model()"
+    name="company"
+    autocomplete="off"
+    (ngModelChange)="onInput($event)"
+    (focus)="onFocus()"
+    (blur)="onBlur()" />
+
+  @if (open() && (searching() || matches().length > 0)) {
+    <div class="cd-dropdown">
+      @if (searching() && matches().length === 0) {
+        <div class="cd-hint"><i class="ti ti-loader"></i> Searching…</div>
+      }
+      @for (m of matches(); track m.id) {
+        <button type="button" class="cd-row" (mousedown)="$event.preventDefault()" (click)="pick(m)">
+          @if (m.logoUrl) {
+            <img class="cd-logo" [src]="m.logoUrl" alt="" (error)="$event.target.hidden = true" />
+          } @else {
+            <i class="ti ti-building"></i>
+          }
+          <span class="cd-name">{{ m.name }}</span>
+          <span class="cd-meta">{{ m.country || m.location || m.region || m.sector || '' }}</span>
+        </button>
+      }
+    </div>
+  }
+
+  @if (model().trim()) {
+    @if (status().exact; as c) {
+      <div class="cd-status existing">
+        @if (c.logoUrl) {
+          <img class="cd-status-logo" [src]="c.logoUrl" alt="" (error)="$event.target.hidden = true" />
+        } @else {
+          <i class="ti ti-building"></i>
+        }
+        <span><strong>{{ c.name }}</strong> · existing company</span>
+      </div>
+    } @else if (status().isNew) {
+      <div class="cd-status new">
+        <i class="ti ti-building-plus"></i>
+        <span>New company — will be added on save</span>
+      </div>
+    }
+  }
+</div>

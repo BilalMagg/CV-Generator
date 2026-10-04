@@ -28,6 +28,7 @@ import { MailboxService } from '@app/services/mailbox.service';
 import { CoverLetterDto, CoverLetterVersionDto, CvDocumentDto, CvVersionDto } from '@app/models/document.model';
 import { DocumentsService } from '@app/services/documents.service';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
+import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
 import { ConfirmService } from '@app/services/confirm.service';
 
 type AttemptForm = {
@@ -43,7 +44,7 @@ type AttemptForm = {
 @Component({
   selector: 'app-application-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RefreshButtonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, RefreshButtonComponent, CompanyFieldComponent],
   templateUrl: './application-detail.component.html',
   styleUrl: './application-detail.component.scss',
 })

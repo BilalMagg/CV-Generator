@@ -19,10 +19,13 @@ import {
   ApplyPrepFormRequest,
   ApplyPrepMessageRequest,
   FormResponseItem,
+  EmailDraftDto,
+  EmailDraftListItemDto,
 } from '@app/models/apply.model';
 import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
 import { EmailAttachmentPayload } from '@app/models/apply.model';
-import { CompanyService } from '@app/services/company.service';
+import { CompanyService, CompanyDto } from '@app/services/company.service';
+import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
 import {
   resolveTemplateVars,
   recipientGreeting,
@@ -57,7 +60,7 @@ const CRON_PRESETS: { label: string; cron: string }[] = [
 @Component({
   selector: 'app-apply-wizard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CronBuilderComponent],
+  imports: [CommonModule, FormsModule, RouterLink, CronBuilderComponent, CompanyFieldComponent],
   templateUrl: './apply-wizard.component.html',
   styleUrl: './apply-wizard.component.scss',
 })
@@ -137,6 +140,18 @@ export class ApplyWizardComponent implements OnInit {
   result = signal<ApplyEmailResult | null>(null);
   gmailConnected = signal(false);
   gmailEmail = signal('');
+  gmailNeedsReauth = signal(false);
+
+  // ── Reusable email drafts ───────────────────────────────────────────────────
+  drafts = signal<EmailDraftListItemDto[]>([]);
+  draftPickerOpen = signal(false);
+  selectedDraft = signal<EmailDraftDto | null>(null);
+  draftsLoading = signal(false);
+  draftsError = signal<string>('');
+  loadDraftBusy = signal(false);
+  saveDraftOpen = signal(false);
+  draftName = signal('');
+  savingDraft = signal(false);
 
   async ngOnInit() {
     this.history.set(await this.extractionSvc.getHistory('job-extractor').catch(() => []));
@@ -150,6 +165,7 @@ export class ApplyWizardComponent implements OnInit {
     try {
       const gmail = await this.mailboxSvc.getGmailStatus();
       this.gmailConnected.set(gmail.connected);
+      this.gmailNeedsReauth.set(gmail.needsReauth ?? false);
       if (gmail.email) this.gmailEmail.set(gmail.email);
     } catch { /* gmail status optional */ }
     await this.applyQueryParams();
@@ -230,6 +246,15 @@ export class ApplyWizardComponent implements OnInit {
       `I am writing to express my interest in the ${role} role at ${company}. ` +
       `Please find my CV attached. I would be glad to discuss how my background fits your needs.\n\n` +
       `Best regards,\n{{my_name}}`;
+  }
+
+  /** A saved company was picked from the suggestions — reflect it and, when empty,
+   *  seed the company description so {{company_description}} has real content. */
+  onCompanyPicked(c: CompanyDto) {
+    this.companyName = c.name;
+    if (!this.companyDescription.trim()) {
+      this.companyDescription = (c.description || c.sector || '').trim();
+    }
   }
 
   // ── Email templates: pick a saved template → fill values → live preview → apply ──
@@ -447,6 +472,150 @@ export class ApplyWizardComponent implements OnInit {
     this.attachmentFiles.update(list => list.filter((_, idx) => idx !== i));
   }
 
+  // ── Reusable email drafts (Save as draft / Load draft) ────────────────────────
+  async openDraftPicker() {
+    this.draftPickerOpen.set(true);
+    this.draftsError.set('');
+    this.draftsLoading.set(true);
+    try {
+      const res = await this.applySvc.listDrafts();
+      if (res.success) {
+        this.drafts.set(res.data ?? []);
+        if (res.data?.length) void this.selectDraft(res.data[0].id);
+      } else {
+        // Empty list from the API already means "no drafts" — show the empty state.
+        this.drafts.set([]);
+      }
+    } catch {
+      // A 404 (endpoint not yet deployed after a backend restart) or any list failure is
+      // treated as "no drafts yet" — the picker should never block on a scary raw HTTP error.
+      // Reopening re-fetches, so this self-heals once the backend route is live.
+      this.drafts.set([]);
+    } finally {
+      this.draftsLoading.set(false);
+    }
+  }
+
+  closeDraftPicker() {
+    this.draftPickerOpen.set(false);
+    this.selectedDraft.set(null);
+  }
+
+  async selectDraft(id: string) {
+    if (this.selectedDraft()?.id === id) return;
+    this.draftsError.set('');
+    try {
+      const res = await this.applySvc.getDraft(id);
+      if (res.success && res.data) this.selectedDraft.set(res.data);
+      else this.draftsError.set(res.message || 'Could not load that draft');
+    } catch {
+      this.draftsError.set('Could not load that draft — it may have been deleted.');
+    }
+  }
+
+  async deleteSelectedDraft() {
+    const d = this.selectedDraft();
+    if (!d) return;
+    const ok = await this.confirm.confirm({
+      title: 'Delete draft',
+      message: `Delete "${d.name}"? Its stored attachments will also be removed.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!ok) return;
+    try {
+      await this.applySvc.deleteDraft(d.id);
+      this.drafts.update(list => list.filter(x => x.id !== d.id));
+      this.selectedDraft.set(null);
+      this.toast.success('Draft deleted');
+    } catch (e: any) {
+      this.toast.error(e?.message || 'Failed to delete draft');
+    }
+  }
+
+  async loadDraft() {
+    const d = this.selectedDraft();
+    if (!d || this.loadDraftBusy()) return;
+    this.loadDraftBusy.set(true);
+    try {
+      this.companyName = d.companyName ?? '';
+      this.positionTitle = d.positionTitle ?? '';
+      this.companyDescription = d.companyDescription ?? '';
+      this.recipientEmail = d.recipientEmail ?? '';
+      this.recipientName = d.recipientName ?? '';
+      this.contactNotes = d.contactNotes ?? '';
+      this.subject = d.subject ?? '';
+      this.body = d.body ?? '';
+      this.prepMode.set('email');
+      this.selectedCvVersionId.set(d.cvVersionId ?? '');
+
+      // Rehydrate stored attachments back into File objects so they behave like fresh uploads.
+      const files: File[] = [];
+      for (let i = 0; i < d.attachments.length; i++) {
+        const att = d.attachments[i];
+        try {
+          const blob = await this.applySvc.getDraftAttachmentBlob(d.id, i);
+          files.push(new File([blob], att.fileName, { type: att.contentType || 'application/octet-stream' }));
+        } catch {
+          this.toast.error(`Could not restore attachment "${att.fileName}"`);
+        }
+      }
+      this.attachmentFiles.set(files);
+
+      this.error.set('');
+      this.closeDraftPicker();
+      this.step.set(3);
+      this.toast.success(`Draft "${d.name}" loaded — review it, then deliver.`);
+    } finally {
+      this.loadDraftBusy.set(false);
+    }
+  }
+
+  openSaveDraft() {
+    const base = this.companyName.trim() || 'Application';
+    this.draftName.set(`${base} — ${this.previewSubject() || this.subject || new Date().toLocaleDateString()}`);
+    this.saveDraftOpen.set(true);
+  }
+
+  closeSaveDraft() {
+    this.saveDraftOpen.set(false);
+  }
+
+  async saveDraftNow() {
+    if (this.savingDraft()) return;
+    this.savingDraft.set(true);
+    try {
+      const attachments: EmailAttachmentPayload[] = [];
+      for (const f of this.attachmentFiles()) {
+        const base64 = await this.fileToBase64(f);
+        attachments.push({ fileName: f.name, contentType: f.type || 'application/octet-stream', contentBase64: base64 });
+      }
+      const res = await this.applySvc.saveDraft({
+        name: this.draftName().trim(),
+        companyName: this.companyName.trim() || undefined,
+        positionTitle: this.positionTitle.trim() || undefined,
+        companyDescription: this.companyDescription.trim() || undefined,
+        recipientEmail: this.recipientEmail.trim() || undefined,
+        recipientName: this.recipientName.trim() || undefined,
+        contactNotes: this.contactNotes.trim() || undefined,
+        subject: this.subject.trim() || undefined,
+        body: this.body || undefined,
+        cvVersionId: this.selectedCvVersionId() || undefined,
+        attachments: attachments.length ? attachments : undefined,
+      });
+      if (res.success) {
+        this.closeSaveDraft();
+        this.toast.success('Draft saved — load it anytime from the Paste step');
+      } else {
+        this.toast.error(res.message || 'Failed to save draft');
+      }
+    } catch (e: any) {
+      this.toast.error(e?.message || 'Failed to save draft');
+    } finally {
+      this.savingDraft.set(false);
+    }
+  }
+
   private async ensureDocs() {
     if (this.docsLoaded) return;
     try {
@@ -485,7 +654,9 @@ export class ApplyWizardComponent implements OnInit {
     if (!this.subject.trim() || !this.body.trim()) { this.error.set('Subject and body are required'); return; }
 
     if (this.deliverMode() === 'now' && !this.gmailConnected()) {
-      this.error.set('Gmail is not connected. Connect Gmail in Mailbox → Settings, or choose Schedule instead.');
+      this.error.set(this.gmailNeedsReauth()
+        ? 'Gmail session expired — reconnect Gmail in Mailbox → Settings, or choose Schedule instead.'
+        : 'Gmail is not connected. Connect Gmail in Mailbox → Settings, or choose Schedule instead.');
       this.toast.error('Gmail not connected');
       return;
     }
@@ -532,9 +703,28 @@ export class ApplyWizardComponent implements OnInit {
         }
         return;
       }
+
+      // The email was not sent but the application + composed DRAFT attempt were persisted
+      // (e.g. Gmail disconnected/reauth). Keep the form intact and offer a recovery path.
+      if (res.data.sentNow === false && res.data.sendError) {
+        if (res.data.needsReauth) {
+          this.gmailNeedsReauth.set(true);
+          this.gmailConnected.set(false);
+        }
+        this.result.set(res.data);
+        this.step.set(4);
+        this.error.set(`Application saved with your email kept as a draft — ${res.data.sendError}`);
+        this.toast.error('Email not sent — application tracked, draft saved');
+        return;
+      }
+
       this.result.set(res.data);
       this.step.set(4);
     } catch (e: any) {
+      if (e?.message && /gmail/i.test(String(e.message))) {
+        this.gmailNeedsReauth.set(true);
+        this.gmailConnected.set(false);
+      }
       this.error.set(e?.message || 'Apply failed');
     } finally {
       this.submitting.set(false);

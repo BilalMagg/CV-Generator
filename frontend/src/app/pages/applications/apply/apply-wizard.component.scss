@@ -72,6 +72,9 @@
 .card.success { border-color: color-mix(in srgb, #16a34a 45%, transparent); }
 .card h3 { margin: 0 0 14px; font-size: 1.02rem; }
 .card.success h3 { color: #15803d; }
+.card.warn { border-color: color-mix(in srgb, #d97706 45%, transparent); }
+.card.warn h3 { color: #b45309; }
+.card.warn .warn-text { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 12px; font-size: 0.85rem; }
 
 label { display: block; font-size: 0.78rem; font-weight: 600; margin: 14px 0 5px; color: #4b5063; }
 textarea, input[type="text"], select {
@@ -360,3 +363,80 @@ textarea:focus, input[type="text"]:focus, select:focus {
   background: #f7f8fc;
 }
 .tpl-preview h4 { margin: 0 0 8px; font-size: 0.8rem; color: #4b5063; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Reusable draft save dialog + two-column draft picker */
+.draft-modal {
+  background: #fff;
+  color: #2a2f3c;
+  border-radius: 14px;
+  width: min(860px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(10, 12, 20, 0.35);
+}
+.draft-body {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+.draft-list {
+  border-right: 1px solid #eef0f6;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.draft-list h4, .draft-detail h4 { margin: 0 0 10px; font-size: 0.85rem; color: #4b5063; text-transform: uppercase; letter-spacing: 0.04em; }
+.draft-list-scroll {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.draft-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid #e5e8f2;
+  border-radius: 10px;
+  background: #fbfbfe;
+  color: #2a2f3c;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.draft-row:hover { border-color: #7aa3e6; background: #f4f7ff; }
+.draft-row.active { border-color: #2b6ed7; background: #eef4ff; }
+.draft-name { font-weight: 600; }
+.draft-company { font-size: 0.85rem; color: #2b6ed7; }
+.draft-sub { font-size: 0.8rem; color: #848aa0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.draft-date { font-size: 0.72rem; color: #a7abc0; }
+.draft-detail {
+  padding: 14px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.dd-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dd-head h4 { margin: 0; text-transform: none; letter-spacing: 0; font-size: 1rem; }
+.dd-grid { display: flex; flex-direction: column; border: 1px solid #eef0f6; border-radius: 10px; overflow: hidden; }
+.dd-row { display: grid; grid-template-columns: 140px 1fr; gap: 10px; padding: 8px 12px; font-size: 0.85rem; }
+.dd-row + .dd-row { border-top: 1px solid #eef0f6; }
+.dd-row span:first-child { color: #848aa0; }
+.dd-row span:last-child { color: #2a2f3c; word-break: break-word; }
+.dd-body, .dd-att { border: 1px solid #eef0f6; border-radius: 10px; padding: 10px 12px; }
+.dd-body h5, .dd-att h5 { margin: 0 0 6px; font-size: 0.75rem; color: #4b5063; text-transform: uppercase; letter-spacing: 0.04em; }
+.dd-body pre { margin: 0; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5; max-height: 220px; overflow-y: auto; }
+.dd-att ul { margin: 0; padding-left: 18px; font-size: 0.85rem; color: #4b5063; }
+.draft-err { color: #cf3a3a; font-size: 0.85rem; }

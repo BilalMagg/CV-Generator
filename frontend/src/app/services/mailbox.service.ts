@@ -4,7 +4,7 @@ import { ApiResponse } from '../models/application.model';
 import {
   EmailMessageDto, SendEmailDto, SendEmailResult, EmailHistoryResponse,
   EmailScheduleDto, CreateScheduleDto, UpdateScheduleDto, ScheduleHistoryResponse,
-  MailboxStatsDto, ScheduleAttachmentRef,
+  MailboxStatsDto, ScheduleAttachmentRef, GmailStatusInfo,
 } from '../models/mailbox.model';
 import {
   ScheduleTemplateDto, CreateScheduleTemplateDto, UpdateScheduleTemplateDto,
@@ -102,8 +102,8 @@ export class MailboxService {
     return this.http.post<ApiResponse<ApplyTemplateResultDto>>('/api/email-schedules/apply-template', dto);
   }
 
-  getGmailStatus(): Promise<{ connected: boolean; email?: string; connectedAt?: string }> {
-    return this.http.get<{ connected: boolean; email?: string; connectedAt?: string }>('/api/gmail/status');
+  getGmailStatus(): Promise<GmailStatusInfo> {
+    return this.http.get<GmailStatusInfo>('/api/gmail/status');
   }
 
   disconnectGmail(): Promise<void> {

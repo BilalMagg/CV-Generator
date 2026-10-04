@@ -223,6 +223,7 @@ export class MailboxComponent implements OnInit {
 
   gmailConnected = signal(false);
   gmailEmail = signal('');
+  gmailNeedsReauth = signal(false);
 
   // Compose aside
   asideTab = signal<'templates' | 'attachments'>('templates');
@@ -583,6 +584,7 @@ export class MailboxComponent implements OnInit {
     try {
       const res = await this.service.getGmailStatus();
       this.gmailConnected.set(res.connected);
+      this.gmailNeedsReauth.set(res.needsReauth ?? false);
       if (res.email) this.gmailEmail.set(res.email);
     } catch {}
   }
@@ -591,6 +593,7 @@ export class MailboxComponent implements OnInit {
     try {
       await this.service.disconnectGmail();
       this.gmailConnected.set(false);
+      this.gmailNeedsReauth.set(false);
       this.gmailEmail.set('');
     } catch {}
   }
@@ -800,6 +803,11 @@ export class MailboxComponent implements OnInit {
       };
       const res = await this.service.send(dto);
       if (res.success) {
+        if (res.data?.needsReauth) {
+          this.gmailConnected.set(false);
+          this.gmailNeedsReauth.set(true);
+          this.toast.error('Gmail session expired — reconnect Gmail in Settings');
+        }
         const to = recipients.length === 1
           ? (recipients[0].name || recipients[0].email)
           : `${recipients.length} recipients`;

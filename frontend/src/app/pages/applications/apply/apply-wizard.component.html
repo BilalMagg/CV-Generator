@@ -23,10 +23,11 @@
       <label>…or a URL</label>
       <input type="text" [(ngModel)]="inputUrl" placeholder="https://careers.example.com/role" />
 
-      <div class="row">
+      <div class="row between">
         <button class="btn primary" (click)="extract()" [disabled]="extracting()">
           {{ extracting() ? 'Extracting…' : 'Extract & organize' }}
         </button>
+        <button class="btn" (click)="openDraftPicker()">Load draft</button>
       </div>
 
       @if (history().length) {
@@ -87,7 +88,7 @@
       <div class="row">
         <div class="fld">
           <label>Company</label>
-          <input type="text" [(ngModel)]="companyName" />
+          <app-company-field [(model)]="companyName" (picked)="onCompanyPicked($event)" />
         </div>
         <div class="fld">
           <label>Position</label>
@@ -319,6 +320,8 @@
       <div class="gmail-note" [class.warn]="deliverMode() === 'now' && !gmailConnected()">
         @if (gmailConnected()) {
           Sending from <strong>{{ gmailEmail() }}</strong> via Gmail.
+        } @else if (gmailNeedsReauth()) {
+          Gmail session expired — reconnect it in Mailbox → Settings to send now, or pick Schedule.
         } @else if (deliverMode() === 'now') {
           Gmail is not connected — connect it in Mailbox → Settings to send now, or pick Schedule.
         } @else {
@@ -350,6 +353,7 @@
 
       <div class="row end">
         <button class="btn" (click)="step.set(3)">Back</button>
+        <button class="btn" (click)="openSaveDraft()">Save as draft</button>
         <button class="btn primary" (click)="submit()" [disabled]="submitting()">
           {{ submitting() ? 'Sending…' : (deliverMode() === 'schedule' ? 'Schedule application' : 'Send application') }}
         </button>
@@ -358,20 +362,38 @@
   }
 
   @if (step() === 4 && result()) {
-    <section class="card success">
-      <h3>{{ result()!.sentNow ? 'Application sent ✓' : 'Application scheduled ✓' }}</h3>
-      <p>
-        @if (result()!.sentNow) {
-          Your email was sent and logged as an attempt on the application.
-        } @else {
-          A scheduled email was created and a tracked application was saved (status: Saved).
-        }
-      </p>
-      <div class="row end">
-        <button class="btn" (click)="goApplications()">Open kanban</button>
-        <button class="btn primary" (click)="goDetail(result()!.applicationId)">View application</button>
-      </div>
-    </section>
+    @if (result()!.sendError) {
+      <section class="card warn">
+        <h3>Email not sent — draft saved</h3>
+        <p>
+          Your application was tracked (status: Saved) and the composed email (recipient,
+          subject, body) was kept as a <strong>draft attempt</strong> on it — nothing is lost.
+        </p>
+        <p class="warn-text">{{ result()!.sendError }}</p>
+        <div class="row end">
+          @if (result()!.needsReauth) {
+            <a class="btn" routerLink="/mailbox">Reconnect Gmail</a>
+          }
+          <button class="btn" (click)="goApplications()">Open kanban</button>
+          <button class="btn primary" (click)="goDetail(result()!.applicationId)">View application & retry</button>
+        </div>
+      </section>
+    } @else {
+      <section class="card success">
+        <h3>{{ result()!.sentNow ? 'Application sent ✓' : 'Application scheduled ✓' }}</h3>
+        <p>
+          @if (result()!.sentNow) {
+            Your email was sent and logged as an attempt on the application.
+          } @else {
+            A scheduled email was created and a tracked application was saved (status: Saved).
+          }
+        </p>
+        <div class="row end">
+          <button class="btn" (click)="goApplications()">Open kanban</button>
+          <button class="btn primary" (click)="goDetail(result()!.applicationId)">View application</button>
+        </div>
+      </section>
+    }
   }
 </div>
 
@@ -404,6 +426,109 @@
       <div class="tpl-modal-foot">
         <button class="btn" (click)="closeFillDialog()">Cancel</button>
         <button class="btn primary" [disabled]="!fillValid()" (click)="insertFilledTemplate()">Apply to email</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (saveDraftOpen()) {
+  <div class="tpl-overlay" (click)="closeSaveDraft()">
+    <div class="tpl-modal" (click)="$event.stopPropagation()">
+      <div class="tpl-modal-head">
+        <h3>Save as reusable draft</h3>
+        <button class="tpl-close" (click)="closeSaveDraft()">✕</button>
+      </div>
+      <div class="tpl-modal-body">
+        <div class="fld">
+          <label>Draft name</label>
+          <input type="text" [ngModel]="draftName()" (ngModelChange)="draftName.set($event)" placeholder="e.g. Capgemini — PFE application" />
+        </div>
+        <p class="hint">
+          Saves the recipient, subject, body, CV and attachments of the current email.
+          Load it anytime with <strong>Load draft</strong> on the Paste step.
+        </p>
+      </div>
+      <div class="tpl-modal-foot">
+        <button class="btn" (click)="closeSaveDraft()">Cancel</button>
+        <button class="btn primary" [disabled]="savingDraft() || !draftName().trim()" (click)="saveDraftNow()">
+          {{ savingDraft() ? 'Saving…' : 'Save draft' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (draftPickerOpen()) {
+  <div class="tpl-overlay" (click)="closeDraftPicker()">
+    <div class="draft-modal" (click)="$event.stopPropagation()">
+      <div class="tpl-modal-head">
+        <h3>Load a saved draft</h3>
+        <button class="tpl-close" (click)="closeDraftPicker()">✕</button>
+      </div>
+      <div class="draft-body">
+        <div class="draft-list">
+          <h4>Drafts {{ drafts().length ? '(' + drafts().length + ')' : '' }}</h4>
+          @if (draftsLoading()) {
+            <p class="hint">Loading drafts…</p>
+          } @else if (draftsError()) {
+            <p class="draft-err">{{ draftsError() }}</p>
+          } @else if (!drafts().length) {
+            <p class="hint">No saved drafts yet. Use <strong>Save as draft</strong> on the Deliver step to keep one.</p>
+          } @else {
+            <div class="draft-list-scroll">
+              @for (d of drafts(); track d.id) {
+                <button type="button" class="draft-row" [class.active]="selectedDraft()?.id === d.id" (click)="selectDraft(d.id)">
+                  <span class="draft-name">{{ d.name }}</span>
+                  <span class="draft-company">{{ d.companyName }}{{ d.positionTitle ? ' — ' + d.positionTitle : '' }}</span>
+                  <span class="draft-sub">{{ d.subject }}</span>
+                  <span class="draft-date">{{ d.updatedAt | date: 'medium' }}</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+        <div class="draft-detail">
+          @if (selectedDraft(); as d) {
+            <div class="dd-head">
+              <h4>{{ d.name }}</h4>
+              @if (d.hasCv) {
+                <span class="chip">CV: {{ d.cvTitle || 'selected version' }}</span>
+              }
+              @if (d.hasAttachments) {
+                <span class="chip">{{ d.attachments.length }} attachment(s)</span>
+              }
+            </div>
+            <div class="dd-grid">
+              <div class="dd-row"><span>Company</span><span>{{ d.companyName || '—' }}</span></div>
+              <div class="dd-row"><span>Position</span><span>{{ d.positionTitle || '—' }}</span></div>
+              <div class="dd-row"><span>Recipient email</span><span>{{ d.recipientEmail || '—' }}</span></div>
+              <div class="dd-row"><span>Recipient name</span><span>{{ d.recipientName || '—' }}</span></div>
+              <div class="dd-row"><span>Subject</span><span>{{ d.subject || '—' }}</span></div>
+            </div>
+            @if (d.body) {
+              <div class="dd-body">
+                <h5>Body</h5>
+                <pre>{{ d.body }}</pre>
+              </div>
+            }
+            @if (d.attachments.length) {
+              <div class="dd-att">
+                <h5>Attachments</h5>
+                <ul>
+                  @for (a of d.attachments; track a.objectKey) { <li>{{ a.fileName }} ({{ a.sizeBytes / 1024 | number: '1.0-0' }} KB)</li> }
+                </ul>
+              </div>
+            }
+            <div class="row end">
+              <button class="btn" (click)="deleteSelectedDraft()">Delete</button>
+              <button class="btn primary" (click)="loadDraft()" [disabled]="loadDraftBusy()">
+                {{ loadDraftBusy() ? 'Loading…' : 'Load into wizard' }}
+              </button>
+            </div>
+          } @else {
+            <p class="hint">Select a draft on the left to preview its content.</p>
+          }
+        </div>
       </div>
     </div>
   </div>

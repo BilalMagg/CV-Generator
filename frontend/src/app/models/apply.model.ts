@@ -97,12 +97,55 @@ export interface ApplyEmailResult {
   contactId: string;
   companyId: string;
   sentNow: boolean;
+  /** Set when the email was NOT sent but the application + draft attempt were persisted. */
+  sendError?: string;
+  /** True when the send failure requires a Gmail reconnect. */
+  needsReauth?: boolean;
 }
 
 export interface EmailAttachmentPayload {
   fileName: string;
   contentType: string;
   contentBase64: string;
+}
+
+// ── Reusable email drafts (Apply wizard "Save as draft" / "Load draft") ──────────
+
+export interface EmailDraftListItemDto {
+  id: string;
+  name: string;
+  companyName?: string | null;
+  positionTitle?: string | null;
+  recipientEmail?: string | null;
+  subject?: string | null;
+  updatedAt: string;
+}
+
+export interface EmailDraftDto extends EmailDraftListItemDto {
+  companyDescription?: string | null;
+  recipientName?: string | null;
+  contactNotes?: string | null;
+  body?: string | null;
+  cvVersionId?: string | null;
+  cvTitle?: string | null;
+  attachments: ScheduleAttachmentRef[];
+  hasCv: boolean;
+  hasAttachments: boolean;
+  createdAt: string;
+}
+
+export interface SaveEmailDraftDto {
+  name: string;
+  companyName?: string;
+  positionTitle?: string;
+  companyDescription?: string;
+  recipientEmail?: string;
+  recipientName?: string;
+  contactNotes?: string;
+  subject?: string;
+  body?: string;
+  cvVersionId?: string;
+  attachments?: EmailAttachmentPayload[];
 }
 
 // ── Apply Prep (form answers + direct messages) ────────────────────────────────

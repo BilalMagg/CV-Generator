@@ -42,6 +42,13 @@
     </div>
   </div>
 
+  @if (gmailNeedsReauth() && !loading()) {
+    <div class="gmail-reauth-banner">
+      <span>Your Gmail session expired ({{ gmailEmail() || 'connected account' }}). Reconnect to keep sending emails and firing schedules.</span>
+      <a class="btn primary btn-sm" href="/api/gmail/connect">Reconnect Gmail</a>
+    </div>
+  }
+
   @if (loading()) {
     <div class="mb-loading">Loading mailbox…</div>
   } @else {
@@ -765,18 +772,24 @@
             <div class="settings-provider-info">
               <img src="/providers/gmail.svg" alt="Gmail" width="24" height="24" />
               <div>
-                <div class="settings-provider-name">Gmail</div>
-                <div class="settings-provider-status">{{ gmailConnected() ? gmailEmail() : 'Not connected' }}</div>
+<div class="settings-provider-name">Gmail</div>
+                  <div class="settings-provider-status">
+                    @if (gmailNeedsReauth()) { Session expired — reconnect }
+                    @else if (gmailConnected()) { {{ gmailEmail() }} }
+                    @else { 'Not connected' }
+                  </div>
+                </div>
               </div>
-            </div>
-            @if (gmailConnected()) {
-              <div class="settings-provider-connected">
-                <span class="connected-badge">Connected</span>
-                <button class="mb-btn-secondary danger" (click)="disconnectGmail()">Disconnect</button>
-              </div>
-            } @else {
-              <a class="mb-btn-secondary" href="/api/gmail/connect">Connect Gmail</a>
-            }
+              @if (gmailNeedsReauth()) {
+                <a class="mb-btn-secondary danger" href="/api/gmail/connect">Reconnect Gmail</a>
+              } @else if (gmailConnected()) {
+                <div class="settings-provider-connected">
+                  <span class="connected-badge">Connected</span>
+                  <button class="mb-btn-secondary danger" (click)="disconnectGmail()">Disconnect</button>
+                </div>
+              } @else {
+                <a class="mb-btn-secondary" href="/api/gmail/connect">Connect Gmail</a>
+              }
           </div>
         </div>
       </div>
