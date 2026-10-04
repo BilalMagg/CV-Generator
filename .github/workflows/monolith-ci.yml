@@ -1,0 +1,77 @@
+name: Monolith CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: monolith-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  NODE_VERSION: "22.x"
+  PYTHON_VERSION: "3.12"
+
+permissions:
+  contents: read
+
+jobs:
+
+  backend:
+    name: Backend + Gateway (.NET 10)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Build monolith backend
+        run: dotnet build monolith/backend/CV_Generator.sln -c Release --nologo
+      - name: Build gateway
+        run: dotnet build monolith/gateway/ApiGateway.csproj -c Release --nologo
+
+  agents:
+    name: Agents (Python sidecar)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install sidecar
+        run: pip install -e monolith/agents/
+      - name: Compile check
+        run: python -m compileall -q monolith/agents/
+      - name: Import smoke test
+        working-directory: monolith/agents
+        env:
+          OPENROUTER_API_KEY: "sk-dummy"
+          GROQ_API_KEY: "sk-dummy"
+          OPENAI_API_KEY: "sk-dummy"
+        run: python -c "import main; print('agents import OK:', len(main.app.routes), 'routes')"
+
+  frontend:
+    name: Frontend (Angular)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Run tests
+        run: npx ng test --no-watch
