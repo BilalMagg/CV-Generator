@@ -58,6 +58,8 @@ jobs:
   frontend:
     name: Frontend (Angular)
     runs-on: ubuntu-latest
+    env:
+      CYPRESS_INSTALL_BINARY: 0
     defaults:
       run:
         working-directory: frontend
