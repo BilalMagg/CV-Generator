@@ -12,4 +12,5 @@ public class GmailConnectionStatus
 {
     public string Email { get; set; } = string.Empty;
     public DateTime ConnectedAt { get; set; }
+    public bool NeedsReauth { get; set; }
 }

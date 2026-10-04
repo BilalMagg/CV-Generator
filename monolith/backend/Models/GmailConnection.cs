@@ -10,4 +10,7 @@ public class GmailConnection
     public DateTime TokenExpiresAt { get; set; }
     public DateTime ConnectedAt { get; set; } = DateTime.UtcNow;
     public bool IsRevoked { get; set; }
+    public bool NeedsReauth { get; set; }
+    public DateTime? LastTokenErrorAt { get; set; }
+    public string? LastTokenError { get; set; }
 }

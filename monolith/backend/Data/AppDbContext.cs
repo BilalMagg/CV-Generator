@@ -60,6 +60,7 @@ public class AppDbContext : DbContext
     public DbSet<UserImage> UserImages => Set<UserImage>();
     public DbSet<CoverLetter> CoverLetters => Set<CoverLetter>();
     public DbSet<CoverLetterVersion> CoverLetterVersions => Set<CoverLetterVersion>();
+    public DbSet<EmailDraft> EmailDrafts => Set<EmailDraft>();
     public DbSet<SavedToolContent> SavedToolContent => Set<SavedToolContent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

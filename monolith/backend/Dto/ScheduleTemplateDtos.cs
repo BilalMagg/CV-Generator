@@ -134,4 +134,11 @@ public class ApplyEmailResult
     public Guid ContactId { get; set; }
     public Guid CompanyId { get; set; }
     public bool SentNow { get; set; }
+
+    /// <summary>Set when the email could not be sent but the application + DRAFT attempt were
+    /// persisted — lets the client offer a reconnect/retry without losing the composition.</summary>
+    public string? SendError { get; set; }
+
+    /// <summary>True when the send failure was a Gmail token rejection requiring a reconnect.</summary>
+    public bool NeedsReauth { get; set; }
 }

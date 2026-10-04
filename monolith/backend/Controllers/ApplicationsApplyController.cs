@@ -43,6 +43,10 @@ public class ApplicationsApplyController : ControllerBase
         {
             return Conflict(ApiResponse<ApplyEmailResult>.Error("Duplicate application", ex.Payload));
         }
+        catch (GmailReauthRequiredException ex)
+        {
+            return StatusCode(502, ApiResponse<ApplyEmailResult>.Error(ex.Message));
+        }
         catch (InvalidOperationException ex) when (ex.Message.Contains("Gmail"))
         {
             return StatusCode(502, ApiResponse<ApplyEmailResult>.Error("Gmail is not connected: " + ex.Message));

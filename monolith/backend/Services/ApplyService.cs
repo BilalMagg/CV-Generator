@@ -121,6 +121,21 @@ public class ApplyService
         // Send now
         var (cvPdfUrl, cvTitle) = await ResolveCvPdfUrlAsync(dto.CvVersionId);
         cvPdfUrl = await SkipDuplicateCvAsync(cvPdfUrl, dto.Attachments);
+
+        // Persist the composed email as a DRAFT attempt BEFORE attempting the send, so the
+        // content (subject/body/recipient/CV) survives a failed send — the user can retry
+        // from the application later instead of re-composing everything.
+        var draftAttempt = await _applications.CreateAttemptAsync(app.Id, new CreateAttemptDto(
+            Channel: "EMAIL_GMAIL",
+            InitiatedBy: "USER",
+            Status: "DRAFT",
+            Subject: subject,
+            Body: body,
+            ContactId: contact.Id,
+            CvVersionId: dto.CvVersionId,
+            SentAt: null
+        ), userId);
+
         try
         {
             var (messageId, threadId) = await _gmail.SendWithAttachmentAsync(
@@ -153,14 +168,10 @@ public class ApplyService
             });
             await _db.SaveChangesAsync();
 
-            var attempt = await _applications.CreateAttemptAsync(app.Id, new CreateAttemptDto(
-                Channel: "EMAIL_GMAIL",
-                InitiatedBy: "USER",
+            // Turn the DRAFT into the SENT attempt — this also runs the SAVED → APPLIED
+            // transition, AppliedAt backfill and status-history entry (UpdateAttemptAsync).
+            var attempt = await _applications.UpdateAttemptAsync(app.Id, draftAttempt.Id, new UpdateAttemptDto(
                 Status: "SENT",
-                Subject: subject,
-                Body: body,
-                ContactId: contact.Id,
-                CvVersionId: dto.CvVersionId,
                 ChannelMetadataJson: (messageId ?? threadId) is not null
                     ? JsonSerializer.Serialize(new { messageId, threadId })
                     : null,
@@ -170,7 +181,7 @@ public class ApplyService
             return new ApplyEmailResult
             {
                 ApplicationId = app.Id,
-                AttemptId = attempt.Id,
+                AttemptId = attempt?.Id,
                 ContactId = contact.Id,
                 CompanyId = company.Id,
                 SentNow = true
@@ -179,7 +190,32 @@ public class ApplyService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Apply wizard send failed for application {App}", app.Id);
-            throw;
+
+            // Keep the DRAFT attempt so the composition is never lost, and return a structured
+            // partial result instead of a raw 500 — the client can offer a reconnect/retry.
+            try
+            {
+                await _applications.UpdateAttemptAsync(app.Id, draftAttempt.Id, new UpdateAttemptDto(
+                    FailureReason: ex.Message
+                ), userId);
+            }
+            catch (Exception logEx)
+            {
+                _logger.LogWarning(logEx, "Failed to record failure reason on draft attempt for application {App}", app.Id);
+            }
+
+            return new ApplyEmailResult
+            {
+                ApplicationId = app.Id,
+                AttemptId = draftAttempt.Id,
+                ContactId = contact.Id,
+                CompanyId = company.Id,
+                SentNow = false,
+                SendError = ex is GmailReauthRequiredException
+                    ? ex.Message
+                    : $"Email not sent: {ex.Message}",
+                NeedsReauth = ex is GmailReauthRequiredException
+            };
         }
     }
 

@@ -20,6 +20,7 @@ public class GmailAuthService : IGmailAuthService
 
     private readonly AppDbContext _db;
     private readonly IAesEncryptionService _aes;
+    private readonly IGmailTokenRefresher _tokenRefresher;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<GmailAuthService> _logger;
     private readonly string _clientId;
@@ -29,12 +30,14 @@ public class GmailAuthService : IGmailAuthService
     public GmailAuthService(
         AppDbContext db,
         IAesEncryptionService aes,
+        IGmailTokenRefresher tokenRefresher,
         IHttpClientFactory httpClientFactory,
         IConfiguration config,
         ILogger<GmailAuthService> logger)
     {
         _db = db;
         _aes = aes;
+        _tokenRefresher = tokenRefresher;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _clientId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID")
@@ -110,10 +113,32 @@ public class GmailAuthService : IGmailAuthService
 
         if (connection is null) return null;
 
+        var needsReauth = connection.NeedsReauth;
+
+        if (!needsReauth)
+        {
+            try
+            {
+                // Opportunistically refresh an expiring token so the UI can report
+                // the real connection health (a dead refresh token flips NeedsReauth).
+                await _tokenRefresher.EnsureFreshAsync(connection);
+            }
+            catch (GmailReauthRequiredException)
+            {
+                needsReauth = true;
+            }
+            catch (Exception ex)
+            {
+                // Transient (network/5xx) — the current token may still work for sends.
+                _logger.LogWarning(ex, "Gmail status check refresh failed transiently for user {UserId}", userId);
+            }
+        }
+
         return new GmailConnectionStatus
         {
             Email = connection.GmailAddress,
-            ConnectedAt = connection.ConnectedAt
+            ConnectedAt = connection.ConnectedAt,
+            NeedsReauth = needsReauth
         };
     }
 

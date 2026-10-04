@@ -269,6 +269,7 @@ public class MailboxController : BaseApiController
 
         var sent = 0;
         var failed = 0;
+        bool reauthRequired = false;
         string? firstMessageId = null;
         string? firstThreadId = null;
         Contact? firstSentContact = null;
@@ -307,6 +308,31 @@ public class MailboxController : BaseApiController
                         : null
                 });
                 sent++;
+            }
+            catch (GmailReauthRequiredException ex)
+            {
+                // The stored Gmail token is dead — stop sending to the remaining
+                // recipients and tell the frontend to prompt for a reconnect.
+                _logger.LogWarning(ex, "Gmail re-auth required while sending to {Email} for user {UserId}",
+                    contact.Email, userId);
+                reauthRequired = true;
+
+                _db.Set<EmailMessage>().Add(new EmailMessage
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    ContactId = contact.Id,
+                    FromEmail = fromEmail,
+                    ToEmail = contact.Email,
+                    ToName = contact.Name,
+                    Subject = dto.Subject,
+                    Body = dto.Body,
+                    Status = "failed",
+                    Error = ex.Message,
+                    Provider = provider
+                });
+                failed++;
+                break;
             }
             catch (Exception ex)
             {
@@ -372,7 +398,7 @@ public class MailboxController : BaseApiController
             }
         }
 
-        return Ok(ApiResponse<object>.Ok(new { sent, failed, total = contacts.Count, loggedAttempt }));
+        return Ok(ApiResponse<object>.Ok(new { sent, failed, total = contacts.Count, needsReauth = reauthRequired, loggedAttempt }));
     }
 
     [HttpGet("stats")]

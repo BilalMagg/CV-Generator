@@ -279,6 +279,14 @@ public class EmailScheduleService
             return (-1, 0);
         }
 
+        if (connection.NeedsReauth)
+        {
+            _logger.LogWarning(
+                "Schedule {Name} ({Id}) for user {UserId} is due but the Gmail token needs re-auth — leaving for next tick",
+                schedule.Name, schedule.Id, userId);
+            return (-1, 0);
+        }
+
         if (contacts.Count == 0)
         {
             _logger.LogWarning("Schedule {Name} ({Id}) has no valid recipients — parking it", schedule.Name, schedule.Id);
@@ -294,6 +302,7 @@ public class EmailScheduleService
         cvPdfUrl = await SkipDuplicateCvAsync(cvPdfUrl, extraAttachments);
 
         int sent = 0, failed = 0;
+        bool reauthPaused = false;
 
         foreach (var contact in contacts)
         {
@@ -341,6 +350,30 @@ public class EmailScheduleService
 
                 sent++;
             }
+            catch (GmailReauthRequiredException ex)
+            {
+                _logger.LogWarning(ex, "Scheduled email to {Email} (schedule {Id}) paused: Gmail needs re-auth",
+                    contact.Email, schedule.Id);
+
+                _db.Set<EmailMessage>().Add(new EmailMessage
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    ScheduleId = schedule.Id,
+                    ContactId = contact.Id,
+                    FromEmail = connection.GmailAddress,
+                    ToEmail = contact.Email,
+                    ToName = contact.Name,
+                    Subject = schedule.Subject,
+                    Body = schedule.Body,
+                    Status = "failed",
+                    Error = ex.Message,
+                    Provider = "gmail"
+                });
+                failed++;
+                reauthPaused = true;
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Scheduled email to {Email} (schedule {Id}) failed", contact.Email, schedule.Id);
@@ -362,6 +395,16 @@ public class EmailScheduleService
                 });
                 failed++;
             }
+        }
+
+        if (reauthPaused)
+        {
+            // Don't advance the cron: once the user reconnects Gmail the next tick will retry.
+            await _db.SaveChangesAsync();
+            _logger.LogInformation(
+                "Schedule {Name} ({Id}) paused: {Sent} sent / {Failed} failed; will retry after Gmail re-auth",
+                schedule.Name, schedule.Id, sent, failed);
+            return (sent, failed);
         }
 
         schedule.LastRunAt = now;

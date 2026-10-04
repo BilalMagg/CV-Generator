@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Auth.OAuth2.Responses;
@@ -18,6 +16,7 @@ public class GmailSendService : IGmailSendService
 {
     private readonly AppDbContext _db;
     private readonly IAesEncryptionService _aes;
+    private readonly IGmailTokenRefresher _tokenRefresher;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<GmailSendService> _logger;
     private readonly string _clientId;
@@ -26,11 +25,13 @@ public class GmailSendService : IGmailSendService
     public GmailSendService(
         AppDbContext db,
         IAesEncryptionService aes,
+        IGmailTokenRefresher tokenRefresher,
         IHttpClientFactory httpClientFactory,
         ILogger<GmailSendService> logger)
     {
         _db = db;
         _aes = aes;
+        _tokenRefresher = tokenRefresher;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
 
@@ -52,7 +53,9 @@ public class GmailSendService : IGmailSendService
             throw new InvalidOperationException("Gmail not connected for user");
         }
 
-        var credential = await BuildCredentialAsync(connection);
+        await _tokenRefresher.EnsureFreshAsync(connection);
+
+        var credential = BuildCredential(connection);
 
         var gmailService = new GmailService(new BaseClientService.Initializer
         {
@@ -112,7 +115,21 @@ public class GmailSendService : IGmailSendService
 
         var gmailMessage = new Message { Raw = raw };
 
-        var sent = await gmailService.Users.Messages.Send(gmailMessage, "me").ExecuteAsync();
+        Message sent;
+        try
+        {
+            sent = await gmailService.Users.Messages.Send(gmailMessage, "me").ExecuteAsync();
+        }
+        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            // The access token died between refresh and send (expired/revoked mid-compose).
+            _logger.LogWarning(ex, "Gmail send rejected with 401 for user {UserId} — re-auth required", userId);
+            throw new GmailReauthRequiredException();
+        }
+        catch (Google.GoogleApiException ex)
+        {
+            throw new InvalidOperationException($"Gmail send failed: {ex.Message}", ex);
+        }
 
         _logger.LogInformation(
             "Gmail sent via {From} to {To} | Subject: {Subject} | Attached: {HasPdf} | MessageId: {MessageId}",
@@ -121,8 +138,7 @@ public class GmailSendService : IGmailSendService
         return (sent.Id, sent.ThreadId);
     }
 
-    private async Task<UserCredential> BuildCredentialAsync(
-        GmailConnection connection)
+    private UserCredential BuildCredential(GmailConnection connection)
     {
         var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
         {
@@ -142,27 +158,7 @@ public class GmailSendService : IGmailSendService
             IssuedUtc = DateTime.UtcNow
         };
 
-        var userIdStr = connection.UserId.ToString();
-        var credential = new UserCredential(flow, userIdStr, tokenResponse);
-
-        if (DateTime.UtcNow >= connection.TokenExpiresAt.AddMinutes(-5))
-        {
-            _logger.LogInformation("Refreshing expired Gmail token for user {UserId}", connection.UserId);
-            if (!await credential.RefreshTokenAsync(CancellationToken.None))
-            {
-                throw new InvalidOperationException("Failed to refresh Gmail token");
-            }
-
-            connection.EncryptedAccessToken = _aes.Encrypt(credential.Token.AccessToken);
-            connection.EncryptedRefreshToken = _aes.Encrypt(credential.Token.RefreshToken);
-            connection.TokenExpiresAt = DateTime.UtcNow.AddSeconds(
-                credential.Token.ExpiresInSeconds ?? 3600);
-            await _db.SaveChangesAsync();
-
-            _logger.LogInformation("Gmail token refreshed and stored for user {UserId}", connection.UserId);
-        }
-
-        return credential;
+        return new UserCredential(flow, connection.UserId.ToString(), tokenResponse);
     }
 
     /// <summary>

@@ -95,6 +95,7 @@ builder.Services.AddHttpClient<IApplyPrepClient, ApplyPrepClient>(c =>
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAesEncryptionService, AesEncryptionService>();
 builder.Services.AddScoped<IGmailAuthService, GmailAuthService>();
+builder.Services.AddScoped<IGmailTokenRefresher, GmailTokenRefresher>();
 builder.Services.AddScoped<IGmailSendService, GmailSendService>();
 builder.Services.AddScoped<ITemplateRenderer, TemplateRenderer>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -105,6 +106,7 @@ builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<EmailScheduleService>();
 builder.Services.AddScoped<ScheduleTemplateService>();
 builder.Services.AddScoped<ApplyService>();
+builder.Services.AddScoped<EmailDraftService>();
 builder.Services.AddScoped<IApplyPrepService, ApplyPrepService>();
 builder.Services.AddScoped<WorkflowExecutionService>();
 builder.Services.AddScoped<TemplateRenderService>();

@@ -38,8 +38,14 @@ public class GmailController : BaseApiController
     {
         var userId = GetUserId();
         var status = await _gmailAuthSvc.GetStatusAsync(userId);
-        if (status is null) return Ok(new { connected = false });
-        return Ok(new { connected = true, email = status.Email, connectedAt = status.ConnectedAt });
+        if (status is null) return Ok(new { connected = false, needsReauth = false });
+        return Ok(new
+        {
+            connected = !status.NeedsReauth,
+            needsReauth = status.NeedsReauth,
+            email = status.Email,
+            connectedAt = status.ConnectedAt
+        });
     }
 
     [HttpDelete("disconnect")]
