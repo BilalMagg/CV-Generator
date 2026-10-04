@@ -68,6 +68,13 @@ h2 {
   margin-bottom: 10px;
 }
 
+.login-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+
 .input-field {
   background: var(--surface-2);
   max-width: 380px;

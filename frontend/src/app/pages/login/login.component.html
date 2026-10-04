@@ -5,6 +5,7 @@
       <!-- Sign In / Reset Password -->
       @if (!resetVisible()) {
       <form class="sign-in-form" (ngSubmit)="onSignIn()" #signInForm="ngForm">
+        <img class="login-logo" src="/propel/propel_logo_no_bg.png" alt="Propel" />
         <h2>Sign in</h2>
 
         @if (signInError()) {
@@ -65,6 +66,7 @@
       } @else {
       <!-- Reset Password -->
       <form class="sign-in-form" (ngSubmit)="onResetPassword()" #resetForm="ngForm">
+        <img class="login-logo" src="/propel/propel_logo_no_bg.png" alt="Propel" />
         <h2>Reset Password</h2>
         <p class="reset-subtitle">Enter your email and a new password.</p>
 
@@ -126,6 +128,7 @@
 
       <!-- Sign Up -->
       <form class="sign-up-form" (ngSubmit)="onSignUp()" #signUpForm="ngForm">
+        <img class="login-logo" src="/propel/propel_logo_no_bg.png" alt="Propel" />
         <h2>Sign Up</h2>
 
         @if (signUpError()) {

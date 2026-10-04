@@ -25,15 +25,10 @@
   gap: 9px;
 }
 
-.nav-logo-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: oklch(0.18 0.01 80);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
+.nav-logo-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
