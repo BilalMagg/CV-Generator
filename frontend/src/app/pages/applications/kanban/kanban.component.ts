@@ -73,7 +73,9 @@ export class KanbanComponent implements OnInit {
         const all = res.data.items;
         this.columns.set(COLUMNS.map(col => ({
           ...col,
-          items: all.filter(a => a.status === col.status),
+          items: all
+            .filter(a => a.status === col.status)
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
         })));
       }
     } catch { } finally { this.loading.set(false); this.refreshing.set(false); }
