@@ -53,6 +53,7 @@ export class SidebarComponent {
     { label: 'Generate CV',  route: '/applications/generate',  icon: 'sparkle',   exact: false, accent: true, group: 'main' },
     { label: 'Applications', route: '/applications/kanban',    icon: 'kanban',    exact: false, group: 'main' },
     { label: 'Apply',        route: '/applications/apply',      icon: 'send',      exact: false, accent: true, group: 'main' },
+    { label: 'Bulk Apply',   route: '/applications/bulk-apply', icon: 'layers',    exact: false, group: 'main' },
     { label: 'Analytics',    route: '/applications/analytics', icon: 'analytics', exact: false, group: 'main' },
     { label: 'Calendar',     route: '/applications/calendar',  icon: 'calendar',  exact: false, group: 'main' },
   ];

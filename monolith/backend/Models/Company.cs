@@ -42,6 +42,10 @@ public class Company
     [MaxLength(100)]
     public string? Size { get; set; }
 
+    /// <summary>Comma-separated areas of activity / recruitment specialties (e.g. "Data Science, Software").</summary>
+    [MaxLength(500)]
+    public string? Specialties { get; set; }
+
     public Guid? LogoImageId { get; set; }
 
     [MaxLength(2000)]

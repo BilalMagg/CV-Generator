@@ -64,7 +64,7 @@ public class ApplyService
             JobOfferId: null,
             CompanyName: company.Name,
             PositionTitle: dto.PositionTitle.Trim(),
-            OfferSource: "job_post_apply",
+            OfferSource: string.IsNullOrWhiteSpace(dto.OfferSource) ? "job_post_apply" : dto.OfferSource.Trim(),
             Notes: null,
             Origin: "MANUAL",
             Status: "SAVED",

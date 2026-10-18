@@ -342,7 +342,10 @@
                   <option value="female">Female</option>
                 </select>
                 <input class="cd-input" placeholder="Email" [ngModel]="cdEditEmail()" (ngModelChange)="cdEditEmail.set($event)" />
-                <input class="cd-input" placeholder="Company" [ngModel]="cdEditCompany()" (ngModelChange)="cdEditCompany.set($event)" />
+                <app-company-field
+                  [(model)]="cdEditCompany"
+                  placeholder="Company"
+                  newCompanyHint="Not in your company list" />
                 <input class="cd-input" placeholder="Position" [ngModel]="cdEditPosition()" (ngModelChange)="cdEditPosition.set($event)" />
                 <input class="cd-input" placeholder="Phone" [ngModel]="cdEditPhone()" (ngModelChange)="cdEditPhone.set($event)" />
                 <input class="cd-input" placeholder="LinkedIn URL" [ngModel]="cdEditLinkedin()" (ngModelChange)="cdEditLinkedin.set($event)" />
@@ -434,7 +437,10 @@
                 <input placeholder="Mobile" [ngModel]="contactFormMobile()" (ngModelChange)="contactFormMobile.set($event)" />
                 <input placeholder="Fax" [ngModel]="contactFormFax()" (ngModelChange)="contactFormFax.set($event)" />
                 <input placeholder="Address" [ngModel]="contactFormAddress()" (ngModelChange)="contactFormAddress.set($event)" />
-                <input placeholder="Company" [ngModel]="contactFormCompany()" (ngModelChange)="contactFormCompany.set($event)" />
+                <app-company-field
+                  [(model)]="contactFormCompany"
+                  placeholder="Company"
+                  newCompanyHint="Not in your company list" />
                 <input placeholder="Position" [ngModel]="contactFormPosition()" (ngModelChange)="contactFormPosition.set($event)" />
                 <input placeholder="LinkedIn URL" [ngModel]="contactFormLinkedin()" (ngModelChange)="contactFormLinkedin.set($event)" />
               </div>

@@ -226,6 +226,115 @@ public class CompaniesController : BaseApiController
         return Ok(ApiResponse<List<ContactDto>>.Ok(contacts));
     }
 
+    // ── Portal/account credentials kept per company ────────────────────────────
+
+    [HttpGet("{id}/credentials")]
+    public async Task<IActionResult> GetCredentials(Guid id)
+    {
+        var userId = GetUserId();
+        var company = await _db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (company is null) return NotFound(ApiResponse<object>.Error("Company not found"));
+
+        var creds = await _db.CompanyCredentials.AsNoTracking()
+            .Where(x => x.CompanyId == id)
+            .OrderBy(x => x.Label)
+            .ThenBy(x => x.CreatedAt)
+            .ToListAsync();
+
+        return Ok(ApiResponse<List<CompanyCredentialDto>>.Ok(creds.Select(MapCredential).ToList()));
+    }
+
+    [HttpPost("{id}/credentials")]
+    public async Task<IActionResult> CreateCredential(Guid id, [FromBody] UpsertCompanyCredentialDto dto)
+    {
+        var userId = GetUserId();
+        var company = await _db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (company is null) return NotFound(ApiResponse<object>.Error("Company not found"));
+
+        if (ValidateCredential(dto) is { } error) return BadRequest(ApiResponse<object>.Error(error));
+
+        var cred = new CompanyCredential
+        {
+            CompanyId = id,
+            UserId = userId,
+            Label = Normalize(dto.Label) ?? "Account",
+            Url = Normalize(dto.Url),
+            Username = Normalize(dto.Username),
+            Password = dto.Password,
+            Notes = Normalize(dto.Notes)
+        };
+
+        _db.CompanyCredentials.Add(cred);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Credential saved for company {Company}", id);
+        return Ok(ApiResponse<CompanyCredentialDto>.Ok(MapCredential(cred)));
+    }
+
+    [HttpPut("{id}/credentials/{credId}")]
+    public async Task<IActionResult> UpdateCredential(Guid id, Guid credId, [FromBody] UpsertCompanyCredentialDto dto)
+    {
+        var userId = GetUserId();
+        var company = await _db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (company is null) return NotFound(ApiResponse<object>.Error("Company not found"));
+
+        var cred = await _db.CompanyCredentials
+            .FirstOrDefaultAsync(x => x.Id == credId && x.CompanyId == id);
+        if (cred is null) return NotFound(ApiResponse<object>.Error("Credential not found"));
+
+        if (ValidateCredential(dto) is { } error) return BadRequest(ApiResponse<object>.Error(error));
+
+        cred.Label = Normalize(dto.Label) ?? cred.Label;
+        cred.Url = Normalize(dto.Url);
+        cred.Username = Normalize(dto.Username);
+        cred.Password = dto.Password;
+        cred.Notes = Normalize(dto.Notes);
+        cred.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return Ok(ApiResponse<CompanyCredentialDto>.Ok(MapCredential(cred)));
+    }
+
+    [HttpDelete("{id}/credentials/{credId}")]
+    public async Task<IActionResult> DeleteCredential(Guid id, Guid credId)
+    {
+        var userId = GetUserId();
+        var company = await _db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        if (company is null) return NotFound(ApiResponse<object>.Error("Company not found"));
+
+        var cred = await _db.CompanyCredentials
+            .FirstOrDefaultAsync(x => x.Id == credId && x.CompanyId == id);
+        if (cred is null) return NotFound(ApiResponse<object>.Error("Credential not found"));
+
+        _db.CompanyCredentials.Remove(cred);
+        await _db.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new { }));
+    }
+
+    private static string? ValidateCredential(UpsertCompanyCredentialDto dto)
+    {
+        var hasContent = !string.IsNullOrWhiteSpace(dto.Label)
+            || !string.IsNullOrWhiteSpace(dto.Url)
+            || !string.IsNullOrWhiteSpace(dto.Username)
+            || !string.IsNullOrWhiteSpace(dto.Password)
+            || !string.IsNullOrWhiteSpace(dto.Notes);
+        if (!hasContent) return "Add at least a username, password or portal URL";
+
+        if (dto.Label?.Trim().Length > 200) return "Label cannot exceed 200 characters";
+        if (dto.Url?.Trim().Length > 500) return "Portal URL cannot exceed 500 characters";
+        if (dto.Username?.Trim().Length > 300) return "Username cannot exceed 300 characters";
+        if (dto.Password?.Length > 500) return "Password cannot exceed 500 characters";
+        if (dto.Notes?.Trim().Length > 2000) return "Notes cannot exceed 2000 characters";
+        return null;
+    }
+
+    private static string? Normalize(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCompanyDto dto)
     {
@@ -257,6 +366,7 @@ public class CompaniesController : BaseApiController
             FoundedYear = dto.FoundedYear,
             LinkedInUrl = dto.LinkedInUrl,
             Size = dto.Size,
+            Specialties = dto.Specialties,
             LogoImageId = dto.LogoImageId,
             LogoUrl = logo.LogoUrl,
             Note = dto.Note,
@@ -304,6 +414,7 @@ public class CompaniesController : BaseApiController
         if (dto.FoundedYear.HasValue) company.FoundedYear = dto.FoundedYear;
         if (dto.LinkedInUrl != null) company.LinkedInUrl = dto.LinkedInUrl;
         if (dto.Size != null) company.Size = dto.Size;
+        if (dto.Specialties != null) company.Specialties = dto.Specialties;
         if (dto.LogoUrl != null)
         {
             var logo = await ResolveLogoAsync(userId, dto.LogoImageId, dto.LogoUrl);
@@ -404,6 +515,7 @@ public class CompaniesController : BaseApiController
         FoundedYear = c.FoundedYear,
         LinkedInUrl = c.LinkedInUrl,
         Size = c.Size,
+        Specialties = c.Specialties,
         LogoImageId = c.LogoImageId,
         LogoUrl = c.LogoUrl,
         Note = c.Note,
@@ -418,5 +530,18 @@ public class CompaniesController : BaseApiController
         ResearchUpdatedAt = c.ResearchUpdatedAt,
         CreatedAt = c.CreatedAt,
         UpdatedAt = c.UpdatedAt
+    };
+
+    private static CompanyCredentialDto MapCredential(CompanyCredential x) => new()
+    {
+        Id = x.Id,
+        CompanyId = x.CompanyId,
+        Label = x.Label,
+        Url = x.Url,
+        Username = x.Username,
+        Password = x.Password,
+        Notes = x.Notes,
+        CreatedAt = x.CreatedAt,
+        UpdatedAt = x.UpdatedAt
     };
 }

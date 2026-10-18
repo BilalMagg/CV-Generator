@@ -16,6 +16,7 @@ import { ResumesComponent } from './pages/applications/resumes/resumes.component
 import { ApplicationDetailComponent } from './pages/applications/detail/application-detail.component';
 import { ApplicationCreateComponent } from './pages/applications/create/application-create.component';
 import { ApplyWizardComponent } from './pages/applications/apply/apply-wizard.component';
+import { BulkApplyComponent } from './pages/applications/bulk-apply/bulk-apply.component';
 import { SettingsLayoutComponent } from './pages/settings/settings-layout.component';
 import { NotificationsComponent } from './pages/settings/notifications.component';
 import { LlmSettingsComponent } from './pages/settings/llm-settings.component';
@@ -75,6 +76,7 @@ export const routes: Routes = [
   },
   { path: 'applications/new', component: ApplicationCreateComponent, canActivate: [authGuard] },
   { path: 'applications/apply', component: ApplyWizardComponent, canActivate: [authGuard] },
+  { path: 'applications/bulk-apply', component: BulkApplyComponent, canActivate: [authGuard] },
   { path: 'applications/:id', component: ApplicationDetailComponent, canActivate: [authGuard] },
   {
     path: 'settings',

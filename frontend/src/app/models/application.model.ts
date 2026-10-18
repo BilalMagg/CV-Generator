@@ -14,6 +14,16 @@ export type ApplicationOrigin = 'MANUAL' | 'FROM_JOB_OFFER' | 'AI_AGENT_AUTO_APP
 
 export type ApplicationPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 
+/** Predefined "Found via" / apply-source options (application.offerSource). */
+export const APPLY_SOURCES: string[] = [
+  'LinkedIn',
+  'Indeed',
+  'Referral',
+  'Company website',
+  'Forum',
+  'Other',
+];
+
 export type AttemptChannel =
   | 'EMAIL_GMAIL'
   | 'EMAIL_SMTP'

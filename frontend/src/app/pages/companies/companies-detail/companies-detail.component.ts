@@ -9,6 +9,7 @@ import { CompanyFormDialogComponent } from '@app/shared/components/company-form-
 import { ContactsExtractDialogComponent } from '@app/shared/components/contacts-extract-dialog/contacts-extract-dialog.component';
 import { ContactQuickActionsComponent } from '@app/shared/components/contact-quick-actions/contact-quick-actions.component';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
+import { CompanyCredentialsComponent } from '@app/shared/components/company-credentials/company-credentials.component';
 import {
   ApplicationResponseDto,
   StatusHistoryDto,
@@ -28,7 +29,7 @@ interface ActivityEntry { appId: string; position: string; entry: StatusHistoryD
 @Component({
   selector: 'app-companies-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CompanyFormDialogComponent, ContactsExtractDialogComponent, ContactQuickActionsComponent, RefreshButtonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, CompanyFormDialogComponent, ContactsExtractDialogComponent, ContactQuickActionsComponent, RefreshButtonComponent, CompanyCredentialsComponent],
   templateUrl: './companies-detail.component.html',
   styleUrl: './companies-detail.component.scss',
 })

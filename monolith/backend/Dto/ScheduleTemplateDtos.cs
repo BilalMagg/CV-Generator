@@ -119,6 +119,9 @@ public class ApplyEmailRequest
     public Guid? CvVersionId { get; set; }
     public List<EmailAttachmentDto>? Attachments { get; set; }
 
+    /// <summary>Where the application came from (shown as the source badge). Defaults to "job_post_apply".</summary>
+    public string? OfferSource { get; set; }
+
     /// <summary>When set, the email is scheduled (cron) instead of sent immediately.</summary>
     public string? ScheduleCron { get; set; }
     public string? ScheduleName { get; set; }

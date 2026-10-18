@@ -4,7 +4,7 @@
     class="company-input"
     [placeholder]="placeholder()"
     [ngModel]="model()"
-    name="company"
+    [name]="nameInput()"
     autocomplete="off"
     (ngModelChange)="onInput($event)"
     (focus)="onFocus()"
@@ -42,7 +42,7 @@
     } @else if (status().isNew) {
       <div class="cd-status new">
         <i class="ti ti-building-plus"></i>
-        <span>New company — will be added on save</span>
+        <span>{{ newCompanyHint() }}</span>
       </div>
     }
   }

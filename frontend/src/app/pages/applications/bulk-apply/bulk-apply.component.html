@@ -1,0 +1,298 @@
+<div class="bulk-page">
+  <header class="page-head">
+    <div>
+      <h1>Bulk Apply</h1>
+      <p class="sub">Paste a list of companies, generate tailored emails, and send them one by one.</p>
+    </div>
+  </header>
+
+  <!-- Stepper -->
+  <nav class="stepper">
+    <div class="step" [class.active]="step() === 1" [class.done]="step() > 1">
+      <span class="num">1</span><span class="lbl">Paste list</span>
+    </div>
+    <div class="sep"></div>
+    <div class="step" [class.active]="step() === 2" [class.done]="step() > 2">
+      <span class="num">2</span><span class="lbl">Review</span>
+    </div>
+    <div class="sep"></div>
+    <div class="step" [class.active]="step() === 3" [class.done]="step() > 3">
+      <span class="num">3</span><span class="lbl">Compose</span>
+    </div>
+    <div class="sep"></div>
+    <div class="step" [class.active]="step() === 4">
+      <span class="num">4</span><span class="lbl">Send</span>
+    </div>
+  </nav>
+
+  @if (error()) {
+    <div class="alert">{{ error() }}</div>
+  }
+
+  @if (gmailNeedsReauth() && step() < 4) {
+    <div class="alert warn">
+      Gmail session expired. Reconnect it in Mailbox → Settings before sending.
+    </div>
+  }
+
+  <!-- ── Step 1: Paste ─────────────────────────────────────────────────────── -->
+  @if (step() === 1) {
+    <section class="card">
+      <div class="card-head">
+        <h2>Paste your list</h2>
+        <p class="hint">
+          One block per company works best — company name on the first line, contact/email and
+          specialty labels below (e.g. <code>Email:</code>, <code>Spécialités:</code>). Plain
+          lines and numbered lists are also accepted.
+        </p>
+      </div>
+      <textarea
+        class="paste"
+        rows="14"
+        [(ngModel)]="pasteText"
+        [disabled]="extracting()"
+        placeholder="1. Capgemini Morocco&#10;   Email: rh@capgemini.ma&#10;   Spécialités: Cloud, Data&#10;&#10;2. Sopra Steria&#10;   Contact: Nadia&#10;   Email: recrutement@soprasteria.com"></textarea>
+
+      <div class="row end mt">
+        <button class="btn-ghost" (click)="pasteText = ''" [disabled]="extracting()">Clear</button>
+        <button class="btn-primary" (click)="extract()" [disabled]="extracting() || !pasteText.trim()">
+          {{ extracting() ? 'Extracting…' : 'Extract rows' }}
+        </button>
+      </div>
+    </section>
+  }
+
+  <!-- ── Step 2: Review ────────────────────────────────────────────────────── -->
+  @if (step() === 2) {
+    <section class="card">
+      <div class="card-head spread">
+        <div>
+          <h2>Review rows</h2>
+          <p class="hint">
+            {{ rows().length }} rows · {{ includedRows().length }} selected ·
+            {{ sendableRows().length }} with email
+            @if (extractMethod()) { · parsed by {{ extractMethod() }} }
+          </p>
+        </div>
+        <div class="row">
+          <button class="btn-ghost" (click)="addRow()">+ Add row</button>
+          <button class="btn-ghost" (click)="backToPaste()">Back</button>
+          <button class="btn-primary" (click)="goCompose()" [disabled]="!sendableRows().length">
+            Continue
+          </button>
+        </div>
+      </div>
+
+      @if (overCap()) {
+        <div class="alert warn">
+          {{ sendableRows().length }} rows selected — that is above the suggested batch size of
+          {{ defaultCap }}. Large batches take a while ({{ delaySeconds }}s between sends). Try
+          to keep it under {{ maxRows }} per run.
+        </div>
+      }
+
+      <div class="table-wrap">
+        <table class="rows">
+          <thead>
+            <tr>
+              <th class="c-check">
+                <input type="checkbox" [checked]="allIncluded()" (change)="toggleAll($any($event.target).checked)" />
+              </th>
+              <th>Company</th>
+              <th>Location</th>
+              <th>Specialty</th>
+              <th>Email</th>
+              <th>Contact</th>
+              <th class="c-act"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of rows(); trackBy: trackByKey" [class.excluded]="!r.include">
+              <td class="c-check">
+                <input type="checkbox" [checked]="r.include" (change)="toggleRow(r.key)" />
+              </td>
+              <td>
+                <input class="cell" [(ngModel)]="r.companyName" placeholder="Company name" />
+                @if (r.existingContact) { <span class="tag warn-tag">existing contact</span> }
+              </td>
+              <td><input class="cell" [(ngModel)]="r.location" placeholder="City" /></td>
+              <td><input class="cell" [(ngModel)]="r.specialty" placeholder="Specialty" /></td>
+              <td>
+                <input class="cell" [(ngModel)]="r.email" placeholder="email@company.com" />
+                @if (r.include && !r.email.trim()) { <span class="tag bad-tag">no email — will skip</span> }
+              </td>
+              <td><input class="cell" [(ngModel)]="r.contactName" placeholder="Recipient name" /></td>
+              <td class="c-act">
+                <button class="icon-btn" title="Remove row" (click)="removeRow(r.key)">✕</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <!-- ── Step 3: Compose ───────────────────────────────────────────────────── -->
+  @if (step() === 3) {
+    <section class="card">
+      <div class="card-head spread">
+        <div>
+          <h2>Compose the message</h2>
+          <p class="hint">Build one message for the whole batch — placeholders resolve per row.</p>
+        </div>
+        <div class="row">
+          <button class="btn-ghost" (click)="backToReview()">Back</button>
+        </div>
+      </div>
+
+      <div class="segmented">
+        <button [class.on]="composeMode() === 'template'" (click)="setComposeMode('template')">Use a template</button>
+        <button [class.on]="composeMode() === 'manual'" (click)="setComposeMode('manual')">Write manually</button>
+      </div>
+
+      @if (composeMode() === 'template') {
+        <div class="field">
+          <label>Template</label>
+          <select [ngModel]="selectedTemplateId()" (ngModelChange)="onTemplateChange($event)">
+            <option value="">— Select a saved template —</option>
+            <option *ngFor="let t of templates()" [value]="t.id">{{ t.name }}</option>
+          </select>
+          @if (!templates().length) {
+            <p class="hint">No saved templates yet. Create one in Mailbox → Templates, or write manually.</p>
+          }
+        </div>
+
+        @if (sharedVarFields().length) {
+          <div class="grid-2">
+            <div class="field" *ngFor="let f of sharedVarFields()">
+              <label>{{ f.label }}</label>
+              <input [value]="sharedVars()[f.token] || ''" (input)="setSharedVar(f.token, $any($event.target).value)"
+                     [placeholder]="f.hint || ''" />
+            </div>
+          </div>
+        }
+
+        <div class="row end mt">
+          <button class="btn-primary" (click)="applyTemplateToAll()" [disabled]="!selectedTemplateId()">
+            Apply to {{ includedRows().length }} rows
+          </button>
+        </div>
+      }
+
+      @if (composeMode() === 'manual') {
+        <div class="field">
+          <label>Subject</label>
+          <input [(ngModel)]="manualSubject" [placeholder]="subjectPlaceholder" />
+        </div>
+        <div class="field">
+          <label>Body</label>
+          <textarea rows="9" [(ngModel)]="manualBody" [placeholder]="bodyPlaceholder"></textarea>
+        </div>
+        <div class="row end mt">
+          <button class="btn-primary" (click)="applyManualToAll()" [disabled]="!manualSubject.trim() || !manualBody.trim()">
+            Apply to {{ includedRows().length }} rows
+          </button>
+        </div>
+      }
+
+      <div class="grid-2 mt">
+        <div class="field">
+          <label>Attach CV version</label>
+          <select [(ngModel)]="selectedCvVersionId">
+            <option value="">— None —</option>
+            <option *ngFor="let cv of cvOptions()" [value]="cv.id">{{ cv.label }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Delay between sends (seconds)</label>
+          <input type="number" min="0" max="120" [(ngModel)]="delaySeconds" />
+        </div>
+      </div>
+
+      <hr />
+
+      <div class="card-head spread">
+        <h3>Per-row preview</h3>
+        <span class="hint">{{ includedRows().length }} rows ready</span>
+      </div>
+
+      <div class="row-list">
+        <div class="row-item" *ngFor="let r of includedRows(); trackBy: trackByKey">
+          <div class="row-summary" (click)="toggleExpand(r.key)">
+            <span class="chev">{{ r.expanded ? '▾' : '▸' }}</span>
+            <span class="co">{{ r.companyName || '(no company)' }}</span>
+            <span class="em">{{ r.email || 'no email' }}</span>
+            <span class="subj">{{ r.subject || '— no message —' }}</span>
+          </div>
+          @if (r.expanded) {
+            <div class="row-edit">
+              <div class="field">
+                <label>Subject</label>
+                <input [(ngModel)]="r.subject" />
+              </div>
+              <div class="field">
+                <label>Body</label>
+                <textarea rows="7" [(ngModel)]="r.body"></textarea>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="row end mt">
+        <button class="btn-primary" (click)="startRun()"
+                [disabled]="starting() || !allRowsHaveMessage() || !sendableRows().length">
+          {{ starting() ? 'Starting…' : 'Send ' + sendableRows().length + ' emails' }}
+        </button>
+      </div>
+    </section>
+  }
+
+  <!-- ── Step 4: Send / progress ───────────────────────────────────────────── -->
+  @if (step() === 4 && run(); as r) {
+    <section class="card">
+      <div class="card-head spread">
+        <div>
+          <h2>Batch {{ statusLabel(r.status) }}</h2>
+          <p class="hint">
+            {{ r.processedRows }} / {{ r.totalRows }} processed · {{ r.sentCount }} sent ·
+            {{ r.failedCount }} failed · {{ r.skippedCount }} skipped
+          </p>
+        </div>
+        <div class="row">
+          @if (!runFinished()) {
+            <button class="btn-ghost" (click)="cancelRun()">Cancel</button>
+          } @else {
+            <button class="btn-ghost" (click)="goApplications()">Open kanban</button>
+            <button class="btn-primary" (click)="newRun()">New batch</button>
+          }
+        </div>
+      </div>
+
+      <div class="progress">
+        <div class="bar" [style.width.%]="progressPct()"></div>
+      </div>
+
+      @if (r.errorMessage) { <div class="alert">{{ r.errorMessage }}</div> }
+
+      <div class="run-rows">
+        <div class="run-row" *ngFor="let row of r.rows; trackBy: trackRowId">
+          <span class="dot" [ngClass]="runStatusClass(row.status)"></span>
+          <span class="co">{{ row.companyName }}</span>
+          <span class="em">{{ row.recipientEmail || '—' }}</span>
+          <span class="st">{{ statusLabel(row.status) }}</span>
+          @if (row.errorMessage) { <span class="err">{{ row.errorMessage }}</span> }
+          @if (row.applicationId) {
+            <button class="link" (click)="openApplication(row)">View</button>
+          }
+        </div>
+      </div>
+    </section>
+  }
+
+  @if (step() === 4 && !run()) {
+    <section class="card">
+      <p class="hint">Loading run…</p>
+    </section>
+  }
+</div>

@@ -35,6 +35,12 @@ export class CompanyFieldComponent {
 
   placeholder = input<string>('Search or type a company…');
 
+  /** Wording for a name that is not in the saved company list (contacts never create companies). */
+  newCompanyHint = input<string>('New company — will be added on save');
+
+  /** Control name of the inner input, so callers inside a <form> can keep their own name. */
+  nameInput = input<string>('company');
+
   /** Emitted when the user picks a saved company from the suggestions. */
   picked = output<CompanyDto>();
 
@@ -46,6 +52,8 @@ export class CompanyFieldComponent {
   private timer: ReturnType<typeof setTimeout> | null = null;
   /** Last term we searched for, so externally-written values get one background lookup. */
   private searchedFor = '';
+  /** Whether the unfiltered "browse all" first page is already loaded. */
+  private browseLoaded = false;
 
   /** The saved company whose name exactly equals the current typed value. */
   status = computed(() =>
@@ -71,6 +79,7 @@ export class CompanyFieldComponent {
     this.model.set(value);
     const trimmed = value.trim();
     this.searchedFor = trimmed.toLowerCase();
+    if (trimmed) this.browseLoaded = false;
     if (this.pickedCompany() && this.pickedCompany()!.name.trim().toLowerCase() !== trimmed.toLowerCase()) {
       this.pickedCompany.set(null);
     }
@@ -87,10 +96,19 @@ export class CompanyFieldComponent {
   }
 
   onFocus() {
-    if (this.model().trim()) {
+    this.open.set(true);
+    const trimmed = this.model().trim();
+    if (trimmed) {
       this.searching.set(true);
-      this.open.set(true);
-      void this.search(this.model().trim(), true);
+      void this.search(trimmed, true);
+      return;
+    }
+    // Empty field: show the saved companies so the list is browsable without typing.
+    if (!this.browseLoaded) {
+      this.browseLoaded = true;
+      void this.search('', true);
+    } else {
+      this.open.set(this.matches().length > 0);
     }
   }
 
@@ -102,7 +120,9 @@ export class CompanyFieldComponent {
   private async search(term: string, openResult: boolean) {
     this.searching.set(true);
     try {
-      const res = await this.companies.getCompanies({ search: term, pageSize: 8, sortBy: 'name' });
+      const res = await this.companies.getCompanies(
+        term ? { search: term, pageSize: 8, sortBy: 'name' } : { pageSize: 8, sortBy: 'name' },
+      );
       const items = res.success && res.data ? res.data.items : [];
       this.matches.set(items);
       if (openResult) this.open.set(items.length > 0 || this.searching());

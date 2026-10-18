@@ -10,6 +10,8 @@
 img.co-init { object-fit: contain; background: var(--bg-2); padding: 5px; }
 .det-title-block { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .det-co { font-size: 17px; font-weight: 600; color: var(--text); font-family: var(--font-display); letter-spacing: -0.01em; }
+.det-co-link { display: inline-block; cursor: pointer; text-decoration: none; }
+.det-co-link:hover { color: var(--accent-text); text-decoration: underline; }
 .det-pos { font-size: 13px; color: var(--text-3); }
 .badge-lg { display: inline-flex; align-items: center; padding: 4px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
 .det-actions { display: flex; gap: 7px; }

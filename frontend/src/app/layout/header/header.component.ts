@@ -35,6 +35,7 @@ export class HeaderComponent {
   private readonly ROUTE_NAMES: Record<string, string> = {
     '/applications/dashboard': 'Dashboard',
     '/applications/generate':  'Generate CV',
+    '/applications/bulk-apply': 'Bulk Apply',
     '/applications/kanban':    'Applications',
     '/applications/list':      'Applications',
     '/applications/analytics': 'Analytics',

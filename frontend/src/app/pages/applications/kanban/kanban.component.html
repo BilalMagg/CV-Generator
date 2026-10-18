@@ -110,8 +110,10 @@
                 </div>
                 <div class="kb-role">{{ item.positionTitle }}</div>
                 <div class="kb-card-footer">
-                  <span class="kb-salary"></span>
                   <span class="kb-date">{{ formatDate(item.appliedAt) }}</span>
+                  @if (item.offerSource) {
+                    <span class="kb-source" [title]="'Found via ' + item.offerSource">{{ item.offerSource }}</span>
+                  }
                 </div>
               </div>
             } @empty {

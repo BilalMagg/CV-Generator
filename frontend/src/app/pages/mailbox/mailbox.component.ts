@@ -5,6 +5,7 @@ import { CronBuilderComponent } from '@app/shared/components/cron-builder/cron-b
 import { AutoFillDialogComponent } from '@app/shared/components/auto-fill-dialog/auto-fill-dialog.component';
 import { ContactsExtractDialogComponent } from '@app/shared/components/contacts-extract-dialog/contacts-extract-dialog.component';
 import { ContactQuickActionsComponent } from '@app/shared/components/contact-quick-actions/contact-quick-actions.component';
+import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
 import { AutofillField } from '@app/services/autofill.service';
 import { DirectAiService } from '@app/services/direct-ai.service';
 import { CommonModule } from '@angular/common';
@@ -96,7 +97,7 @@ const FR_APPLY_TEMPLATE: { name: string; subjectTemplate: string; bodyTemplate: 
 @Component({
   selector: 'app-mailbox',
   standalone: true,
-  imports: [CommonModule, FormsModule, SheetImportDialogComponent, RefreshButtonComponent, CronBuilderComponent, AutoFillDialogComponent, ContactsExtractDialogComponent, ContactQuickActionsComponent],
+  imports: [CommonModule, FormsModule, SheetImportDialogComponent, RefreshButtonComponent, CronBuilderComponent, AutoFillDialogComponent, ContactsExtractDialogComponent, ContactQuickActionsComponent, CompanyFieldComponent],
   templateUrl: './mailbox.component.html',
   styleUrl: './mailbox.component.scss',
 })

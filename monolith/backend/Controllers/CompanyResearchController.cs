@@ -142,6 +142,7 @@ public class CompanyResearchController : BaseApiController
         FoundedYear = c.FoundedYear,
         LinkedInUrl = c.LinkedInUrl,
         Size = c.Size,
+        Specialties = c.Specialties,
         LogoImageId = c.LogoImageId,
         LogoUrl = c.LogoUrl,
         Note = c.Note,

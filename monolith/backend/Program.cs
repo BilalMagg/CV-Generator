@@ -106,6 +106,7 @@ builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<EmailScheduleService>();
 builder.Services.AddScoped<ScheduleTemplateService>();
 builder.Services.AddScoped<ApplyService>();
+builder.Services.AddScoped<BulkApplyService>();
 builder.Services.AddScoped<EmailDraftService>();
 builder.Services.AddScoped<IApplyPrepService, ApplyPrepService>();
 builder.Services.AddScoped<WorkflowExecutionService>();
@@ -135,14 +136,21 @@ builder.Services.AddHttpClient("image-fetch", c =>
         c.BaseAddress = new Uri($"{agentBase}/api/agents/company-research/");
         c.Timeout = TimeSpan.FromMinutes(3);
     });
+    builder.Services.AddHttpClient<IBulkExtractClient, BulkExtractClient>(c =>
+    {
+        c.BaseAddress = new Uri($"{agentBase}/api/agents/bulk-extract/");
+        c.Timeout = TimeSpan.FromMinutes(3);
+    });
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 // Background services
 builder.Services.AddSingleton<CvGenerationBackgroundService>();
 builder.Services.AddSingleton<TemplateRenderBackgroundService>();
+builder.Services.AddSingleton<BulkApplyBackgroundService>();
 builder.Services.AddSingleton<IMinioStorageService, MinioStorageService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CvGenerationBackgroundService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<TemplateRenderBackgroundService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BulkApplyBackgroundService>());
 builder.Services.AddHostedService<EmailScheduleWorker>();
 
 // SignalR

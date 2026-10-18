@@ -41,6 +41,7 @@ public class AppDbContext : DbContext
     public DbSet<Contact> Contacts => Set<Contact>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Company> Companies => Set<Company>();
+    public DbSet<CompanyCredential> CompanyCredentials => Set<CompanyCredential>();
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
     public DbSet<EmailSchedule> EmailSchedules => Set<EmailSchedule>();
     public DbSet<CategoryNode> CategoryNodes => Set<CategoryNode>();
@@ -61,6 +62,8 @@ public class AppDbContext : DbContext
     public DbSet<CoverLetterVersion> CoverLetterVersions => Set<CoverLetterVersion>();
     public DbSet<EmailDraft> EmailDrafts => Set<EmailDraft>();
     public DbSet<SavedToolContent> SavedToolContent => Set<SavedToolContent>();
+    public DbSet<BulkApplyRun> BulkApplyRuns => Set<BulkApplyRun>();
+    public DbSet<BulkApplyRow> BulkApplyRows => Set<BulkApplyRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -221,6 +224,33 @@ public class AppDbContext : DbContext
             entity.Property(e => e.PhonesJson).HasColumnType("jsonb");
             entity.Property(e => e.SocialLinksJson).HasColumnType("jsonb");
             entity.Property(e => e.CompanyFactsJson).HasColumnType("jsonb");
+        });
+
+        modelBuilder.Entity<CompanyCredential>(entity =>
+        {
+            entity.HasIndex(e => e.CompanyId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BulkApplyRun>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        modelBuilder.Entity<BulkApplyRow>(entity =>
+        {
+            entity.HasIndex(e => e.RunId);
+            entity.HasIndex(e => e.Status);
+            entity.HasOne(e => e.Run)
+                .WithMany(r => r.Rows)
+                .HasForeignKey(e => e.RunId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<EmailMessage>(entity =>

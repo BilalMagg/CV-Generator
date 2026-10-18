@@ -98,11 +98,9 @@
               <label>Found via</label>
               <select [(ngModel)]="offerSource" name="offerSource">
                 <option value="">Select source</option>
-                <option value="LinkedIn">LinkedIn</option>
-                <option value="Indeed">Indeed</option>
-                <option value="Referral">Referral</option>
-                <option value="Company website">Company website</option>
-                <option value="Other">Other</option>
+                @for (s of applySources; track s) {
+                  <option [value]="s">{{ s }}</option>
+                }
               </select>
             </div>
           </div>
@@ -207,7 +205,11 @@
                   <div class="two-col">
                     <div class="field">
                       <label>Company</label>
-                      <input type="text" placeholder="Company name" [(ngModel)]="newContactCompany" name="ncCompany">
+                      <app-company-field
+                        [(model)]="newContactCompany"
+                        placeholder="Company name"
+                        nameInput="ncCompany"
+                        newCompanyHint="Not in your company list" />
                     </div>
                     <div class="field">
                       <label>Position</label>
@@ -348,6 +350,13 @@
           } @else {
             <small>The active CV (<strong>{{ activeCvName() }}</strong>) is pre-selected.</small>
           }
+        </div>
+      }
+
+      @if (pickedCompany()?.id; as credCompanyId) {
+        <div class="side-cred-card">
+          <div class="preview-label">Company credentials</div>
+          <app-company-credentials [companyId]="credCompanyId" [compact]="true" />
         </div>
       }
 

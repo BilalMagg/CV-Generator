@@ -20,10 +20,13 @@ import {
   AttemptInitiatedBy,
   ContactSummaryDto,
   attemptChannelFields,
+  APPLY_SOURCES,
   STATUS_LABELS,
   PRIORITY_LABELS,
   PRIORITY_ORDER,
 } from '@app/models/application.model';
+import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
+import { CompanyCredentialsComponent } from '@app/shared/components/company-credentials/company-credentials.component';
 
 interface ChannelTile {
   value: AttemptChannel;
@@ -34,7 +37,7 @@ interface ChannelTile {
 @Component({
   selector: 'app-application-create',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, CompanyFieldComponent, CompanyCredentialsComponent],
   templateUrl: './application-create.component.html',
   styleUrl: './application-create.component.scss',
 })
@@ -293,6 +296,7 @@ export class ApplicationCreateComponent implements OnInit {
   protected readonly STATUS_LABELS = STATUS_LABELS;
   protected readonly PRIORITY_LABELS = PRIORITY_LABELS;
   protected readonly PRIORITY_ORDER = PRIORITY_ORDER;
+  protected readonly applySources = APPLY_SOURCES;
 
   readonly channels: ChannelTile[] = [
     { value: 'EMAIL_GMAIL',          label: 'Gmail',              icon: 'ti-brand-gmail' },

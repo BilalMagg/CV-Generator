@@ -20,6 +20,7 @@ public class CompanyDto
     public int? FoundedYear { get; set; }
     public string? LinkedInUrl { get; set; }
     public string? Size { get; set; }
+    public string? Specialties { get; set; }
     public Guid? LogoImageId { get; set; }
     public string? LogoUrl { get; set; }
     public string? Note { get; set; }
@@ -51,6 +52,7 @@ public class CreateCompanyDto
     public int? FoundedYear { get; set; }
     public string? LinkedInUrl { get; set; }
     public string? Size { get; set; }
+    public string? Specialties { get; set; }
     public Guid? LogoImageId { get; set; }
     public string? LogoUrl { get; set; }
     public string? Note { get; set; }
@@ -69,6 +71,7 @@ public class UpdateCompanyDto
     public int? FoundedYear { get; set; }
     public string? LinkedInUrl { get; set; }
     public string? Size { get; set; }
+    public string? Specialties { get; set; }
     public Guid? LogoImageId { get; set; }
     public string? LogoUrl { get; set; }
     public string? Note { get; set; }
@@ -79,6 +82,28 @@ public class CompanyListResponse
 {
     public List<CompanyDto> Items { get; set; } = [];
     public int Total { get; set; }
+}
+
+public class CompanyCredentialDto
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string? Label { get; set; }
+    public string? Url { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public class UpsertCompanyCredentialDto
+{
+    public string? Label { get; set; }
+    public string? Url { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+    public string? Notes { get; set; }
 }
 
 /// <summary>Serialization helpers for the company web-research fields (stored as jsonb).</summary>

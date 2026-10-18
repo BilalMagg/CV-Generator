@@ -18,7 +18,11 @@
             <div class="co-init" [style.background]="'#E6F1FB'" [style.color]="'#185FA5'">{{ app.companyName[0] }}</div>
           }
           <div>
-            <div class="det-co">{{ app.companyName }}</div>
+            @if (app.companyId) {
+              <a class="det-co det-co-link" [routerLink]="['/companies', app.companyId]">{{ app.companyName }}</a>
+            } @else {
+              <div class="det-co">{{ app.companyName }}</div>
+            }
             <div class="det-pos">{{ app.positionTitle }}</div>
           </div>
           <span class="badge-lg" [style.background]="statusColor(app.status)" [style.color]="'white'">{{ getStatusLabel(app.status) }}</span>
@@ -321,7 +325,11 @@
                 @if (inlineError()) { <div class="attempt-error">{{ inlineError() }}</div> }
                 <input class="form-input" placeholder="Name *" [(ngModel)]="inlineName" name="inlineName">
                 <input class="form-input" placeholder="Email *" [(ngModel)]="inlineEmail" name="inlineEmail">
-                <input class="form-input" placeholder="Company" [(ngModel)]="inlineCompany" name="inlineCompany">
+                <app-company-field
+                  [(model)]="inlineCompany"
+                  placeholder="Company"
+                  nameInput="inlineCompany"
+                  newCompanyHint="Not in your company list" />
                 <div class="inline-actions">
                   <button type="button" class="det-btn" (click)="toggleInlineCreate()">Cancel</button>
                   <button type="button" class="det-btn primary" (click)="createInlineContact()">Create & link</button>
@@ -372,7 +380,17 @@
       <div class="modal-body">
         <div class="form-group"><label>Company name</label><app-company-field [(model)]="editCompanyName" /></div>
         <div class="form-group"><label>Position title</label><input class="form-input" [(ngModel)]="editPositionTitle"></div>
-        <div class="form-group"><label>Source</label><input class="form-input" [(ngModel)]="editOfferSource" placeholder="e.g. LinkedIn"></div>
+        <div class="form-group"><label>Source</label>
+          <select class="form-select" [(ngModel)]="editOfferSource" name="editOfferSource">
+            <option value="">Select source</option>
+            @for (s of applySources; track s) {
+              <option [value]="s">{{ s }}</option>
+            }
+            @if (editOfferSource() && !applySources.includes(editOfferSource())) {
+              <option [value]="editOfferSource()">{{ editOfferSource() }}</option>
+            }
+          </select>
+        </div>
         <div class="attempt-grid">
           <div class="form-group"><label>Internship type</label><input class="form-input" [(ngModel)]="editInternshipType" placeholder="e.g. PFA, PFE"></div>
           <div class="form-group"><label>Priority</label>

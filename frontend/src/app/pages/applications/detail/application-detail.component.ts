@@ -20,6 +20,7 @@ import {
   PRIORITY_ORDER,
   PRIORITY_COLORS,
   attemptChannelFields,
+  APPLY_SOURCES,
   ATTEMPT_CHANNEL_LABELS,
   ATTEMPT_STATUS_LABELS,
 } from '@app/models/application.model';
@@ -201,6 +202,7 @@ export class ApplicationDetailComponent implements OnInit {
   protected readonly STATUS_LABELS = STATUS_LABELS;
   protected readonly PRIORITY_LABELS = PRIORITY_LABELS;
   protected readonly PRIORITY_ORDER = PRIORITY_ORDER;
+  protected readonly applySources = APPLY_SOURCES;
   protected readonly CHANNEL_LABELS = ATTEMPT_CHANNEL_LABELS;
   protected readonly ATTEMPT_STATUS_LABELS = ATTEMPT_STATUS_LABELS;
   protected readonly ALL_CHANNELS: AttemptChannel[] =

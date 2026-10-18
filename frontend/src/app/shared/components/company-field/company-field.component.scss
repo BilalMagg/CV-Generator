@@ -1,5 +1,5 @@
 :host { display: block; }
-.company-field { position: relative; }
+.company-field { position: relative; overflow: visible; }
 
 .company-input {
   width: 100%;
@@ -23,7 +23,7 @@
   position: absolute;
   top: calc(100% + 4px);
   left: 0; right: 0;
-  z-index: 20;
+  z-index: 1000;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;

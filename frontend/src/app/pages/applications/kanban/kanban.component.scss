@@ -372,9 +372,31 @@ img.kb-logo {
   overflow: hidden;
 }
 
+.kb-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
 .kb-date {
   font-size: 11px;
   color: var(--text-3);
+}
+
+.kb-source {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+  color: var(--accent-text);
+  background: var(--accent-soft);
 }
 
 /* Empty column */

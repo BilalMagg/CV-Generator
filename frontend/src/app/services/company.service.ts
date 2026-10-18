@@ -79,6 +79,26 @@ export interface CompanyListResponse {
   total: number;
 }
 
+export interface CompanyCredentialDto {
+  id: string;
+  companyId: string;
+  label?: string | null;
+  url?: string | null;
+  username?: string | null;
+  password?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertCompanyCredentialDto {
+  label?: string;
+  url?: string;
+  username?: string;
+  password?: string;
+  notes?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private readonly http = inject(HttpService);
@@ -138,5 +158,21 @@ export class CompanyService {
 
   getCompanyContacts(id: string): Promise<ApiResponse<ContactDto[]>> {
     return this.http.get<ApiResponse<ContactDto[]>>(`/api/companies/${id}/contacts`);
+  }
+
+  getCompanyCredentials(id: string): Promise<ApiResponse<CompanyCredentialDto[]>> {
+    return this.http.get<ApiResponse<CompanyCredentialDto[]>>(`/api/companies/${id}/credentials`);
+  }
+
+  createCompanyCredential(companyId: string, dto: UpsertCompanyCredentialDto): Promise<ApiResponse<CompanyCredentialDto>> {
+    return this.http.post<ApiResponse<CompanyCredentialDto>>(`/api/companies/${companyId}/credentials`, dto);
+  }
+
+  updateCompanyCredential(companyId: string, credentialId: string, dto: UpsertCompanyCredentialDto): Promise<ApiResponse<CompanyCredentialDto>> {
+    return this.http.put<ApiResponse<CompanyCredentialDto>>(`/api/companies/${companyId}/credentials/${credentialId}`, dto);
+  }
+
+  deleteCompanyCredential(companyId: string, credentialId: string): Promise<void> {
+    return this.http.delete<void>(`/api/companies/${companyId}/credentials/${credentialId}`);
   }
 }
