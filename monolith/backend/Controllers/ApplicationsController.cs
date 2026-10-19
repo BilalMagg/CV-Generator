@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using CV_Generator;
+using CV_Generator.Data;
 using CV_Generator.Dto;
+using CV_Generator.Models;
 using CV_Generator.Services;
 
 namespace CV_Generator.Controllers;
@@ -16,19 +20,25 @@ public class ApplicationsController : ControllerBase
     private readonly ILogger<ApplicationsController> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMinioStorageService _minio;
+    private readonly IGmailSendService _gmailSend;
+    private readonly AppDbContext _db;
 
     public ApplicationsController(
         IApplicationService service,
         ICurrentUserService currentUser,
         ILogger<ApplicationsController> logger,
         IServiceScopeFactory scopeFactory,
-        IMinioStorageService minio)
+        IMinioStorageService minio,
+        IGmailSendService gmailSend,
+        AppDbContext db)
     {
         _service = service;
         _currentUser = currentUser;
         _logger = logger;
         _scopeFactory = scopeFactory;
         _minio = minio;
+        _gmailSend = gmailSend;
+        _db = db;
     }
 
     private Guid? UserId => _currentUser.UserId;
@@ -324,6 +334,32 @@ public class ApplicationsController : ControllerBase
         return Ok(ApiResponse<ApplicationResponseDto>.Ok(updated));
     }
 
+    /// GET /applications/{id}/attempts/{attemptId}/attachments/{index}/download — streams an attempt attachment
+    [HttpGet("{id}/attempts/{attemptId}/attachments/{index}/download")]
+    public async Task<IActionResult> DownloadAttemptAttachment(Guid id, Guid attemptId, int index)
+    {
+        if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+
+        var att = await _service.GetAttemptAttachmentAsync(id, attemptId, index, UserId.Value);
+        if (att == null || !att.ObjectKey.StartsWith($"{UserId.Value}/", StringComparison.Ordinal))
+            return NotFound(ApiResponse<object>.Error("Attachment not found"));
+
+        var keyName = att.ObjectKey[(att.ObjectKey.LastIndexOf('/') + 1)..];
+        var underscore = keyName.IndexOf('_');
+        var displayName = underscore > 0 && underscore < keyName.Length - 1 ? keyName[(underscore + 1)..] : keyName;
+
+        try
+        {
+            var bytes = await _minio.GetObjectAsync("mail-attachments", att.ObjectKey);
+            if (bytes.Length == 0) return NotFound(ApiResponse<object>.Error("Attachment not found"));
+            return File(bytes, "application/octet-stream", displayName);
+        }
+        catch
+        {
+            return NotFound(ApiResponse<object>.Error("Attachment not found"));
+        }
+    }
+
     /// PATCH /applications/{id}/attempts/{attemptId}
     [HttpPatch("{id}/attempts/{attemptId}")]
     public async Task<IActionResult> UpdateAttempt(Guid id, Guid attemptId, [FromBody] UpdateAttemptDto dto)
@@ -343,6 +379,125 @@ public class ApplicationsController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(ApiResponse<AttemptResponseDto>.Error(ex.Message));
+        }
+    }
+
+    /// POST /applications/{id}/attempts/send — sends the composed email through the
+    /// user's Gmail and logs it as a SENT attempt (with the Gmail message/thread ids).
+    [HttpPost("{id}/attempts/send")]
+    public async Task<IActionResult> SendAttempt(Guid id, [FromBody] SendAttemptDto dto)
+    {
+        if (UserId == null) return Unauthorized(ApiResponse<object>.Error("Unable to determine user identity"));
+        if (string.IsNullOrWhiteSpace(dto.RecipientContact))
+            return BadRequest(ApiResponse<AttemptResponseDto>.Error("A recipient email is required to send"));
+
+        // Read each attached file's bytes from MinIO (object keys are owner-prefixed).
+        var sendAttachments = new List<EmailAttachmentDto>();
+        foreach (var att in dto.Attachments ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(att.ObjectKey) ||
+                !att.ObjectKey.StartsWith($"{UserId.Value}/", StringComparison.Ordinal))
+                return BadRequest(ApiResponse<AttemptResponseDto>.Error($"Attachment '{att.FileName}' not found"));
+
+            byte[] bytes;
+            try { bytes = await _minio.GetObjectAsync("mail-attachments", att.ObjectKey); }
+            catch { bytes = []; }
+
+            if (bytes.Length == 0)
+                return BadRequest(ApiResponse<AttemptResponseDto>.Error($"Attachment '{att.FileName}' not found"));
+
+            sendAttachments.Add(new EmailAttachmentDto
+            {
+                FileName = att.FileName,
+                ContentType = string.IsNullOrWhiteSpace(att.ContentType) ? "application/octet-stream" : att.ContentType,
+                ContentBase64 = Convert.ToBase64String(bytes)
+            });
+        }
+
+        var connection = await _db.Set<GmailConnection>()
+            .FirstOrDefaultAsync(c => c.UserId == UserId.Value && !c.IsRevoked);
+        var fromEmail = connection?.GmailAddress ?? "noreply@propel.com";
+        var provider = connection is not null ? "gmail" : "smtp";
+
+        string? messageId = null;
+        string? threadId = null;
+        try
+        {
+            (messageId, threadId) = await _gmailSend.SendWithAttachmentAsync(
+                UserId.Value, dto.RecipientContact, dto.Subject ?? string.Empty, dto.Body ?? string.Empty,
+                null, null, sendAttachments.Count > 0 ? sendAttachments : null);
+        }
+        catch (GmailReauthRequiredException ex)
+        {
+            _logger.LogWarning(ex, "Gmail re-auth required while sending attempt on application {AppId}", id);
+            return StatusCode(StatusCodes.Status502BadGateway, ApiResponse<AttemptResponseDto>.Error(
+                "Gmail session expired — reconnect Gmail in the Mailbox, then try again."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Gmail send failed for application {AppId} user {UserId}", id, UserId.Value);
+            return StatusCode(StatusCodes.Status502BadGateway, ApiResponse<AttemptResponseDto>.Error(
+                $"Gmail send failed: {ex.Message}"));
+        }
+
+        // Record the message in mailbox history (best-effort — the email already left).
+        try
+        {
+            _db.Set<EmailMessage>().Add(new EmailMessage
+            {
+                Id = Guid.NewGuid(),
+                UserId = UserId.Value,
+                ContactId = dto.ContactId,
+                FromEmail = fromEmail,
+                ToEmail = dto.RecipientContact,
+                ToName = dto.RecipientName ?? string.Empty,
+                Subject = dto.Subject ?? string.Empty,
+                Body = dto.Body ?? string.Empty,
+                Status = "sent",
+                Provider = provider,
+                SentAt = DateTime.UtcNow,
+                AttachmentMetadataJson = dto.Attachments is { Count: > 0 }
+                    ? JsonSerializer.Serialize(dto.Attachments.Select(a => new EmailAttachmentInfoDto
+                    {
+                        FileName = a.FileName,
+                        ContentType = a.ContentType ?? "application/octet-stream",
+                        SizeBytes = a.SizeBytes
+                    }).ToList())
+                    : null
+            });
+            await _db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to record mailbox history for attempt send on application {AppId}", id);
+        }
+
+        try
+        {
+            var attempt = await _service.CreateAttemptAsync(id, new CreateAttemptDto(
+                Channel: "EMAIL_GMAIL",
+                InitiatedBy: "USER",
+                Status: "SENT",
+                Subject: dto.Subject,
+                Body: dto.Body,
+                RecipientName: dto.RecipientName,
+                RecipientContact: dto.RecipientContact,
+                ContactId: dto.ContactId,
+                ChannelMetadataJson: messageId != null || threadId != null
+                    ? JsonSerializer.Serialize(new { messageId, threadId })
+                    : null,
+                CvVersionId: dto.CvVersionId,
+                CoverLetterVersionId: dto.CoverLetterVersionId,
+                Attachments: dto.Attachments,
+                SentAt: DateTime.UtcNow), UserId.Value);
+
+            return Ok(ApiResponse<AttemptResponseDto>.Ok(attempt));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Email sent but attempt logging failed on application {AppId}", id);
+            return StatusCode(StatusCodes.Status502BadGateway, ApiResponse<AttemptResponseDto>.Error(
+                "Email was sent, but the attempt could not be logged. Reload and check the timeline."));
         }
     }
 }

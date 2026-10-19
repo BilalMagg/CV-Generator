@@ -33,7 +33,8 @@ export type AttemptChannel =
   | 'WEB_FORM'
   | 'IN_PERSON'
   | 'OTHER'
-  | 'LINKEDIN_APPLY';
+  | 'LINKEDIN_APPLY'
+  | 'INDEED_APPLY';
 
 export type AttemptInitiatedBy = 'USER' | 'AI_AGENT' | 'SCHEDULE';
 
@@ -65,6 +66,7 @@ export interface AttemptResponseDto {
   cvVersionId?: string;
   coverLetterVersionId?: string | null;
   coverLetterTitle?: string | null;
+  attachments?: ScheduleAttachmentRef[];
   sentAt?: string;
   failureReason?: string;
   createdAt: string;
@@ -93,6 +95,7 @@ export interface CreateAttemptDto {
   channelMetadataJson?: string;
   cvVersionId?: string;
   coverLetterVersionId?: string | null;
+  attachments?: ScheduleAttachmentRef[];
   sentAt?: string;
   failureReason?: string;
 }
@@ -107,8 +110,21 @@ export interface UpdateAttemptDto {
   channelMetadataJson?: string;
   cvVersionId?: string;
   coverLetterVersionId?: string | null;
+  attachments?: ScheduleAttachmentRef[];
   sentAt?: string;
   failureReason?: string;
+}
+
+/** Payload for sending a composed attempt email via Gmail (logs a SENT attempt). */
+export interface SendAttemptDto {
+  recipientContact: string;
+  recipientName?: string;
+  contactId?: string;
+  subject?: string;
+  body?: string;
+  cvVersionId?: string | null;
+  coverLetterVersionId?: string | null;
+  attachments?: ScheduleAttachmentRef[];
 }
 
 export interface ApplicationResponseDto {
@@ -462,6 +478,7 @@ export const ATTEMPT_CHANNEL_LABELS: Record<AttemptChannel, string> = {
   LINKEDIN_MESSAGE: 'LinkedIn message',
   LINKEDIN_CONNECTION: 'LinkedIn connection',
   LINKEDIN_APPLY: 'LinkedIn apply',
+  INDEED_APPLY: 'Indeed apply',
   WEB_FORM: 'Web form',
   IN_PERSON: 'In person',
   OTHER: 'Other',
@@ -524,6 +541,13 @@ export function attemptChannelFields(channel: AttemptChannel): AttemptChannelFie
         messagePlaceholder: '',
         recipientName: false, recipientContact: true,
         recipientContactLabel: 'Job posting URL', recipientContactPlaceholder: 'https://www.linkedin.com/jobs/view/…',
+      };
+    case 'INDEED_APPLY':
+      return {
+        subject: false, message: false, messageLabel: '',
+        messagePlaceholder: '',
+        recipientName: false, recipientContact: true,
+        recipientContactLabel: 'Job posting URL', recipientContactPlaceholder: 'https://www.indeed.com/viewjob?jk=…',
       };
     case 'WEB_FORM':
       return {

@@ -70,6 +70,13 @@ public class ApplicationAttempt
     /// </summary>
     public Guid? CoverLetterVersionId { get; set; }
 
+    /// <summary>
+    /// jsonb — serialized ScheduleAttachmentRef list (MinIO mail-attachments refs)
+    /// sent with THIS attempt. Per-attempt so a reapply can carry a different set.
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string? AttachmentsJson { get; set; }
+
     [NotMapped]
     public string? CoverLetterTitle { get; set; }
 
@@ -93,7 +100,8 @@ public enum AttemptChannel
     WEB_FORM,
     IN_PERSON,
     OTHER,
-    LINKEDIN_APPLY
+    LINKEDIN_APPLY,
+    INDEED_APPLY
 }
 
 public enum AttemptInitiatedBy

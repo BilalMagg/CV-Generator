@@ -26,5 +26,6 @@ public interface IApplicationService
     Task<List<ApplicationResponseDto>?> GetApplicationsForContactAsync(Guid contactId, Guid userId);
     Task<List<ApplicationResponseDto>> GetApplicationsByCompanyAsync(Guid userId, string companyName);
     Task<ScheduleAttachmentRef?> GetAttachmentAsync(Guid applicationId, int index, Guid userId);
+    Task<ScheduleAttachmentRef?> GetAttemptAttachmentAsync(Guid applicationId, Guid attemptId, int index, Guid userId);
     Task<ApplicationResponseDto?> RemoveAttachmentAsync(Guid applicationId, int index, Guid userId);
 }

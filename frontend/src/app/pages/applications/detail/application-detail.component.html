@@ -31,6 +31,9 @@
       <div class="det-actions">
         <app-refresh-button [loading]="refreshing()" (refresh)="onRefresh()" />
         <button class="det-btn primary" (click)="openAttemptModal()"><i class="ti ti-send"></i> Log attempt</button>
+        @if (sortedAttempts().length > 0) {
+          <button class="det-btn" (click)="openReapplyModal()" title="Pre-fill a new attempt from the last one"><i class="ti ti-repeat"></i> Reapply</button>
+        }
         <button class="det-btn" (click)="openEditModal()"><i class="ti ti-edit"></i> Edit</button>
         <button class="det-btn" (click)="openStatusModal()" *ngIf="availableStatuses().length > 0"><i class="ti ti-refresh"></i> Update status</button>
         <button class="det-btn" (click)="onDelete()"><i class="ti ti-trash"></i></button>
@@ -88,12 +91,22 @@
                     @if (att.initiatedBy !== 'USER') { · via {{ att.initiatedBy.toLowerCase() }} }
                   </div>
                   @if (att.failureReason) { <div class="attempt-fail">{{ att.failureReason }}</div> }
-                  @if (att.status === 'DRAFT' || att.status === 'SCHEDULED') {
-                    <div class="attempt-actions">
-                      <button class="att-btn ok" (click)="setAttemptStatus(att, 'SENT')">Mark sent</button>
-                      <button class="att-btn fail" (click)="setAttemptStatus(att, 'FAILED', 'Marked as failed')">Mark failed</button>
+                  @if (att.attachments && att.attachments.length > 0) {
+                    <div class="attempt-attachments">
+                      @for (a of att.attachments; track a.objectKey; let i = $index) {
+                        <a class="att-file" [href]="attemptAttachmentDownloadUrl(att, i)" target="_blank" rel="noopener">
+                          <i class="ti ti-paperclip"></i> {{ a.fileName }}
+                        </a>
+                      }
                     </div>
                   }
+                  <div class="attempt-actions">
+                    <button class="att-btn neutral" (click)="openReapplyModal(att)"><i class="ti ti-repeat"></i> Reapply from this</button>
+                    @if (att.status === 'DRAFT' || att.status === 'SCHEDULED') {
+                      <button class="att-btn ok" (click)="setAttemptStatus(att, 'SENT')">Mark sent</button>
+                      <button class="att-btn fail" (click)="setAttemptStatus(att, 'FAILED', 'Marked as failed')">Mark failed</button>
+                    }
+                  </div>
                 </div>
               </div>
             }
@@ -202,10 +215,10 @@
         }
         <input #attachInput type="file" multiple hidden (change)="onFilesSelected($event)">
         <div class="att-actions">
-          <button class="det-btn primary" (click)="attachInput.click()" [disabled]="attachmentsUploading()">
+          <button class="det-btn primary" (click)="attachInput.click()" [disabled]="attachmentsUploading() || attemptAttUploading()">
             <i class="ti ti-paperclip"></i> {{ attachmentsUploading() ? 'Uploading…' : 'Add attachment' }}
           </button>
-          <button class="det-btn" (click)="openDocsPicker()" [disabled]="attachmentsUploading()">
+          <button class="det-btn" (click)="openDocsPicker()" [disabled]="attachmentsUploading() || attemptAttUploading()">
             <i class="ti ti-folder"></i> From Documents
           </button>
         </div>
@@ -243,12 +256,19 @@
   <div class="modal-backdrop" (click)="closeAttemptModal()">
     <div class="modal modal-lg" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <span class="modal-title">Log apply attempt</span>
+        <span class="modal-title">{{ reapplySource() ? 'Reapply — new attempt' : 'Log apply attempt' }}</span>
         <button class="modal-close" (click)="closeAttemptModal()">&times;</button>
       </div>
       <div class="modal-body">
         @if (attemptError()) {
           <div class="attempt-error">{{ attemptError() }}</div>
+        }
+        @if (reapplySource(); as src) {
+          <p class="reapply-banner">
+            <i class="ti ti-repeat"></i>
+            Pre-filled from attempt #{{ src.attemptNumber }} ({{ CHANNEL_LABELS[src.channel] }}).
+            Adjust anything below — saving creates a new attempt on this application.
+          </p>
         }
         <div class="attempt-grid">
           <div class="form-group">
@@ -354,16 +374,63 @@
             }
           </select>
         </div>
-        @if (attemptForm().channel === 'WEB_FORM') {
-          <p class="attempt-hint"><i class="ti ti-world"></i> The form URL is saved so you can find it again later.</p>
+        <div class="form-group">
+          <label>CV used <span class="field-hint">(optional — which CV version was sent)</span></label>
+          <select class="form-select" [(ngModel)]="attemptForm().cvVersionId" name="attemptCvVersionId">
+            <option [ngValue]="null">None — no CV attached to this attempt</option>
+            @for (o of cvOptions(); track o.versionId) {
+              <option [value]="o.versionId">{{ o.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Attachments <span class="field-hint">(optional — files sent with this attempt)</span></label>
+          @if (attemptAttError()) { <div class="attempt-error">{{ attemptAttError() }}</div> }
+          @if (attemptAttachments().length > 0) {
+            <div class="att-list">
+              @for (a of attemptAttachments(); track a.objectKey; let i = $index) {
+                <div class="att-item">
+                  <span class="att-link" style="cursor:default">
+                    <i class="ti ti-paperclip"></i>
+                    <span class="att-name">{{ a.fileName }}</span>
+                    <em class="att-size">{{ formatBytes(a.sizeBytes) }}</em>
+                  </span>
+                  <button type="button" class="att-del" title="Remove" (click)="removeAttemptAttachment(i)">&times;</button>
+                </div>
+              }
+            </div>
+          } @else {
+            <div style="color:var(--text-3);font-size:12.5px">No attachments on this attempt.</div>
+          }
+          <input #attemptAttachInput type="file" multiple hidden (change)="onAttemptFilesSelected($event)">
+          <div class="att-actions">
+            <button type="button" class="det-btn" (click)="attemptAttachInput.click()" [disabled]="attemptAttUploading()">
+              <i class="ti ti-paperclip"></i> {{ attemptAttUploading() ? 'Uploading…' : 'Add file' }}
+            </button>
+            <button type="button" class="det-btn" (click)="openDocsPicker('attempt')" [disabled]="attemptAttUploading()">
+              <i class="ti ti-folder"></i> From Documents
+            </button>
+          </div>
+        </div>
+        @if (attemptForm().channel === 'WEB_FORM' || attemptForm().channel === 'LINKEDIN_APPLY' || attemptForm().channel === 'INDEED_APPLY') {
+          <p class="attempt-hint"><i class="ti ti-link"></i> The job/form URL is saved so you can find it again later.</p>
+        }
+        @if (attemptForm().channel === 'EMAIL_GMAIL') {
+          <p class="attempt-hint"><i class="ti ti-mail-forward"></i> "Send via Gmail" delivers the email now and logs it as sent (with the Gmail message id).</p>
         }
       </div>
       <div class="modal-footer">
         <button class="det-btn" (click)="closeAttemptModal()">Cancel</button>
-        <button class="det-btn" (click)="createAttempt(false)" [disabled]="saving()">Save as draft</button>
-        <button class="det-btn primary" (click)="createAttempt(true)" [disabled]="saving()">
+        <button class="det-btn" (click)="createAttempt(false)" [disabled]="saving() || sendingAttempt()">Save as draft</button>
+        <button class="det-btn" [class.primary]="attemptForm().channel !== 'EMAIL_GMAIL'"
+                (click)="createAttempt(true)" [disabled]="saving() || sendingAttempt()">
           {{ saving() ? 'Saving...' : 'Log & mark sent' }}
         </button>
+        @if (attemptForm().channel === 'EMAIL_GMAIL') {
+          <button class="det-btn primary" (click)="sendAttemptViaGmail()" [disabled]="saving() || sendingAttempt()">
+            <i class="ti ti-mail-forward"></i> {{ sendingAttempt() ? 'Sending...' : 'Send via Gmail' }}
+          </button>
+        }
       </div>
     </div>
   </div>
@@ -431,7 +498,7 @@
                   <div class="doc-title" [title]="cv.title">{{ cv.title }}</div>
                   @for (v of cv.versions; track v.id) {
                     @if (v.pdfUrl || v.fileUrl) {
-                      <button class="doc-item" (click)="pickDocVersion(cv, v)" [disabled]="attachmentsUploading()">
+                      <button class="doc-item" (click)="pickDocVersion(cv, v)" [disabled]="attachmentsUploading() || attemptAttUploading()">
                         <svg viewBox="0 0 14 14" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2h8a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 6h4M5 9h4"/></svg>
                         <span class="doc-meta">
                           <span class="doc-name">{{ docVersionLabel(v) }} · PDF</span>
@@ -455,7 +522,7 @@
                   <div class="doc-title" [title]="letter.title">{{ letter.title }}@if (letter.companyName) { <em>({{ letter.companyName }})</em> }</div>
                   @for (v of letter.versions; track v.id) {
                     @if (v.pdfUrl || v.fileUrl) {
-                      <button class="doc-item" (click)="pickLetterVersion(letter, v)" [disabled]="attachmentsUploading()">
+                      <button class="doc-item" (click)="pickLetterVersion(letter, v)" [disabled]="attachmentsUploading() || attemptAttUploading()">
                         <svg viewBox="0 0 14 14" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2h8a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 6h4M5 9h4"/></svg>
                         <span class="doc-meta">
                           <span class="doc-name">v{{ v.versionNumber }} · PDF</span>

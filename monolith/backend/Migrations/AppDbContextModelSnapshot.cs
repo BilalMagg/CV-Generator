@@ -302,6 +302,9 @@ namespace CV_Generator.Migrations
                     b.Property<Guid>("ApplicationId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AttachmentsJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<int>("AttemptNumber")
                         .HasColumnType("integer");
 

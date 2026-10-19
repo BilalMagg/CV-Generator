@@ -15,6 +15,7 @@ import {
   AttemptResponseDto,
   CreateAttemptDto,
   UpdateAttemptDto,
+  SendAttemptDto,
   ContactSummaryDto,
   FollowUpAction,
   ApiResponse,
@@ -154,6 +155,17 @@ export class ApplicationService {
   ): Promise<ApiResponse<AttemptResponseDto>> {
     return this.http.patch<ApiResponse<AttemptResponseDto>>(
       `/api/applications/${applicationId}/attempts/${attemptId}`,
+      dto,
+    );
+  }
+
+  /** Sends the composed email via Gmail and logs it as a SENT attempt. */
+  async sendAttempt(
+    applicationId: string,
+    dto: SendAttemptDto,
+  ): Promise<ApiResponse<AttemptResponseDto>> {
+    return this.http.post<ApiResponse<AttemptResponseDto>>(
+      `/api/applications/${applicationId}/attempts/send`,
       dto,
     );
   }

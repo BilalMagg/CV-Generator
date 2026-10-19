@@ -305,6 +305,7 @@ export class ApplicationCreateComponent implements OnInit {
     { value: 'LINKEDIN_MESSAGE',     label: 'LinkedIn message',   icon: 'ti-brand-linkedin' },
     { value: 'LINKEDIN_CONNECTION',  label: 'LinkedIn connect',   icon: 'ti-user-plus' },
     { value: 'LINKEDIN_APPLY',       label: 'LinkedIn apply',     icon: 'ti-brand-linkedin' },
+    { value: 'INDEED_APPLY',         label: 'Indeed apply',       icon: 'ti-briefcase' },
     { value: 'WEB_FORM',             label: 'Web form',           icon: 'ti-world' },
     { value: 'IN_PERSON',            label: 'In person',          icon: 'ti-users-group' },
     { value: 'OTHER',                label: 'Other',              icon: 'ti-dots' },
@@ -400,7 +401,7 @@ export class ApplicationCreateComponent implements OnInit {
             recipientName: cfg.recipientName ? (this.recipientName().trim() || undefined) : undefined,
             recipientContact: cfg.recipientContact ? (this.recipientContact().trim() || undefined) : undefined,
             contactId: this.pickedContact()?.id,
-            channelMetadataJson: ((this.channel() === 'WEB_FORM' || this.channel() === 'LINKEDIN_APPLY') && this.recipientContact().trim())
+            channelMetadataJson: ((this.channel() === 'WEB_FORM' || this.channel() === 'LINKEDIN_APPLY' || this.channel() === 'INDEED_APPLY') && this.recipientContact().trim())
               ? JSON.stringify({ formUrl: this.recipientContact().trim() })
               : undefined,
             cvVersionId: this.cvVersionId() || undefined,

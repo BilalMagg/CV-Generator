@@ -1,4 +1,4 @@
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -52,6 +52,27 @@ const DEFAULT_CAP = 25;
 const MAX_ROWS = 200;
 const POLL_MS = 1500;
 
+/** localStorage key for the in-progress batch draft (survives reloads/crashes). */
+const DRAFT_KEY = 'propel.bulk-apply.draft.v1';
+const DRAFT_DEBOUNCE_MS = 400;
+
+interface BulkDraft {
+  v: number;
+  savedAt: number;
+  step: number;
+  pasteText: string;
+  rows: ReviewRow[];
+  keySeq: number;
+  selectedTemplateId: string;
+  sharedVars: Record<string, string>;
+  manualSubject: string;
+  manualBody: string;
+  selectedCvVersionId: string;
+  delaySeconds: number;
+  composeMode: 'template' | 'manual';
+  extractMethod: '' | 'deterministic' | 'llm';
+}
+
 @Component({
   selector: 'app-bulk-apply',
   standalone: true,
@@ -103,6 +124,29 @@ export class BulkApplyComponent implements OnDestroy {
   gmailNeedsReauth = signal(false);
   private pollHandle: ReturnType<typeof setTimeout> | null = null;
 
+  // ── Draft (localStorage auto-save) ─────────────────────────────────────────────
+  draftRestored = signal(false);
+  draftSavedAt = signal<number | null>(null);
+  private persistHandle: ReturnType<typeof setTimeout> | null = null;
+  private persistEnabled = false;
+  private draftSuppressed = false;
+
+  constructor() {
+    // Persist whenever signal-backed state changes (rows, template, mode, step…).
+    // Plain fields (paste text, manual subject/body, delay) are covered by the
+    // (input) hook on the page container, since ngModel writes them in place.
+    effect(() => {
+      this.step();
+      this.rows();
+      this.selectedTemplateId();
+      this.sharedVars();
+      this.selectedCvVersionId();
+      this.composeMode();
+      this.extractMethod();
+      this.schedulePersist();
+    });
+  }
+
   selectedTemplate = computed(() =>
     this.templates().find((t) => t.id === this.selectedTemplateId()) ?? null,
   );
@@ -136,6 +180,8 @@ export class BulkApplyComponent implements OnDestroy {
   });
 
   async ngOnInit() {
+    this.restoreDraft();
+    this.persistEnabled = true;
     try {
       const res = await this.mailboxSvc.getScheduleTemplates();
       this.templates.set(res.data ?? []);
@@ -163,6 +209,114 @@ export class BulkApplyComponent implements OnDestroy {
 
   ngOnDestroy() {
     this.stopPolling();
+    if (this.persistHandle) {
+      clearTimeout(this.persistHandle);
+      this.persistHandle = null;
+      if (this.persistEnabled) this.persistDraft();
+    }
+  }
+
+  // ── Draft persistence ──────────────────────────────────────────────────────────
+
+  private restoreDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as BulkDraft;
+      if (!d || typeof d !== 'object') return;
+
+      const rows = Array.isArray(d.rows)
+        ? d.rows.map((r) => ({ ...r, expanded: r.expanded === true }))
+        : [];
+      const hasRows = rows.length > 0;
+      const hasText = typeof d.pasteText === 'string' && d.pasteText.trim().length > 0;
+      if (!hasRows && !hasText) return;
+
+      this.pasteText = typeof d.pasteText === 'string' ? d.pasteText : '';
+      this.rows.set(rows);
+      this.keySeq = Number(d.keySeq) || rows.length;
+      this.selectedTemplateId.set(d.selectedTemplateId ?? '');
+      this.sharedVars.set(d.sharedVars && typeof d.sharedVars === 'object' ? d.sharedVars : {});
+      this.manualSubject = d.manualSubject ?? '';
+      this.manualBody = d.manualBody ?? '';
+      this.selectedCvVersionId.set(d.selectedCvVersionId ?? '');
+      this.delaySeconds = Number.isFinite(Number(d.delaySeconds)) ? Number(d.delaySeconds) : 5;
+      this.composeMode.set(d.composeMode === 'manual' ? 'manual' : 'template');
+      this.extractMethod.set(d.extractMethod ?? '');
+
+      // Never restore the send/progress step — the run itself is server-side.
+      const step = Number(d.step);
+      const safeStep = step >= 1 && step <= 3 ? step : hasRows ? 3 : 1;
+      this.step.set(safeStep as 1 | 2 | 3 | 4);
+
+      this.draftRestored.set(true);
+      this.draftSavedAt.set(Number(d.savedAt) || Date.now());
+    } catch {
+      /* corrupt/unavailable storage — ignore */
+    }
+  }
+
+  schedulePersist() {
+    if (!this.persistEnabled || this.draftSuppressed) return;
+    if (this.persistHandle) clearTimeout(this.persistHandle);
+    this.persistHandle = setTimeout(() => {
+      this.persistHandle = null;
+      this.persistDraft();
+    }, DRAFT_DEBOUNCE_MS);
+  }
+
+  private persistDraft() {
+    try {
+      const hasContent =
+        this.rows().length > 0 ||
+        this.pasteText.trim().length > 0 ||
+        this.manualSubject.trim().length > 0 ||
+        this.manualBody.trim().length > 0;
+      if (!hasContent) {
+        localStorage.removeItem(DRAFT_KEY);
+        this.draftSavedAt.set(null);
+        return;
+      }
+      const payload: BulkDraft = {
+        v: 1,
+        savedAt: Date.now(),
+        step: this.step(),
+        pasteText: this.pasteText,
+        rows: this.rows(),
+        keySeq: this.keySeq,
+        selectedTemplateId: this.selectedTemplateId(),
+        sharedVars: this.sharedVars(),
+        manualSubject: this.manualSubject,
+        manualBody: this.manualBody,
+        selectedCvVersionId: this.selectedCvVersionId(),
+        delaySeconds: Number(this.delaySeconds) || 0,
+        composeMode: this.composeMode(),
+        extractMethod: this.extractMethod(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+      this.draftSavedAt.set(payload.savedAt);
+    } catch {
+      /* storage full/blocked — drafting is best-effort */
+    }
+  }
+
+  private clearDraft() {
+    if (this.persistHandle) {
+      clearTimeout(this.persistHandle);
+      this.persistHandle = null;
+    }
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+    this.draftRestored.set(false);
+    this.draftSavedAt.set(null);
+  }
+
+  discardDraft() {
+    this.clearDraft();
+    this.toast.success('Draft discarded');
   }
 
   // ── Step 1 → 2 ─────────────────────────────────────────────────────────────────
@@ -247,8 +401,24 @@ export class BulkApplyComponent implements OnDestroy {
     this.rows.update((list) => list.map((r) => (r.key === key ? { ...r, include: !r.include } : r)));
   }
 
-  toggleExpand(key: string) {
-    this.rows.update((list) => list.map((r) => (r.key === key ? { ...r, expanded: !r.expanded } : r)));
+  toggleExpand(key: string, ev?: Event) {
+    let willExpand = false;
+    this.rows.update((list) =>
+      list.map((r) => {
+        if (r.key === key) {
+          willExpand = !r.expanded;
+          return { ...r, expanded: willExpand };
+        }
+        return r;
+      }),
+    );
+    if (willExpand && ev?.currentTarget) {
+      const target = ev.currentTarget as HTMLElement;
+      const item = target.closest('.row-item');
+      if (item) {
+        requestAnimationFrame(() => item.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+      }
+    }
   }
 
   removeRow(key: string) {
@@ -435,6 +605,10 @@ export class BulkApplyComponent implements OnDestroy {
         return;
       }
       this.runId.set(res.data.runId);
+      // The batch is now tracked server-side — drop the local draft for good
+      // (suppress re-saving, otherwise the step change below would rewrite it).
+      this.draftSuppressed = true;
+      this.clearDraft();
       this.step.set(4);
       await this.refreshRun();
       this.schedulePoll();
@@ -518,6 +692,8 @@ export class BulkApplyComponent implements OnDestroy {
 
   newRun() {
     this.stopPolling();
+    this.draftSuppressed = false;
+    this.clearDraft();
     this.run.set(null);
     this.runId.set(null);
     this.rows.set([]);

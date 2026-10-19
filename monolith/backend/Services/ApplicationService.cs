@@ -786,6 +786,7 @@ public class ApplicationService : IApplicationService
             ChannelMetadataJson = dto.ChannelMetadataJson,
             CvVersionId = dto.CvVersionId,
             CoverLetterVersionId = coverLetterVersion?.Id,
+            AttachmentsJson = dto.Attachments is { Count: > 0 } ? JsonSerializer.Serialize(dto.Attachments) : null,
             SentAt = status == AttemptStatus.SENT ? dto.SentAt ?? DateTime.UtcNow : dto.SentAt,
             FailureReason = dto.FailureReason
         };
@@ -836,6 +837,8 @@ public class ApplicationService : IApplicationService
         if (dto.CvVersionId.HasValue) attempt.CvVersionId = dto.CvVersionId.Value;
         if (dto.CoverLetterVersionId.HasValue)
             attempt.CoverLetterVersionId = (await ResolveCoverLetterVersionAsync(dto.CoverLetterVersionId.Value, userId))!.Id;
+        if (dto.Attachments != null)
+            attempt.AttachmentsJson = dto.Attachments.Count > 0 ? JsonSerializer.Serialize(dto.Attachments) : null;
         if (dto.FailureReason != null) attempt.FailureReason = dto.FailureReason;
         if (dto.SentAt.HasValue) attempt.SentAt = dto.SentAt.Value;
 
@@ -1179,6 +1182,13 @@ public class ApplicationService : IApplicationService
         catch { return null; }
     }
 
+    private static List<ScheduleAttachmentRef>? DeserializeAttemptAttachments(ApplicationAttempt t)
+    {
+        if (string.IsNullOrWhiteSpace(t.AttachmentsJson)) return null;
+        try { return JsonSerializer.Deserialize<List<ScheduleAttachmentRef>>(t.AttachmentsJson); }
+        catch { return null; }
+    }
+
     /// <summary>Statuses that satisfy a pending follow-up reminder (a reply was received or the case is closed).</summary>
     private static bool FollowUpStatusResolvedBy(ApplicationStatus status) =>
         status is ApplicationStatus.INTERVIEW or ApplicationStatus.OFFER or ApplicationStatus.ACCEPTED
@@ -1190,6 +1200,18 @@ public class ApplicationService : IApplicationService
     {
         var app = await EnsureOwnedAsync(applicationId, userId);
         var attachments = DeserializeAttachments(app);
+        if (attachments is null || index < 0 || index >= attachments.Count) return null;
+        return attachments[index];
+    }
+
+    /// <summary>Fetches an attempt attachment ref (ownership-checked: application → attempt → index).</summary>
+    public async Task<ScheduleAttachmentRef?> GetAttemptAttachmentAsync(Guid applicationId, Guid attemptId, int index, Guid userId)
+    {
+        var app = await EnsureOwnedAsync(applicationId, userId);
+        var attempt = await _db.ApplicationAttempts
+            .FirstOrDefaultAsync(t => t.Id == attemptId && t.ApplicationId == app.Id);
+        if (attempt == null) return null;
+        var attachments = DeserializeAttemptAttachments(attempt);
         if (attachments is null || index < 0 || index >= attachments.Count) return null;
         return attachments[index];
     }
@@ -1220,6 +1242,7 @@ public class ApplicationService : IApplicationService
             t.Contact.Id, t.Contact.Name, t.Contact.Email,
             t.Contact.Company, t.Contact.Position, t.Contact.IsFavorite),
         t.ChannelMetadataJson, t.CvVersionId, t.CoverLetterVersionId, t.CoverLetterTitle,
+        DeserializeAttemptAttachments(t),
         t.SentAt, t.FailureReason, t.CreatedAt, t.UpdatedAt
     );
 }

@@ -40,6 +40,7 @@ type AttemptForm = {
   recipientName: string;
   recipientContact: string;
   coverLetterVersionId: string | null;
+  cvVersionId: string | null;
 };
 
 @Component({
@@ -85,8 +86,16 @@ export class ApplicationDetailComponent implements OnInit {
     recipientName: '',
     recipientContact: '',
     coverLetterVersionId: null,
+    cvVersionId: null,
   });
   attemptError = signal<string | null>(null);
+  sendingAttempt = signal(false);
+
+  // Reapply: the previous attempt whose content pre-fills the form (null = plain log).
+  reapplySource = signal<AttemptResponseDto | null>(null);
+  attemptAttachments = signal<ScheduleAttachmentRef[]>([]);
+  attemptAttUploading = signal(false);
+  attemptAttError = signal<string | null>(null);
 
   // Cover letter picker (attempt modal)
   coverLetters = signal<CoverLetterDto[]>([]);
@@ -143,6 +152,7 @@ export class ApplicationDetailComponent implements OnInit {
   // From-Documents picker modal
   docsOpen = signal(false);
   docLetters = signal<CoverLetterDto[]>([]);
+  docsTarget = signal<'app' | 'attempt'>('app');
 
   // Follow-up reminder (right-column card): presets relative to the applied date,
   // custom date, or cleared. A set deadline becomes a PENDING reminder on the Calendar.
@@ -258,6 +268,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   openAttemptModal() {
     const app = this.application();
+    this.reapplySource.set(null);
     this.attemptForm.set({
       channel: 'EMAIL_GMAIL',
       initiatedBy: 'USER',
@@ -266,8 +277,11 @@ export class ApplicationDetailComponent implements OnInit {
       recipientName: '',
       recipientContact: '',
       coverLetterVersionId: null,
+      cvVersionId: app?.cvVersionId ?? null,
     });
     this.attemptError.set(null);
+    this.attemptAttachments.set([]);
+    this.attemptAttError.set(null);
     this.showAttemptModal.set(true);
     // Load company-matching suggestions for quick recipient selection.
     if (app) {
@@ -277,8 +291,56 @@ export class ApplicationDetailComponent implements OnInit {
     }
     this.loadCoverLetters();
   }
+
+  /**
+   * Opens the attempt modal pre-filled from a previous attempt so the user can
+   * tweak the CV / subject / body / attachments and save it as a NEW attempt.
+   */
+  openReapplyModal(source?: AttemptResponseDto) {
+    const app = this.application();
+    const list = this.sortedAttempts();
+    const picked = source
+      ?? list.find(a => a.status === 'SENT')
+      ?? list[0];
+    if (!picked || !app) { this.openAttemptModal(); return; }
+
+    this.reapplySource.set(picked);
+    this.attemptForm.set({
+      channel: picked.channel,
+      initiatedBy: 'USER',
+      subject: picked.subject ?? '',
+      body: picked.body ?? '',
+      recipientName: picked.recipientName ?? '',
+      recipientContact: picked.recipientContact ?? '',
+      coverLetterVersionId: picked.coverLetterVersionId ?? null,
+      cvVersionId: picked.cvVersionId ?? app.cvVersionId ?? null,
+    });
+    // Prefer what this attempt actually carried; fall back to the application's files.
+    this.attemptAttachments.set([...(picked.attachments ?? [])]);
+    if (this.attemptAttachments().length === 0) this.attemptAttachments.set([...(app.attachments ?? [])]);
+    this.attemptAttError.set(null);
+    this.attemptError.set(null);
+    this.showAttemptModal.set(true);
+
+    // Seed the picker with the previous contact so it renders as a chip, then merge suggestions.
+    this.resetPicker();
+    this.selectedContactId.set(picked.contactId ?? null);
+    const seed = picked.contact;
+    this.suggestedContacts.set(seed ? [seed] : []);
+    this.appService.getSuggestedContacts(app.id)
+      .then(res => {
+        if (!res.success || !res.data) return;
+        this.suggestedContacts.set(seed && !res.data.some(c => c.id === seed.id) ? [seed, ...res.data] : res.data);
+      })
+      .catch(() => { });
+    this.loadCoverLetters();
+  }
+
   closeAttemptModal() {
     this.showAttemptModal.set(false);
+    this.reapplySource.set(null);
+    this.attemptAttachments.set([]);
+    this.attemptAttError.set(null);
     this.resetPicker();
   }
 
@@ -422,10 +484,12 @@ export class ApplicationDetailComponent implements OnInit {
         recipientName: cfg.recipientName ? (f.recipientName.trim() || undefined) : undefined,
         recipientContact: cfg.recipientContact ? (f.recipientContact.trim() || undefined) : undefined,
         contactId: this.selectedContactId() ?? undefined,
-        channelMetadataJson: ((f.channel === 'WEB_FORM' || f.channel === 'LINKEDIN_APPLY') && f.recipientContact.trim())
+        channelMetadataJson: ((f.channel === 'WEB_FORM' || f.channel === 'LINKEDIN_APPLY' || f.channel === 'INDEED_APPLY') && f.recipientContact.trim())
           ? JSON.stringify({ formUrl: f.recipientContact.trim() })
           : undefined,
         coverLetterVersionId: f.coverLetterVersionId ?? null,
+        cvVersionId: f.cvVersionId ?? undefined,
+        attachments: this.attemptAttachments().length > 0 ? this.attemptAttachments() : undefined,
         sentAt: markSent ? new Date().toISOString() : undefined,
       });
       if (res.success && res.data) {
@@ -436,6 +500,40 @@ export class ApplicationDetailComponent implements OnInit {
       }
     } catch { this.attemptError.set('Failed to log attempt'); }
     finally { this.saving.set(false); }
+  }
+
+  /** Sends the composed attempt email through Gmail; logs the attempt server-side. */
+  async sendAttemptViaGmail() {
+    const app = this.application();
+    if (!app) return;
+    const f = this.attemptForm();
+    const email = f.recipientContact.trim();
+    if (!email) {
+      this.attemptError.set('A recipient email is required to send via Gmail');
+      return;
+    }
+    this.sendingAttempt.set(true);
+    this.attemptError.set(null);
+    try {
+      const res = await this.appService.sendAttempt(app.id, {
+        recipientContact: email,
+        recipientName: f.recipientName.trim() || undefined,
+        contactId: this.selectedContactId() ?? undefined,
+        subject: f.subject.trim() || undefined,
+        body: f.body.trim() || undefined,
+        cvVersionId: f.cvVersionId ?? null,
+        coverLetterVersionId: f.coverLetterVersionId ?? null,
+        attachments: this.attemptAttachments().length > 0 ? this.attemptAttachments() : undefined,
+      });
+      if (res.success && res.data) {
+        this.closeAttemptModal();
+        await this.loadApplication(app.id);
+      } else {
+        this.attemptError.set(res.message || 'Failed to send email');
+      }
+    } catch (err: any) {
+      this.attemptError.set(err?.error?.message || 'Failed to send email');
+    } finally { this.sendingAttempt.set(false); }
   }
 
   async setAttemptStatus(attempt: AttemptResponseDto, status: AttemptStatus, failureReason?: string) {
@@ -564,6 +662,40 @@ export class ApplicationDetailComponent implements OnInit {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
+  // ── Attempt attachments (reapply modal working list) ────────────────────
+  attemptAttachmentDownloadUrl(attempt: AttemptResponseDto, index: number): string {
+    const app = this.application();
+    return app ? `/api/applications/${app.id}/attempts/${attempt.id}/attachments/${index}/download` : '';
+  }
+
+  async onAttemptFilesSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    if (files.length > 0) await this.uploadAttemptAttachments(files);
+  }
+
+  /** Uploads to MinIO and appends refs to the modal's working list (saved with the attempt). */
+  async uploadAttemptAttachments(files: File[]) {
+    if (this.attemptAttUploading()) return;
+    this.attemptAttUploading.set(true);
+    this.attemptAttError.set(null);
+    try {
+      const refs = await Promise.all(files.map(f => this.mailbox.uploadAttachment(f)));
+      const failed = refs.find(r => !r.success || !r.data);
+      if (failed) { this.attemptAttError.set(failed.message || 'Upload failed'); return; }
+      this.attemptAttachments.update(list => [...list, ...refs.map(r => r.data!)]);
+    } catch {
+      this.attemptAttError.set('Upload failed');
+    } finally {
+      this.attemptAttUploading.set(false);
+    }
+  }
+
+  removeAttemptAttachment(index: number) {
+    this.attemptAttachments.update(list => list.filter((_, i) => i !== index));
+  }
+
   // ── CV sent with this apply ─────────────────────────────────────────────
   async ensureDocumentsLoaded() {
     if (this.docLoaded || this.docLoading()) return;
@@ -600,7 +732,8 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   // ── From-Documents picker ───────────────────────────────────────────────
-  openDocsPicker() {
+  openDocsPicker(target: 'app' | 'attempt' = 'app') {
+    this.docsTarget.set(target);
     void this.ensureDocumentsLoaded();
     this.docsOpen.set(true);
   }
@@ -624,15 +757,22 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   /** Fetches document bytes through the app's authenticated endpoint, uploads to
-   *  MinIO via the mailbox attachment path, then persists the ref on the application. */
+   *  MinIO via the mailbox attachment path, then persists the ref on the target
+   *  (the application by default, or the attempt modal's working list). */
   private async attachBlobAsFile(fileName: string, fetchBlob: () => Promise<Blob>): Promise<boolean> {
     try {
       const blob = await fetchBlob();
       const file = new File([blob], fileName, { type: blob.type || 'application/pdf' });
-      await this.uploadAttachments([file]);
+      if (this.docsTarget() === 'attempt') {
+        await this.uploadAttemptAttachments([file]);
+      } else {
+        await this.uploadAttachments([file]);
+      }
       return true;
     } catch {
-      this.attachmentError.set(`Could not load "${fileName}" from Documents`);
+      const msg = `Could not load "${fileName}" from Documents`;
+      if (this.docsTarget() === 'attempt') this.attemptAttError.set(msg);
+      else this.attachmentError.set(msg);
       return false;
     }
   }

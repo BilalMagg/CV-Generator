@@ -1,9 +1,16 @@
-<div class="bulk-page">
+<div class="bulk-page" (input)="schedulePersist()">
   <header class="page-head">
     <div>
       <h1>Bulk Apply</h1>
       <p class="sub">Paste a list of companies, generate tailored emails, and send them one by one.</p>
     </div>
+    @if (draftRestored() || draftSavedAt()) {
+      <div class="draft-bar">
+        @if (draftRestored()) { <span class="pill">Draft restored</span> }
+        @if (draftSavedAt()) { <span class="saved">Draft saved automatically</span> }
+        <button class="link" (click)="discardDraft()">Discard draft</button>
+      </div>
+    }
   </header>
 
   <!-- Stepper -->
@@ -217,8 +224,8 @@
       </div>
 
       <div class="row-list">
-        <div class="row-item" *ngFor="let r of includedRows(); trackBy: trackByKey">
-          <div class="row-summary" (click)="toggleExpand(r.key)">
+        <div class="row-item" [class.open]="r.expanded" *ngFor="let r of includedRows(); trackBy: trackByKey">
+          <div class="row-summary" (click)="toggleExpand(r.key, $event)">
             <span class="chev">{{ r.expanded ? '▾' : '▸' }}</span>
             <span class="co">{{ r.companyName || '(no company)' }}</span>
             <span class="em">{{ r.email || 'no email' }}</span>

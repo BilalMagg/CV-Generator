@@ -110,6 +110,7 @@ public record CreateAttemptDto(
     string? ChannelMetadataJson = null,
     Guid? CvVersionId = null,
     Guid? CoverLetterVersionId = null,
+    List<ScheduleAttachmentRef>? Attachments = null,
     DateTime? SentAt = null,
     string? FailureReason = null
 );
@@ -124,6 +125,7 @@ public record UpdateAttemptDto(
     string? ChannelMetadataJson = null,
     Guid? CvVersionId = null,
     Guid? CoverLetterVersionId = null,
+    List<ScheduleAttachmentRef>? Attachments = null,
     DateTime? SentAt = null,
     string? FailureReason = null
 );
@@ -135,6 +137,19 @@ public record ContactSummaryDto(
     string? Company,
     string? Position,
     bool IsFavorite
+);
+
+/// <summary>Payload for sending a composed attempt email through Gmail and logging
+/// it as a SENT attempt (subject/body/recipients/CV/cover letter/attachments).</summary>
+public record SendAttemptDto(
+    string RecipientContact,
+    string? RecipientName = null,
+    Guid? ContactId = null,
+    string? Subject = null,
+    string? Body = null,
+    Guid? CvVersionId = null,
+    Guid? CoverLetterVersionId = null,
+    List<ScheduleAttachmentRef>? Attachments = null
 );
 
 public record AttemptResponseDto(
@@ -154,6 +169,7 @@ public record AttemptResponseDto(
     Guid? CvVersionId,
     Guid? CoverLetterVersionId,
     string? CoverLetterTitle,
+    List<ScheduleAttachmentRef>? Attachments,
     DateTime? SentAt,
     string? FailureReason,
     DateTime CreatedAt,
