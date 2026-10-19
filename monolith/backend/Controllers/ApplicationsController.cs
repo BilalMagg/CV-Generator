@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 using System.Text.Json;
 using CV_Generator;
 using CV_Generator.Data;
@@ -22,6 +23,7 @@ public class ApplicationsController : ControllerBase
     private readonly IMinioStorageService _minio;
     private readonly IGmailSendService _gmailSend;
     private readonly AppDbContext _db;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public ApplicationsController(
         IApplicationService service,
@@ -30,7 +32,8 @@ public class ApplicationsController : ControllerBase
         IServiceScopeFactory scopeFactory,
         IMinioStorageService minio,
         IGmailSendService gmailSend,
-        AppDbContext db)
+        AppDbContext db,
+        IHttpClientFactory httpClientFactory)
     {
         _service = service;
         _currentUser = currentUser;
@@ -39,6 +42,7 @@ public class ApplicationsController : ControllerBase
         _minio = minio;
         _gmailSend = gmailSend;
         _db = db;
+        _httpClientFactory = httpClientFactory;
     }
 
     private Guid? UserId => _currentUser.UserId;
@@ -419,13 +423,21 @@ public class ApplicationsController : ControllerBase
         var fromEmail = connection?.GmailAddress ?? "noreply@propel.com";
         var provider = connection is not null ? "gmail" : "smtp";
 
+        // Resolve the CV version chosen in the modal so it is ACTUALLY attached to the sent email
+        // (ownership-checked). Without this the attempt merely recorded the CV id.
+        var (cvPdfUrl, cvTitle) = await ResolveCvPdfUrlAsync(dto.CvVersionId);
+        cvPdfUrl = await SkipDuplicateCvAsync(cvPdfUrl, sendAttachments);
+
+        // Same for the cover letter version — attached as an extra file when one was selected.
+        await AddCoverLetterAttachmentAsync(dto.CoverLetterVersionId, sendAttachments);
+
         string? messageId = null;
         string? threadId = null;
         try
         {
             (messageId, threadId) = await _gmailSend.SendWithAttachmentAsync(
                 UserId.Value, dto.RecipientContact, dto.Subject ?? string.Empty, dto.Body ?? string.Empty,
-                null, null, sendAttachments.Count > 0 ? sendAttachments : null);
+                cvPdfUrl, cvTitle, sendAttachments.Count > 0 ? sendAttachments : null);
         }
         catch (GmailReauthRequiredException ex)
         {
@@ -499,5 +511,107 @@ public class ApplicationsController : ControllerBase
             return StatusCode(StatusCodes.Status502BadGateway, ApiResponse<AttemptResponseDto>.Error(
                 "Email was sent, but the attempt could not be logged. Reload and check the timeline."));
         }
+    }
+
+    /// <summary>Resolves the selected CV version's PDF URL + title (ownership-checked).</summary>
+    private async Task<(string? PdfUrl, string? Title)> ResolveCvPdfUrlAsync(Guid? cvVersionId)
+    {
+        if (cvVersionId is null || UserId is null) return (null, null);
+        var cv = await _db.CvVersions.AsNoTracking()
+            .Include(v => v.Cv)
+            .FirstOrDefaultAsync(v => v.Id == cvVersionId.Value && v.Cv.UserId == UserId.Value);
+        return (cv?.PdfUrl, cv?.Cv.Title);
+    }
+
+    /// <summary>
+    /// If one of the explicit attachments is byte-identical to the auto-attached CV, drop the
+    /// auto CV so the recipient doesn't receive the same file twice.
+    /// </summary>
+    private async Task<string?> SkipDuplicateCvAsync(string? cvPdfUrl, List<EmailAttachmentDto> attachments)
+    {
+        if (cvPdfUrl is null || attachments.Count == 0) return cvPdfUrl;
+        try
+        {
+            using var http = _httpClientFactory.CreateClient();
+            var cvBytes = await http.GetByteArrayAsync(cvPdfUrl);
+            var cvDigest = SHA256.HashData(cvBytes);
+            foreach (var att in attachments)
+            {
+                if (string.IsNullOrWhiteSpace(att.ContentBase64)) continue;
+                try
+                {
+                    if (cvDigest.AsSpan().SequenceEqual(SHA256.HashData(Convert.FromBase64String(att.ContentBase64))))
+                    {
+                        _logger.LogInformation("Skipping auto CV attach: identical file already present ({Name})", att.FileName);
+                        return null;
+                    }
+                }
+                catch (FormatException) { /* skip unreadable attachment */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "CV duplicate check failed; attaching CV anyway");
+        }
+        return cvPdfUrl;
+    }
+
+    /// <summary>
+    /// Resolves the selected cover-letter version (ownership-checked) and appends its file to the
+    /// outgoing attachments, skipping it when a byte-identical file is already attached.
+    /// </summary>
+    private async Task AddCoverLetterAttachmentAsync(Guid? coverLetterVersionId, List<EmailAttachmentDto> attachments)
+    {
+        if (coverLetterVersionId is null || UserId is null) return;
+
+        var version = await _db.CoverLetterVersions.AsNoTracking()
+            .Include(v => v.CoverLetter)
+            .FirstOrDefaultAsync(v => v.Id == coverLetterVersionId.Value && v.CoverLetter.UserId == UserId.Value);
+        if (version is null) return;
+
+        var isPdf = !string.IsNullOrWhiteSpace(version.PdfUrl);
+        var url = version.PdfUrl ?? version.FileUrl;
+        if (string.IsNullOrWhiteSpace(url)) return;
+
+        try
+        {
+            using var http = _httpClientFactory.CreateClient();
+            var bytes = await http.GetByteArrayAsync(url);
+            if (bytes.Length == 0) return;
+
+            // Don't send the same file twice if it was already added as an explicit attachment.
+            var digest = SHA256.HashData(bytes);
+            foreach (var att in attachments)
+            {
+                if (string.IsNullOrWhiteSpace(att.ContentBase64)) continue;
+                try
+                {
+                    if (digest.AsSpan().SequenceEqual(SHA256.HashData(Convert.FromBase64String(att.ContentBase64))))
+                        return;
+                }
+                catch (FormatException) { /* skip unreadable attachment */ }
+            }
+
+            var ext = isPdf ? ".pdf"
+                : Path.GetExtension(url) is { Length: > 0 } e ? e : ".pdf";
+            attachments.Add(new EmailAttachmentDto
+            {
+                FileName = SanitizeFileName(version.CoverLetter.Title) + ext,
+                ContentType = isPdf ? "application/pdf" : "application/octet-stream",
+                ContentBase64 = Convert.ToBase64String(bytes)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to attach cover letter version {VersionId}; sending without it", coverLetterVersionId);
+        }
+    }
+
+    private static string SanitizeFileName(string? name)
+    {
+        var baseName = string.IsNullOrWhiteSpace(name) ? "cover-letter" : name.Trim();
+        foreach (var c in Path.GetInvalidFileNameChars())
+            baseName = baseName.Replace(c, '_');
+        return baseName;
     }
 }

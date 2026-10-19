@@ -73,7 +73,8 @@ public class GmailTokenRefresher : IGmailTokenRefresher
 
         try
         {
-            var token = await flow.RefreshTokenAsync(refreshToken, null, ct);
+            // NOTE: Google's signature is RefreshTokenAsync(userId, refreshToken, ct) — userId FIRST.
+            var token = await flow.RefreshTokenAsync(connection.UserId.ToString(), refreshToken, ct);
 
             connection.EncryptedAccessToken = _aes.Encrypt(token.AccessToken);
             if (!string.IsNullOrWhiteSpace(token.RefreshToken))
