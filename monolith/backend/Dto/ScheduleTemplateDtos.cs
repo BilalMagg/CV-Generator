@@ -145,3 +145,32 @@ public class ApplyEmailResult
     /// <summary>True when the send failure was a Gmail token rejection requiring a reconnect.</summary>
     public bool NeedsReauth { get; set; }
 }
+
+/// <summary>Payload for a single bulk-apply row send (simple Mailbox-style send + best-effort tracking).</summary>
+public class BulkRowSendRequest
+{
+    public string CompanyName { get; set; } = string.Empty;
+    public string PositionTitle { get; set; } = string.Empty;
+    public string? CompanyDescription { get; set; }
+    public string RecipientEmail { get; set; } = string.Empty;
+    public string? RecipientName { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public Guid? CvVersionId { get; set; }
+    public List<EmailAttachmentDto>? Attachments { get; set; }
+    public string? OfferSource { get; set; }
+}
+
+/// <summary>Outcome of a single bulk-apply row send.</summary>
+public class BulkRowSendResult
+{
+    public bool SentNow { get; set; }
+    public string? MessageId { get; set; }
+    public string? ThreadId { get; set; }
+
+    /// <summary>Set only when tracking succeeded after the send; a null value means the email
+    /// was sent but the application shell could not be created (best-effort).</summary>
+    public Guid ApplicationId { get; set; }
+    public Guid ContactId { get; set; }
+    public Guid CompanyId { get; set; }
+}

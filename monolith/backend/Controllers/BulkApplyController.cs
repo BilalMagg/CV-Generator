@@ -75,10 +75,25 @@ public class BulkApplyController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] CreateBulkApplyRunDto request,
-        [FromServices] BulkApplyBackgroundService backgroundService)
+        [FromServices] BulkApplyBackgroundService backgroundService,
+        [FromServices] IGmailAuthService gmailAuth)
     {
         var userId = _currentUser.UserId;
         if (userId is null) return Unauthorized();
+
+        // Fail fast when Gmail is not usable. Without this every row runs the full apply
+        // pipeline only to fail, which looks like the batch "hangs" on row 1.
+        var gmail = await gmailAuth.GetStatusAsync(userId.Value);
+        if (gmail is null)
+        {
+            return BadRequest(ApiResponse<object>.Error(
+                "Gmail is not connected. Connect it in Mailbox → Settings before sending."));
+        }
+        if (gmail.NeedsReauth)
+        {
+            return BadRequest(ApiResponse<object>.Error(
+                "Gmail session expired — reconnect Gmail in Mailbox → Settings before sending."));
+        }
 
         try
         {
@@ -116,12 +131,54 @@ public class BulkApplyController : ControllerBase
         var userId = _currentUser.UserId;
         if (userId is null) return Unauthorized();
 
-        var run = await _bulk.GetRunAsync(userId.Value, runId);
-        if (run is null) return NotFound(ApiResponse<object>.Error("Run not found"));
-        if (run.Status is "completed" or "cancelled" or "failed")
-            return BadRequest(ApiResponse<object>.Error("Run is already finished: " + run.Status));
+        // Persisted cancel flag first: this works even when the run has no live worker
+        // (queued, not started, or orphaned by a restart).
+        var ok = await _bulk.RequestCancelAsync(userId.Value, runId);
+        if (!ok)
+        {
+            var existing = await _bulk.GetRunAsync(userId.Value, runId);
+            if (existing is null) return NotFound(ApiResponse<object>.Error("Run not found"));
+            return BadRequest(ApiResponse<object>.Error("Run is already finished: " + existing.Status));
+        }
 
+        // Trip the in-memory token too so an actively-running batch stops at the next checkpoint.
         backgroundService.CancelRun(runId);
         return Ok(ApiResponse<object>.Ok(new { message = "Cancellation requested" }));
+    }
+
+    [HttpPost("{runId:guid}/retry")]
+    public async Task<IActionResult> Retry(
+        Guid runId,
+        [FromServices] BulkApplyBackgroundService backgroundService,
+        [FromServices] IGmailAuthService gmailAuth)
+    {
+        var userId = _currentUser.UserId;
+        if (userId is null) return Unauthorized();
+
+        // Same guard as Create: retrying every failed row is pointless if Gmail is unusable.
+        var gmail = await gmailAuth.GetStatusAsync(userId.Value);
+        if (gmail is null)
+        {
+            return BadRequest(ApiResponse<object>.Error(
+                "Gmail is not connected. Connect it in Mailbox → Settings before sending."));
+        }
+        if (gmail.NeedsReauth)
+        {
+            return BadRequest(ApiResponse<object>.Error(
+                "Gmail session expired — reconnect Gmail in Mailbox → Settings before sending."));
+        }
+
+        var run = await _bulk.RetryFailedRowsAsync(userId.Value, runId);
+        if (run is null)
+        {
+            var existing = await _bulk.GetRunAsync(userId.Value, runId);
+            if (existing is null) return NotFound(ApiResponse<object>.Error("Run not found"));
+            if (existing.Status is "running" or "pending")
+                return BadRequest(ApiResponse<object>.Error("Run is still in progress"));
+            return BadRequest(ApiResponse<object>.Error("There are no failed rows to retry"));
+        }
+
+        await backgroundService.EnqueueRunAsync(run.Id);
+        return Accepted(ApiResponse<BulkApplyRunDto>.Ok(run));
     }
 }

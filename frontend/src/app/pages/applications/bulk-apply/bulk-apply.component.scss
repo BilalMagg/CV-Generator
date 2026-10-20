@@ -341,8 +341,39 @@ table.rows {
   }
 
   .c-act {
-    width: 40px;
+    width: 108px;
     text-align: center;
+  }
+}
+
+.act-stack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.save-btn {
+  min-width: 40px;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-soft);
+    border-color: var(--accent-text);
+    color: var(--accent-text);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 }
 
@@ -383,6 +414,11 @@ input.cell {
   &.bad-tag {
     background: #fef2f2;
     color: #b91c1c;
+  }
+
+  &.ok-tag {
+    background: #ecfdf5;
+    color: #047857;
   }
 }
 

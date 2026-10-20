@@ -48,5 +48,12 @@ public class BulkApplyRun
 
     public DateTime? CancelledAt { get; set; }
 
+    /// <summary>
+    /// Set when the user asks to cancel. Checked by the worker before it starts and between
+    /// rows, so a cancel that lands before the worker picks the run up (or while it is queued)
+    /// is still honoured — cancel previously only worked on an already-active in-memory token.
+    /// </summary>
+    public bool CancelRequested { get; set; }
+
     public List<BulkApplyRow> Rows { get; set; } = [];
 }

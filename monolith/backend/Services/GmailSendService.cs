@@ -14,6 +14,11 @@ namespace CV_Generator.Services;
 
 public class GmailSendService : IGmailSendService
 {
+    /// <summary>Hard ceiling for a single Gmail send call. Without this a stalled
+    /// connection to Google would hang a caller (and the whole bulk- apply run) forever.</summary>
+    private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan AttachmentDownloadTimeout = TimeSpan.FromSeconds(30);
+
     private readonly AppDbContext _db;
     private readonly IAesEncryptionService _aes;
     private readonly IGmailTokenRefresher _tokenRefresher;
@@ -62,7 +67,6 @@ public class GmailSendService : IGmailSendService
             HttpClientInitializer = credential,
             ApplicationName = "CV_Generator"
         });
-
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress("", connection.GmailAddress));
         message.To.Add(new MailboxAddress("", to));
@@ -75,7 +79,9 @@ public class GmailSendService : IGmailSendService
             try
             {
                 using var httpClient = _httpClientFactory.CreateClient();
-                var pdfBytes = await httpClient.GetByteArrayAsync(cvPdfUrl);
+                // Bounded download: a wedged MinIO/artifact URL must not hang the whole apply.
+                using var dlCts = new CancellationTokenSource(AttachmentDownloadTimeout);
+                var pdfBytes = await httpClient.GetByteArrayAsync(cvPdfUrl, dlCts.Token);
                 var fileName = SanitizeFileName(cvTitle, fallbackUrl: cvPdfUrl, fallbackName: "cv.pdf");
 
                 bodyBuilder.Attachments.Add(fileName, pdfBytes, ContentType.Parse("application/pdf"));
@@ -116,9 +122,16 @@ public class GmailSendService : IGmailSendService
         var gmailMessage = new Message { Raw = raw };
 
         Message sent;
+        using var sendCts = new CancellationTokenSource(SendTimeout);
         try
         {
-            sent = await gmailService.Users.Messages.Send(gmailMessage, "me").ExecuteAsync();
+            sent = await gmailService.Users.Messages.Send(gmailMessage, "me").ExecuteAsync(sendCts.Token);
+        }
+        catch (OperationCanceledException) when (sendCts.IsCancellationRequested)
+        {
+            _logger.LogWarning("Gmail send timed out after {Seconds}s for user {UserId}", SendTimeout.TotalSeconds, userId);
+            throw new InvalidOperationException(
+                $"Gmail did not respond within {SendTimeout.TotalSeconds:0} seconds — the send was aborted. Check your connection and retry.");
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.Unauthorized)
         {

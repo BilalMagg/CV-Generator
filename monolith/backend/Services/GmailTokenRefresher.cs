@@ -23,6 +23,7 @@ public class GmailTokenRefresher : IGmailTokenRefresher
 {
     private const string RefreshScope = "https://www.googleapis.com/auth/gmail.send";
     private static readonly TimeSpan RefreshWindow = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan RefreshTimeout = TimeSpan.FromSeconds(30);
 
     private readonly AppDbContext _db;
     private readonly IAesEncryptionService _aes;
@@ -74,7 +75,10 @@ public class GmailTokenRefresher : IGmailTokenRefresher
         try
         {
             // NOTE: Google's signature is RefreshTokenAsync(userId, refreshToken, ct) — userId FIRST.
-            var token = await flow.RefreshTokenAsync(connection.UserId.ToString(), refreshToken, ct);
+            // Bound the network call: a stalled connection to Google must never hang a send/run.
+            using var refreshCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            refreshCts.CancelAfter(RefreshTimeout);
+            var token = await flow.RefreshTokenAsync(connection.UserId.ToString(), refreshToken, refreshCts.Token);
 
             connection.EncryptedAccessToken = _aes.Encrypt(token.AccessToken);
             if (!string.IsNullOrWhiteSpace(token.RefreshToken))
@@ -94,6 +98,15 @@ public class GmailTokenRefresher : IGmailTokenRefresher
                 ex.Error?.Error, connection.UserId);
             await MarkReauthAsync(connection, ex.Error?.Error ?? "invalid_grant", ct);
             throw new GmailReauthRequiredException();
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // Timed out talking to Google. Do NOT flag re-auth (the token may be fine);
+            // surface a transient error so the caller reports a retryable failure.
+            _logger.LogWarning("Gmail token refresh timed out after {Seconds}s for user {UserId}",
+                RefreshTimeout.TotalSeconds, connection.UserId);
+            throw new InvalidOperationException(
+                $"Gmail did not respond within {RefreshTimeout.TotalSeconds:0} seconds while refreshing the session. Check your connection and retry.");
         }
         catch (TokenResponseException ex)
         {

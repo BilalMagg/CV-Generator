@@ -18,12 +18,15 @@ public static class BulkTextParser
     private static readonly Regex EmailLike = new(@"[\w.+-]+@[\w-]+\.[\w.-]+", RegexOptions.Compiled);
     private static readonly Regex EmailLabel = new(@"^\s*(e[\-\s]?mail|mail|email)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex SpecialtyLabel = new(@"^\s*(sp[ée]?cialit|specialt|domaine|secteur|p[ôo]le|area|field)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex ContactLabel = new(@"^\s*(contact|contact\s*name|nom|interlocuteur|destinataire|recruteur|r[ée]f[ée]rent)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex LocationLabel = new(@"^\s*(localisation|location|ville|city|adresse|address|si[èe]ge|lieu)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex HeaderSplit = new(@"\s*[—–]\s*|\s+-\s+", RegexOptions.Compiled);
 
     private sealed class Block
     {
         public string Company = "";
         public string? Location;
+        public string? ContactName;
         public readonly List<string> Emails = [];
         public readonly List<string> Specialties = [];
     }
@@ -44,10 +47,10 @@ public static class BulkTextParser
 
             var emailsInLine = EmailLike.Matches(line).Select(m => m.Value).ToList();
 
-            if (emailsInLine.Count > 0 && (EmailLabel.IsMatch(line) || emailsInLine.Any(e => e == line)))
+            if (EmailLabel.IsMatch(line))
             {
                 current ??= NewBlock("");
-                foreach (var e in emailsInLine) AddEmail(current, e);
+                foreach (var e in EmailsIn(line)) AddEmail(current, e);
                 continue;
             }
 
@@ -55,6 +58,33 @@ public static class BulkTextParser
             {
                 current ??= NewBlock("");
                 foreach (var s in SplitSpecialties(line)) AddSpecialty(current, s);
+                continue;
+            }
+
+            // "Contact: Nadia" / "Nom : Nadia" — a person, never a company header.
+            if (ContactLabel.IsMatch(line))
+            {
+                current ??= NewBlock("");
+                var value = StripLabel(line, ContactLabel);
+                if (value.Length > 0 && string.IsNullOrWhiteSpace(current.ContactName))
+                    current.ContactName = value;
+                continue;
+            }
+
+            if (LocationLabel.IsMatch(line))
+            {
+                current ??= NewBlock("");
+                var value = StripLabel(line, LocationLabel);
+                if (value.Length > 0 && string.IsNullOrWhiteSpace(current.Location))
+                    current.Location = value;
+                continue;
+            }
+
+            // A stray email address on its own line belongs to the current block.
+            if (emailsInLine.Count > 0 && emailsInLine.Any(e => e == line))
+            {
+                current ??= NewBlock("");
+                foreach (var e in emailsInLine) AddEmail(current, e);
                 continue;
             }
 
@@ -76,7 +106,7 @@ public static class BulkTextParser
                     CompanyName = block.Company,
                     Location = block.Location,
                     Email = string.IsNullOrWhiteSpace(email) ? null : email,
-                    ContactName = null,
+                    ContactName = block.ContactName,
                     Specialties = [.. specialties]
                 });
             }
@@ -89,6 +119,17 @@ public static class BulkTextParser
     }
 
     private static Block NewBlock(string company) => new() { Company = company };
+
+    /// <summary>All email-looking tokens on a line.</summary>
+    private static List<string> EmailsIn(string line) =>
+        EmailLike.Matches(line).Select(m => m.Value).ToList();
+
+    /// <summary>Removes a leading "label :" / "label -" prefix, e.g. "Contact: Nadia" → "Nadia".</summary>
+    private static string StripLabel(string line, Regex label)
+    {
+        var value = label.Replace(line, "");
+        return value.TrimStart(':', '-', '—', '–', ' ').Trim();
+    }
 
     private static Block ParseHeader(string line)
     {

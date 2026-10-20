@@ -66,6 +66,7 @@ export interface BulkApplyRunDto {
   delaySeconds: number;
   cvVersionId?: string | null;
   errorMessage?: string | null;
+  cancelRequested: boolean;
   createdAt: string;
   completedAt?: string | null;
   cancelledAt?: string | null;

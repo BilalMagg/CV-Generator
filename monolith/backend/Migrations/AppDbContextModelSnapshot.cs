@@ -574,6 +574,9 @@ namespace CV_Generator.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("CancelRequested")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("timestamp with time zone");
 

@@ -6,8 +6,10 @@ import { BulkApplyService } from '@app/services/bulk-apply.service';
 import { MailboxService } from '@app/services/mailbox.service';
 import { DocumentsService } from '@app/services/documents.service';
 import { ContactService } from '@app/services/contact.service';
+import { CompanyService } from '@app/services/company.service';
 import { AuthService } from '@app/services/auth.service';
 import { ToastService } from '@app/services/toast.service';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CvDocumentDto } from '@app/models/document.model';
 import { ScheduleTemplateDto } from '@app/models/apply.model';
 import { BulkApplyRowDto, BulkApplyRunDto } from '@app/models/bulk-apply.model';
@@ -37,6 +39,12 @@ interface ReviewRow {
   expanded: boolean;
   /** True when this email already exists as a saved contact (pre-unchecked by default). */
   existingContact: boolean;
+  /** True when a company with this (normalized) name is already saved. */
+  existingCompany: boolean;
+  /** True when this row's company was saved from the review screen. */
+  companySaved: boolean;
+  /** True when this row's contact was saved from the review screen. */
+  contactSaved: boolean;
 }
 
 interface SharedVarField {
@@ -55,6 +63,34 @@ const POLL_MS = 1500;
 /** localStorage key for the in-progress batch draft (survives reloads/crashes). */
 const DRAFT_KEY = 'propel.bulk-apply.draft.v1';
 const DRAFT_DEBOUNCE_MS = 400;
+
+/** Sample list for dry-runs — plus-addressed to the signed-in user's own inbox. */
+function buildSampleList(userEmail: string): string {
+  const base = userEmail.includes('@') ? userEmail.replace(/\+.*@/, '@') : 'YOURMAIL@gmail.com';
+  const at = base.indexOf('@');
+  const alias = (n: number) => (at > 0 ? `${base.slice(0, at)}+bulk${n}${base.slice(at)}` : `test${n}@example.com`);
+  const rows = [
+    ['Acme Testing', 'Casablanca', 'Test HR 1', 'Cloud, DevOps'],
+    ['Beta QA Corp', 'Rabat', 'Test HR 2', 'Data Science, AI'],
+    ['Gamma Sandbox', 'Tangier', 'Test HR 3', 'Web Development, Angular'],
+    ['Delta Dryrun', 'Marrakech', 'Test HR 4', 'Cybersecurity'],
+    ['Epsilon Trial', 'Agadir', '', 'Mobile, Flutter'],
+    ['Zeta Mock Ltd', 'Fès', 'Test HR 6', 'Backend, Java, Spring'],
+    ['Eta Dummy SA', 'Oujda', '', 'Data Engineering'],
+    ['Theta Simul', 'Kenitra', 'Test HR 8', 'QA, Testing'],
+    ['Iota Fake Co', 'Salé', '', 'ML, Python'],
+    ['Kappa Example', 'El Jadida', 'Test HR 10', 'DevOps, Kubernetes'],
+  ];
+  return rows
+    .map(([co, loc, contact, spec], i) => {
+      const lines = [`${i + 1}. ${co} — ${loc}`];
+      if (contact) lines.push(`   Contact: ${contact}`);
+      lines.push(`   Email: ${alias(i + 1)}`);
+      lines.push(`   Spécialités: ${spec}`);
+      return lines.join('\n');
+    })
+    .join('\n\n');
+}
 
 interface BulkDraft {
   v: number;
@@ -85,6 +121,7 @@ export class BulkApplyComponent implements OnDestroy {
   private mailboxSvc = inject(MailboxService);
   private docsSvc = inject(DocumentsService);
   private contactSvc = inject(ContactService);
+  private companySvc = inject(CompanyService);
   private authSvc = inject(AuthService);
   private toast = inject(ToastService);
   private router = inject(Router);
@@ -105,6 +142,15 @@ export class BulkApplyComponent implements OnDestroy {
   rows = signal<ReviewRow[]>([]);
   private keySeq = 0;
 
+  // ── Step 2: save companies/contacts from review ────────────────────────────────
+  savingCompanyKey = signal<string | null>(null);
+  savingContactKey = signal<string | null>(null);
+  savingAllCompanies = signal(false);
+  savingAllContacts = signal(false);
+  /** Normalized names/emails already known to exist (seeded at extract, grown on save). */
+  private knownCompanyNames = new Set<string>();
+  private knownContactEmails = new Set<string>();
+
   // ── Step 3: compose ────────────────────────────────────────────────────────────
   templates = signal<ScheduleTemplateDto[]>([]);
   selectedTemplateId = signal('');
@@ -122,7 +168,13 @@ export class BulkApplyComponent implements OnDestroy {
   runId = signal<string | null>(null);
   gmailConnected = signal(false);
   gmailNeedsReauth = signal(false);
+  cancelling = signal(false);
+  retrying = signal(false);
+  /** True when the run has not advanced for a while — the UI offers a cancel/retry escape. */
+  stalled = signal(false);
   private pollHandle: ReturnType<typeof setTimeout> | null = null;
+  private lastProgressAt = 0;
+  private lastProcessed = -1;
 
   // ── Draft (localStorage auto-save) ─────────────────────────────────────────────
   draftRestored = signal(false);
@@ -179,6 +231,9 @@ export class BulkApplyComponent implements OnDestroy {
     return s === 'completed' || s === 'failed' || s === 'cancelled';
   });
 
+  /** Number of rows that can be retried (only meaningful once the run is terminal). */
+  failedRows = computed(() => (this.run()?.rows ?? []).filter((row) => row.status === 'failed').length);
+
   async ngOnInit() {
     this.restoreDraft();
     this.persistEnabled = true;
@@ -226,7 +281,14 @@ export class BulkApplyComponent implements OnDestroy {
       if (!d || typeof d !== 'object') return;
 
       const rows = Array.isArray(d.rows)
-        ? d.rows.map((r) => ({ ...r, expanded: r.expanded === true }))
+        ? d.rows.map((r) => ({
+            ...r,
+            expanded: r.expanded === true,
+            existingContact: r.existingContact === true,
+            existingCompany: r.existingCompany === true,
+            companySaved: r.companySaved === true,
+            contactSaved: r.contactSaved === true,
+          }))
         : [];
       const hasRows = rows.length > 0;
       const hasText = typeof d.pasteText === 'string' && d.pasteText.trim().length > 0;
@@ -340,16 +402,18 @@ export class BulkApplyComponent implements OnDestroy {
         return;
       }
 
-      const existing = await this.loadExistingEmails();
+      const existing = await this.loadExistingEntities();
       this.keySeq = 0;
       this.rows.set(
         data.rows.map((r) => {
           const email = (r.email ?? '').trim();
-          const isExisting = !!email && existing.has(email.toLowerCase());
+          const isExisting = !!email && existing.emails.has(email.toLowerCase());
+          const coName = (r.companyName ?? '').trim();
+          const isExistingCo = !!coName && existing.companyNames.has(coName.toLowerCase());
           return {
             key: `r${this.keySeq++}`,
             include: !isExisting,
-            companyName: r.companyName ?? '',
+            companyName: coName,
             location: r.location ?? '',
             specialty: (r.specialties ?? []).join(', '),
             email,
@@ -358,13 +422,19 @@ export class BulkApplyComponent implements OnDestroy {
             body: '',
             expanded: false,
             existingContact: isExisting,
+            existingCompany: isExistingCo,
+            companySaved: false,
+            contactSaved: false,
           };
         }),
       );
       this.extractMethod.set(data.method);
       this.step.set(2);
-      if (existing.size) {
-        this.toast.success(`Parsed ${data.rows.length} rows — existing contacts were unchecked`);
+      const flags: string[] = [];
+      if (existing.emails.size) flags.push(`${existing.emails.size} saved contact emails`);
+      if (existing.companyNames.size) flags.push(`${existing.companyNames.size} saved companies`);
+      if (flags.length) {
+        this.toast.success(`Parsed ${data.rows.length} rows — existing ${flags.join(' and ')} were flagged`);
       }
     } catch (e: any) {
       this.error.set(e?.message || 'Extraction failed');
@@ -373,17 +443,32 @@ export class BulkApplyComponent implements OnDestroy {
     }
   }
 
-  private async loadExistingEmails(): Promise<Set<string>> {
-    const set = new Set<string>();
+  private async loadExistingEntities(): Promise<{ emails: Set<string>; companyNames: Set<string> }> {
+    const emails = new Set<string>();
+    const companyNames = new Set<string>();
+    this.knownContactEmails.clear();
+    this.knownCompanyNames.clear();
     try {
       const res = await this.contactSvc.getContacts({ page: 1, pageSize: 500 });
       for (const c of res.data?.items ?? []) {
-        if (c.email) set.add(c.email.trim().toLowerCase());
+        if (c.email) {
+          emails.add(c.email.trim().toLowerCase());
+        }
       }
     } catch {
       /* dedupe is best-effort */
     }
-    return set;
+    try {
+      const res = await this.companySvc.getCompanies({ page: 1, pageSize: 500 });
+      for (const c of res.data?.items ?? []) {
+        if (c.name) companyNames.add(c.name.trim().toLowerCase());
+      }
+    } catch {
+      /* dedupe is best-effort */
+    }
+    for (const e of emails) this.knownContactEmails.add(e);
+    for (const n of companyNames) this.knownCompanyNames.add(n);
+    return { emails, companyNames };
   }
 
   // ── Step 2: review ─────────────────────────────────────────────────────────────
@@ -440,8 +525,229 @@ export class BulkApplyComponent implements OnDestroy {
         body: '',
         expanded: true,
         existingContact: false,
+        existingCompany: false,
+        companySaved: false,
+        contactSaved: false,
       },
     ]);
+  }
+
+  // ── Step 2: save companies / contacts ──────────────────────────────────────────
+
+  loadSample() {
+    this.pasteText = buildSampleList(this.authSvc.currentUser()?.email ?? '');
+    this.error.set('');
+    this.toast.success('Sample list loaded — replace the aliases with your own inbox if needed');
+  }
+
+  canSaveCompany(r: ReviewRow): boolean {
+    return !!r.companyName.trim() && !r.existingCompany && !r.companySaved;
+  }
+
+  canSaveContact(r: ReviewRow): boolean {
+    return !!r.email.trim() && !r.existingContact && !r.contactSaved;
+  }
+
+  saveableCompanies(): ReviewRow[] {
+    return this.rows().filter((r) => this.canSaveCompany(r));
+  }
+
+  saveableContacts(): ReviewRow[] {
+    return this.rows().filter((r) => this.canSaveContact(r));
+  }
+
+  async saveCompany(key: string): Promise<boolean> {
+    const row = this.rows().find((r) => r.key === key);
+    if (!row || !this.canSaveCompany(row)) return false;
+    this.savingCompanyKey.set(key);
+    try {
+      const outcome = await this.postCompany(row);
+      if (outcome === 'created') {
+        this.markCompany(row.key, 'saved');
+        return true;
+      }
+      if (outcome === 'exists') {
+        this.markCompany(row.key, 'existing');
+        return false;
+      }
+      this.toast.error(`Could not save ${row.companyName}`);
+      return false;
+    } finally {
+      this.savingCompanyKey.set(null);
+    }
+  }
+
+  async saveContact(key: string): Promise<boolean> {
+    const row = this.rows().find((r) => r.key === key);
+    if (!row || !this.canSaveContact(row)) return false;
+    this.savingContactKey.set(key);
+    try {
+      const outcome = await this.postContact(row);
+      if (outcome === 'created') {
+        this.markContact(row.key, 'saved');
+        return true;
+      }
+      if (outcome === 'exists') {
+        this.markContact(row.key, 'existing');
+        return false;
+      }
+      this.toast.error(`Could not save contact for ${row.companyName || row.email}`);
+      return false;
+    } finally {
+      this.savingContactKey.set(null);
+    }
+  }
+
+  async saveAllCompanies() {
+    const targets = this.saveableCompanies();
+    if (!targets.length) {
+      this.toast.success('All companies with a name are already saved');
+      return;
+    }
+    this.savingAllCompanies.set(true);
+    let created = 0;
+    let exists = 0;
+    let failed = 0;
+    try {
+      for (const target of targets) {
+        // Re-read the live row: earlier iterations may have resolved batch duplicates already.
+        const row = this.rows().find((r) => r.key === target.key);
+        if (!row || !this.canSaveCompany(row)) { exists++; continue; }
+        const outcome = await this.postCompany(row);
+        if (outcome === 'created') { created++; this.markCompany(row.key, 'saved'); }
+        else if (outcome === 'exists') { exists++; this.markCompany(row.key, 'existing'); }
+        else failed++;
+      }
+    } finally {
+      this.savingAllCompanies.set(false);
+    }
+    const parts = [`${created} saved`];
+    if (exists) parts.push(`${exists} already existed`);
+    if (failed) parts.push(`${failed} failed`);
+    const msg = `Companies: ${parts.join(' · ')}`;
+    failed ? this.toast.error(msg) : this.toast.success(msg);
+  }
+
+  async saveAllContacts() {
+    const targets = this.saveableContacts();
+    const noEmail = this.rows().filter((r) => r.companyName.trim() && !r.email.trim() && !r.contactSaved).length;
+    if (!targets.length) {
+      this.toast.success('All contacts with an email are already saved');
+      return;
+    }
+    this.savingAllContacts.set(true);
+    let created = 0;
+    let exists = 0;
+    let failed = 0;
+    try {
+      for (const target of targets) {
+        const row = this.rows().find((r) => r.key === target.key);
+        if (!row || !this.canSaveContact(row)) { exists++; continue; }
+        const outcome = await this.postContact(row);
+        if (outcome === 'created') { created++; this.markContact(row.key, 'saved'); }
+        else if (outcome === 'exists') { exists++; this.markContact(row.key, 'existing'); }
+        else failed++;
+      }
+    } finally {
+      this.savingAllContacts.set(false);
+    }
+    const parts = [`${created} saved`];
+    if (exists) parts.push(`${exists} already existed`);
+    if (noEmail) parts.push(`${noEmail} skipped (no email)`);
+    if (failed) parts.push(`${failed} failed`);
+    const msg = `Contacts: ${parts.join(' · ')}`;
+    failed ? this.toast.error(msg) : this.toast.success(msg);
+  }
+
+  /** POST one company; 'created' | 'exists' (409 or name already known) | 'failed'. */
+  private async postCompany(row: ReviewRow): Promise<'created' | 'exists' | 'failed'> {
+    const name = row.companyName.trim();
+    if (!name) return 'failed';
+    const key = name.toLowerCase();
+    if (this.knownCompanyNames.has(key)) return 'exists';
+    try {
+      const res = await this.companySvc.createCompany({
+        name,
+        location: row.location.trim() || undefined,
+        specialties: row.specialty.trim() || undefined,
+      });
+      if (res.success) {
+        this.knownCompanyNames.add(key);
+        return 'created';
+      }
+      return res.message?.includes('already') ? 'exists' : 'failed';
+    } catch (e) {
+      // CompaniesController returns 409 Conflict on duplicate names.
+      if (e instanceof HttpErrorResponse && e.status === 409) {
+        this.knownCompanyNames.add(key);
+        return 'exists';
+      }
+      return 'failed';
+    }
+  }
+
+  /** POST one contact; 'created' | 'exists' | 'failed'. */
+  private async postContact(row: ReviewRow): Promise<'created' | 'exists' | 'failed'> {
+    const email = row.email.trim().toLowerCase();
+    if (!email) return 'failed';
+    if (this.knownContactEmails.has(email)) return 'exists';
+    const name = (row.contactName.trim() || email.split('@')[0] || row.companyName.trim() || email).trim();
+    try {
+      const res = await this.contactSvc.createContact({
+        name,
+        email,
+        company: row.companyName.trim() || undefined,
+        source: 'bulk_apply',
+      });
+      if (res.success) {
+        this.knownContactEmails.add(email);
+        return 'created';
+      }
+      return res.message?.toLowerCase().includes('already') ? 'exists' : 'failed';
+    } catch (e) {
+      if (e instanceof HttpErrorResponse && e.status === 409) {
+        this.knownContactEmails.add(email);
+        return 'exists';
+      }
+      return 'failed';
+    }
+  }
+
+  private markCompany(key: string, state: 'saved' | 'existing') {
+    const row = this.rows().find((r) => r.key === key);
+    if (!row) return;
+    const norm = row.companyName.trim().toLowerCase();
+    // Same-name rows (duplicates within the batch) share the outcome.
+    this.rows.update((list) =>
+      list.map((r) =>
+        r.key === key || r.companyName.trim().toLowerCase() === norm
+          ? {
+              ...r,
+              companySaved: r.companySaved || state === 'saved',
+              existingCompany: r.existingCompany || state === 'existing',
+            }
+          : r,
+      ),
+    );
+    if (state === 'saved') this.knownCompanyNames.add(norm);
+  }
+
+  private markContact(key: string, state: 'saved' | 'existing') {
+    const row = this.rows().find((r) => r.key === key);
+    if (!row) return;
+    const email = row.email.trim().toLowerCase();
+    if (email) this.knownContactEmails.add(email);
+    this.rows.update((list) =>
+      list.map((r) =>
+        r.key === key || (email && r.email.trim().toLowerCase() === email)
+          ? {
+              ...r,
+              contactSaved: r.contactSaved || state === 'saved',
+              existingContact: r.existingContact || state === 'existing',
+            }
+          : r,
+      ),
+    );
   }
 
   goCompose() {
@@ -605,6 +911,9 @@ export class BulkApplyComponent implements OnDestroy {
         return;
       }
       this.runId.set(res.data.runId);
+      this.lastProcessed = -1;
+      this.lastProgressAt = Date.now();
+      this.stalled.set(false);
       // The batch is now tracked server-side — drop the local draft for good
       // (suppress re-saving, otherwise the step change below would rewrite it).
       this.draftSuppressed = true;
@@ -642,7 +951,21 @@ export class BulkApplyComponent implements OnDestroy {
     if (!id) return;
     try {
       const res = await this.bulkSvc.getRun(id);
-      if (res.success && res.data) this.run.set(res.data);
+      if (res.success && res.data) {
+        const next = res.data;
+        // Stall detection: if ProcessedRows has not moved for ~45s while the run is still
+        // live, surface an escape hatch instead of letting the UI look frozen forever.
+        if (next.status === 'running' || next.status === 'pending') {
+          if (next.processedRows !== this.lastProcessed) {
+            this.lastProcessed = next.processedRows;
+            this.lastProgressAt = Date.now();
+            this.stalled.set(false);
+          } else if (this.lastProgressAt > 0 && Date.now() - this.lastProgressAt > 45_000) {
+            this.stalled.set(true);
+          }
+        }
+        this.run.set(next);
+      }
     } catch {
       /* transient poll failure — try again next tick */
     }
@@ -651,12 +974,41 @@ export class BulkApplyComponent implements OnDestroy {
   async cancelRun() {
     const id = this.runId();
     if (!id) return;
+    this.cancelling.set(true);
     try {
       await this.bulkSvc.cancel(id);
-      this.toast.success('Cancellation requested');
+      this.toast.success('Cancellation requested — stopping after the current row');
+      // The backend now persists the flag; poll until it reaches a terminal state.
       await this.refreshRun();
+      if (!this.runFinished()) this.schedulePoll();
     } catch (e: any) {
       this.toast.error(e?.message || 'Could not cancel');
+    } finally {
+      this.cancelling.set(false);
+    }
+  }
+
+  async retryFailed() {
+    const id = this.runId();
+    if (!id) return;
+    this.retrying.set(true);
+    try {
+      const res = await this.bulkSvc.retryFailed(id);
+      if (!res.success) {
+        this.toast.error(res.message || 'Could not retry the failed rows');
+        return;
+      }
+      this.toast.success('Retrying failed rows…');
+      this.lastProcessed = -1;
+      this.lastProgressAt = Date.now();
+      this.stalled.set(false);
+      this.run.set(res.data ?? this.run());
+      await this.refreshRun();
+      if (!this.runFinished()) this.schedulePoll();
+    } catch (e: any) {
+      this.toast.error(e?.message || 'Could not retry the failed rows');
+    } finally {
+      this.retrying.set(false);
     }
   }
 
@@ -696,6 +1048,10 @@ export class BulkApplyComponent implements OnDestroy {
     this.clearDraft();
     this.run.set(null);
     this.runId.set(null);
+    this.stalled.set(false);
+    this.cancelling.set(false);
+    this.lastProcessed = -1;
+    this.lastProgressAt = 0;
     this.rows.set([]);
     this.pasteText = '';
     this.extractMethod.set('');

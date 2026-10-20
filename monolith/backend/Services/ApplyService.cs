@@ -220,6 +220,109 @@ public class ApplyService
     }
 
     /// <summary>
+    /// Bulk-apply row sender. Mirrors the proven simple Mailbox send loop: resolve the CV, send
+    /// via Gmail (the ONE step that can fail the row), record an EmailMessage, and only THEN do
+    /// the tracking (Company/Contact/Application/SENT attempt) on a best-effort basis so a
+    /// tracking failure can never lose a successfully-sent email or wedge the batch.
+    /// </summary>
+    public async Task<BulkRowSendResult> SendBulkRowAsync(Guid userId, BulkRowSendRequest dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.CompanyName)) throw new ArgumentException("CompanyName is required");
+        if (string.IsNullOrWhiteSpace(dto.RecipientEmail)) throw new ArgumentException("RecipientEmail is required");
+        if (string.IsNullOrWhiteSpace(dto.Subject)) throw new ArgumentException("Subject is required");
+        if (string.IsNullOrWhiteSpace(dto.Body)) throw new ArgumentException("Body is required");
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId)
+            ?? throw new KeyNotFoundException("User not found");
+
+        // Resolve {{token}} placeholders (company_name, my_name, ...) before sending.
+        var subject = TemplateVariableResolver.Render(dto.Subject, null, null, user);
+        var body = TemplateVariableResolver.Render(dto.Body, null, null, user);
+
+        var (cvPdfUrl, cvTitle) = await ResolveCvPdfUrlAsync(dto.CvVersionId);
+
+        // ---- The critical path: the actual send. Nothing below runs until this succeeds. ----
+        var (messageId, threadId) = await _gmail.SendWithAttachmentAsync(
+            userId, dto.RecipientEmail.Trim(), subject, body, cvPdfUrl, cvTitle, dto.Attachments);
+
+        var connection = await _db.Set<GmailConnection>()
+            .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsRevoked);
+
+        // Record the outgoing email immediately so a crash right after this point still shows "sent".
+        _db.Set<EmailMessage>().Add(new EmailMessage
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ContactId = null,
+            FromEmail = connection?.GmailAddress ?? "noreply@propel.com",
+            ToEmail = dto.RecipientEmail.Trim(),
+            ToName = string.IsNullOrWhiteSpace(dto.RecipientName) ? dto.RecipientEmail.Trim() : dto.RecipientName!,
+            Subject = subject,
+            Body = body,
+            Status = "sent",
+            Provider = connection is not null ? "gmail" : "smtp",
+            SentAt = DateTime.UtcNow,
+            AttachmentMetadataJson = dto.Attachments is { Count: > 0 }
+                ? JsonSerializer.Serialize(dto.Attachments.Select(a => new EmailAttachmentInfoDto
+                {
+                    FileName = a.FileName,
+                    ContentType = a.ContentType,
+                    SizeBytes = (long)(a.ContentBase64.Length * 3L / 4)
+                }).ToList())
+                : null
+        });
+        await _db.SaveChangesAsync();
+
+        var result = new BulkRowSendResult { SentNow = true, MessageId = messageId, ThreadId = threadId };
+
+        // ---- Best-effort tracking: never fails the row, the email is already out. ----
+        try
+        {
+            var company = await UpsertCompanyAsync(userId, dto.CompanyName.Trim(), dto.CompanyDescription);
+            var contact = await UpsertContactAsync(userId, company, dto.RecipientEmail.Trim(), dto.RecipientName, null);
+
+            var app = await _applications.CreateAsync(new CreateApplicationDto(
+                CandidateId: userId,
+                CvVersionId: dto.CvVersionId,
+                JobOfferId: null,
+                CompanyName: company.Name,
+                PositionTitle: dto.PositionTitle.Trim(),
+                OfferSource: string.IsNullOrWhiteSpace(dto.OfferSource) ? "bulk_apply" : dto.OfferSource.Trim(),
+                Notes: null,
+                Origin: "MANUAL",
+                Status: "SAVED",
+                AllowDuplicate: true
+            ), userId);
+
+            await _applications.CreateAttemptAsync(app.Id, new CreateAttemptDto(
+                Channel: "EMAIL_GMAIL",
+                InitiatedBy: "USER",
+                Status: "SENT",
+                Subject: subject,
+                Body: body,
+                ContactId: contact.Id,
+                CvVersionId: dto.CvVersionId,
+                ChannelMetadataJson: (messageId ?? threadId) is not null
+                    ? JsonSerializer.Serialize(new { messageId, threadId })
+                    : null,
+                SentAt: DateTime.UtcNow
+            ), userId);
+
+            result.ApplicationId = app.Id;
+            result.ContactId = contact.Id;
+            result.CompanyId = company.Id;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Bulk apply: email to {Email} was SENT but tracking failed (company {Company})",
+                dto.RecipientEmail, dto.CompanyName);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Creates the tracking shell (Company + optional Contact + SAVED Application) used by the
     /// "Apply Prep" flows (form answers / direct message) which do not send an email. Returns the
     /// new Application id. No attempt or email is recorded.

@@ -203,6 +203,18 @@ using (var scope = app.Services.CreateScope())
         {
             logger.LogError(ex, "Category seed failed");
         }
+
+        // Runs left mid-flight by a crash/restart can never complete (their worker is gone);
+        // finalise them so the UI stops polling a run that will never move.
+        try
+        {
+            var bulk = scope.ServiceProvider.GetRequiredService<BulkApplyService>();
+            await bulk.RecoverOrphanedRunsAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Bulk apply orphan recovery failed");
+        }
     }
 
     app.UseCors();

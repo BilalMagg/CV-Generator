@@ -82,6 +82,7 @@ public class BulkApplyRunDto
     public int DelaySeconds { get; set; }
     public Guid? CvVersionId { get; set; }
     public string? ErrorMessage { get; set; }
+    public bool CancelRequested { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime? CancelledAt { get; set; }

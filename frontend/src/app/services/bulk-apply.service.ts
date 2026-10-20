@@ -27,4 +27,8 @@ export class BulkApplyService {
   cancel(id: string): Promise<ApiResponse<unknown>> {
     return this.http.post<ApiResponse<unknown>>(`/api/applications/bulk-apply/${id}/cancel`, {});
   }
+
+  retryFailed(id: string): Promise<ApiResponse<BulkApplyRunDto>> {
+    return this.http.post<ApiResponse<BulkApplyRunDto>>(`/api/applications/bulk-apply/${id}/retry`, {});
+  }
 }
