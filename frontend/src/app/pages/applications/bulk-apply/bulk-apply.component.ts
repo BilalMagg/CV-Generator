@@ -104,6 +104,7 @@ interface BulkDraft {
   rows: ReviewRow[];
   keySeq: number;
   selectedTemplateId: string;
+  defaultTemplateId?: string;
   sharedVars: Record<string, string>;
   manualSubject: string;
   manualBody: string;
@@ -174,6 +175,8 @@ export class BulkApplyComponent implements OnDestroy {
   selectedCvVersionId = signal('');
   delaySeconds = 5;
   composeMode = signal<'template' | 'manual'>('template');
+  /** Fallback template applied only to rows that have no template/message yet. */
+  defaultTemplateId = signal('');
 
   // ── Step 4: run / progress ─────────────────────────────────────────────────────
   starting = signal(false);
@@ -313,6 +316,7 @@ export class BulkApplyComponent implements OnDestroy {
       this.rows.set(rows);
       this.keySeq = Number(d.keySeq) || rows.length;
       this.selectedTemplateId.set(d.selectedTemplateId ?? '');
+      this.defaultTemplateId.set(d.defaultTemplateId ?? '');
       this.sharedVars.set(d.sharedVars && typeof d.sharedVars === 'object' ? d.sharedVars : {});
       this.manualSubject = d.manualSubject ?? '';
       this.manualBody = d.manualBody ?? '';
@@ -364,6 +368,7 @@ export class BulkApplyComponent implements OnDestroy {
         rows: this.rows(),
         keySeq: this.keySeq,
         selectedTemplateId: this.selectedTemplateId(),
+        defaultTemplateId: this.defaultTemplateId(),
         sharedVars: this.sharedVars(),
         manualSubject: this.manualSubject,
         manualBody: this.manualBody,
@@ -946,6 +951,49 @@ export class BulkApplyComponent implements OnDestroy {
     if (!silent) this.toast.success(`Template applied to ${this.includedRows().length} rows`);
   }
 
+  /** Remember the selected template as the fallback for rows the AI left unassigned. */
+  setDefaultTemplate() {
+    const id = this.selectedTemplateId();
+    if (!id) {
+      this.error.set('Pick a template first.');
+      return;
+    }
+    this.defaultTemplateId.set(id);
+    this.error.set('');
+    this.toast.success(`"${this.templateName(id)}" set as the default for unassigned rows`);
+  }
+
+  /** Apply the default template only to rows that have no template and no message yet. */
+  applyDefaultToUnassigned() {
+    const t = selected(this.templates(), this.defaultTemplateId());
+    if (!t) {
+      this.error.set('Set a default template first.');
+      return;
+    }
+    let changed = 0;
+    this.rows.update((list) =>
+      list.map((r) => {
+        if (!r.include || r.templateId || r.subject.trim() || r.body.trim()) return r;
+        changed++;
+        return {
+          ...r,
+          templateId: t.id,
+          cvVersionId: t.cvVersionId ?? r.cvVersionId,
+          subject: resolveTemplateVars(t.subjectTemplate, this.rowValues(r, t)),
+          body: resolveTemplateVars(t.bodyTemplate, this.rowValues(r, t)),
+        };
+      }),
+    );
+    this.error.set('');
+    this.toast.success(
+      changed ? `Default applied to ${changed} unassigned row${changed === 1 ? '' : 's'}` : 'No unassigned rows to fill',
+    );
+  }
+
+  unassignedCount(): number {
+    return this.includedRows().filter((r) => !r.templateId && !r.subject.trim() && !r.body.trim()).length;
+  }
+
   applyManualToAll() {
     const subject = this.manualSubject.trim();
     const body = this.manualBody;
@@ -1004,6 +1052,19 @@ export class BulkApplyComponent implements OnDestroy {
 
   templateName(id: string): string {
     return selected(this.templates(), id)?.name ?? '';
+  }
+
+  /** Compact label for the row badge — truncates long template names. */
+  templateShortName(id: string): string {
+    const name = this.templateName(id);
+    return name.length > 18 ? `${name.slice(0, 17)}…` : name;
+  }
+
+  /** Secondary line under the company name: specialty, falling back to location. */
+  rowSubtitle(row: ReviewRow): string {
+    const specialty = row.specialty.trim();
+    if (specialty) return specialty;
+    return row.location.trim();
   }
 
   allRowsHaveMessage(): boolean {

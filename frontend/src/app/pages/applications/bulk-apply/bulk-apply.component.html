@@ -264,6 +264,16 @@
         }
 
         <div class="row end mt">
+          <button class="btn-ghost" (click)="setDefaultTemplate()" [disabled]="!selectedTemplateId()"
+                  title="Use this template for rows the AI left without one">
+            Set as default
+          </button>
+          @if (defaultTemplateId()) {
+            <button class="btn-ghost" (click)="applyDefaultToUnassigned()" [disabled]="!unassignedCount()"
+                    [title]="unassignedCount() ? 'Fill ' + unassignedCount() + ' row(s) with the default template' : 'No unassigned rows'">
+              Fill {{ unassignedCount() }} unassigned with default
+            </button>
+          }
           <button class="btn-primary" (click)="applyTemplateToAll()" [disabled]="!selectedTemplateId()">
             Apply to {{ includedRows().length }} rows
           </button>
@@ -314,15 +324,20 @@
         <div class="row-item" [class.open]="r.expanded" *ngFor="let r of includedRows(); trackBy: trackByKey">
           <div class="row-summary" (click)="toggleExpand(r.key, $event)">
             <span class="chev">{{ r.expanded ? '▾' : '▸' }}</span>
-            <span class="co">{{ r.companyName || '(no company)' }}</span>
-            <span class="em">{{ r.email || 'no email' }}</span>
-            @if (r.templateId) {
-              <span class="badge tpl">{{ templateName(r.templateId) }}</span>
-            }
-            @if (r.cvVersionId) {
-              <span class="badge cv">custom CV</span>
-            }
-            <span class="subj">{{ r.subject || '— no message —' }}</span>
+            <div class="co-block">
+              <span class="co" [title]="r.companyName || '(no company)'">{{ r.companyName || '(no company)' }}</span>
+              <span class="co-sub" [title]="rowSubtitle(r)">{{ rowSubtitle(r) }}</span>
+            </div>
+            <span class="em" [title]="r.email || 'no email'">{{ r.email || 'no email' }}</span>
+            <span class="badges">
+              @if (r.templateId) {
+                <span class="badge tpl" [title]="templateName(r.templateId)">{{ templateShortName(r.templateId) }}</span>
+              }
+              @if (r.cvVersionId) {
+                <span class="badge cv" title="Custom CV for this row">CV*</span>
+              }
+            </span>
+            <span class="subj" [title]="r.subject || ''">{{ r.subject || '— no message —' }}</span>
           </div>
           @if (r.expanded) {
             <div class="row-edit">

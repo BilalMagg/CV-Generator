@@ -481,7 +481,9 @@ input.cell {
 }
 
 .row-summary {
-  grid-template-columns: 18px 1.2fr 1.4fr 2fr;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   cursor: pointer;
   user-select: none;
 
@@ -490,15 +492,53 @@ input.cell {
   }
 
   .chev {
+    flex: none;
+    width: 12px;
     color: var(--text-3);
   }
 
-  .co {
-    font-weight: 600;
+  .co-block {
+    flex: 0 1 220px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+
+    .co {
+      font-weight: 600;
+      color: var(--text-2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .co-sub {
+      font-size: 11px;
+      color: var(--text-4);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
-  .em,
+  .em {
+    flex: 0 1 200px;
+    min-width: 0;
+    color: var(--text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .badges {
+    flex: none;
+    display: flex;
+    gap: 6px;
+  }
+
   .subj {
+    flex: 1 1 auto;
+    min-width: 0;
     color: var(--text-3);
     overflow: hidden;
     text-overflow: ellipsis;
