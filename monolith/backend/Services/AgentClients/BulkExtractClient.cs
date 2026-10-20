@@ -9,6 +9,12 @@ public interface IBulkExtractClient
 {
     /// <summary>LLM-extract bulk-apply rows from a pasted blob. Returns null on failure.</summary>
     Task<List<BulkExtractRowDto>?> ExtractAsync(BulkExtractRequestDto request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// LLM-pick a template per row from the offered candidates. Returns null on failure;
+    /// otherwise a list aligned with the request rows (Guid.Empty = no match).
+    /// </summary>
+    Task<List<Guid>?> MapTemplatesAsync(TemplateMapRequestDto request, CancellationToken cancellationToken = default);
 }
 
 public class BulkExtractClient : IBulkExtractClient
@@ -61,6 +67,52 @@ public class BulkExtractClient : IBulkExtractClient
             return null;
         }
     }
+
+    public async Task<List<Guid>?> MapTemplatesAsync(TemplateMapRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var payload = new
+        {
+            rows = request.Rows.Select(r => new
+            {
+                company_name = r.CompanyName,
+                location = r.Location,
+                specialty = r.Specialty
+            }),
+            templates = request.Templates.Select(t => new
+            {
+                id = t.Id.ToString(),
+                name = t.Name,
+                subject_template = t.SubjectTemplate,
+                body_template = t.BodyTemplate,
+                intent = t.Intent
+            }),
+            provider = request.Provider,
+            model = request.Model
+        };
+
+        try
+        {
+            using var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var response = await _client.PostAsync("map-templates", content, cancellationToken);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var body = await response.Content.ReadFromJsonAsync<TemplateMapResponseDto>(SnakeCaseOptions, cancellationToken: cancellationToken);
+            if (body?.TemplateIds == null) return null;
+
+            // Align to the request: one id per row, Guid.Empty when blank/unparseable.
+            var result = new List<Guid>(request.Rows.Count);
+            for (var i = 0; i < request.Rows.Count; i++)
+            {
+                var raw = i < body.TemplateIds.Count ? body.TemplateIds[i] : null;
+                result.Add(Guid.TryParse(raw, out var id) ? id : Guid.Empty);
+            }
+            return result;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
 
 public class BulkExtractResponseDto
@@ -76,4 +128,10 @@ public class BulkExtractRowResponseDto
     public string? Email { get; set; }
     public string? ContactName { get; set; }
     public List<string>? Specialties { get; set; }
+}
+
+public class TemplateMapResponseDto
+{
+    [JsonPropertyName("template_ids")]
+    public List<string?>? TemplateIds { get; set; }
 }

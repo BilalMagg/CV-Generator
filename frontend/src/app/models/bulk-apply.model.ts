@@ -21,6 +21,8 @@ export interface BulkApplyRowInputDto {
   recipientName?: string;
   subject: string;
   body: string;
+  /** Per-row CV version; omitted (or null) means "use the run CV". */
+  cvVersionId?: string | null;
 }
 
 export interface CreateBulkApplyRunDto {
@@ -52,6 +54,7 @@ export interface BulkApplyRowDto {
   applicationId?: string | null;
   contactId?: string | null;
   companyId?: string | null;
+  cvVersionId?: string | null;
   sentAt?: string | null;
 }
 
@@ -71,4 +74,33 @@ export interface BulkApplyRunDto {
   completedAt?: string | null;
   cancelledAt?: string | null;
   rows: BulkApplyRowDto[];
+}
+
+// ── AI template mapping ─────────────────────────────────────────────────────────
+
+/** One extracted row handed to the AI mapper (no subject/body yet). */
+export interface TemplateMapRowDto {
+  companyName: string;
+  location?: string | null;
+  specialty?: string | null;
+}
+
+/** One candidate template the AI may choose from. */
+export interface TemplateMapCandidateDto {
+  id: string;
+  name: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
+  /** Short description of what the template is for (from its variable defaults / name). */
+  intent?: string | null;
+}
+
+export interface TemplateMapRequestDto {
+  rows: TemplateMapRowDto[];
+  templates: TemplateMapCandidateDto[];
+}
+
+export interface TemplateMapResultDto {
+  /** Aligned with the request rows: the chosen template id ('' = no match). */
+  templateIds: string[];
 }

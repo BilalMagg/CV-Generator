@@ -52,6 +52,9 @@ public class BulkApplyRow
 
     public Guid? CompanyId { get; set; }
 
+    /// <summary>Per-row CV version; null falls back to the run-level CV.</summary>
+    public Guid? CvVersionId { get; set; }
+
     public DateTime? SentAt { get; set; }
 
     [Required]

@@ -36,6 +36,8 @@ public class BulkApplyRowInputDto
     public string? RecipientName { get; set; }
     public string Subject { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
+    /// <summary>Per-row CV version. Null/empty falls back to the run-level CV.</summary>
+    public Guid? CvVersionId { get; set; }
 }
 
 public class CreateBulkApplyRunDto
@@ -67,6 +69,8 @@ public class BulkApplyRowDto
     public Guid? ApplicationId { get; set; }
     public Guid? ContactId { get; set; }
     public Guid? CompanyId { get; set; }
+    /// <summary>CV version used for this row (its own, or the run-level default).</summary>
+    public Guid? CvVersionId { get; set; }
     public DateTime? SentAt { get; set; }
 }
 
@@ -87,4 +91,39 @@ public class BulkApplyRunDto
     public DateTime? CompletedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
     public List<BulkApplyRowDto> Rows { get; set; } = [];
+}
+
+// ── AI template mapping (bulk apply) ────────────────────────────────────────────
+
+/// <summary>One extracted row handed to the AI mapper (no subject/body yet).</summary>
+public class TemplateMapRowDto
+{
+    public string CompanyName { get; set; } = string.Empty;
+    public string? Location { get; set; }
+    public string? Specialty { get; set; }
+}
+
+/// <summary>One candidate template the AI may choose from.</summary>
+public class TemplateMapCandidateDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string SubjectTemplate { get; set; } = string.Empty;
+    public string BodyTemplate { get; set; } = string.Empty;
+    /// <summary>Short hint describing the template's intent (usually the subject template).</summary>
+    public string? Intent { get; set; }
+}
+
+public class TemplateMapRequestDto
+{
+    public List<TemplateMapRowDto> Rows { get; set; } = [];
+    public List<TemplateMapCandidateDto> Templates { get; set; } = [];
+    public string? Provider { get; set; }
+    public string? Model { get; set; }
+}
+
+public class TemplateMapResultDto
+{
+    /// <summary>Aligned with the request rows: chosen template id, or Guid.Empty for "no match".</summary>
+    public List<Guid> TemplateIds { get; set; } = [];
 }

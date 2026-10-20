@@ -60,6 +60,50 @@
         [disabled]="extracting()"
         placeholder="1. Capgemini Morocco&#10;   Email: rh@capgemini.ma&#10;   Spécialités: Cloud, Data&#10;&#10;2. Sopra Steria&#10;   Contact: Nadia&#10;   Email: recrutement@soprasteria.com"></textarea>
 
+      <div class="ai-map">
+        <label class="ai-map-toggle">
+          <input
+            type="checkbox"
+            [checked]="aiMapTemplates()"
+            (change)="toggleAiMap($any($event.target).checked)"
+            [disabled]="extracting()" />
+          <span>
+            Let AI pick a template for each email
+            <span class="sub">Uses the offer info (company, specialty, location) to choose from the templates you select below.</span>
+          </span>
+        </label>
+
+        @if (aiMapTemplates()) {
+          @if (!templates().length) {
+            <p class="hint small">No email templates found — create one in Mailbox → Templates first.</p>
+          } @else {
+            <div class="ai-map-pick">
+              <div class="ai-map-pick-head">
+                <span class="lbl">Templates the AI may choose from</span>
+                <div class="row">
+                  <button class="link" (click)="chooseAllMapTemplates()">All</button>
+                  <button class="link" (click)="clearMapTemplates()">None</button>
+                </div>
+              </div>
+              <div class="tpl-chips">
+                @for (t of templates(); track t.id) {
+                  <button
+                    type="button"
+                    class="tpl-chip"
+                    [class.on]="isTemplateChosenForMap(t.id)"
+                    (click)="toggleMapTemplate(t.id)">
+                    {{ t.name }}
+                  </button>
+                }
+              </div>
+              @if (!mapTemplateIds().length) {
+                <p class="hint small warn-text">Pick at least one template, or the AI has nothing to map to.</p>
+              }
+            </div>
+          }
+        }
+      </div>
+
       <div class="row end mt">
         <button class="link" (click)="loadSample()" [disabled]="extracting()">Load sample list (safe test)</button>
         <button class="btn-ghost" (click)="pasteText = ''" [disabled]="extracting()">Clear</button>
@@ -244,11 +288,14 @@
 
       <div class="grid-2 mt">
         <div class="field">
-          <label>Attach CV version</label>
+          <label>Attach CV version <span class="hint small">(default for the batch)</span></label>
           <select [(ngModel)]="selectedCvVersionId">
             <option value="">— None —</option>
             <option *ngFor="let cv of cvOptions()" [value]="cv.id">{{ cv.label }}</option>
           </select>
+          <p class="hint small">
+            Picking a template with a saved CV fills this automatically. Override a single row from its expanded view.
+          </p>
         </div>
         <div class="field">
           <label>Delay between sends (seconds)</label>
@@ -269,10 +316,32 @@
             <span class="chev">{{ r.expanded ? '▾' : '▸' }}</span>
             <span class="co">{{ r.companyName || '(no company)' }}</span>
             <span class="em">{{ r.email || 'no email' }}</span>
+            @if (r.templateId) {
+              <span class="badge tpl">{{ templateName(r.templateId) }}</span>
+            }
+            @if (r.cvVersionId) {
+              <span class="badge cv">custom CV</span>
+            }
             <span class="subj">{{ r.subject || '— no message —' }}</span>
           </div>
           @if (r.expanded) {
             <div class="row-edit">
+              <div class="grid-2">
+                <div class="field">
+                  <label>Email template</label>
+                  <select [ngModel]="r.templateId" (ngModelChange)="setRowTemplate(r.key, $event)">
+                    <option value="">— Keep subject/body as-is —</option>
+                    <option *ngFor="let t of templates()" [value]="t.id">{{ t.name }}</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>CV for this row</label>
+                  <select [ngModel]="r.cvVersionId" (ngModelChange)="setRowCv(r.key, $event)">
+                    <option value="">— Batch CV —</option>
+                    <option *ngFor="let cv of cvOptions()" [value]="cv.id">{{ cv.label }}</option>
+                  </select>
+                </div>
+              </div>
               <div class="field">
                 <label>Subject</label>
                 <input [(ngModel)]="r.subject" />

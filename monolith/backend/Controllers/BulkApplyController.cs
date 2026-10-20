@@ -72,6 +72,37 @@ public class BulkApplyController : ControllerBase
         }));
     }
 
+    /// <summary>
+    /// Optional pre-send step: ask the AI to pick, for each already-extracted row, the
+    /// best-fitting template from the user-chosen subset. Returns one id per row (Guid.Empty
+    /// = no match, so the row is left blank for manual editing).
+    /// </summary>
+    [HttpPost("map-templates")]
+    public async Task<IActionResult> MapTemplates([FromBody] TemplateMapRequestDto request)
+    {
+        if (request.Rows.Count == 0)
+            return BadRequest(ApiResponse<object>.Error("No rows to map"));
+        if (request.Templates.Count == 0)
+            return BadRequest(ApiResponse<object>.Error("Pick at least one template to map from"));
+
+        var userId = _currentUser.UserId;
+        if (userId is not null)
+        {
+            var llm = await _agentLlm.GetProviderModelAsync(userId.Value, "bulk_extract");
+            request.Provider ??= string.IsNullOrWhiteSpace(llm.Provider) ? null : llm.Provider;
+            request.Model ??= string.IsNullOrWhiteSpace(llm.Model) ? null : llm.Model;
+        }
+
+        var ids = await _extract.MapTemplatesAsync(request);
+        if (ids is null)
+            return StatusCode(502, ApiResponse<object>.Error("AI template mapping failed — fill the rows manually or pick a template per row"));
+
+        return Ok(ApiResponse<TemplateMapResultDto>.Ok(new TemplateMapResultDto
+        {
+            TemplateIds = ids
+        }));
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] CreateBulkApplyRunDto request,

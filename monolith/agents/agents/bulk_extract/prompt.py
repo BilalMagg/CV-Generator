@@ -31,3 +31,35 @@ def get_bulk_extract_messages(text: str, language: str = "English") -> list[Syst
         f"The text is in {language}. Extract from this list:\n{text}"
     )
     return [SystemMessage(content=prompt)]
+
+
+_MAP_SYSTEM = """You match job-application email templates to a list of target companies
+so the user can send a tailored message to each one.
+
+You are given a JSON object:
+{"rows": [{"company_name": "...", "location": "...", "specialty": "..."}],
+ "templates": [{"id": "...", "name": "...", "subject_template": "...", "body_template": "...", "intent": "..."}]}
+
+For EVERY row, choose the single template whose intent best fits that company's specialty /
+role / location. Return a JSON object of this exact shape:
+{"template_ids": ["<template id or empty string>", ...]}
+
+Rules:
+1. `template_ids` MUST have exactly one entry per input row, in the SAME order.
+2. Use the exact `id` string of a candidate template. Never invent an id.
+3. If no template is a reasonable fit for a row, return an empty string "" for that row.
+   Do NOT force a bad match — a blank entry tells the caller the user must pick one.
+4. Match on the company's specialty/role/domain first, then location as a tie-breaker.
+   The template `intent` and `subject_template` describe what each template targets.
+5. Return ONLY the JSON object — no markdown fences, no prose."""
+
+
+def get_template_map_messages(rows: list[dict], templates: list[dict]) -> list[SystemMessage]:
+    import json
+
+    if not rows:
+        raise ValueError("No rows to map")
+    if not templates:
+        raise ValueError("No templates to choose from")
+    payload = json.dumps({"rows": rows, "templates": templates}, ensure_ascii=False)
+    return [SystemMessage(content=f"{_MAP_SYSTEM}\n\nData:\n{payload}")]

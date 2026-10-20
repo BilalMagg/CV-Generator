@@ -48,6 +48,7 @@ public class BulkApplyService
                 RecipientName = string.IsNullOrWhiteSpace(r.RecipientName) ? null : r.RecipientName.Trim(),
                 Subject = r.Subject ?? string.Empty,
                 Body = r.Body ?? string.Empty,
+                CvVersionId = r.CvVersionId,
                 Status = "pending",
                 CreatedAt = DateTime.UtcNow
             });
@@ -60,6 +61,22 @@ public class BulkApplyService
         {
             var owns = await _db.CvVersions.AnyAsync(v => v.Id == cvId && v.Cv.UserId == userId);
             if (!owns) throw new ArgumentException("CV version not found");
+        }
+
+        // Validate every distinct per-row CV so a bad id fails the whole run up front rather
+        // than silently sending with the wrong (or no) attachment.
+        var rowCvIds = prepared.Where(r => r.CvVersionId is not null)
+            .Select(r => r.CvVersionId!.Value)
+            .Distinct()
+            .ToList();
+        if (rowCvIds.Count > 0)
+        {
+            var ownedIds = await _db.CvVersions
+                .Where(v => rowCvIds.Contains(v.Id) && v.Cv.UserId == userId)
+                .Select(v => v.Id)
+                .ToListAsync();
+            if (ownedIds.Count != rowCvIds.Count)
+                throw new ArgumentException("One or more row CV versions were not found");
         }
 
         var run = new BulkApplyRun
@@ -291,7 +308,7 @@ public class BulkApplyService
                         RecipientName = row.RecipientName,
                         Subject = row.Subject ?? string.Empty,
                         Body = row.Body ?? string.Empty,
-                        CvVersionId = run.CvVersionId,
+                        CvVersionId = row.CvVersionId ?? run.CvVersionId,
                         OfferSource = "bulk_apply"
                     });
 
@@ -477,6 +494,7 @@ public class BulkApplyService
                 ApplicationId = r.ApplicationId,
                 ContactId = r.ContactId,
                 CompanyId = r.CompanyId,
+                CvVersionId = r.CvVersionId ?? run.CvVersionId,
                 SentAt = r.SentAt
             }).ToList()
     };

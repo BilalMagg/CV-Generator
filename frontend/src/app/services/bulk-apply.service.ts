@@ -6,6 +6,8 @@ import {
   BulkApplySubmitResponse,
   BulkExtractResultDto,
   CreateBulkApplyRunDto,
+  TemplateMapRequestDto,
+  TemplateMapResultDto,
 } from '../models/bulk-apply.model';
 
 @Injectable({ providedIn: 'root' })
@@ -14,6 +16,13 @@ export class BulkApplyService {
 
   extract(text: string): Promise<ApiResponse<BulkExtractResultDto>> {
     return this.http.post<ApiResponse<BulkExtractResultDto>>('/api/applications/bulk-apply/extract', { text });
+  }
+
+  mapTemplates(dto: TemplateMapRequestDto): Promise<ApiResponse<TemplateMapResultDto>> {
+    return this.http.post<ApiResponse<TemplateMapResultDto>>(
+      '/api/applications/bulk-apply/map-templates',
+      dto,
+    );
   }
 
   createRun(dto: CreateBulkApplyRunDto): Promise<ApiResponse<BulkApplySubmitResponse>> {

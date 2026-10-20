@@ -36,6 +36,10 @@ interface ReviewRow {
   contactName: string;
   subject: string;
   body: string;
+  /** Template that produced subject/body (empty for manual edits) — lets a row be switched independently. */
+  templateId: string;
+  /** Per-row CV version; falls back to the batch CV when empty. */
+  cvVersionId: string;
   expanded: boolean;
   /** True when this email already exists as a saved contact (pre-unchecked by default). */
   existingContact: boolean;
@@ -107,6 +111,8 @@ interface BulkDraft {
   delaySeconds: number;
   composeMode: 'template' | 'manual';
   extractMethod: '' | 'deterministic' | 'llm';
+  aiMapTemplates?: boolean;
+  mapTemplateIds?: string[];
 }
 
 @Component({
@@ -137,6 +143,13 @@ export class BulkApplyComponent implements OnDestroy {
   extracting = signal(false);
   extractMethod = signal<'' | 'deterministic' | 'llm'>('');
   error = signal('');
+
+  // ── Step 1: AI template mapping (optional) ─────────────────────────────────────
+  /** When true, after extraction the AI picks a template per row from the chosen subset. */
+  aiMapTemplates = signal(false);
+  /** Template ids the AI is allowed to choose from (empty = all templates). */
+  mapTemplateIds = signal<string[]>([]);
+  mappingMethod = signal<'' | 'ai'>('');
 
   // ── Step 2: review rows ────────────────────────────────────────────────────────
   rows = signal<ReviewRow[]>([]);
@@ -283,6 +296,8 @@ export class BulkApplyComponent implements OnDestroy {
       const rows = Array.isArray(d.rows)
         ? d.rows.map((r) => ({
             ...r,
+            templateId: r.templateId ?? '',
+            cvVersionId: r.cvVersionId ?? '',
             expanded: r.expanded === true,
             existingContact: r.existingContact === true,
             existingCompany: r.existingCompany === true,
@@ -305,6 +320,8 @@ export class BulkApplyComponent implements OnDestroy {
       this.delaySeconds = Number.isFinite(Number(d.delaySeconds)) ? Number(d.delaySeconds) : 5;
       this.composeMode.set(d.composeMode === 'manual' ? 'manual' : 'template');
       this.extractMethod.set(d.extractMethod ?? '');
+      this.aiMapTemplates.set(d.aiMapTemplates === true);
+      this.mapTemplateIds.set(Array.isArray(d.mapTemplateIds) ? d.mapTemplateIds : []);
 
       // Never restore the send/progress step — the run itself is server-side.
       const step = Number(d.step);
@@ -354,6 +371,8 @@ export class BulkApplyComponent implements OnDestroy {
         delaySeconds: Number(this.delaySeconds) || 0,
         composeMode: this.composeMode(),
         extractMethod: this.extractMethod(),
+        aiMapTemplates: this.aiMapTemplates(),
+        mapTemplateIds: this.mapTemplateIds(),
       };
       localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
       this.draftSavedAt.set(payload.savedAt);
@@ -420,6 +439,8 @@ export class BulkApplyComponent implements OnDestroy {
             contactName: r.contactName ?? '',
             subject: '',
             body: '',
+            templateId: '',
+            cvVersionId: '',
             expanded: false,
             existingContact: isExisting,
             existingCompany: isExistingCo,
@@ -429,6 +450,13 @@ export class BulkApplyComponent implements OnDestroy {
         }),
       );
       this.extractMethod.set(data.method);
+
+      // Optional: ask the AI to pick a template per row from the chosen subset, then resolve
+      // each row's subject/body from that template. Rows the AI can't match stay blank.
+      if (this.aiMapTemplates() && this.mapTemplateIds().length > 0) {
+        await this.applyAiTemplateMapping();
+      }
+
       this.step.set(2);
       const flags: string[] = [];
       if (existing.emails.size) flags.push(`${existing.emails.size} saved contact emails`);
@@ -440,6 +468,56 @@ export class BulkApplyComponent implements OnDestroy {
       this.error.set(e?.message || 'Extraction failed');
     } finally {
       this.extracting.set(false);
+    }
+  }
+
+  /**
+   * Ask the AI to pick, for each row, the best-fitting template from the user-chosen subset.
+   * The returned template ids are then resolved client-side into subject/body (tokens filled
+   * per row), so nothing is guessed when the AI returns no match — those rows stay blank.
+   */
+  private async applyAiTemplateMapping() {
+    const chosenIds = new Set(this.mapTemplateIds());
+    const candidates = this.templates().filter((t) => chosenIds.has(t.id));
+    if (!candidates.length) return;
+
+    try {
+      const res = await this.bulkSvc.mapTemplates({
+        rows: this.rows().map((r) => ({
+          companyName: r.companyName,
+          location: r.location,
+          specialty: r.specialty,
+        })),
+        templates: candidates.map((t) => ({
+          id: t.id,
+          name: t.name,
+          subjectTemplate: t.subjectTemplate,
+          bodyTemplate: t.bodyTemplate,
+          intent: t.subjectTemplate,
+        })),
+      });
+      const ids = res.data?.templateIds;
+      if (!res.success || !Array.isArray(ids)) return;
+
+      this.rows.update((list) =>
+        list.map((r, i) => {
+          const tid = ids[i] ?? '';
+          const t = tid ? selected(this.templates(), tid) : undefined;
+          if (!t) return r;
+          return {
+            ...r,
+            templateId: t.id,
+            cvVersionId: t.cvVersionId ?? r.cvVersionId,
+            subject: resolveTemplateVars(t.subjectTemplate, this.rowValues(r, t)),
+            body: resolveTemplateVars(t.bodyTemplate, this.rowValues(r, t)),
+          };
+        }),
+      );
+      this.mappingMethod.set('ai');
+      const matched = this.rows().filter((r) => r.templateId).length;
+      this.toast.success(`AI mapped templates to ${matched} of ${this.rows().length} rows`);
+    } catch {
+      this.toast.error('AI template mapping failed — rows left blank for you to fill in');
     }
   }
 
@@ -523,6 +601,8 @@ export class BulkApplyComponent implements OnDestroy {
         contactName: '',
         subject: '',
         body: '',
+        templateId: '',
+        cvVersionId: '',
         expanded: true,
         existingContact: false,
         existingCompany: false,
@@ -538,6 +618,34 @@ export class BulkApplyComponent implements OnDestroy {
     this.pasteText = buildSampleList(this.authSvc.currentUser()?.email ?? '');
     this.error.set('');
     this.toast.success('Sample list loaded — replace the aliases with your own inbox if needed');
+  }
+
+  // ── Step 1: AI template mapping controls ───────────────────────────────────────
+
+  toggleAiMap(on: boolean) {
+    this.aiMapTemplates.set(on);
+    if (on && this.mapTemplateIds().length === 0) {
+      // Default to all templates so the user can deselect the ones to ignore.
+      this.mapTemplateIds.set(this.templates().map((t) => t.id));
+    }
+  }
+
+  isTemplateChosenForMap(id: string): boolean {
+    return this.mapTemplateIds().includes(id);
+  }
+
+  toggleMapTemplate(id: string) {
+    this.mapTemplateIds.update((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+    );
+  }
+
+  chooseAllMapTemplates() {
+    this.mapTemplateIds.set(this.templates().map((t) => t.id));
+  }
+
+  clearMapTemplates() {
+    this.mapTemplateIds.set([]);
   }
 
   canSaveCompany(r: ReviewRow): boolean {
@@ -781,6 +889,10 @@ export class BulkApplyComponent implements OnDestroy {
   onTemplateChange(id: string) {
     this.selectedTemplateId.set(id);
     this.prefillSharedVars();
+    // Selecting a template for the whole batch also adopts its CV so the user doesn't have
+    // to pick it twice; leave the batch CV untouched when the template has none.
+    const t = selected(this.templates(), id);
+    if (t?.cvVersionId) this.selectedCvVersionId.set(t.cvVersionId);
     this.applyTemplateToAll(true);
   }
 
@@ -788,8 +900,8 @@ export class BulkApplyComponent implements OnDestroy {
     this.sharedVars.update((v) => ({ ...v, [token]: value }));
   }
 
-  private rowValues(row: ReviewRow): TemplateVarValues {
-    const t = selected(this.templates(), this.selectedTemplateId());
+  private rowValues(row: ReviewRow, template?: ScheduleTemplateDto | null): TemplateVarValues {
+    const t = template ?? selected(this.templates(), this.selectedTemplateId());
     const d = (t?.variableDefaults ?? {}) as Record<string, string | undefined>;
     const user = this.authSvc.currentUser();
     const name = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
@@ -822,8 +934,10 @@ export class BulkApplyComponent implements OnDestroy {
         r.include
           ? {
               ...r,
-              subject: resolveTemplateVars(t.subjectTemplate, this.rowValues(r)),
-              body: resolveTemplateVars(t.bodyTemplate, this.rowValues(r)),
+              subject: resolveTemplateVars(t.subjectTemplate, this.rowValues(r, t)),
+              body: resolveTemplateVars(t.bodyTemplate, this.rowValues(r, t)),
+              templateId: t.id,
+              cvVersionId: t.cvVersionId ?? r.cvVersionId,
             }
           : r,
       ),
@@ -846,6 +960,7 @@ export class BulkApplyComponent implements OnDestroy {
               ...r,
               subject: resolveTemplateVars(subject, this.rowValues(r)),
               body: resolveTemplateVars(body, this.rowValues(r)),
+              templateId: '',
             }
           : r,
       ),
@@ -857,6 +972,38 @@ export class BulkApplyComponent implements OnDestroy {
   setComposeMode(mode: 'template' | 'manual') {
     this.composeMode.set(mode);
     this.error.set('');
+  }
+
+  /** Switch a single row's template (independent of the batch) and re-resolve its message. */
+  setRowTemplate(key: string, templateId: string) {
+    const t = templateId ? selected(this.templates(), templateId) : undefined;
+    this.rows.update((list) =>
+      list.map((r) => {
+        if (r.key !== key) return r;
+        if (!t) return { ...r, templateId: '' };
+        return {
+          ...r,
+          templateId: t.id,
+          cvVersionId: t.cvVersionId ?? r.cvVersionId,
+          subject: resolveTemplateVars(t.subjectTemplate, this.rowValues(r, t)),
+          body: resolveTemplateVars(t.bodyTemplate, this.rowValues(r, t)),
+        };
+      }),
+    );
+  }
+
+  /** Set a single row's CV (overrides the batch CV for that row only). */
+  setRowCv(key: string, cvVersionId: string) {
+    this.rows.update((list) => list.map((r) => (r.key === key ? { ...r, cvVersionId } : r)));
+  }
+
+  /** Effectively the CV a row will use (its own, or the batch default). */
+  effectiveRowCv(row: ReviewRow): string {
+    return row.cvVersionId || this.selectedCvVersionId();
+  }
+
+  templateName(id: string): string {
+    return selected(this.templates(), id)?.name ?? '';
   }
 
   allRowsHaveMessage(): boolean {
@@ -880,6 +1027,7 @@ export class BulkApplyComponent implements OnDestroy {
       recipientName: r.contactName.trim() || undefined,
       subject: r.subject,
       body: r.body,
+      cvVersionId: r.cvVersionId || undefined,
     }));
     if (!rows.length) {
       this.error.set('No sendable rows.');
@@ -897,6 +1045,7 @@ export class BulkApplyComponent implements OnDestroy {
     recipientName?: string;
     subject: string;
     body: string;
+    cvVersionId?: string;
   }[]) {
     this.error.set('');
     this.starting.set(true);
