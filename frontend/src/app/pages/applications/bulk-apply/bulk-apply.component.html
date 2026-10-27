@@ -184,7 +184,7 @@
               <td><input class="cell" [(ngModel)]="r.location" placeholder="City" /></td>
               <td><input class="cell" [(ngModel)]="r.specialty" placeholder="Specialty" /></td>
               <td>
-                <input class="cell" [(ngModel)]="r.email" placeholder="email@company.com" />
+                <input class="cell" [(ngModel)]="r.email" placeholder="email@company.com" (ngModelChange)="onEmailTyped(r, $event)" />
                 @if (r.include && !r.email.trim()) { <span class="tag bad-tag">no email — will skip</span> }
               </td>
               <td>

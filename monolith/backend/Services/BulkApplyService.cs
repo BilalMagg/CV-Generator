@@ -36,12 +36,18 @@ public class BulkApplyService
         var order = 0;
         foreach (var r in dto.Rows)
         {
-            if (string.IsNullOrWhiteSpace(r.CompanyName)) continue;
+            // Missing company name: fall back to the email domain — test@companyname.com → "Companyname"
+            // (also handles hr@recruitment.capgemini.com → "Capgemini"). Rows with neither name nor
+            // email carry nothing usable and are dropped.
+            var companyName = string.IsNullOrWhiteSpace(r.CompanyName)
+                ? DeriveCompanyName(null, r.RecipientEmail)
+                : r.CompanyName.Trim();
+            if (string.IsNullOrWhiteSpace(companyName)) continue;
             prepared.Add(new BulkApplyRow
             {
                 Id = Guid.NewGuid(),
                 SortOrder = order++,
-                CompanyName = r.CompanyName.Trim(),
+                CompanyName = companyName,
                 Location = string.IsNullOrWhiteSpace(r.Location) ? null : r.Location.Trim(),
                 Specialty = string.IsNullOrWhiteSpace(r.Specialty) ? null : r.Specialty.Trim(),
                 RecipientEmail = string.IsNullOrWhiteSpace(r.RecipientEmail) ? null : r.RecipientEmail.Trim(),
@@ -483,6 +489,34 @@ public class BulkApplyService
     }
 
     private static string Truncate(string value) => value.Length <= 2000 ? value : value[..2000];
+
+    /// <summary>
+    /// Fills a missing company name from the recipient's email domain:
+    /// test@companyname.com → "Companyname", hr@recruitment.capgemini.com → "Capgemini".
+    /// Generic mail-server prefixes (hr/mail/careers/recruitment…) are skipped when picking the
+    /// segment; hyphens/underscores become word breaks. Returns null when nothing can be derived.
+    /// </summary>
+    public static string? DeriveCompanyName(string? companyName, string? email)
+    {
+        if (!string.IsNullOrWhiteSpace(companyName)) return companyName.Trim();
+        var at = string.IsNullOrWhiteSpace(email) ? -1 : email.IndexOf('@');
+        if (at < 0 || at == email!.Length - 1) return null;
+        var host = email[(at + 1)..].ToLowerInvariant();
+        var genericPrefixes = new HashSet<string>(
+            ["mail", "smtp", "hr", "recruitment", "recrutement", "recrut", "careers", "jobs", "contact", "info"]);
+        // Candidates = everything up to the last TLD (2-level TLDs like co.uk: drop the extras)
+        var candidates = host.Split('.').ToList();
+        if (candidates.Count < 2) return null;
+        candidates.RemoveAt(candidates.Count - 1);
+        if (candidates.Count > 1 && new[] { "co", "com", "org", "net", "gov", "edu" }.Contains(candidates[^1]))
+            candidates.RemoveAt(candidates.Count - 1);
+        var segment = candidates.FirstOrDefault(s => !genericPrefixes.Contains(s)) ?? candidates.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(segment)) return null;
+        var words = segment.Replace('_', '-').Split('-', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0) return null;
+        var title = string.Join(' ', words.Select(w => char.ToUpperInvariant(w[0]) + w[1..]));
+        return title.Length > 200 ? title[..200] : title;
+    }
 
     /// <summary>
     /// Best-effort status mirror: a run row born from a Queue item copies its terminal state

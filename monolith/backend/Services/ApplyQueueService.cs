@@ -40,13 +40,16 @@ public class ApplyQueueService
     /// resolved client-side; the send path renders them again harmlessly.</summary>
     public async Task<ApplyQueueItemDto> CreateItemAsync(Guid userId, CreateApplyQueueItemDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.CompanyName)) throw new ArgumentException("CompanyName is required");
-        if (string.IsNullOrWhiteSpace(dto.RecipientEmail)) throw new ArgumentException("RecipientEmail is required");
-
         // Same AllowDuplicate:true semantics as bulk sends — the queue is a staging area and a
         // duplicate application would block parking the apply, defeating the purpose.
-        var company = await _apply.UpsertCompanyAsync(userId, dto.CompanyName.Trim(), dto.CompanyDescription);
-        var contact = await _apply.UpsertContactAsync(userId, company, dto.RecipientEmail.Trim(), dto.RecipientName, dto.ContactNotes);
+        // Missing company name falls back to the email domain (see BulkApplyService.DeriveCompanyName):
+        // test@companyname.com → "Companyname".
+        var companyName = BulkApplyService.DeriveCompanyName(dto.CompanyName, dto.RecipientEmail);
+        if (string.IsNullOrWhiteSpace(companyName)) throw new ArgumentException("CompanyName is required");
+        var recipientEmail = dto.RecipientEmail.Trim();
+
+        var company = await _apply.UpsertCompanyAsync(userId, companyName, dto.CompanyDescription);
+        var contact = await _apply.UpsertContactAsync(userId, company, recipientEmail, dto.RecipientName, dto.ContactNotes);
 
         var source = dto.Source == "bulk_apply" ? "bulk_apply" : "job_post_apply";
         var app = await _applications.CreateAsync(new CreateApplicationDto(
@@ -77,7 +80,7 @@ public class ApplyQueueService
             CompanyName = company.Name,
             Location = string.IsNullOrWhiteSpace(dto.Location) ? null : dto.Location.Trim(),
             PositionTitle = string.IsNullOrWhiteSpace(dto.PositionTitle) ? null : dto.PositionTitle.Trim(),
-            RecipientEmail = dto.RecipientEmail.Trim(),
+            RecipientEmail = recipientEmail,
             RecipientName = string.IsNullOrWhiteSpace(dto.RecipientName) ? null : dto.RecipientName.Trim(),
             Subject = (dto.Subject ?? string.Empty).Trim(),
             Body = dto.Body ?? string.Empty,

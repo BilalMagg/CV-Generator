@@ -452,7 +452,8 @@ export class BulkApplyComponent implements OnDestroy {
         data.rows.map((r) => {
           const email = (r.email ?? '').trim();
           const isExisting = !!email && existing.emails.has(email.toLowerCase());
-          const coName = (r.companyName ?? '').trim();
+          // Missing company name: derive it from the email domain (test@companyname.com → "Companyname")
+          const coName = (r.companyName ?? '').trim() || (email ? this.deriveCompanyFromEmail(email) : '');
           const isExistingCo = !!coName && existing.companyNames.has(coName.toLowerCase());
           return {
             key: `r${this.keySeq++}`,
@@ -611,6 +612,37 @@ export class BulkApplyComponent implements OnDestroy {
 
   removeRow(key: string) {
     this.rows.update((list) => list.filter((r) => r.key !== key));
+  }
+
+  /**
+   * Derives a company display name from an email domain when the name is missing:
+   * test@companyname.com → "Companyname", hr@recruitment.capgemini.com → "Capgemini".
+   * Mirrors BulkApplyService.DeriveCompanyName (backend authoritative at run/queue creation).
+   */
+  deriveCompanyFromEmail(email: string): string {
+    const host = (email ?? '').trim().toLowerCase().split('@')[1] ?? '';
+    if (!host || !host.includes('.')) return '';
+    const generic = new Set(['mail', 'smtp', 'hr', 'recruitment', 'recrutement', 'recrut', 'careers', 'jobs', 'contact', 'info']);
+    const parts = host.split('.').filter(Boolean);
+    if (parts.length < 2) return '';
+    // Candidates = everything up to the last TLD (2-level TLDs like co.uk: drop the extras)
+    const candidates = parts.slice(0, -1);
+    if (candidates.length > 1 && ['co', 'com', 'org', 'net', 'gov', 'edu'].includes(candidates[candidates.length - 1])) {
+      candidates.pop();
+    }
+    const filterGeneric = (tokens: string[]) => tokens.find((s) => s && !generic.has(s));
+    const seg = filterGeneric(candidates) ?? candidates[0] ?? '';
+    const words = seg.replace(/_/g, '-').split('-').filter(Boolean);
+    if (!words.length) return '';
+    return words.map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+  }
+
+  /** When the company name cell is empty and the user types an email, auto-fill from the domain. */
+  onEmailTyped(row: ReviewRow, value: string): void {
+    row.email = value ?? '';
+    if (!row.companyName.trim() && row.email.includes('@') && row.email.includes('.')) {
+      row.companyName = this.deriveCompanyFromEmail(row.email);
+    }
   }
 
   addRow() {
