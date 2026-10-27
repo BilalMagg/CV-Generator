@@ -55,6 +55,9 @@ public class BulkApplyRow
     /// <summary>Per-row CV version; null falls back to the run-level CV.</summary>
     public Guid? CvVersionId { get; set; }
 
+    /// <summary>Queue item this row was built from (set only for queue-executed runs).</summary>
+    public Guid? ApplyQueueItemId { get; set; }
+
     public DateTime? SentAt { get; set; }
 
     [Required]

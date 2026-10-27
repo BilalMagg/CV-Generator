@@ -64,6 +64,7 @@ public class AppDbContext : DbContext
     public DbSet<SavedToolContent> SavedToolContent => Set<SavedToolContent>();
     public DbSet<BulkApplyRun> BulkApplyRuns => Set<BulkApplyRun>();
     public DbSet<BulkApplyRow> BulkApplyRows => Set<BulkApplyRow>();
+    public DbSet<ApplyQueueItem> ApplyQueueItems => Set<ApplyQueueItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -247,9 +248,21 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(e => e.RunId);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ApplyQueueItemId);
             entity.HasOne(e => e.Run)
                 .WithMany(r => r.Rows)
                 .HasForeignKey(e => e.RunId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ApplyQueueItem>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.ApplicationId);
+            entity.HasOne(e => e.Application)
+                .WithMany()
+                .HasForeignKey(e => e.ApplicationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -1,0 +1,180 @@
+<div class="page">
+  <header class="q-head">
+    <div>
+      <h1>Queue</h1>
+      <p class="sub">
+        Applies parked while you keep browsing offers. Select some (all pending are selected by
+        default), then execute to send them as one paced batch.
+      </p>
+    </div>
+    <span class="count-pill" [class.empty]="pendingCount() === 0">
+      {{ pendingCount() }} pending
+    </span>
+  </header>
+
+  @if (error(); as msg) {
+    <div class="banner error">
+      {{ msg }}
+      <button type="button" class="btn btn-ghost sm" (click)="load()">Try again</button>
+    </div>
+  }
+
+  <div class="filter-chips">
+    <button type="button" class="chip" [class.active]="filter() === 'pending'" (click)="setFilter('pending')">
+      Pending <span>{{ counts().pending }}</span>
+    </button>
+    <button type="button" class="chip" [class.active]="filter() === 'sent'" (click)="setFilter('sent')">
+      Sent <span>{{ counts().sent }}</span>
+    </button>
+    <button type="button" class="chip" [class.active]="filter() === 'failed'" (click)="setFilter('failed')">
+      Failed <span>{{ counts().failed }}</span>
+    </button>
+    <button type="button" class="chip" [class.active]="filter() === 'all'" (click)="setFilter('all')">
+      All <span>{{ counts().all }}</span>
+    </button>
+  </div>
+
+  @if (shown().length > 0) {
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-check">
+              <input type="checkbox" [checked]="allSelected()" (change)="toggleAll()" title="Select all pending" />
+            </th>
+            <th>Company</th>
+            <th>Position</th>
+            <th>Recipient</th>
+            <th>Message</th>
+            <th>CV</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Added</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of shown(); track item.id) {
+            <tr [class.dim]="item.status === 'sent'">
+              <td class="col-check">
+                @if (item.status === 'pending' || item.status === 'failed') {
+                  <input type="checkbox" [checked]="isSelected(item.id)" (change)="toggle(item.id)" />
+                }
+              </td>
+              <td class="co-cell">
+                <span class="co-name">{{ item.companyName }}</span>
+                @if (item.location) {
+                  <span class="co-loc">{{ item.location }}</span>
+                }
+              </td>
+              <td>{{ item.positionTitle || '—' }}</td>
+              <td>
+                @if (item.recipientEmail) {
+                  <span class="email ok">{{ item.recipientEmail }}</span>
+                } @else {
+                  <span class="email miss">No email</span>
+                }
+              </td>
+              <td class="msg-cell">
+                <button type="button" class="msg-toggle" (click)="toggleExpand(item.id)">
+                  {{ item.subject || '(no subject)' }}
+                  @if (isExpanded(item.id)) {
+                    <span class="caret">▴</span>
+                  } @else {
+                    <span class="caret">▾</span>
+                  }
+                </button>
+                @if (isExpanded(item.id)) {
+                  <div class="msg-body">{{ item.body }}</div>
+                }
+              </td>
+              <td><span class="cv-chip">{{ cvLabel(item) }}</span></td>
+              <td>
+                <span class="src-chip" [class.bulk]="item.source === 'bulk_apply'">
+                  {{ item.source === 'bulk_apply' ? 'Bulk apply' : 'Quick apply' }}
+                </span>
+              </td>
+              <td>
+                <span class="st-chip" [attr.data-st]="item.status">
+                  @switch (item.status) {
+                    @case ('pending') { Pending }
+                    @case ('queued') { In run }
+                    @case ('sent') { Sent }
+                    @case ('failed') { Failed }
+                    @default { {{ item.status }} }
+                  }
+                </span>
+                @if (item.errorMessage) {
+                  <div class="st-err">{{ item.errorMessage }}</div>
+                }
+              </td>
+              <td class="time" [title]="item.createdAt">{{ fmtDate(item.createdAt) }}</td>
+              <td class="row-actions">
+                <button
+                  type="button"
+                  class="icon-btn"
+                  title="Remove from queue"
+                  (click)="removeItem(item)"
+                >
+                  ✕
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="exec-bar">
+      <span class="sel">{{ selectedCount() }} selected</span>
+      <div class="grow"></div>
+      <label class="field">
+        <span>CV</span>
+        <select [ngModel]="selectedCvVersionId()" (ngModelChange)="selectedCvVersionId.set($event)">
+          <option value="">Default (per-item CV)</option>
+          @for (o of cvOptions(); track o.id) {
+            <option [value]="o.id">{{ o.label }}</option>
+          }
+        </select>
+      </label>
+      <label class="field">
+        <span>Delay (s)</span>
+        <input
+          type="number"
+          min="0"
+          max="120"
+          [ngModel]="delaySeconds()"
+          (ngModelChange)="delaySeconds.set($event)"
+        />
+      </label>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="executing() || executableIds().length === 0"
+        (click)="execute()"
+      >
+        @if (executing()) {
+          Executing…
+        } @else {
+          ⏵ Execute selected
+        }
+      </button>
+    </div>
+  } @else if (!loading()) {
+    <div class="empty">
+      <div class="empty-icon">☰</div>
+      <h3>@if (filter() === 'pending') { The queue is empty } @else { Nothing here }</h3>
+      <p>
+        When browsing offers, use <b>Save to stack</b> in the
+        <a routerLink="/applications/apply">quick-apply wizard</a> or the
+        <a routerLink="/applications/bulk-apply">bulk-apply wizard</a> to park applies here
+        instead of sending right away.
+      </p>
+      <button type="button" class="btn btn-ghost sm" (click)="load()">Refresh</button>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading">Loading the queue…</div>
+  }
+</div>

@@ -278,29 +278,61 @@ public class ApplyService
         // ---- Best-effort tracking: never fails the row, the email is already out. ----
         try
         {
-            var company = await UpsertCompanyAsync(userId, dto.CompanyName.Trim(), dto.CompanyDescription);
-            var contact = await UpsertContactAsync(userId, company, dto.RecipientEmail.Trim(), dto.RecipientName, null);
+            Guid appId;
+            Guid contactId;
+            Guid companyId;
 
-            var app = await _applications.CreateAsync(new CreateApplicationDto(
-                CandidateId: userId,
-                CvVersionId: dto.CvVersionId,
-                JobOfferId: null,
-                CompanyName: company.Name,
-                PositionTitle: dto.PositionTitle.Trim(),
-                OfferSource: string.IsNullOrWhiteSpace(dto.OfferSource) ? "bulk_apply" : dto.OfferSource.Trim(),
-                Notes: null,
-                Origin: "MANUAL",
-                Status: "SAVED",
-                AllowDuplicate: true
-            ), userId);
+            if (dto.ApplicationId is { } existingAppId)
+            {
+                // Queue-execution path: the tracking shell (Application + Company + Contact) was
+                // already created when the item was QUEUED (the SAVED card is visible in the
+                // kanban). Log the SENT attempt against it so the standard SAVED → APPLIED
+                // transition + AppliedAt backfill fire. A tracking failure only costs the attempt.
+                var appExists = await _db.Applications.AsNoTracking()
+                    .AnyAsync(a => a.Id == existingAppId && a.CandidateId == userId);
+                if (!appExists)
+                    throw new InvalidOperationException($"Application {existingAppId} not found for queue row");
 
-            await _applications.CreateAttemptAsync(app.Id, new CreateAttemptDto(
+                var existingContact = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c =>
+                    c.UserId == userId && c.Email == dto.RecipientEmail.Trim());
+
+                var existingCompany = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c =>
+                    c.UserId == userId && c.Name.ToLower() == dto.CompanyName.Trim().ToLower());
+
+                appId = existingAppId;
+                contactId = existingContact?.Id ?? Guid.Empty;
+                companyId = existingCompany?.Id ?? Guid.Empty;
+            }
+            else
+            {
+                var company = await UpsertCompanyAsync(userId, dto.CompanyName.Trim(), dto.CompanyDescription);
+                var contact = await UpsertContactAsync(userId, company, dto.RecipientEmail.Trim(), dto.RecipientName, null);
+
+                var app = await _applications.CreateAsync(new CreateApplicationDto(
+                    CandidateId: userId,
+                    CvVersionId: dto.CvVersionId,
+                    JobOfferId: null,
+                    CompanyName: company.Name,
+                    PositionTitle: dto.PositionTitle.Trim(),
+                    OfferSource: string.IsNullOrWhiteSpace(dto.OfferSource) ? "bulk_apply" : dto.OfferSource.Trim(),
+                    Notes: null,
+                    Origin: "MANUAL",
+                    Status: "SAVED",
+                    AllowDuplicate: true
+                ), userId);
+
+                appId = app.Id;
+                contactId = contact.Id;
+                companyId = company.Id;
+            }
+
+            await _applications.CreateAttemptAsync(appId, new CreateAttemptDto(
                 Channel: "EMAIL_GMAIL",
                 InitiatedBy: "USER",
                 Status: "SENT",
                 Subject: subject,
                 Body: body,
-                ContactId: contact.Id,
+                ContactId: contactId != Guid.Empty ? contactId : null,
                 CvVersionId: dto.CvVersionId,
                 ChannelMetadataJson: (messageId ?? threadId) is not null
                     ? JsonSerializer.Serialize(new { messageId, threadId })
@@ -308,9 +340,9 @@ public class ApplyService
                 SentAt: DateTime.UtcNow
             ), userId);
 
-            result.ApplicationId = app.Id;
-            result.ContactId = contact.Id;
-            result.CompanyId = company.Id;
+            result.ApplicationId = appId;
+            result.ContactId = contactId;
+            result.CompanyId = companyId;
         }
         catch (Exception ex)
         {
@@ -353,7 +385,7 @@ public class ApplyService
         return app.Id;
     }
 
-    private async Task<Company> UpsertCompanyAsync(Guid userId, string name, string? description)
+    public async Task<Company> UpsertCompanyAsync(Guid userId, string name, string? description)
     {
         var company = await _db.Companies.FirstOrDefaultAsync(c =>
             c.UserId == userId && c.Name.ToLower() == name.ToLower());
@@ -379,7 +411,7 @@ public class ApplyService
         return company;
     }
 
-    private async Task<Contact> UpsertContactAsync(Guid userId, Company company, string email, string? name, string? notes)
+    public async Task<Contact> UpsertContactAsync(Guid userId, Company company, string email, string? name, string? notes)
     {
         var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.UserId == userId && c.Email == email);
         if (contact is null)

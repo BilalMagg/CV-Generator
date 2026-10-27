@@ -159,6 +159,10 @@ public class BulkRowSendRequest
     public Guid? CvVersionId { get; set; }
     public List<EmailAttachmentDto>? Attachments { get; set; }
     public string? OfferSource { get; set; }
+
+    /// <summary>When set, the send logs its attempt against this ALREADY-EXISTING application
+    /// (queue execution path) instead of creating a new tracking shell.</summary>
+    public Guid? ApplicationId { get; set; }
 }
 
 /// <summary>Outcome of a single bulk-apply row send.</summary>

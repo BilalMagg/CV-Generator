@@ -25,6 +25,9 @@
     <kbd class="keycap">⌘K</kbd>
   </button>
 
+  <!-- Scrollable nav -->
+  <div class="sb-scroll">
+
   <!-- Main nav -->
   <nav class="nav-section">
     @for (item of navMain; track item.route) {
@@ -85,6 +88,12 @@
               <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
                 <path d="M12 3l9 5-9 5-9-5 9-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
                 <path d="M3 13l9 5 9-5M3 17l9 5 9-5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              </svg>
+            }
+            @case ('queue') {
+              <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+                <path d="M4 7h10M4 12h10M4 17h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M18 5v14M18 12h.01" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
               </svg>
             }
           }
@@ -183,6 +192,9 @@
   </nav>
 
   <div class="spacer"></div>
+
+  </div>
+  <!-- /Scrollable nav -->
 
   <!-- User row -->
   <div class="user-row" (click)="goToProfile()" [attr.title]="userFullName()">

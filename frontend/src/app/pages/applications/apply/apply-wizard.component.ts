@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { ExtractionService } from '@app/services/extraction.service';
 import { ApplyService } from '@app/services/apply.service';
+import { ApplyQueueService } from '@app/services/apply-queue.service';
 import { MailboxService } from '@app/services/mailbox.service';
 import { ContactService } from '@app/services/contact.service';
 import { ToastService } from '@app/services/toast.service';
@@ -67,6 +68,7 @@ const CRON_PRESETS: { label: string; cron: string }[] = [
 export class ApplyWizardComponent implements OnInit {
   private extractionSvc = inject(ExtractionService);
   private applySvc = inject(ApplyService);
+  private queueSvc = inject(ApplyQueueService);
   private mailboxSvc = inject(MailboxService);
   private contactSvc = inject(ContactService);
   private docsSvc = inject(DocumentsService);
@@ -645,6 +647,47 @@ export class ApplyWizardComponent implements OnInit {
       this.attachmentFiles.update(list => [...list, file]);
     } catch {
       this.toast.error(`Could not load "${name}" from Documents`);
+    }
+  }
+
+  /** Signals staging into the Apply Queue (applies to the deliver step's Save to stack button). */
+  queueing = signal(false);
+
+  /**
+   * Parks the composed apply in the Queue instead of sending it. The backend creates the
+   * SAVED tracking application right away; the user executes later from the Queue page.
+   */
+  async saveToStack() {
+    if (!this.companyName.trim()) { this.error.set('Company name is required'); return; }
+    if (!this.recipientEmail.trim()) { this.error.set('Recipient email is required (the queue sends by email)'); return; }
+    if (!this.subject.trim() || !this.body.trim()) { this.error.set('Subject and body are required'); return; }
+
+    this.error.set('');
+    this.queueing.set(true);
+    try {
+      await this.queueSvc.save({
+        companyName: this.companyName.trim(),
+        companyDescription: this.companyDescription.trim() || undefined,
+        positionTitle: this.positionTitle.trim() || undefined,
+        recipientEmail: this.recipientEmail.trim(),
+        recipientName: this.recipientName.trim() || undefined,
+        contactNotes: this.contactNotes.trim() || undefined,
+        subject: resolveTemplateVars(this.subject.trim(), this.varValues()),
+        body: resolveTemplateVars(this.body, this.varValues()),
+        cvVersionId: this.selectedCvVersionId() || undefined,
+        source: 'quick_apply',
+      });
+      this.toast.success('Staged in the Queue — execute it later from the Queue page');
+      // Reset the staged composition (keep the extracted context on earlier steps).
+      this.subject = '';
+      this.body = '';
+      this.step.set(3);
+      this.router.navigate(['/applications/queue']);
+    } catch (e: any) {
+      this.error.set(e?.error?.message ?? e?.message ?? 'Could not stage the apply');
+      this.toast.error('Could not stage the apply');
+    } finally {
+      this.queueing.set(false);
     }
   }
 

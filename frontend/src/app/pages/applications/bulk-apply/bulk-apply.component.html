@@ -371,6 +371,11 @@
       </div>
 
       <div class="row end mt">
+        <button class="btn-ghost" (click)="saveToStack()"
+                [disabled]="starting() || !allRowsHaveMessage() || !sendableRows().length"
+                title="Do not send now — park these applies in the Queue and send later">
+          {{ staging() ? 'Staging…' : '☰ Save to stack' }}
+        </button>
         <button class="btn-primary" (click)="startRun()"
                 [disabled]="starting() || !allRowsHaveMessage() || !sendableRows().length">
           {{ starting() ? 'Starting…' : 'Send ' + sendableRows().length + ' emails' }}

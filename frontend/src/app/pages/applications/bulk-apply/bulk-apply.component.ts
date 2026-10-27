@@ -1,8 +1,9 @@
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { BulkApplyService } from '@app/services/bulk-apply.service';
+import { ApplyQueueService } from '@app/services/apply-queue.service';
 import { MailboxService } from '@app/services/mailbox.service';
 import { DocumentsService } from '@app/services/documents.service';
 import { ContactService } from '@app/services/contact.service';
@@ -125,6 +126,8 @@ interface BulkDraft {
 })
 export class BulkApplyComponent implements OnDestroy {
   private bulkSvc = inject(BulkApplyService);
+  private queueSvc = inject(ApplyQueueService);
+  private route = inject(ActivatedRoute);
   private mailboxSvc = inject(MailboxService);
   private docsSvc = inject(DocumentsService);
   private contactSvc = inject(ContactService);
@@ -253,6 +256,9 @@ export class BulkApplyComponent implements OnDestroy {
   async ngOnInit() {
     this.restoreDraft();
     this.persistEnabled = true;
+    // Queue hand-off: /applications/bulk-apply?run=<id> shows an existing run's progress
+    // (redirect target of the Apply Queue execute action).
+    const runParam = this.route.snapshot.queryParamMap.get('run');
     try {
       const res = await this.mailboxSvc.getScheduleTemplates();
       this.templates.set(res.data ?? []);
@@ -275,6 +281,20 @@ export class BulkApplyComponent implements OnDestroy {
       this.gmailNeedsReauth.set(gmail.needsReauth ?? false);
     } catch {
       /* gmail status optional */
+    }
+    if (runParam) {
+      const res = await this.bulkSvc.getRun(runParam);
+      if (res.success && res.data) {
+        this.runId.set(runParam);
+        this.lastProcessed = -1;
+        this.lastProgressAt = Date.now();
+        this.stalled.set(false);
+        this.draftSuppressed = true;
+        this.clearDraft();
+        this.step.set(4);
+        this.run.set(res.data);
+        this.schedulePoll();
+      }
     }
   }
 
@@ -1096,6 +1116,59 @@ export class BulkApplyComponent implements OnDestroy {
     }
 
     void this.createRun(rows);
+  }
+
+  // ── Save to stack (Apply Queue) ────────────────────────────────────────────────
+
+  /** True while the current selection is being staged into the Apply Queue. */
+  staging = signal(false);
+
+  /**
+   * Parks the sendable rows (companies/emails/subject/body/per-row CV) in the Apply Queue
+   * instead of sending now. Each staged item also creates its SAVED tracking application
+   * server-side, so the applies are visible in the kanban while they wait.
+   */
+  async saveToStack() {
+    if (!this.allRowsHaveMessage()) {
+      this.error.set('Every selected row needs a subject and body. Apply a template or write a message first.');
+      return;
+    }
+    const rows = this.sendableRows().map((r) => ({
+      companyName: r.companyName.trim(),
+      location: r.location.trim() || undefined,
+      positionTitle: r.specialty.trim() || undefined,
+      recipientEmail: r.email.trim(),
+      recipientName: r.contactName.trim() || undefined,
+      subject: r.subject,
+      body: r.body,
+      cvVersionId: r.cvVersionId || undefined,
+      source: 'bulk_apply' as const,
+    }));
+    if (!rows.length) {
+      this.error.set('No sendable rows.');
+      return;
+    }
+    this.starting.set(true);
+    this.staging.set(true);
+    try {
+      const count = await this.queueSvc.saveBatch(rows);
+      if (count === 0) {
+        this.error.set('Could not stage the applies — try again');
+        return;
+      }
+      this.toast.success(`Staged ${count} appl${count === 1 ? 'y' : 'ies'} in the Queue`);
+      this.draftSuppressed = true;
+      this.clearDraft();
+      this.step.set(1);
+      this.pasteText = '';
+      this.error.set('');
+      this.router.navigate(['/applications/queue']);
+    } catch (e: any) {
+      this.error.set(e?.message || 'Could not stage the applies');
+    } finally {
+      this.staging.set(false);
+      this.starting.set(false);
+    }
   }
 
   private async createRun(rows: {

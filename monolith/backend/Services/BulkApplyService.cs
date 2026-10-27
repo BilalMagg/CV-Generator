@@ -134,11 +134,12 @@ public class BulkApplyService
 
     /// <summary>
     /// Resets the run's failed rows back to "pending", recomputes the counters and clears the
-    /// terminal status so the background worker can send them again. Rows that were already sent
-    /// or skipped are left untouched. Returns the reloaded run, or null when it does not exist
-    /// or has nothing to retry.
+    /// terminal status so the background worker can send them again. When
+    /// <paramref name="rowIds"/> is supplied only those failed rows are retried (letting the user
+    /// pick individual emails). Rows that were already sent or skipped are left untouched.
+    /// Returns the reloaded run, or null when it does not exist or has nothing to retry.
     /// </summary>
-    public async Task<BulkApplyRunDto?> RetryFailedRowsAsync(Guid userId, Guid runId)
+    public async Task<BulkApplyRunDto?> RetryFailedRowsAsync(Guid userId, Guid runId, IReadOnlyCollection<Guid>? rowIds = null)
     {
         var run = await _db.BulkApplyRuns
             .Include(r => r.Rows)
@@ -149,6 +150,11 @@ public class BulkApplyService
         if (run.Status is "running" or "pending") return null;
 
         var retryable = run.Rows.Where(r => r.Status == "failed").ToList();
+        if (rowIds is { Count: > 0 })
+        {
+            var wanted = rowIds.ToHashSet();
+            retryable = retryable.Where(r => wanted.Contains(r.Id)).ToList();
+        }
         if (retryable.Count == 0) return null;
 
         foreach (var row in retryable)
@@ -264,6 +270,16 @@ public class BulkApplyService
         _logger.LogInformation("Bulk apply run {RunId}: executing {Count} row(s)", runId, run.Rows.Count);
 
         var ordered = run.Rows.OrderBy(r => r.SortOrder).ToList();
+
+        // Queue links: rows created from executed queue items carry ApplyQueueItemId; loads the
+        // items once so their ApplicationId is known for the send and their status mirrors the
+        // row's terminal state.
+        var queueItemIds = ordered.Where(r => r.ApplyQueueItemId is not null)
+            .Select(r => r.ApplyQueueItemId!.Value).ToList();
+        var queueItems = queueItemIds.Count > 0
+            ? await _db.ApplyQueueItems.Where(i => queueItemIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct)
+            : new Dictionary<Guid, ApplyQueueItem>();
+
         string? fatalError = null;
         var cancelled = false;
 
@@ -285,6 +301,7 @@ public class BulkApplyService
                     row.UpdatedAt = DateTime.UtcNow;
                     run.SkippedCount++;
                     run.ProcessedRows++;
+                    MirrorQueueItem(row, queueItems, row.Status, row.ErrorMessage);
                     await SaveProgressAsync();
                     continue;
                 }
@@ -309,7 +326,10 @@ public class BulkApplyService
                         Subject = row.Subject ?? string.Empty,
                         Body = row.Body ?? string.Empty,
                         CvVersionId = row.CvVersionId ?? run.CvVersionId,
-                        OfferSource = "bulk_apply"
+                        OfferSource = "bulk_apply",
+                        ApplicationId = row.ApplyQueueItemId is { } qid && queueItems.TryGetValue(qid, out var qi)
+                            ? qi.ApplicationId
+                            : null
                     });
 
                     var winner = await Task.WhenAny(applyTask, Task.Delay(RowTimeout, ct));
@@ -332,6 +352,7 @@ public class BulkApplyService
                     row.Status = "sent";
                     row.SentAt = DateTime.UtcNow;
                     run.SentCount++;
+                    MirrorQueueItem(row, queueItems, row.Status, null);
                 }
                 catch (GmailReauthRequiredException ex)
                 {
@@ -344,6 +365,7 @@ public class BulkApplyService
                     fatalError = "Gmail session expired — reconnect Gmail, then retry the failed rows.";
                     row.UpdatedAt = DateTime.UtcNow;
                     run.ProcessedRows++;
+                    MirrorQueueItem(row, queueItems, row.Status, row.ErrorMessage);
                     await SaveProgressAsync();
                     _logger.LogWarning(ex, "Bulk apply run {RunId} stopped: Gmail re-auth required", runId);
                     break;
@@ -353,6 +375,7 @@ public class BulkApplyService
                     row.Status = "failed";
                     row.ErrorMessage = Truncate(ex.Message);
                     run.FailedCount++;
+                    MirrorQueueItem(row, queueItems, row.Status, row.ErrorMessage);
                     _logger.LogWarning(ex, "Bulk apply row {RowId} failed", row.Id);
                 }
 
@@ -382,6 +405,16 @@ public class BulkApplyService
         if (!cancelled && run.CancelRequested) cancelled = true;
 
         await FinalizeAsync(run, cancelled ? "cancelled" : fatalError != null ? "failed" : "completed", fatalError, CancellationToken.None);
+
+        // Safety mirror for rows whose terminal state was set by the finalizer (pending →
+        // skipped, sending → failed) rather than the per-row loop above. Idempotent.
+        var mirrored = false;
+        foreach (var row in run.Rows.Where(r => r.Status is "sent" or "failed" or "skipped"))
+        {
+            MirrorQueueItem(row, queueItems, row.Status, row.ErrorMessage);
+            mirrored = true;
+        }
+        if (mirrored && _db.ChangeTracker.HasChanges()) await _db.SaveChangesAsync(CancellationToken.None);
 
         _logger.LogInformation("Bulk apply run {RunId} finished: {Status} (sent {Sent}, failed {Failed}, skipped {Skipped})",
             runId, run.Status, run.SentCount, run.FailedCount, run.SkippedCount);
@@ -450,6 +483,20 @@ public class BulkApplyService
     }
 
     private static string Truncate(string value) => value.Length <= 2000 ? value : value[..2000];
+
+    /// <summary>
+    /// Best-effort status mirror: a run row born from a Queue item copies its terminal state
+    /// onto the item so the queue view reflects the outcome. Rows still pending ("skipped" by
+    /// the finalizer or never processed) fail-mirror as "failed" with the run's outcome.
+    /// </summary>
+    private void MirrorQueueItem(BulkApplyRow row, Dictionary<Guid, ApplyQueueItem> items, string status, string? error)
+    {
+        if (row.ApplyQueueItemId is not { } id || !items.TryGetValue(id, out var item)) return;
+        item.Status = row.Status;
+        item.ErrorMessage = row.ErrorMessage;
+        item.SentAt = row.SentAt;
+        item.UpdatedAt = DateTime.UtcNow;
+    }
 
     /// <summary>Swallows the result/exception of an abandoned task so it never surfaces as unobserved.</summary>
     private void ObserveSafely(Task task)

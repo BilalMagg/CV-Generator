@@ -36,6 +36,7 @@ export class HeaderComponent {
     '/applications/dashboard': 'Dashboard',
     '/applications/generate':  'Generate CV',
     '/applications/bulk-apply': 'Bulk Apply',
+    '/applications/queue':     'Queue',
     '/applications/kanban':    'Applications',
     '/applications/list':      'Applications',
     '/applications/analytics': 'Analytics',

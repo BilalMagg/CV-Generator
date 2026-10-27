@@ -354,6 +354,10 @@
       <div class="row end">
         <button class="btn" (click)="step.set(3)">Back</button>
         <button class="btn" (click)="openSaveDraft()">Save as draft</button>
+        <button class="btn" (click)="saveToStack()" [disabled]="queueing()"
+                title="Do not send now — park this apply in the Queue and send later">
+          {{ queueing() ? 'Staging…' : 'Save to stack' }}
+        </button>
         <button class="btn primary" (click)="submit()" [disabled]="submitting()">
           {{ submitting() ? 'Sending…' : (deliverMode() === 'schedule' ? 'Schedule application' : 'Send application') }}
         </button>
