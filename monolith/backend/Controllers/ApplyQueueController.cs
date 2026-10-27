@@ -82,6 +82,10 @@ public class ApplyQueueController : ControllerBase
         {
             return BadRequest(ApiResponse<object>.Error(ex.Message));
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Error(ex.Message));
+        }
     }
 
     [HttpDelete("{id:guid}")]

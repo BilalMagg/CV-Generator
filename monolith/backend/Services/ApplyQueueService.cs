@@ -54,7 +54,11 @@ public class ApplyQueueService
             CvVersionId: dto.CvVersionId,
             JobOfferId: null,
             CompanyName: company.Name,
-            PositionTitle: (dto.PositionTitle ?? string.Empty).Trim(),
+            // ValidateCreate requires a position title; bulk rows (and quick applies to a
+            // general contact) often have none — fall back like the bulk executor does.
+            PositionTitle: string.IsNullOrWhiteSpace(dto.PositionTitle)
+                ? "Application"
+                : dto.PositionTitle.Trim(),
             OfferSource: source,
             Notes: null,
             Origin: "MANUAL",
@@ -89,21 +93,27 @@ public class ApplyQueueService
         return Map(item, app.Status.ToString());
     }
 
-    /// <summary>Same as <see cref="CreateItemAsync"/> for a whole batch (bulk-apply staging).</summary>
+    /// <summary>Same as <see cref="CreateItemAsync"/> for a whole batch (bulk-apply staging).
+    /// Items that cannot be staged are skipped; when EVERY item fails the failure reason is
+    /// rethrown so the caller gets a real error instead of an silently-empty response.</summary>
     public async Task<List<ApplyQueueItemDto>> CreateItemsAsync(Guid userId, IReadOnlyList<CreateApplyQueueItemDto> dtos)
     {
         var result = new List<ApplyQueueItemDto>(dtos.Count);
+        var failures = new List<string>();
         foreach (var dto in dtos)
         {
             try
             {
                 result.Add(await CreateItemAsync(userId, dto));
             }
-            catch (ArgumentException ex)
+            catch (Exception ex) when (ex is ArgumentException or DuplicateApplicationException)
             {
                 _logger.LogWarning(ex, "Apply queue batch: skipped item for {Company}", dto.CompanyName);
+                failures.Add($"{dto.CompanyName}: {ex.Message}");
             }
         }
+        if (result.Count == 0 && failures.Count > 0)
+            throw new InvalidOperationException($"No apply could be staged. {failures[0]}");
         return result;
     }
 
