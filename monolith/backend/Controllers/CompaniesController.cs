@@ -441,6 +441,461 @@ public class CompaniesController : BaseApiController
         return Ok(ApiResponse<CompanyDto>.Ok(Map(company)));
     }
 
+    [HttpGet("merge/candidates")]
+    public async Task<IActionResult> MergeCandidates()
+    {
+        var userId = GetUserId();
+        var companies = await _db.Companies.AsNoTracking()
+            .Where(c => c.UserId == userId)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync();
+        if (companies.Count < 2)
+            return Ok(ApiResponse<List<CompanyMergeCandidateDto>>.Ok([]));
+
+        var appsByName = await _db.Applications.AsNoTracking()
+            .Where(a => a.CandidateId == userId)
+            .GroupBy(a => a.CompanyName.Trim().ToLower())
+            .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+        var result = new List<CompanyMergeCandidateDto>();
+        for (var i = 0; i < companies.Count; i++)
+        {
+            for (var j = i + 1; j < companies.Count; j++)
+            {
+                var a = companies[i];
+                var b = companies[j];
+                var reason = ClassifyMergeMatch(a.Name, b.Name);
+                if (reason is null) continue;
+                result.Add(new CompanyMergeCandidateDto
+                {
+                    IdA = a.Id,
+                    IdB = b.Id,
+                    NameA = a.Name,
+                    NameB = b.Name,
+                    Reason = reason,
+                    AppsA = appsByName.GetValueOrDefault(a.Name.Trim().ToLower()),
+                    AppsB = appsByName.GetValueOrDefault(b.Name.Trim().ToLower()),
+                    CreatedA = a.CreatedAt,
+                    CreatedB = b.CreatedAt,
+                });
+            }
+        }
+        return Ok(ApiResponse<List<CompanyMergeCandidateDto>>.Ok(result));
+    }
+
+    /// <summary>"same-base" | "prefix-match" | null (unlikely duplicates).</summary>
+    private static string? ClassifyMergeMatch(string nameA, string nameB)
+    {
+        var a = MergeBaseName(nameA);
+        var b = MergeBaseName(nameB);
+        if (a.Length == 0 || b.Length == 0) return null;
+        if (a == b) return "same-base";
+        // prefix match: "inetum" ⊂ "inetum maroc" / "inetummorocco" (the tail is smaller than the head)
+        if (a.Length >= 3 && b.StartsWith(a) && a.Length * 2 >= b.Length) return "prefix-match";
+        if (b.Length >= 3 && a.StartsWith(b) && b.Length * 2 >= a.Length) return "prefix-match";
+        return null;
+    }
+
+    /// <summary>Lowercased, diacritic-stripped base name: drops generic alias tokens (maroc/morocco/sa/…) and punctuation.</summary>
+    private static readonly string[] MergeAliasTokens = ["maroc", "morocco", "offshore", "sarl", "sa", "sasu", "llc", "inc", "gmbh", "group", "marocaine"];
+
+    private static string MergeBaseName(string name)
+    {
+        var normalized = name.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(normalized.Length);
+        foreach (var ch in normalized)
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch) == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
+            sb.Append(char.IsLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : ' ');
+        }
+        var tokens = sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        tokens.RemoveAll(t => MergeAliasTokens.Contains(t));
+        tokens.RemoveAll(t => t.Length == 1);
+        return string.Join(' ', tokens).Trim();
+    }
+
+    [HttpGet("merge/preview")]
+    public async Task<IActionResult> GetMergePreview([FromQuery] Guid companyAId, [FromQuery] Guid companyBId)
+    {
+        var userId = GetUserId();
+        if (companyAId == companyBId)
+            return BadRequest(ApiResponse<object>.Error("Cannot merge a company with itself"));
+
+        var companyA = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == companyAId && c.UserId == userId);
+        var companyB = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == companyBId && c.UserId == userId);
+        if (companyA is null || companyB is null)
+            return NotFound(ApiResponse<object>.Error("One or both companies not found"));
+
+        var dtoA = Map(companyA);
+        var dtoB = Map(companyB);
+
+        var appsA = await _applications.GetApplicationsByCompanyAsync(userId, companyA.Name);
+        var appsB = await _applications.GetApplicationsByCompanyAsync(userId, companyB.Name);
+        dtoA.ApplicationsCount = appsA.Count;
+        dtoB.ApplicationsCount = appsB.Count;
+
+        var contactsA = await _contacts.GetByCompanyAsync(userId, companyA.Name);
+        var contactsB = await _contacts.GetByCompanyAsync(userId, companyB.Name);
+        dtoA.ContactsCount = contactsA.Count;
+        dtoB.ContactsCount = contactsB.Count;
+
+        var credsA = await _db.CompanyCredentials.AsNoTracking()
+            .Where(x => x.CompanyId == companyAId)
+            .OrderBy(x => x.Label)
+            .ToListAsync();
+        var credsB = await _db.CompanyCredentials.AsNoTracking()
+            .Where(x => x.CompanyId == companyBId)
+            .OrderBy(x => x.Label)
+            .ToListAsync();
+
+        // Detect duplicate applications (matching job offer ID or normalized position title)
+        var dupApps = new List<DuplicateApplicationPairDto>();
+        var usedBAppIds = new HashSet<Guid>();
+        foreach (var a in appsA)
+        {
+            var normA = FingerprintHelper.Normalize(a.PositionTitle);
+            var matchB = appsB.FirstOrDefault(b => !usedBAppIds.Contains(b.Id) &&
+                ((a.JobOfferId.HasValue && b.JobOfferId.HasValue && a.JobOfferId == b.JobOfferId) ||
+                 (!string.IsNullOrEmpty(normA) && normA == FingerprintHelper.Normalize(b.PositionTitle))));
+            if (matchB != null)
+            {
+                usedBAppIds.Add(matchB.Id);
+                dupApps.Add(new DuplicateApplicationPairDto
+                {
+                    ApplicationA = a,
+                    ApplicationB = matchB,
+                    Reason = a.JobOfferId.HasValue && a.JobOfferId == matchB.JobOfferId
+                        ? "Identical job offer link"
+                        : $"Matching position title: '{a.PositionTitle}'"
+                });
+            }
+        }
+
+        // Detect duplicate contacts (matching email or matching contact name)
+        var dupContacts = new List<DuplicateContactPairDto>();
+        var usedBContactIds = new HashSet<Guid>();
+        foreach (var ca in contactsA)
+        {
+            var emailA = ca.Email?.Trim().ToLowerInvariant();
+            var nameA = ca.Name?.Trim().ToLowerInvariant();
+
+            var matchB = contactsB.FirstOrDefault(cb => !usedBContactIds.Contains(cb.Id) &&
+                ((!string.IsNullOrEmpty(emailA) && !string.IsNullOrEmpty(cb.Email) && emailA == cb.Email.Trim().ToLowerInvariant()) ||
+                 (!string.IsNullOrEmpty(nameA) && !string.IsNullOrEmpty(cb.Name) && nameA == cb.Name.Trim().ToLowerInvariant())));
+
+            if (matchB != null)
+            {
+                usedBContactIds.Add(matchB.Id);
+                dupContacts.Add(new DuplicateContactPairDto
+                {
+                    ContactA = ca,
+                    ContactB = matchB,
+                    Reason = !string.IsNullOrEmpty(emailA) && emailA == matchB.Email?.Trim().ToLowerInvariant()
+                        ? $"Same email address: {ca.Email}"
+                        : $"Same contact name: '{ca.Name}'"
+                });
+            }
+        }
+
+        var oldestCreated = companyA.CreatedAt < companyB.CreatedAt ? companyA.CreatedAt : companyB.CreatedAt;
+
+        var preview = new CompanyMergePreviewDto
+        {
+            CompanyA = dtoA,
+            CompanyB = dtoB,
+            ApplicationsA = appsA,
+            ApplicationsB = appsB,
+            DuplicateApplications = dupApps,
+            ContactsA = contactsA,
+            ContactsB = contactsB,
+            DuplicateContacts = dupContacts,
+            CredentialsA = credsA.Select(MapCredential).ToList(),
+            CredentialsB = credsB.Select(MapCredential).ToList(),
+            OldestCreatedAt = oldestCreated
+        };
+
+        return Ok(ApiResponse<CompanyMergePreviewDto>.Ok(preview));
+    }
+
+    [HttpPost("merge")]
+    public async Task<IActionResult> Merge([FromBody] CompanyMergeRequestDto dto)
+    {
+        var userId = GetUserId();
+        if (dto.SourceCompanyId == dto.TargetCompanyId)
+            return BadRequest(ApiResponse<object>.Error("Source and target companies cannot be the same"));
+
+        var source = await _db.Companies.FirstOrDefaultAsync(c => c.Id == dto.SourceCompanyId && c.UserId == userId);
+        var target = await _db.Companies.FirstOrDefaultAsync(c => c.Id == dto.TargetCompanyId && c.UserId == userId);
+        if (source is null || target is null)
+            return NotFound(ApiResponse<object>.Error("One or both companies not found"));
+
+        var finalName = dto.FinalName?.Trim();
+        if (string.IsNullOrWhiteSpace(finalName))
+            return BadRequest(ApiResponse<object>.Error("Final company name is required"));
+        if (finalName.Length > 200)
+            return BadRequest(ApiResponse<object>.Error("Final company name cannot exceed 200 characters"));
+
+        // Ensure no clash with any other company
+        var clash = await _db.Companies.FirstOrDefaultAsync(c =>
+            c.UserId == userId && c.Id != source.Id && c.Id != target.Id &&
+            c.Name.ToLower() == finalName.ToLower());
+        if (clash != null)
+            return Conflict(ApiResponse<object>.Error($"Another company named '{clash.Name}' already exists"));
+
+        var sourceName = source.Name.Trim();
+        var targetName = target.Name.Trim();
+        var sourceLower = sourceName.ToLower();
+        var targetLower = targetName.ToLower();
+
+        await using var tx = await _db.Database.BeginTransactionAsync();
+
+        // 1. Duplicate Contact Resolutions
+        if (dto.ContactResolutions != null)
+        {
+            foreach (var cr in dto.ContactResolutions)
+            {
+                var contactA = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == cr.ContactAId && c.UserId == userId);
+                var contactB = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == cr.ContactBId && c.UserId == userId);
+
+                if (cr.Mode == "KeepA" && contactB != null && contactA != null)
+                {
+                    await _db.ApplicationAttempts
+                        .Where(a => a.ContactId == contactB.Id)
+                        .ExecuteUpdateAsync(s => s.SetProperty(a => a.ContactId, contactA.Id));
+                    _db.Contacts.Remove(contactB);
+                }
+                else if (cr.Mode == "KeepB" && contactA != null && contactB != null)
+                {
+                    await _db.ApplicationAttempts
+                        .Where(a => a.ContactId == contactA.Id)
+                        .ExecuteUpdateAsync(s => s.SetProperty(a => a.ContactId, contactB.Id));
+                    _db.Contacts.Remove(contactA);
+                }
+            }
+            await _db.SaveChangesAsync();
+        }
+
+        // Re-link all remaining contacts of both companies to finalName
+        var allContacts = await _db.Contacts
+            .Where(c => c.UserId == userId && c.Company != null &&
+                        (c.Company.Trim().ToLower() == sourceLower || c.Company.Trim().ToLower() == targetLower))
+            .ToListAsync();
+        foreach (var c in allContacts)
+        {
+            c.Company = finalName;
+        }
+
+        // 2. Duplicate Application Resolutions
+        if (dto.ApplicationResolutions != null)
+        {
+            foreach (var ar in dto.ApplicationResolutions)
+            {
+                if (ar.Mode == "Merge")
+                {
+                    var primary = await _db.Applications.FirstOrDefaultAsync(a => a.Id == ar.PrimaryApplicationId && a.CandidateId == userId);
+                    var secondary = await _db.Applications.FirstOrDefaultAsync(a => a.Id == ar.SecondaryApplicationId && a.CandidateId == userId);
+
+                    if (primary != null && secondary != null && primary.Id != secondary.Id)
+                    {
+                        var maxAttempt = await _db.ApplicationAttempts
+                            .Where(a => a.ApplicationId == primary.Id)
+                            .MaxAsync(a => (int?)a.AttemptNumber) ?? 0;
+
+                        var secAttempts = await _db.ApplicationAttempts
+                            .Where(a => a.ApplicationId == secondary.Id)
+                            .OrderBy(a => a.AttemptNumber)
+                            .ToListAsync();
+
+                        foreach (var att in secAttempts)
+                        {
+                            att.ApplicationId = primary.Id;
+                            att.AttemptNumber = ++maxAttempt;
+                        }
+
+                        var secHistories = await _db.ApplicationStatusHistories
+                            .Where(h => h.ApplicationId == secondary.Id)
+                            .ToListAsync();
+                        foreach (var h in secHistories)
+                        {
+                            h.ApplicationId = primary.Id;
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(secondary.Notes))
+                        {
+                            if (string.IsNullOrWhiteSpace(primary.Notes))
+                                primary.Notes = secondary.Notes;
+                            else if (!primary.Notes.Contains(secondary.Notes))
+                                primary.Notes += $"\n\nMerged application notes:\n{secondary.Notes}";
+                        }
+
+                        if (primary.CvVersionId == null && secondary.CvVersionId != null)
+                            primary.CvVersionId = secondary.CvVersionId;
+
+                        if (primary.Status == ApplicationStatus.SAVED && secondary.Status != ApplicationStatus.SAVED)
+                        {
+                            primary.Status = secondary.Status;
+                            primary.AppliedAt = secondary.AppliedAt ?? DateTime.UtcNow;
+                        }
+
+                        _db.Applications.Remove(secondary);
+                    }
+                }
+            }
+            await _db.SaveChangesAsync();
+        }
+
+        // Re-link all remaining applications of both companies to finalName and recompute Fingerprint
+        var allApps = await _db.Applications
+            .Where(a => a.CandidateId == userId &&
+                        (a.CompanyName.Trim().ToLower() == sourceLower || a.CompanyName.Trim().ToLower() == targetLower))
+            .ToListAsync();
+        foreach (var app in allApps)
+        {
+            app.CompanyName = finalName;
+            app.Fingerprint = FingerprintHelper.Compute(finalName, app.PositionTitle);
+            app.UpdatedAt = DateTime.UtcNow;
+        }
+
+        // 3. Resolve Credentials
+        var sourceCreds = await _db.CompanyCredentials.Where(c => c.CompanyId == source.Id).ToListAsync();
+        var targetCreds = await _db.CompanyCredentials.Where(c => c.CompanyId == target.Id).ToListAsync();
+        var allCreds = sourceCreds.Concat(targetCreds).ToList();
+
+        var keepCredIds = dto.KeepCredentialIds ?? new List<Guid>();
+        foreach (var cred in allCreds)
+        {
+            if (keepCredIds.Contains(cred.Id))
+            {
+                cred.CompanyId = target.Id;
+                cred.UpdatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                _db.CompanyCredentials.Remove(cred);
+            }
+        }
+
+        // 4. Update References in Other Tables
+        // CoverLetters
+        var coverLetters = await _db.CoverLetters
+            .Where(cl => cl.UserId == userId && cl.CompanyId == source.Id)
+            .ToListAsync();
+        foreach (var cl in coverLetters)
+        {
+            cl.CompanyId = target.Id;
+        }
+
+        // ApplyQueueItems
+        var queueItems = await _db.ApplyQueueItems
+            .Where(q => q.UserId == userId && (q.CompanyId == source.Id || q.CompanyId == target.Id ||
+                        q.CompanyName.Trim().ToLower() == sourceLower || q.CompanyName.Trim().ToLower() == targetLower))
+            .ToListAsync();
+        foreach (var q in queueItems)
+        {
+            q.CompanyId = target.Id;
+            q.CompanyName = finalName;
+        }
+
+        // BulkApplyRows
+        var bulkRows = await _db.BulkApplyRows
+            .Where(b => (b.CompanyId == source.Id || b.CompanyId == target.Id ||
+                         b.CompanyName.Trim().ToLower() == sourceLower || b.CompanyName.Trim().ToLower() == targetLower))
+            .ToListAsync();
+        foreach (var b in bulkRows)
+        {
+            b.CompanyId = target.Id;
+            b.CompanyName = finalName;
+        }
+
+        // EmailDrafts
+        var drafts = await _db.EmailDrafts
+            .Where(d => d.UserId == userId && d.CompanyName != null &&
+                        (d.CompanyName.Trim().ToLower() == sourceLower || d.CompanyName.Trim().ToLower() == targetLower))
+            .ToListAsync();
+        foreach (var d in drafts)
+        {
+            d.CompanyName = finalName;
+        }
+
+        // Employees
+        var employees = await _db.Employees
+            .Where(e => e.UserId == userId && e.Company != null &&
+                        (e.Company.Trim().ToLower() == sourceLower || e.Company.Trim().ToLower() == targetLower))
+            .ToListAsync();
+        foreach (var e in employees)
+        {
+            e.Company = finalName;
+        }
+
+        // 5. Update Target Company (earliest CreatedAt used per user requirement)
+        target.CreatedAt = source.CreatedAt < target.CreatedAt ? source.CreatedAt : target.CreatedAt;
+        target.UpdatedAt = DateTime.UtcNow;
+        target.Name = finalName;
+        target.WebsiteUrl = dto.WebsiteUrl;
+        target.Location = dto.Location;
+        target.Country = string.IsNullOrWhiteSpace(dto.Country) ? "Morocco" : dto.Country.Trim();
+        target.LocationUrl = dto.LocationUrl;
+        target.Region = dto.Region;
+        target.Sector = dto.Sector;
+        target.FoundedYear = dto.FoundedYear;
+        target.LinkedInUrl = dto.LinkedInUrl;
+        target.Size = dto.Size;
+        target.Specialties = dto.Specialties;
+        target.LogoUrl = dto.LogoUrl;
+        target.LogoImageId = dto.LogoImageId;
+        target.Description = dto.Description;
+        target.Note = dto.Note;
+
+        // Merge researched metadata if available
+        var combinedEmails = CompanyResearchJson.ParseList(target.EmailsJson)
+            .Concat(CompanyResearchJson.ParseList(source.EmailsJson))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        target.EmailsJson = combinedEmails.Count > 0 ? CompanyResearchJson.SerializeList(combinedEmails) : null;
+
+        var combinedPhones = CompanyResearchJson.ParseList(target.PhonesJson)
+            .Concat(CompanyResearchJson.ParseList(source.PhonesJson))
+            .Distinct()
+            .ToList();
+        target.PhonesJson = combinedPhones.Count > 0 ? CompanyResearchJson.SerializeList(combinedPhones) : null;
+
+        var combinedSocial = CompanyResearchJson.ParseSocialLinks(target.SocialLinksJson)
+            .Concat(CompanyResearchJson.ParseSocialLinks(source.SocialLinksJson))
+            .GroupBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToList();
+        target.SocialLinksJson = combinedSocial.Count > 0 ? CompanyResearchJson.SerializeSocialLinks(combinedSocial) : null;
+
+        var combinedFacts = CompanyResearchJson.ParseList(target.CompanyFactsJson)
+            .Concat(CompanyResearchJson.ParseList(source.CompanyFactsJson))
+            .Distinct()
+            .ToList();
+        target.CompanyFactsJson = combinedFacts.Count > 0 ? CompanyResearchJson.SerializeList(combinedFacts) : null;
+
+        if (string.IsNullOrWhiteSpace(target.ResearchSource) && !string.IsNullOrWhiteSpace(source.ResearchSource))
+        {
+            target.ResearchSource = source.ResearchSource;
+            target.ResearchLink = source.ResearchLink;
+            target.ResearchUpdatedAt = source.ResearchUpdatedAt;
+        }
+
+        // Rename source prior to removal to avoid transient unique index clash
+        source.Name = $"{source.Name}_merged_{Guid.NewGuid():N}";
+        _db.Companies.Remove(source);
+
+        await _db.SaveChangesAsync();
+        await tx.CommitAsync();
+
+        SearchSyncHelper.TriggerSync(_scopeFactory, userId, _logger, "Company.Merge");
+
+        var mapped = Map(target);
+        (mapped.ApplicationsCount, mapped.LastAppliedAt) = await GetCompanyStatsAsync(userId, target.Name);
+        mapped.ContactsCount = await _db.Contacts.CountAsync(co =>
+            co.UserId == userId && co.Company != null && co.Company.Trim().ToLower() == target.Name.Trim().ToLower());
+
+        return Ok(ApiResponse<CompanyDto>.Ok(mapped, "Companies successfully merged"));
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

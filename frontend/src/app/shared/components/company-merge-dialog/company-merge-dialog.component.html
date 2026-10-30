@@ -1,0 +1,574 @@
+@if (open()) {
+  <div class="modal-backdrop" (click)="close()">
+    <div class="modal merge-modal" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          <h2>Merge Companies</h2>
+          <p class="head-sub">Consolidate two duplicate or inconsistent company records into one clean entry.</p>
+        </div>
+        <button class="icon-btn" (click)="close()" title="Close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- ── Select Companies ──────────────────────────────────────── -->
+        <section class="picker-section">
+          @if (candidates().length > 0) {
+            <div class="candidates-strip">
+              <span class="cs-label">Suggestions (similar names):</span>
+              @for (cand of candidates(); track cand.idA + cand.idB) {
+                <button type="button" class="cs-chip" (click)="pickCandidate(cand)"
+                        title="Insert this pair and analyze">
+                  {{ cand.nameA }} ⇄ {{ cand.nameB }}
+                  @if (cand.appsA > 0 || cand.appsB > 0) {
+                    <span class="cs-apps">{{ cand.appsA }}↔{{ cand.appsB }}</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+          <div class="picker-row">
+            <div class="picker-col">
+              <label>First company (A)</label>
+              <select class="form-select" [ngModel]="companyAId()" (ngModelChange)="onCompanyAChange($event)">
+                <option value="">Select first company…</option>
+                @for (c of allCompanies(); track c.id) {
+                  <option [value]="c.id" [disabled]="c.id === companyBId()">
+                    {{ c.name }}{{ c.location ? ' (' + c.location + ')' : '' }}
+                  </option>
+                }
+              </select>
+            </div>
+
+            <button class="swap-btn" type="button" (click)="swapCompanies()" [disabled]="!companyAId() || !companyBId()" title="Swap companies">
+              ⇄
+            </button>
+
+            <div class="picker-col">
+              <label>Second company (B)</label>
+              <select class="form-select" [ngModel]="companyBId()" (ngModelChange)="onCompanyBChange($event)">
+                <option value="">Select second company…</option>
+                @for (c of allCompanies(); track c.id) {
+                  <option [value]="c.id" [disabled]="c.id === companyAId()">
+                    {{ c.name }}{{ c.location ? ' (' + c.location + ')' : '' }}
+                  </option>
+                }
+              </select>
+            </div>
+          </div>
+        </section>
+
+        @if (previewLoading()) {
+          <div class="state-box">
+            <div class="spinner"></div>
+            <p>Analyzing company records, applications, contacts, and credentials…</p>
+          </div>
+        } @else if (previewError()) {
+          <div class="alert-box error">
+            <span class="alert-icon">⚠️</span>
+            <span>{{ previewError() }}</span>
+          </div>
+        } @else if (preview(); as p) {
+          <!-- ── Side-by-Side Comparison Overview ──────────────────────── -->
+          <div class="overview-grid">
+            <div class="co-card" [class.is-surviving]="survivingChoice() === 'A'">
+              <div class="card-head">
+                <span class="badge badge-a">Company A</span>
+                @if (survivingChoice() === 'A') {
+                  <span class="survive-tag">★ Surviving Record</span>
+                }
+              </div>
+              <div class="co-title-row">
+                @if (p.companyA.logoUrl) {
+                  <img class="co-logo" [src]="p.companyA.logoUrl" alt="" />
+                }
+                <h3>{{ p.companyA.name }}</h3>
+              </div>
+              <div class="co-stats">
+                <span class="stat-pill"><strong>{{ p.applicationsA.length }}</strong> applies</span>
+                <span class="stat-pill"><strong>{{ p.contactsA.length }}</strong> contacts</span>
+                <span class="stat-pill"><strong>{{ p.credentialsA.length }}</strong> credentials</span>
+              </div>
+              <div class="co-meta-line">Created: {{ p.companyA.createdAt | date:'mediumDate' }}</div>
+            </div>
+
+            <div class="co-card" [class.is-surviving]="survivingChoice() === 'B'">
+              <div class="card-head">
+                <span class="badge badge-b">Company B</span>
+                @if (survivingChoice() === 'B') {
+                  <span class="survive-tag">★ Surviving Record</span>
+                }
+              </div>
+              <div class="co-title-row">
+                @if (p.companyB.logoUrl) {
+                  <img class="co-logo" [src]="p.companyB.logoUrl" alt="" />
+                }
+                <h3>{{ p.companyB.name }}</h3>
+              </div>
+              <div class="co-stats">
+                <span class="stat-pill"><strong>{{ p.applicationsB.length }}</strong> applies</span>
+                <span class="stat-pill"><strong>{{ p.contactsB.length }}</strong> contacts</span>
+                <span class="stat-pill"><strong>{{ p.credentialsB.length }}</strong> credentials</span>
+              </div>
+              <div class="co-meta-line">Created: {{ p.companyB.createdAt | date:'mediumDate' }}</div>
+            </div>
+          </div>
+
+          <!-- ── Step 1: Final Name ────────────────────────────────────── -->
+          <div class="step-card">
+            <div class="step-header">
+              <span class="step-num">1</span>
+              <h4>Choose Final Company Name</h4>
+            </div>
+            <div class="name-options">
+              <label class="radio-card" [class.selected]="nameOption() === 'A'">
+                <input type="radio" name="nameOption" [checked]="nameOption() === 'A'" (change)="setNameOption('A')" />
+                <div>
+                  <div class="radio-title">{{ p.companyA.name }}</div>
+                  <div class="radio-sub">From Company A</div>
+                </div>
+              </label>
+
+              <label class="radio-card" [class.selected]="nameOption() === 'B'">
+                <input type="radio" name="nameOption" [checked]="nameOption() === 'B'" (change)="setNameOption('B')" />
+                <div>
+                  <div class="radio-title">{{ p.companyB.name }}</div>
+                  <div class="radio-sub">From Company B</div>
+                </div>
+              </label>
+
+              <label class="radio-card custom-card" [class.selected]="nameOption() === 'custom'">
+                <input type="radio" name="nameOption" [checked]="nameOption() === 'custom'" (change)="setNameOption('custom')" />
+                <div class="custom-name-wrap">
+                  <div class="radio-title">Define Custom Name</div>
+                  <input
+                    class="form-input text-input"
+                    type="text"
+                    placeholder="Enter new company name…"
+                    [ngModel]="customName()"
+                    (ngModelChange)="customName.set($event); nameOption.set('custom')"
+                    (focus)="nameOption.set('custom')"
+                  />
+                </div>
+              </label>
+            </div>
+
+            <div class="tip-box">
+              <span class="tip-icon">ℹ️</span>
+              <span>
+                The earliest creation date (<strong>{{ p.oldestCreatedAt | date:'mediumDate' }}</strong>) will be kept as the merged company's original date.
+              </span>
+            </div>
+          </div>
+
+          <!-- ── Step 2: Field Mapping ─────────────────────────────────── -->
+          <div class="step-card">
+            <div class="step-header space-between">
+              <div class="step-header-left">
+                <span class="step-num">2</span>
+                <h4>Map Profile Information</h4>
+              </div>
+              <div class="quick-copy-bar">
+                <span>Quick select:</span>
+                <button type="button" class="btn-xs" (click)="useAllFrom('A')">All from A</button>
+                <button type="button" class="btn-xs" (click)="useAllFrom('B')">All from B</button>
+              </div>
+            </div>
+
+            <div class="fields-table">
+              <div class="fields-header-row">
+                <div class="f-col label-col">Field</div>
+                <div class="f-col val-col">Company A value</div>
+                <div class="f-col val-col">Company B value</div>
+              </div>
+
+              <!-- Website -->
+              <div class="field-row">
+                <div class="f-col label-col">Website</div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['websiteUrl'] === 'A'" (click)="setFieldChoice('websiteUrl', 'A')">
+                  <input type="radio" name="f_web" [checked]="fieldChoices()['websiteUrl'] === 'A'" />
+                  <span>{{ p.companyA.websiteUrl || '—' }}</span>
+                </div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['websiteUrl'] === 'B'" (click)="setFieldChoice('websiteUrl', 'B')">
+                  <input type="radio" name="f_web" [checked]="fieldChoices()['websiteUrl'] === 'B'" />
+                  <span>{{ p.companyB.websiteUrl || '—' }}</span>
+                </div>
+              </div>
+
+              <!-- Location & Country -->
+              <div class="field-row">
+                <div class="f-col label-col">Location & Country</div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['location'] === 'A'" (click)="setFieldChoice('location', 'A'); setFieldChoice('country', 'A')">
+                  <input type="radio" name="f_loc" [checked]="fieldChoices()['location'] === 'A'" />
+                  <span>{{ p.companyA.location || '—' }}, {{ p.companyA.country }}</span>
+                </div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['location'] === 'B'" (click)="setFieldChoice('location', 'B'); setFieldChoice('country', 'B')">
+                  <input type="radio" name="f_loc" [checked]="fieldChoices()['location'] === 'B'" />
+                  <span>{{ p.companyB.location || '—' }}, {{ p.companyB.country }}</span>
+                </div>
+              </div>
+
+              <!-- Sector -->
+              <div class="field-row">
+                <div class="f-col label-col">Sector / Industry</div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['sector'] === 'A'" (click)="setFieldChoice('sector', 'A')">
+                  <input type="radio" name="f_sec" [checked]="fieldChoices()['sector'] === 'A'" />
+                  <span>{{ p.companyA.sector || '—' }}</span>
+                </div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['sector'] === 'B'" (click)="setFieldChoice('sector', 'B')">
+                  <input type="radio" name="f_sec" [checked]="fieldChoices()['sector'] === 'B'" />
+                  <span>{{ p.companyB.sector || '—' }}</span>
+                </div>
+              </div>
+
+              <!-- Size -->
+              <div class="field-row">
+                <div class="f-col label-col">Company Size</div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['size'] === 'A'" (click)="setFieldChoice('size', 'A')">
+                  <input type="radio" name="f_size" [checked]="fieldChoices()['size'] === 'A'" />
+                  <span>{{ p.companyA.size || '—' }}</span>
+                </div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['size'] === 'B'" (click)="setFieldChoice('size', 'B')">
+                  <input type="radio" name="f_size" [checked]="fieldChoices()['size'] === 'B'" />
+                  <span>{{ p.companyB.size || '—' }}</span>
+                </div>
+              </div>
+
+              <!-- LinkedIn -->
+              <div class="field-row">
+                <div class="f-col label-col">LinkedIn URL</div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['linkedInUrl'] === 'A'" (click)="setFieldChoice('linkedInUrl', 'A')">
+                  <input type="radio" name="f_li" [checked]="fieldChoices()['linkedInUrl'] === 'A'" />
+                  <span>{{ p.companyA.linkedInUrl || '—' }}</span>
+                </div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['linkedInUrl'] === 'B'" (click)="setFieldChoice('linkedInUrl', 'B')">
+                  <input type="radio" name="f_li" [checked]="fieldChoices()['linkedInUrl'] === 'B'" />
+                  <span>{{ p.companyB.linkedInUrl || '—' }}</span>
+                </div>
+              </div>
+
+              <!-- Description -->
+              <div class="field-row">
+                <div class="f-col label-col">Description</div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['description'] === 'A'" (click)="setFieldChoice('description', 'A')">
+                  <input type="radio" name="f_desc" [checked]="fieldChoices()['description'] === 'A'" />
+                  <span class="truncate-cell">{{ p.companyA.description || '—' }}</span>
+                </div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['description'] === 'B'" (click)="setFieldChoice('description', 'B')">
+                  <input type="radio" name="f_desc" [checked]="fieldChoices()['description'] === 'B'" />
+                  <span class="truncate-cell">{{ p.companyB.description || '—' }}</span>
+                </div>
+              </div>
+
+              <!-- Logo -->
+              <div class="field-row">
+                <div class="f-col label-col">Logo</div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['logo'] === 'A'" (click)="setFieldChoice('logo', 'A')">
+                  <input type="radio" name="f_logo" [checked]="fieldChoices()['logo'] === 'A'" />
+                  @if (p.companyA.logoUrl) {
+                    <img class="logo-preview" [src]="p.companyA.logoUrl" alt="" />
+                    <span>Company A logo</span>
+                  } @else {
+                    <span>No logo</span>
+                  }
+                </div>
+                <div class="f-col val-col" [class.active]="fieldChoices()['logo'] === 'B'" (click)="setFieldChoice('logo', 'B')">
+                  <input type="radio" name="f_logo" [checked]="fieldChoices()['logo'] === 'B'" />
+                  @if (p.companyB.logoUrl) {
+                    <img class="logo-preview" [src]="p.companyB.logoUrl" alt="" />
+                    <span>Company B logo</span>
+                  } @else {
+                    <span>No logo</span>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Step 3: Notes Resolution ──────────────────────────────── -->
+          <div class="step-card">
+            <div class="step-header">
+              <span class="step-num">3</span>
+              <h4>Notes</h4>
+            </div>
+
+            <div class="note-options-bar">
+              <button
+                type="button"
+                class="btn-toggle"
+                [class.active]="noteOption() === 'A'"
+                (click)="setNoteOption('A')"
+                [disabled]="!p.companyA.note"
+              >
+                Use Note A
+              </button>
+              <button
+                type="button"
+                class="btn-toggle"
+                [class.active]="noteOption() === 'B'"
+                (click)="setNoteOption('B')"
+                [disabled]="!p.companyB.note"
+              >
+                Use Note B
+              </button>
+              <button
+                type="button"
+                class="btn-toggle"
+                [class.active]="noteOption() === 'combine'"
+                (click)="setNoteOption('combine')"
+                [disabled]="!p.companyA.note && !p.companyB.note"
+              >
+                Combine Both
+              </button>
+              <button
+                type="button"
+                class="btn-toggle"
+                [class.active]="noteOption() === 'custom'"
+                (click)="setNoteOption('custom')"
+              >
+                Custom
+              </button>
+            </div>
+
+            <div class="form-group note-edit-group">
+              <textarea
+                class="form-textarea"
+                rows="4"
+                placeholder="Final note to save on the merged company (optional)…"
+                [ngModel]="resultingNote()"
+                (ngModelChange)="resultingNote.set($event); noteOption.set('custom')"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- ── Step 4: Credentials Resolution ────────────────────────── -->
+          @if (p.credentialsA.length > 0 || p.credentialsB.length > 0) {
+            <div class="step-card">
+              <div class="step-header space-between">
+                <div class="step-header-left">
+                  <span class="step-num">4</span>
+                  <h4>Company Credentials & Portals</h4>
+                </div>
+                <div class="quick-copy-bar">
+                  <button type="button" class="btn-xs" (click)="selectAllCredentials(true)">Keep all</button>
+                  <button type="button" class="btn-xs" (click)="selectAllCredentials(false)">Deselect all</button>
+                </div>
+              </div>
+
+              <div class="creds-list">
+                @for (c of p.credentialsA; track c.id) {
+                  <label class="cred-item" [class.selected]="keptCredentialIds().has(c.id)">
+                    <input type="checkbox" [checked]="keptCredentialIds().has(c.id)" (change)="toggleCredential(c.id)" />
+                    <div class="cred-info">
+                      <span class="badge badge-a">Company A</span>
+                      <strong class="cred-label">{{ c.label || 'Account' }}</strong>
+                      @if (c.username) {
+                        <span class="cred-user">{{ c.username }}</span>
+                      }
+                      @if (c.url) {
+                        <span class="cred-url">{{ c.url }}</span>
+                      }
+                    </div>
+                  </label>
+                }
+
+                @for (c of p.credentialsB; track c.id) {
+                  <label class="cred-item" [class.selected]="keptCredentialIds().has(c.id)">
+                    <input type="checkbox" [checked]="keptCredentialIds().has(c.id)" (change)="toggleCredential(c.id)" />
+                    <div class="cred-info">
+                      <span class="badge badge-b">Company B</span>
+                      <strong class="cred-label">{{ c.label || 'Account' }}</strong>
+                      @if (c.username) {
+                        <span class="cred-user">{{ c.username }}</span>
+                      }
+                      @if (c.url) {
+                        <span class="cred-url">{{ c.url }}</span>
+                      }
+                    </div>
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- ── Step 5: Duplicate Contacts Resolution ─────────────────── -->
+          <div class="step-card">
+            <div class="step-header">
+              <span class="step-num">{{ p.credentialsA.length > 0 || p.credentialsB.length > 0 ? '5' : '4' }}</span>
+              <h4>Contacts</h4>
+            </div>
+
+            @if (p.duplicateContacts.length > 0) {
+              <div class="dup-alert">
+                <span>⚠️</span>
+                <span>Found {{ p.duplicateContacts.length }} duplicate contact(s) between the two companies. Choose how to resolve each:</span>
+              </div>
+
+              <div class="dup-list">
+                @for (pair of p.duplicateContacts; track $index) {
+                  <div class="dup-card">
+                    <div class="dup-reason">{{ pair.reason }}</div>
+                    <div class="dup-choices">
+                      <label class="choice-label" [class.selected]="contactResolutions()[$index] === 'KeepA'">
+                        <input
+                          type="radio"
+                          [name]="'contact_' + $index"
+                          [checked]="contactResolutions()[$index] === 'KeepA'"
+                          (change)="setContactResolution($index, 'KeepA')"
+                        />
+                        <div>
+                          <strong>Keep from A:</strong> {{ pair.contactA.name }} ({{ pair.contactA.email || 'no email' }})
+                        </div>
+                      </label>
+
+                      <label class="choice-label" [class.selected]="contactResolutions()[$index] === 'KeepB'">
+                        <input
+                          type="radio"
+                          [name]="'contact_' + $index"
+                          [checked]="contactResolutions()[$index] === 'KeepB'"
+                          (change)="setContactResolution($index, 'KeepB')"
+                        />
+                        <div>
+                          <strong>Keep from B:</strong> {{ pair.contactB.name }} ({{ pair.contactB.email || 'no email' }})
+                        </div>
+                      </label>
+
+                      <label class="choice-label" [class.selected]="contactResolutions()[$index] === 'KeepBoth'">
+                        <input
+                          type="radio"
+                          [name]="'contact_' + $index"
+                          [checked]="contactResolutions()[$index] === 'KeepBoth'"
+                          (change)="setContactResolution($index, 'KeepBoth')"
+                        />
+                        <div><strong>Keep both</strong> (both will be linked to the final company)</div>
+                      </label>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="clean-note">
+                <span class="clean-icon">✓</span>
+                <span>No duplicate contacts detected. All {{ p.contactsA.length + p.contactsB.length }} contact(s) will be linked to "{{ effectiveFinalName() }}".</span>
+              </div>
+            }
+          </div>
+
+          <!-- ── Step 6: Duplicate Applications Resolution ─────────────── -->
+          <div class="step-card">
+            <div class="step-header">
+              <span class="step-num">{{ p.credentialsA.length > 0 || p.credentialsB.length > 0 ? '6' : '5' }}</span>
+              <h4>Applications (Applies)</h4>
+            </div>
+
+            @if (p.duplicateApplications.length > 0) {
+              <div class="dup-alert">
+                <span>⚠️</span>
+                <span>Found {{ p.duplicateApplications.length }} duplicate application(s) between the two companies. Choose how to resolve each:</span>
+              </div>
+
+              <div class="dup-list">
+                @for (pair of p.duplicateApplications; track $index) {
+                  <div class="dup-card">
+                    <div class="dup-reason">{{ pair.reason }}</div>
+
+                    <div class="app-comparison-grid">
+                      <div class="app-side">
+                        <span class="badge badge-a">In {{ p.companyA.name }}</span>
+                        <div class="app-role">{{ pair.applicationA.positionTitle }}</div>
+                        <div class="app-meta">Status: <strong>{{ pair.applicationA.status }}</strong></div>
+                        <div class="app-meta">Attempts: <strong>{{ pair.applicationA.attempts?.length || 0 }}</strong></div>
+                      </div>
+
+                      <div class="app-side">
+                        <span class="badge badge-b">In {{ p.companyB.name }}</span>
+                        <div class="app-role">{{ pair.applicationB.positionTitle }}</div>
+                        <div class="app-meta">Status: <strong>{{ pair.applicationB.status }}</strong></div>
+                        <div class="app-meta">Attempts: <strong>{{ pair.applicationB.attempts?.length || 0 }}</strong></div>
+                      </div>
+                    </div>
+
+                    <div class="dup-choices">
+                      <label class="choice-label" [class.selected]="appResolutions()[$index]?.mode === 'Merge' && appResolutions()[$index]?.primary === 'A'">
+                        <input
+                          type="radio"
+                          [name]="'app_' + $index"
+                          [checked]="appResolutions()[$index]?.mode === 'Merge' && appResolutions()[$index]?.primary === 'A'"
+                          (change)="setAppResolutionMode($index, 'Merge'); setAppResolutionPrimary($index, 'A')"
+                        />
+                        <div>
+                          <strong>Merge into Application A:</strong> Consolidate attempts & history into Application A.
+                        </div>
+                      </label>
+
+                      <label class="choice-label" [class.selected]="appResolutions()[$index]?.mode === 'Merge' && appResolutions()[$index]?.primary === 'B'">
+                        <input
+                          type="radio"
+                          [name]="'app_' + $index"
+                          [checked]="appResolutions()[$index]?.mode === 'Merge' && appResolutions()[$index]?.primary === 'B'"
+                          (change)="setAppResolutionMode($index, 'Merge'); setAppResolutionPrimary($index, 'B')"
+                        />
+                        <div>
+                          <strong>Merge into Application B:</strong> Consolidate attempts & history into Application B.
+                        </div>
+                      </label>
+
+                      <label class="choice-label" [class.selected]="appResolutions()[$index]?.mode === 'KeepBoth'">
+                        <input
+                          type="radio"
+                          [name]="'app_' + $index"
+                          [checked]="appResolutions()[$index]?.mode === 'KeepBoth'"
+                          (change)="setAppResolutionMode($index, 'KeepBoth')"
+                        />
+                        <div><strong>Keep both applications</strong> (both will be linked to the final company name).</div>
+                      </label>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="clean-note">
+                <span class="clean-icon">✓</span>
+                <span>No duplicate applications detected. All {{ p.applicationsA.length + p.applicationsB.length }} application(s) will be cleanly linked to "{{ effectiveFinalName() }}".</span>
+              </div>
+            }
+          </div>
+
+          <!-- ── Step 7: References & Summary Banner ───────────────────── -->
+          <div class="summary-banner">
+            <div class="summary-title">Summary of References Updated</div>
+            <ul class="summary-list">
+              <li>All applications from both records will be assigned to <strong>{{ effectiveFinalName() }}</strong> and their soft deduplication fingerprints will be refreshed.</li>
+              <li>Contacts, portal credentials, cover letters, and staging queue items will all be re-linked to the surviving company record.</li>
+              <li>The merged company will retain the oldest creation date (<strong>{{ p.oldestCreatedAt | date:'mediumDate' }}</strong>).</li>
+            </ul>
+          </div>
+
+          @if (mergeError()) {
+            <div class="alert-box error">
+              <span class="alert-icon">⚠️</span>
+              <span>{{ mergeError() }}</span>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn btn-secondary" type="button" (click)="close()" [disabled]="merging()">Cancel</button>
+        @if (preview()) {
+          <button
+            class="btn btn-primary"
+            type="button"
+            (click)="submitMerge()"
+            [disabled]="merging() || !effectiveFinalName()"
+          >
+            @if (merging()) {
+              <span class="btn-spinner"></span> Merging companies…
+            } @else {
+              Merge into "{{ effectiveFinalName() }}"
+            }
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

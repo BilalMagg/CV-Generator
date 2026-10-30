@@ -155,3 +155,91 @@ public static class CompanyResearchJson
         return list is { Count: > 0 } ? System.Text.Json.JsonSerializer.Serialize(list) : null;
     }
 }
+
+public class DuplicateApplicationPairDto
+{
+    public ApplicationResponseDto ApplicationA { get; set; } = null!;
+    public ApplicationResponseDto ApplicationB { get; set; } = null!;
+    public string Reason { get; set; } = string.Empty;
+}
+
+public class DuplicateContactPairDto
+{
+    public ContactDto ContactA { get; set; } = null!;
+    public ContactDto ContactB { get; set; } = null!;
+    public string Reason { get; set; } = string.Empty;
+}
+
+public class CompanyMergePreviewDto
+{
+    public CompanyDto CompanyA { get; set; } = null!;
+    public CompanyDto CompanyB { get; set; } = null!;
+
+    public List<ApplicationResponseDto> ApplicationsA { get; set; } = [];
+    public List<ApplicationResponseDto> ApplicationsB { get; set; } = [];
+    public List<DuplicateApplicationPairDto> DuplicateApplications { get; set; } = [];
+
+    public List<ContactDto> ContactsA { get; set; } = [];
+    public List<ContactDto> ContactsB { get; set; } = [];
+    public List<DuplicateContactPairDto> DuplicateContacts { get; set; } = [];
+
+    public List<CompanyCredentialDto> CredentialsA { get; set; } = [];
+    public List<CompanyCredentialDto> CredentialsB { get; set; } = [];
+
+    public DateTime OldestCreatedAt { get; set; }
+}
+
+public class MergeContactResolutionDto
+{
+    public string Mode { get; set; } = "KeepBoth"; // "KeepA", "KeepB", "KeepBoth"
+    public Guid ContactAId { get; set; }
+    public Guid ContactBId { get; set; }
+}
+
+public class MergeApplicationResolutionDto
+{
+    public string Mode { get; set; } = "KeepBoth"; // "Merge", "KeepBoth"
+    public Guid PrimaryApplicationId { get; set; }
+    public Guid SecondaryApplicationId { get; set; }
+}
+
+/// <summary>A suggested near-duplicate pair (e.g. "Inetum" / "Inetum Maroc" created by extraction).</summary>
+public class CompanyMergeCandidateDto
+{
+    public Guid IdA { get; set; }
+    public Guid IdB { get; set; }
+    public string NameA { get; set; } = string.Empty;
+    public string NameB { get; set; } = string.Empty;
+    /// <summary>Why the pair was suggested: "same-base" | "prefix-match".</summary>
+    public string Reason { get; set; } = string.Empty;
+    public int AppsA { get; set; }
+    public int AppsB { get; set; }
+    public DateTime CreatedA { get; set; }
+    public DateTime CreatedB { get; set; }
+}
+
+public class CompanyMergeRequestDto
+{
+    public Guid SourceCompanyId { get; set; }
+    public Guid TargetCompanyId { get; set; }
+    public string FinalName { get; set; } = string.Empty;
+
+    public string? WebsiteUrl { get; set; }
+    public string? Location { get; set; }
+    public string? Country { get; set; }
+    public string? LocationUrl { get; set; }
+    public string? Region { get; set; }
+    public string? Sector { get; set; }
+    public int? FoundedYear { get; set; }
+    public string? LinkedInUrl { get; set; }
+    public string? Size { get; set; }
+    public string? Specialties { get; set; }
+    public Guid? LogoImageId { get; set; }
+    public string? LogoUrl { get; set; }
+    public string? Description { get; set; }
+    public string? Note { get; set; }
+
+    public List<Guid>? KeepCredentialIds { get; set; }
+    public List<MergeContactResolutionDto>? ContactResolutions { get; set; }
+    public List<MergeApplicationResolutionDto>? ApplicationResolutions { get; set; }
+}

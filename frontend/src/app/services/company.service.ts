@@ -51,6 +51,7 @@ export interface CreateCompanyDto {
   foundedYear?: number;
   linkedInUrl?: string;
   size?: string;
+  specialties?: string;
   logoUrl?: string;
   logoImageId?: string;
   note?: string;
@@ -97,6 +98,81 @@ export interface UpsertCompanyCredentialDto {
   username?: string;
   password?: string;
   notes?: string;
+}
+
+export interface DuplicateApplicationPairDto {
+  applicationA: ApplicationResponseDto;
+  applicationB: ApplicationResponseDto;
+  reason: string;
+}
+
+export interface DuplicateContactPairDto {
+  contactA: ContactDto;
+  contactB: ContactDto;
+  reason: string;
+}
+
+export interface CompanyMergePreviewDto {
+  companyA: CompanyDto;
+  companyB: CompanyDto;
+  applicationsA: ApplicationResponseDto[];
+  applicationsB: ApplicationResponseDto[];
+  duplicateApplications: DuplicateApplicationPairDto[];
+  contactsA: ContactDto[];
+  contactsB: ContactDto[];
+  duplicateContacts: DuplicateContactPairDto[];
+  credentialsA: CompanyCredentialDto[];
+  credentialsB: CompanyCredentialDto[];
+  oldestCreatedAt: string;
+}
+
+export interface MergeContactResolutionDto {
+  mode: 'KeepA' | 'KeepB' | 'KeepBoth';
+  contactAId: string;
+  contactBId: string;
+}
+
+export interface MergeApplicationResolutionDto {
+  mode: 'Merge' | 'KeepBoth';
+  primaryApplicationId: string;
+  secondaryApplicationId: string;
+}
+
+/** A suggested near-duplicate pair (e.g. "Inetum" / "Inetum Maroc" created by extraction). */
+export interface CompanyMergeCandidateDto {
+  idA: string;
+  idB: string;
+  nameA: string;
+  nameB: string;
+  /** "same-base" | "prefix-match" */
+  reason: string;
+  appsA: number;
+  appsB: number;
+  createdA: string;
+  createdB: string;
+}
+
+export interface CompanyMergeRequestDto {
+  sourceCompanyId: string;
+  targetCompanyId: string;
+  finalName: string;
+  websiteUrl?: string | null;
+  location?: string | null;
+  country?: string | null;
+  locationUrl?: string | null;
+  region?: string | null;
+  sector?: string | null;
+  foundedYear?: number | null;
+  linkedInUrl?: string | null;
+  size?: string | null;
+  specialties?: string | null;
+  logoImageId?: string | null;
+  logoUrl?: string | null;
+  description?: string | null;
+  note?: string | null;
+  keepCredentialIds?: string[];
+  contactResolutions?: MergeContactResolutionDto[];
+  applicationResolutions?: MergeApplicationResolutionDto[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -174,5 +250,18 @@ export class CompanyService {
 
   deleteCompanyCredential(companyId: string, credentialId: string): Promise<void> {
     return this.http.delete<void>(`/api/companies/${companyId}/credentials/${credentialId}`);
+  }
+
+  getMergePreview(companyAId: string, companyBId: string): Promise<ApiResponse<CompanyMergePreviewDto>> {
+    return this.http.get<ApiResponse<CompanyMergePreviewDto>>(`/api/companies/merge/preview?companyAId=${encodeURIComponent(companyAId)}&companyBId=${encodeURIComponent(companyBId)}`);
+  }
+
+  /** Suggested near-duplicate pairs, newest-pair-first relevance handled server-side. */
+  getMergeCandidates(): Promise<ApiResponse<CompanyMergeCandidateDto[]>> {
+    return this.http.get<ApiResponse<CompanyMergeCandidateDto[]>>('/api/companies/merge/candidates');
+  }
+
+  mergeCompanies(dto: CompanyMergeRequestDto): Promise<ApiResponse<CompanyDto>> {
+    return this.http.post<ApiResponse<CompanyDto>>('/api/companies/merge', dto);
   }
 }
