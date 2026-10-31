@@ -7,13 +7,14 @@ import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { CompanyFormDialogComponent } from '@app/shared/components/company-form-dialog/company-form-dialog.component';
+import { CompanyMergeDialogComponent } from '@app/shared/components/company-merge-dialog/company-merge-dialog.component';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 import { COUNTRIES } from '@app/shared/data/geo-data';
 
 @Component({
   selector: 'app-companies',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, SheetImportDialogComponent, CompanyFormDialogComponent, RefreshButtonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, SheetImportDialogComponent, CompanyFormDialogComponent, CompanyMergeDialogComponent, RefreshButtonComponent],
   templateUrl: './companies.component.html',
   styleUrl: './companies.component.scss',
 })
@@ -46,6 +47,8 @@ export class CompaniesComponent implements OnInit {
   editingCompany = signal<CompanyDto | null>(null);
   importOpen = signal(false);
   refreshing = signal(false);
+  mergeOpen = signal(false);
+  mergeInitialCompanyId = signal<string | null>(null);
 
   protected readonly COUNTRIES = COUNTRIES;
 
@@ -177,6 +180,15 @@ export class CompaniesComponent implements OnInit {
   openCreate() {
     this.editingCompany.set(null);
     this.dialogOpen.set(true);
+  }
+
+  openMerge(initialId?: string) {
+    this.mergeInitialCompanyId.set(initialId || null);
+    this.mergeOpen.set(true);
+  }
+
+  onMerged(_company: CompanyDto) {
+    void this.loadCompanies();
   }
 
   openDetail(c: CompanyDto) {
