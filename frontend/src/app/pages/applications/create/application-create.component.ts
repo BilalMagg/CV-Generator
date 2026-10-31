@@ -370,6 +370,7 @@ export class ApplicationCreateComponent implements OnInit {
 
       const res = await this.appService.create({
         candidateId: user.userId,
+        cvVersionId: this.cvVersionId() || undefined,
         companyName: this.companyName().trim(),
         positionTitle: this.positionTitle().trim(),
         offerSource: this.offerSource().trim() || undefined,

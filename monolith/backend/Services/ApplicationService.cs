@@ -91,10 +91,18 @@ public class ApplicationService : IApplicationService
             throw new DuplicateApplicationException(MapDuplicateMatches(duplicates, dto.JobOfferId));
         }
 
+        Guid? cvVersionId = null;
+        if (dto.CvVersionId.HasValue && dto.CvVersionId.Value != Guid.Empty)
+        {
+            var owned = await _db.CvVersions.AnyAsync(v => v.Id == dto.CvVersionId.Value && v.Cv.UserId == userId);
+            if (!owned) throw new ArgumentException("CV version not found");
+            cvVersionId = dto.CvVersionId.Value;
+        }
+
         var app = new Application
         {
             CandidateId = userId,
-            CvVersionId = dto.CvVersionId,
+            CvVersionId = cvVersionId,
             JobOfferId = dto.JobOfferId,
             CompanyName = dto.CompanyName.Trim(),
             PositionTitle = dto.PositionTitle.Trim(),
@@ -797,6 +805,12 @@ public class ApplicationService : IApplicationService
         attempt.Contact = contact;
         attempt.CoverLetterTitle = coverLetterVersion?.CoverLetter.Title;
 
+        if (app.CvVersionId == null && attempt.CvVersionId != null)
+        {
+            app.CvVersionId = attempt.CvVersionId;
+            await _db.SaveChangesAsync();
+        }
+
         if (attempt.Status == AttemptStatus.SENT)
             await ApplySentSideEffectsAsync(app, attempt, userId.ToString());
 
@@ -942,6 +956,9 @@ public class ApplicationService : IApplicationService
 
         if (app.AppliedAt == null || app.AppliedAt > attempt.SentAt)
             app.AppliedAt = attempt.SentAt;
+
+        if (app.CvVersionId == null && attempt.CvVersionId != null)
+            app.CvVersionId = attempt.CvVersionId;
 
         if (app.Status == ApplicationStatus.SAVED)
         {
