@@ -44,7 +44,15 @@ for r in all_routers:
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "propel-agents"}
+    try:
+        from shared.tools.latex_compile import tex_tooling_available
+        info = tex_tooling_available()
+        latex = {"latex_engine_available": bool(info.get("tex_available")),
+                 "latex_engine": info.get("engine"),
+                 "latex_engine_reason": info.get("reason")}
+    except Exception:  # capability probe must never break the health check
+        latex = {"latex_engine_available": False, "latex_engine": None, "latex_engine_reason": "probe failed"}
+    return {"status": "ok", "service": "propel-agents", **latex}
 
 
 if __name__ == "__main__":

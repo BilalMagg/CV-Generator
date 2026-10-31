@@ -422,6 +422,31 @@
   &:hover { background: #dc2626; color: white; }
 }
 
+/* Deployment has no LaTeX engine — .tex-only degradation */
+.latex-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: #fffbeb;
+  color: #b45309;
+  font-size: 12.5px;
+  border: 1px solid #fde68a;
+
+  strong { font-weight: 600; }
+}
+
+.tex-only-hint {
+  font-size: 11.5px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
 .extract-btn {
   display: inline-flex;
   align-items: center;

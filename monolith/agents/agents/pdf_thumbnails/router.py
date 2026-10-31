@@ -35,6 +35,27 @@ async def health():
     return {"status": "ok", "service": "pdf"}
 
 
+@router.get("/capabilities")
+async def capabilities():
+    """What this sidecar can actually do — drives the frontend's graceful
+    degradation (LaTeX banner, .tex-only flow) when no LaTeX engine exists."""
+    from shared.tools.latex_compile import tex_tooling_available
+
+    info = tex_tooling_available()
+    text_pdf_ok = False
+    try:
+        from fpdf import FPDF  # noqa: F401 — fpdf2 backs render_text_pdf
+        text_pdf_ok = True
+    except Exception:
+        text_pdf_ok = False
+    return {
+        "latex_engine_available": bool(info.get("tex_available")),
+        "latex_engine": info.get("engine"),
+        "latex_engine_reason": info.get("reason"),
+        "text_pdf_available": text_pdf_ok,
+    }
+
+
 @router.post("/text")
 async def text_pdf(request: TextPdfRequest):
     if not request.text or not request.text.strip():

@@ -178,6 +178,12 @@
             </div>
           }
 
+          @if (latexUnavailable()) {
+            <div class="latex-hint">
+              No LaTeX engine is available in this deployment — you'll get the <strong>.tex source</strong> (compilable on Overleaf) but no PDF.
+            </div>
+          }
+
           <button class="extract-btn" [disabled]="!canSubmit || templatesLoading()" (click)="generate()">
             <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 3v12M7 10l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             Generate CV
@@ -260,6 +266,11 @@
               @if (result()?.tex) {
                 <button class="ghost-btn" (click)="downloadTex()">.tex</button>
                 <button class="ghost-btn" (click)="copyTex()">Copy LaTeX</button>
+              }
+              @if (result()?.tex && !result()?.pdf_url) {
+                <span class="tex-only-hint" title="No LaTeX engine on this deployment">
+                  .tex only — compile on Overleaf
+                </span>
               }
               @if (result()?.cv_id) {
                 <a class="ghost-btn" routerLink="/documents/cvs">View in Documents</a>

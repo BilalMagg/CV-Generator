@@ -18,6 +18,7 @@ import { ImagePickerComponent } from '@app/shared/components/image-picker/image-
 import { ImageDto, ImageService } from '@app/services/image.service';
 import { UserProfileService } from '@app/services/user-profile.service';
 import { ToastService } from '@app/services/toast.service';
+import { CapabilitiesService } from '@app/services/capabilities.service';
 
 type Phase = 'input' | 'prep' | 'running' | 'done';
 type InputTab = 'paste' | 'url' | 'history';
@@ -57,6 +58,7 @@ export class TemplateAgentComponent implements OnInit, OnDestroy {
   private readonly imagesApi = inject(ImageService);
   private readonly profileSvc = inject(UserProfileService);
   private readonly toast = inject(ToastService);
+  private readonly capabilities = inject(CapabilitiesService);
 
   tones = TONES;
   languages = LANGUAGES;
@@ -109,6 +111,12 @@ export class TemplateAgentComponent implements OnInit, OnDestroy {
     this.loadTemplates();
     this.loadHistory();
     this.loadPhoto();
+    void this.capabilities.load(); // LaTeX-engine hint surfaces via latexUnavailable()
+  }
+
+  /** True when the deployment has no LaTeX engine (PDF compile will not work). */
+  latexUnavailable(): boolean {
+    return this.capabilities.latexAvailable() === false;
   }
 
   private async loadPhoto(): Promise<void> {

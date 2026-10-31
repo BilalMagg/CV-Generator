@@ -78,7 +78,19 @@ async def render_cv(request: TemplateRenderRequest):
 
 @router.post("/pdf", response_model=PdfResponse)
 async def render_cv_pdf(request: PdfRequest):
-    """Compile a CV to PDF (via dockerized texlive) and store it in MinIO."""
+    """Compile a CV to PDF (native pdflatex or dockerized texlive) and store it in MinIO."""
+    from shared.tools.latex_compile import tex_tooling_available
+
+    # Fail fast with a clean, actionable error when no engine exists — the
+    # caller can then surface "compile on Overleaf" instead of a raw 500.
+    info = tex_tooling_available()
+    if not info.get("tex_available"):
+        raise HTTPException(
+            status_code=503,
+            detail=("LaTeX engine unavailable — no pdflatex on PATH and no docker texlive image. "
+                    f"Reason: {info.get('reason')}. The .tex source can still be generated and "
+                    "compiled on Overleaf."),
+        )
     try:
         if request.cv_data_format in ("json", "sections"):
             sections = CvSections.model_validate_json(request.cv_data)
