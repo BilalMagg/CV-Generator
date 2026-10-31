@@ -31,6 +31,7 @@ export interface CreateContactDto {
   position?: string;
   linkedInUrl?: string;
   notes?: string;
+  source?: string;
   isFavorite?: boolean;
   avatarBase64?: string;
 }

@@ -241,6 +241,37 @@
   flex-shrink: 0;
 }
 
+/* Scrollable nav area — brand row stays on top, user row pinned at the bottom */
+.sb-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2, var(--border)) transparent;
+  margin: 0 -6px;
+  padding: 0 6px;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background: var(--border-2, var(--border));
+  }
+}
+
 /* Spacer */
 .spacer {
   flex: 1;
