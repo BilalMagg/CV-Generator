@@ -113,6 +113,7 @@ builder.Services.AddScoped<ScheduleTemplateService>();
 builder.Services.AddScoped<ApplyService>();
 builder.Services.AddScoped<BulkApplyService>();
 builder.Services.AddScoped<ApplyQueueService>();
+builder.Services.AddScoped<IUserLlmKeyService, UserLlmKeyService>();
 builder.Services.AddScoped<EmailDraftService>();
 builder.Services.AddScoped<IApplyPrepService, ApplyPrepService>();
 builder.Services.AddScoped<WorkflowExecutionService>();

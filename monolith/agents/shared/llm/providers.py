@@ -23,6 +23,7 @@ from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
 from shared.config import settings
+from shared.llm import keys as llm_keys
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -71,7 +72,10 @@ _MISTRAL_ENDPOINT = "https://api.mistral.ai/v1/models"
 
 def _provider_key(provider: str) -> str | None:
     """Return which env var actually backs a provider, honoring the OpenRouter
-    OPENROUTER->OPENAI key fallback."""
+    OPENROUTER->OPENAI key fallback. None when an in-app key exists (it takes
+    precedence over ANY env var)."""
+    if llm_keys.resolve(provider):
+        return None
     envs = PROVIDER_ENV_MAP[provider]
     if provider == "openrouter":
         for name in _OPENROUTER_KEY_FALLBACK:
@@ -82,6 +86,10 @@ def _provider_key(provider: str) -> str | None:
 
 
 def _provider_key_value(provider: str) -> str | None:
+    """The effective API key for a provider — in-app key first, then env."""
+    in_app = llm_keys.resolve(provider)
+    if in_app:
+        return in_app
     name = _provider_key(provider)
     return os.getenv(name) if name else None
 
@@ -99,12 +107,12 @@ def _list_models_sync(provider: str) -> list[str]:
     try:
         if provider == "groq":
             import groq
-            client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
+            client = groq.Groq(api_key=_provider_key_value("groq"))
             return sorted(m.id for m in client.models.list().data)
         elif provider == "openai":
             resp = httpx.get(
                 _OPENAI_ENDPOINT,
-                headers={"Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"},
+                headers={"Authorization": f"Bearer {_provider_key_value('openai')}"},
                 timeout=10,
             )
             resp.raise_for_status()
@@ -119,7 +127,7 @@ def _list_models_sync(provider: str) -> list[str]:
             return sorted(m.get("id", "") for m in resp.json().get("data", []) if m.get("id"))
         elif provider == "google":
             from google import genai as google_genai
-            client = google_genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+            client = google_genai.Client(api_key=_provider_key_value("google"))
             # models.list is paginated; iterate and collect names.
             names: list[str] = []
             try:
@@ -134,14 +142,14 @@ def _list_models_sync(provider: str) -> list[str]:
         elif provider == "mistral":
             resp = httpx.get(
                 _MISTRAL_ENDPOINT,
-                headers={"Authorization": f"Bearer {os.getenv('MISTRAL_API_KEY')}"},
+                headers={"Authorization": f"Bearer {_provider_key_value('mistral')}"},
                 timeout=10,
             )
             resp.raise_for_status()
             return sorted(m["id"] for m in resp.json().get("data", []))
         elif provider == "omniroute":
             base = settings.OMNIROUTE_BASE_URL.rstrip("/")
-            key = os.getenv("OMNIROUTE_API_KEY")
+            key = _provider_key_value("omniroute")
             headers = {"Authorization": f"Bearer {key}"} if key else None
             resp = httpx.get(f"{base}/models", headers=headers, timeout=10)
             resp.raise_for_status()
@@ -271,7 +279,7 @@ def get_llm(
     if provider == "omniroute":
         return ChatOpenAI(
             base_url=settings.OMNIROUTE_BASE_URL,
-            api_key=settings.OMNIROUTE_API_KEY,
+            api_key=_provider_key_value("omniroute"),
             model=resolved_model,
             temperature=0.7,
             timeout=60,
@@ -286,16 +294,16 @@ def get_llm(
             default_headers={"HTTP-Referer": settings.SERVICE_NAME, "X-Title": "Propel"},
         )
     elif provider == "groq":
-        return ChatGroq(model=resolved_model, temperature=0.7)
+        return ChatGroq(model=resolved_model, temperature=0.7, groq_api_key=_provider_key_value("groq"))
     elif provider == "openai":
-        return ChatOpenAI(model=resolved_model, temperature=0.7)
+        return ChatOpenAI(model=resolved_model, temperature=0.7, api_key=_provider_key_value("openai"))
     elif provider == "google":
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
         except ImportError:
             raise RuntimeError("langchain-google-genai not installed") from None
         from google import genai as google_genai
-        api_key = settings.GOOGLE_API_KEY
+        api_key = _provider_key_value("google")
         client = google_genai.Client(api_key=api_key)
         return ChatGoogleGenerativeAI(
             client=client,
@@ -307,7 +315,7 @@ def get_llm(
             from langchain_mistralai import ChatMistralAI
         except ImportError:
             raise RuntimeError("langchain-mistralai not installed") from None
-        return ChatMistralAI(model=resolved_model, temperature=0.7)
+        return ChatMistralAI(model=resolved_model, temperature=0.7, api_key=_provider_key_value("mistral"))
     else:
         raise ValueError(f"Unknown provider: {provider}")
 

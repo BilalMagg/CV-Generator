@@ -54,6 +54,7 @@ public class AppDbContext : DbContext
     public DbSet<BimeConversation> BimeConversations => Set<BimeConversation>();
     public DbSet<BimeMessage> BimeMessages => Set<BimeMessage>();
     public DbSet<UserLlmSettings> UserLlmSettings => Set<UserLlmSettings>();
+    public DbSet<UserLlmKey> UserLlmKeys => Set<UserLlmKey>();
     public DbSet<AgentLlmSetting> AgentLlmSettings => Set<AgentLlmSetting>();
     public DbSet<CvTemplate> CvTemplates => Set<CvTemplate>();
     public DbSet<ScheduleTemplate> ScheduleTemplates => Set<ScheduleTemplate>();
@@ -332,6 +333,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AgentLlmSetting>(entity =>
         {
             entity.HasIndex(e => new { e.UserId, e.AgentId }).IsUnique();
+        });
+
+        modelBuilder.Entity<UserLlmKey>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.Provider }).IsUnique();
         });
 
         modelBuilder.Entity<CvTemplate>(entity =>

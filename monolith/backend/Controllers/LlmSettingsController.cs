@@ -10,17 +10,20 @@ public class LlmSettingsController : ControllerBase
 {
     private readonly ILlmSettingsService _llmSettingsService;
     private readonly IAgentLlmSettingsService _agentLlmSettingsService;
+    private readonly IUserLlmKeyService _llmKeyService;
     private readonly ICurrentUserService _currentUser;
     private readonly IHttpClientFactory _httpClientFactory;
 
     public LlmSettingsController(
         ILlmSettingsService llmSettingsService,
         IAgentLlmSettingsService agentLlmSettingsService,
+        IUserLlmKeyService llmKeyService,
         ICurrentUserService currentUser,
         IHttpClientFactory httpClientFactory)
     {
         _llmSettingsService = llmSettingsService;
         _agentLlmSettingsService = agentLlmSettingsService;
+        _llmKeyService = llmKeyService;
         _currentUser = currentUser;
         _httpClientFactory = httpClientFactory;
     }
@@ -53,11 +56,24 @@ public class LlmSettingsController : ControllerBase
     [HttpGet("providers")]
     public async Task<IActionResult> GetProviders()
     {
+        var userId = _currentUser.UserId;
         var http = _httpClientFactory.CreateClient("agents");
         var resp = await http.GetAsync("/api/llm/providers");
         if (!resp.IsSuccessStatusCode)
             return StatusCode(502, new { success = false, message = "LLM catalog unavailable" });
         var body = await resp.Content.ReadFromJsonAsync<LlmProvidersResponseDto>();
+        if (body is null)
+            return StatusCode(502, new { success = false, message = "LLM catalog unavailable" });
+
+        // Providers keyed in-app count as available even when sidecar env has no key,
+        // so the user can select a provider right after saving their key.
+        if (userId != null)
+        {
+            var stored = await _llmKeyService.ListAsync(userId.Value);
+            var keyed = stored.Keys.Select(k => k.Provider).ToHashSet();
+            foreach (var p in body.Providers.Where(p => !p.Available && keyed.Contains(p.Name)))
+                p.Available = true;
+        }
         return Ok(new { success = true, data = body });
     }
 
@@ -106,5 +122,54 @@ public class LlmSettingsController : ControllerBase
         {
             return NotFound(new { success = false, message = $"Unknown agent '{agentId}'" });
         }
+    }
+
+    // ── Per-user provider API keys ───────────────────────────────────────────
+
+    [HttpGet("keys")]
+    public async Task<IActionResult> GetKeys()
+    {
+        var userId = _currentUser.UserId;
+        if (userId == null)
+            return Unauthorized(new { success = false, message = "User not authenticated" });
+
+        // Heal the sidecar's in-memory key map first (a sidecar restart loses it).
+        _ = _llmKeyService.SyncToSidecarAsync(userId.Value);
+        var keys = await _llmKeyService.ListAsync(userId.Value);
+        return Ok(new { success = true, data = keys });
+    }
+
+    [HttpPut("keys/{provider}")]
+    public async Task<IActionResult> SetKey(string provider, [FromBody] SetLlmKeyRequest request)
+    {
+        var userId = _currentUser.UserId;
+        if (userId == null)
+            return Unauthorized(new { success = false, message = "User not authenticated" });
+
+        if (string.IsNullOrWhiteSpace(request.ApiKey))
+            return BadRequest(new { success = false, message = "API key is required" });
+
+        try
+        {
+            var saved = await _llmKeyService.SetAsync(userId.Value, provider, request.ApiKey);
+            return Ok(new { success = true, data = saved });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("keys/{provider}")]
+    public async Task<IActionResult> RemoveKey(string provider)
+    {
+        var userId = _currentUser.UserId;
+        if (userId == null)
+            return Unauthorized(new { success = false, message = "User not authenticated" });
+
+        var removed = await _llmKeyService.DeleteAsync(userId.Value, provider);
+        if (!removed)
+            return NotFound(new { success = false, message = $"No stored key for '{provider}'" });
+        return Ok(new { success = true });
     }
 }

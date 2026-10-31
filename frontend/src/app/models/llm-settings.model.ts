@@ -42,3 +42,16 @@ export interface AgentLlmSettingDto {
   model: string;
   updated_at: string;
 }
+
+/** A user-stored LLM provider key (passthrough hint only — never the plaintext). */
+export interface UserLlmKeyDto {
+  provider: string;
+  configured: boolean;
+  /** e.g. "gsk_te…abcd" */
+  masked?: string | null;
+  updated_at?: string | null;
+}
+
+export interface UserLlmKeysResponse {
+  keys: UserLlmKeyDto[];
+}

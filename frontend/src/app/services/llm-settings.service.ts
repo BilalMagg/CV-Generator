@@ -9,6 +9,8 @@ import type {
   AgentLlmSettingsDto,
   AgentLlmSettingMapDto,
   AgentLlmSettingDto,
+  UserLlmKeyDto,
+  UserLlmKeysResponse,
 } from '../models/llm-settings.model';
 
 interface Envelope<T> {
@@ -64,5 +66,23 @@ export class LlmSettingsService {
       body
     );
     return res.data!;
+  }
+
+  /** User-stored provider API keys (AES-encrypted server-side, pushed to the sidecar). */
+  async getKeys(): Promise<UserLlmKeyDto[]> {
+    const res = await this.http.get<Envelope<UserLlmKeysResponse>>('/api/llm-settings/keys');
+    return res.data?.keys ?? [];
+  }
+
+  async setKey(provider: string, apiKey: string): Promise<UserLlmKeyDto> {
+    const res = await this.http.put<Envelope<UserLlmKeyDto>>(
+      `/api/llm-settings/keys/${encodeURIComponent(provider)}`,
+      { api_key: apiKey }
+    );
+    return res.data!;
+  }
+
+  async removeKey(provider: string): Promise<void> {
+    await this.http.delete<void>(`/api/llm-settings/keys/${encodeURIComponent(provider)}`);
   }
 }

@@ -72,5 +72,41 @@
         Your selection is saved and used as the default for all AI agents. Models are fetched live from the provider so the list is always current.
       </p>
     </div>
+
+    <div class="form-card keys-card">
+      <div class="keys-head">
+        <label class="label">Provider API keys</label>
+        <p class="keys-sub">
+          A saved key is used even when no server-level key exists — this is how you connect a provider without editing environment files.
+          Server-side keys in <code>.env</code> stay valid as fallback.
+        </p>
+      </div>
+
+      @for (p of providers(); track p.name) {
+        <div class="key-row">
+          <div class="k-name">
+            {{ p.label }}
+            <span class="k-badge" [class]="'k-badge ' + keyBadge(p.name).cls">{{ keyBadge(p.name).text }}</span>
+          </div>
+          <div class="k-input-wrap">
+            <input class="select k-input" type="password" [placeholder]="keyState(p.name) ? 'Replace key…' : 'Paste API key…'"
+                   [ngModel]="keyDraft(p.name)" (ngModelChange)="setKeyDraft(p.name, $event)"
+                   autocomplete="off" [attr.name]="'key-' + p.name" />
+            @if (keyError()[p.name]) { <small class="k-err">{{ keyError()[p.name] }}</small> }
+          </div>
+          <div class="k-actions">
+            <button class="save-btn small" (click)="saveKey(p.name)"
+                    [disabled]="!keyDraft(p.name)?.trim() || keyBusy()[p.name]">
+              {{ keyBusy()[p.name] ? 'Saving…' : (keyState(p.name) ? 'Update' : 'Save key') }}
+            </button>
+            @if (keyState(p.name)) {
+              <button class="k-remove" (click)="removeKey(p.name)" [disabled]="keyBusy()[p.name]" title="Remove stored key">
+                Remove
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
   }
 </div>

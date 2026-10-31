@@ -7,6 +7,7 @@ from agents.crawler.router import router as crawler_router
 from agents.apply_prep.router import router as apply_prep_router
 from agents.bime.router import router as bime_router
 from agents.llm.router import router as llm_router
+from agents.llm_keys.router import router as llm_keys_router
 from agents.pdf_thumbnails.router import router as pdf_thumbnails_router
 from agents.categorize.router import router as categorize_router
 from agents.autofill.router import router as autofill_router
@@ -24,6 +25,7 @@ all_routers = [
     apply_prep_router,
     bime_router,
     llm_router,
+    llm_keys_router,
     pdf_thumbnails_router,
     categorize_router,
     autofill_router,

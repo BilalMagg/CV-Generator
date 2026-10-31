@@ -53,6 +53,34 @@ public class LlmModelsResponseDto
     public List<string> Models { get; set; } = new();
 }
 
+public class UserLlmKeyDto
+{
+    [JsonPropertyName("provider")]
+    public string Provider { get; set; } = "";
+
+    [JsonPropertyName("configured")]
+    public bool Configured { get; set; }
+
+    /// <summary>Masked hint e.g. "gsk_…3f2a" — never the plaintext.</summary>
+    [JsonPropertyName("masked")]
+    public string? Masked { get; set; }
+
+    [JsonPropertyName("updated_at")]
+    public DateTime? UpdatedAt { get; set; }
+}
+
+public class UserLlmKeysResponseDto
+{
+    [JsonPropertyName("keys")]
+    public List<UserLlmKeyDto> Keys { get; set; } = new();
+}
+
+public class SetLlmKeyRequest
+{
+    [JsonPropertyName("api_key")]
+    public string ApiKey { get; set; } = "";
+}
+
 public class AgentLlmSettingDto
 {
     [JsonPropertyName("agent_id")]
