@@ -43,6 +43,7 @@
             [footer]="getCardData(item).footer || ''"
             [isCompleted]="getCardData(item).isCompleted || false"
             [categories]="item._categories || []"
+            [copyValue]="entity === 'sociallinks' ? (item.url || '') : null"
             (click)="goToDetail(item.id)"
           ></app-entity-card>
         </div>
