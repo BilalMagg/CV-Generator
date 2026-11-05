@@ -21,6 +21,7 @@ import {
   extractTemplateVars,
   templateVarLabel,
 } from '@app/shared/template-vars';
+import { CV_PICKER_FALLBACK_HINT } from '@app/shared/cv-options';
 
 interface CvOption {
   id: string;
@@ -175,6 +176,9 @@ export class BulkApplyComponent implements OnDestroy {
   manualSubject = '';
   manualBody = '';
   cvOptions = signal<CvOption[]>([]);
+  /** False when the CV selects fell back to all versions (nothing active → show the hint). */
+  cvOptionsOnlyActive = signal(true);
+  readonly cvPickerHint = CV_PICKER_FALLBACK_HINT;
   selectedCvVersionId = signal('');
   delaySeconds = 5;
   composeMode = signal<'template' | 'manual'>('template');
@@ -267,9 +271,15 @@ export class BulkApplyComponent implements OnDestroy {
     }
     try {
       const cvs = (await this.docsSvc.listCvs()).data ?? [];
+      // CV pickers list ACTIVE versions only; fall back to all when none is active.
+      const data = cvs as CvDocumentDto[];
+      const anyActive = data.some(cv => cv.versions.some(v => v.isActive));
+      this.cvOptionsOnlyActive.set(anyActive);
       const opts: CvOption[] = [];
-      for (const cv of cvs as CvDocumentDto[]) {
-        for (const v of cv.versions) opts.push({ id: v.id, label: `${cv.title} — v${v.versionNumber}${v.label ? ' · ' + v.label : ''}` });
+      for (const cv of data) {
+        for (const v of cv.versions.filter(v => v.isActive || !anyActive)) {
+          opts.push({ id: v.id, label: `${cv.title} — v${v.versionNumber}${v.label ? ' · ' + v.label : ''}` });
+        }
       }
       this.cvOptions.set(opts);
     } catch {
@@ -1125,7 +1135,7 @@ export class BulkApplyComponent implements OnDestroy {
 
   startRun() {
     if (this.gmailNeedsReauth()) {
-      this.error.set('Gmail session expired — reconnect Gmail in Mailbox → Settings before sending.');
+      this.error.set('Gmail session expired — use the "Connect to Gmail" button below to re-authorize, then start again.');
       return;
     }
     if (!this.allRowsHaveMessage()) {

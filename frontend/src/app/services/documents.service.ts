@@ -9,6 +9,7 @@ import {
   CvTemplateDto,
   CvTemplateInput,
   CvUpdateInput,
+  CvVersionDto,
   CoverLetterDto,
   CoverLetterInput,
 } from '../models/document.model';
@@ -42,6 +43,11 @@ export class DocumentsService {
 
   updateCv(id: string, dto: CvUpdateInput): Promise<ApiResponse<CvDocumentDto>> {
     return this.http.put<ApiResponse<CvDocumentDto>>(`/api/cv/${id}`, dto);
+  }
+
+  /** Toggles whether a version appears in CV pickers (apply/send flows). */
+  setVersionActive(versionId: string, isActive: boolean): Promise<ApiResponse<CvVersionDto>> {
+    return this.http.put<ApiResponse<CvVersionDto>>(`/api/cv/versions/${versionId}/active`, { isActive });
   }
 
   deleteCv(id: string): Promise<void> {

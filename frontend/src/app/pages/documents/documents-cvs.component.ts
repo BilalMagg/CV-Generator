@@ -33,8 +33,9 @@ export class DocumentsCvsComponent implements OnInit, OnDestroy {
   editingCv = signal<CvDocumentDto | null>(null);
   editTitle = signal('');
   editTemplateId = signal('');
-  editIsActive = signal(true);
+  editIsDefault = signal(true);
   saving = signal(false);
+  togglingVersion = signal<string | null>(null);
 
   previewVersion = signal<CvVersionDto | null>(null);
   previewLoading = signal(false);
@@ -142,7 +143,7 @@ export class DocumentsCvsComponent implements OnInit, OnDestroy {
     this.editingCv.set(cv);
     this.editTitle.set(cv.title);
     this.editTemplateId.set(cv.templateId);
-    this.editIsActive.set(cv.isActive);
+    this.editIsDefault.set(cv.isDefault);
   }
 
   closeEdit(): void {
@@ -161,7 +162,7 @@ export class DocumentsCvsComponent implements OnInit, OnDestroy {
       const res = await this.service.updateCv(cv.id, {
         title: this.editTitle().trim(),
         templateId: this.editTemplateId() || null,
-        isActive: this.editIsActive(),
+        isDefault: this.editIsDefault(),
       });
       this.toast.success(res.message ?? 'CV updated');
       this.closeEdit();
@@ -200,6 +201,20 @@ export class DocumentsCvsComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     const blob = this.pdfBlobUrl();
     if (blob) URL.revokeObjectURL(blob);
+  }
+
+  /** Toggle whether a version shows up in CV pickers (apply/send flows). */
+  async toggleVersionActive(ver: CvVersionDto): Promise<void> {
+    this.togglingVersion.set(ver.id);
+    try {
+      await this.service.setVersionActive(ver.id, !ver.isActive);
+      this.toast.success(ver.isActive ? 'Version hidden from CV pickers' : 'Version active — usable in CV pickers');
+      await this.load();
+    } catch {
+      this.toast.error('Could not update the version');
+    } finally {
+      this.togglingVersion.set(null);
+    }
   }
 
   async deleteCv(cv: CvDocumentDto): Promise<void> {

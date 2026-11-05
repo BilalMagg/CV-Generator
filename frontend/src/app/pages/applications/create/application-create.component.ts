@@ -9,7 +9,8 @@ import { AuthService } from '@app/services/auth.service';
 import { CompanyService } from '@app/services/company.service';
 import { DocumentsService } from '@app/services/documents.service';
 import type { CompanyDto } from '@app/services/company.service';
-import type { CvVersionDto } from '@app/models/document.model';
+import type { CvVersionDto, CvDocumentDto } from '@app/models/document.model';
+import { CV_PICKER_FALLBACK_HINT } from '@app/shared/cv-options';
 import {
   DuplicateMatchDto,
   ApiResponse,
@@ -88,37 +89,56 @@ export class ApplicationCreateComponent implements OnInit {
   cvVersions = signal<{ version: CvVersionDto; label: string }[]>([]);
   cvVersionId = signal<string>('');
   cvLoading = signal(false);
+  /** False when the picker fell back to all versions (nothing active → show the hint). */
+  cvPickersFiltered = true;
+  readonly cvPickerHint = CV_PICKER_FALLBACK_HINT;
 
   /** Label of the pre-selected active CV (used in the sidebar hint). */
   activeCvName = computed<string>(() => {
     const selected = this.cvVersionId();
     const hit = this.cvVersions().find(o => o.version.id === selected);
-    return hit ? hit.label.replace(' (active)', '') : '';
+    return hit ? hit.label.replace(' (default)', '') : '';
   });
 
-  /** Defaults the select to the active CV's latest version. */
+  /** Defaults the select to the default CV's latest usable version. */
   private async loadCvVersions() {
     if (this.cvLoading()) return;
     this.cvLoading.set(true);
     try {
       const res = await this.docsApi.listCvs();
       if (!res.success || !res.data) return;
-      const active = res.data.find(c => c.isActive);
-      const options: { version: CvVersionDto; label: string }[] = [];
-      for (const cv of res.data) {
-        const versions = [...cv.versions].sort((a, b) => b.versionNumber - a.versionNumber);
-        versions.forEach((v, i) => {
-          options.push({
-            version: v,
-            label: `${cv.title} · v${v.versionNumber}${i === 0 && cv.isActive ? ' (active)' : ''}${v.label ? ` — ${v.label}` : ''}`,
-          });
-        });
-      }
+      const data = res.data;
+      const defaultCv = data.find(c => c.isDefault) ?? null;
+      // Pickers list ACTIVE versions only; fall back to all when nothing is active.
+      const anyActive = data.some(c => c.versions.some(v => v.isActive));
+      const sortedVersions = (cv: CvDocumentDto | null): CvVersionDto[] =>
+        cv ? [...cv.versions].sort((a, b) => b.versionNumber - a.versionNumber) : [];
+
+      const entries = (list: CvDocumentDto[]) => {
+        const out: { version: CvVersionDto; label: string }[] = [];
+        for (const cv of list) {
+          for (const v of [...cv.versions].sort((a, b) => b.versionNumber - a.versionNumber)) {
+            const markDefault = v.isActive && cv === defaultCv;
+            out.push({
+              version: v,
+              label: `${cv.title} · v${v.versionNumber}${markDefault ? ' (default)' : ''}${v.label ? ` — ${v.label}` : ''}`,
+            });
+          }
+        }
+        return out;
+      };
+
+      const options = anyActive
+        ? entries(data).filter(o => o.version.isActive)
+        : entries(data); // nothing active → show everything (caller shows the fallback hint)
       this.cvVersions.set(options);
-      if (active && active.versions.length) {
-        const latest = [...active.versions].sort((a, b) => b.versionNumber - a.versionNumber)[0];
-        this.cvVersionId.set(latest.id);
-      }
+      this.cvPickersFiltered = anyActive;
+
+      // Default pick: default CV's newest usable version, else the newest usable one.
+      const pick = anyActive
+        ? (sortedVersions(defaultCv).find(v => v.isActive) ?? options[0]?.version)
+        : (sortedVersions(defaultCv)[0] ?? options[0]?.version);
+      this.cvVersionId.set(pick?.id ?? '');
     } catch {
       // non-blocking — attempt still saves without a CV
     } finally {

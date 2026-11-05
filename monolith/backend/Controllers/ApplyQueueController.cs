@@ -115,12 +115,12 @@ public class ApplyQueueController : ControllerBase
         if (gmail is null)
         {
             return BadRequest(ApiResponse<object>.Error(
-                "Gmail is not connected. Connect it in Mailbox → Settings before sending."));
+                "Gmail is not connected. Use \"Connect to Gmail\" below, then execute again."));
         }
         if (gmail.NeedsReauth)
         {
             return BadRequest(ApiResponse<object>.Error(
-                "Gmail session expired — reconnect Gmail in Mailbox → Settings before sending."));
+                "Gmail session expired — use \"Connect to Gmail\" below to re-authorize, then execute again."));
         }
 
         try

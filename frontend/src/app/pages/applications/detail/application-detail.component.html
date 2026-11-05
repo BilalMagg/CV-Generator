@@ -195,6 +195,8 @@
           </select>
           @if (docLoading()) {
             <div style="color:var(--text-3);font-size:11.5px;margin-top:4px">Loading CVs from Documents…</div>
+          } @else if (!cvOptionsOnlyActive()) {
+            <div style="color:var(--text-3);font-size:11.5px;margin-top:4px">{{ cvPickerHint }}</div>
           }
         </div>
         @if (appAttachments().length > 0) {
@@ -262,6 +264,14 @@
       <div class="modal-body">
         @if (attemptError()) {
           <div class="attempt-error">{{ attemptError() }}</div>
+        }
+        @if (attemptReauth()) {
+          <div class="reauth-row">
+            <a class="det-btn primary" [href]="reauthConnectUrl()">
+              <i class="ti ti-plug-connected"></i> Connect to Gmail
+            </a>
+            <small>Sign in with Google, then try "Send via Gmail" again — you'll land right back here.</small>
+          </div>
         }
         @if (reapplySource(); as src) {
           <p class="reapply-banner">
@@ -382,6 +392,9 @@
               <option [value]="o.versionId">{{ o.label }}</option>
             }
           </select>
+          @if (!cvOptionsOnlyActive() && cvOptions().length > 0) {
+            <div style="color:var(--text-3);font-size:11.5px;margin-top:4px">{{ cvPickerHint }}</div>
+          }
         </div>
         <div class="form-group">
           <label>Attachments <span class="field-hint">(optional — files sent with this attempt)</span></label>

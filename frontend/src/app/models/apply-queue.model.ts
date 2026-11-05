@@ -1,7 +1,7 @@
 /** One staged apply waiting in the Queue to be executed as a bulk-apply run. */
 export interface ApplyQueueItemDto {
   id: string;
-  source: 'bulk_apply' | 'quick_apply';
+  source: 'bulk_apply' | 'quick_apply' | 'manual';
   applicationId: string;
   applicationStatus?: string | null;
   contactId?: string | null;
@@ -33,7 +33,7 @@ export interface SaveApplyQueueItemDto {
   subject: string;
   body?: string;
   cvVersionId?: string;
-  source: 'bulk_apply' | 'quick_apply';
+  source: 'bulk_apply' | 'quick_apply' | 'manual';
 }
 
 export interface ExecuteApplyQueueResult {

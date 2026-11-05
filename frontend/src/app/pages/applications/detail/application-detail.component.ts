@@ -27,6 +27,7 @@ import {
 import { ContactDto, EmailMessageDto, ScheduleAttachmentRef } from '@app/models/mailbox.model';
 import { MailboxService } from '@app/services/mailbox.service';
 import { CoverLetterDto, CoverLetterVersionDto, CvDocumentDto, CvVersionDto } from '@app/models/document.model';
+import { CV_PICKER_FALLBACK_HINT } from '@app/shared/cv-options';
 import { DocumentsService } from '@app/services/documents.service';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
@@ -90,6 +91,8 @@ export class ApplicationDetailComponent implements OnInit {
   });
   attemptError = signal<string | null>(null);
   sendingAttempt = signal(false);
+  /** True when a Send-via-Gmail failed because of Gmail auth — modal offers a Connect button. */
+  attemptReauth = signal(false);
 
   // Reapply: the previous attempt whose content pre-fills the form (null = plain log).
   reapplySource = signal<AttemptResponseDto | null>(null);
@@ -139,14 +142,25 @@ export class ApplicationDetailComponent implements OnInit {
   cvDocuments = signal<CvDocumentDto[]>([]);
   docLoading = signal(false);
   private docLoaded = false;
-  cvOptions = computed(() =>
+  cvOptions = computed(() => {
+    // CV-used pickers list ACTIVE versions only; fall back to all when none is active.
+    const all = this.cvOptionsAll();
+    if (this.cvOptionsOnlyActive()) return all.filter(o => o.isActive);
+    return all.map(({ versionId, label }) => ({ versionId, label }));
+  });
+  cvOptionsAll = computed(() =>
     this.cvDocuments().flatMap(cv =>
       cv.versions.map(v => ({
         versionId: v.id,
         label: `${cv.title} — v${v.versionNumber}${v.label ? ` · ${v.label}` : ''}`,
+        isActive: v.isActive,
       })),
     ),
   );
+  cvOptionsOnlyActive = computed(() =>
+    this.cvDocuments().some(cv => cv.versions.some(v => v.isActive)),
+  );
+  readonly cvPickerHint = CV_PICKER_FALLBACK_HINT;
   selectedCvValue = computed(() => this.application()?.cvVersionId ?? '');
 
   // From-Documents picker modal
@@ -514,6 +528,7 @@ export class ApplicationDetailComponent implements OnInit {
     }
     this.sendingAttempt.set(true);
     this.attemptError.set(null);
+    this.attemptReauth.set(false);
     try {
       const res = await this.appService.sendAttempt(app.id, {
         recipientContact: email,
@@ -530,10 +545,24 @@ export class ApplicationDetailComponent implements OnInit {
         await this.loadApplication(app.id);
       } else {
         this.attemptError.set(res.message || 'Failed to send email');
+        this.attemptReauth.set(this.isReauthMessage(res.message));
       }
     } catch (err: any) {
-      this.attemptError.set(err?.error?.message || 'Failed to send email');
+      const msg = err?.error?.message || 'Failed to send email';
+      this.attemptError.set(msg);
+      this.attemptReauth.set(this.isReauthMessage(msg));
     } finally { this.sendingAttempt.set(false); }
+  }
+
+  /** Gmail auth failures offer the inline OAuth reconnect instead of Mailbox navigation. */
+  private isReauthMessage(msg: string | null | undefined): boolean {
+    return !!msg && /gmail session expired|reconnect gmail|reauth/i.test(msg);
+  }
+
+  /** Back to this application after the Google OAuth round-trip. */
+  reauthConnectUrl(): string {
+    const app = this.application();
+    return `/api/gmail/connect?returnUrl=${encodeURIComponent(app ? `/applications/${app.id}` : '/applications')}`;
   }
 
   async setAttemptStatus(attempt: AttemptResponseDto, status: AttemptStatus, failureReason?: string) {

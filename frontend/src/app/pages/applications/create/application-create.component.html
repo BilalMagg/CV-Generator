@@ -348,8 +348,10 @@
           <small><i class="ti ti-loader"></i> Loading your CVs…</small>
         } @else if (cvVersions().length === 0) {
           <small>No CVs yet — upload one on the Documents page.</small>
+        } @else if (!cvPickersFiltered) {
+          <small>{{ cvPickerHint }}</small>
         } @else {
-          <small>The active CV (<strong>{{ activeCvName() }}</strong>) is pre-selected.</small>
+          <small>Your default CV (<strong>{{ activeCvName() }}</strong>) is pre-selected — inactive versions are hidden.</small>
         }
       </div>
 

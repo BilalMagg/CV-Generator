@@ -176,6 +176,11 @@ hr {
     background: #fffbeb;
     border-color: #fde68a;
     color: #92400e;
+
+    a {
+      color: inherit;
+      font-weight: 600;
+    }
   }
 }
 

@@ -2,7 +2,7 @@ namespace CV_Generator.Services;
 
 public interface IGmailAuthService
 {
-    string GetOAuthUrl(Guid userId);
+    string GetOAuthUrl(Guid userId, string? returnUrl = null);
     Task HandleCallbackAsync(string code, string state);
     Task<GmailConnectionStatus?> GetStatusAsync(Guid userId);
     Task DisconnectAsync(Guid userId);

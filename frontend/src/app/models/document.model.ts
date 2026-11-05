@@ -7,6 +7,8 @@ export interface CvVersionDto {
   pdfUrl?: string | null;
   thumbnailUrl?: string | null;
   contentJson: string;
+  /** Marks the version as USABLE in CV pickers (apply/send flows); inactive = history only. */
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -17,14 +19,15 @@ export interface CvDocumentDto {
   templateId: string;
   createdAt: string;
   updatedAt: string;
-  isActive: boolean;
+  /** The one default CV (was "active" — a single selection per user). */
+  isDefault: boolean;
   versions: CvVersionDto[];
 }
 
 export interface CvUpdateInput {
   title: string;
   templateId?: string | null;
-  isActive: boolean;
+  isDefault: boolean;
 }
 
 export interface CvTemplateDto {

@@ -38,7 +38,9 @@
 
   @if (gmailNeedsReauth() && step() < 4) {
     <div class="alert warn">
-      Gmail session expired. Reconnect it in Mailbox → Settings before sending.
+      Gmail session expired.
+      <a href="/api/gmail/connect?returnUrl=%2Fapplications%2Fbulk-apply"><i class="ti ti-plug-connected"></i> Connect to Gmail</a>
+      before sending.
     </div>
   }
 
@@ -305,6 +307,7 @@
           </select>
           <p class="hint small">
             Picking a template with a saved CV fills this automatically. Override a single row from its expanded view.
+            @if (!cvOptionsOnlyActive() && cvOptions().length > 0) { {{ cvPickerHint }} }
           </p>
         </div>
         <div class="field">
@@ -355,6 +358,9 @@
                     <option value="">— Batch CV —</option>
                     <option *ngFor="let cv of cvOptions()" [value]="cv.id">{{ cv.label }}</option>
                   </select>
+                  @if (!cvOptionsOnlyActive() && cvOptions().length > 0) {
+                    <p class="hint small">{{ cvPickerHint }}</p>
+                  }
                 </div>
               </div>
               <div class="field">

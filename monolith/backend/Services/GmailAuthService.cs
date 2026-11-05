@@ -48,10 +48,15 @@ public class GmailAuthService : IGmailAuthService
             ?? "http://localhost:8080";
     }
 
-    public string GetOAuthUrl(Guid userId)
+    public string GetOAuthUrl(Guid userId, string? returnUrl = null)
     {
         var redirectUri = $"{_callbackBaseUrl}/api/gmail/callback";
         var scope = Uri.EscapeDataString(string.Join(" ", Scopes));
+        // Google redirects the state back verbatim: "userId" or "userId|{escaped returnUrl}"
+        // — the controller splits on the first '|' and bounces to the originating page.
+        var state = string.IsNullOrWhiteSpace(returnUrl)
+            ? userId.ToString()
+            : $"{userId}|{Uri.EscapeDataString(returnUrl)}";
         return $"https://accounts.google.com/o/oauth2/v2/auth" +
                $"?client_id={Uri.EscapeDataString(_clientId)}" +
                $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
@@ -59,7 +64,7 @@ public class GmailAuthService : IGmailAuthService
                $"&scope={scope}" +
                $"&access_type=offline" +
                $"&prompt=consent" +
-               $"&state={userId}";
+               $"&state={Uri.EscapeDataString(state)}";
     }
 
     public async Task HandleCallbackAsync(string code, string state)

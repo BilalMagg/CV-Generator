@@ -176,9 +176,35 @@ public class CvVersionsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CvVersion version)
     {
         version.CreatedAt = DateTime.UtcNow;
+        if (version.Id == Guid.Empty) version.Id = Guid.NewGuid();
+        // A freshly generated/uploaded version supersedes its siblings: it becomes the one
+        // active version of its CV (the "newest replaces the old" model).
+        if (version.CvId != Guid.Empty) version.IsActive = true;
         _db.CvVersions.Add(version);
+        if (version.CvId != Guid.Empty)
+        {
+            await _db.CvVersions
+                .Where(v => v.CvId == version.CvId && v.Id != version.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsActive, false));
+        }
         await _db.SaveChangesAsync();
         return Created($"/api/cv/versions/{version.Id}", ApiResponse<CvVersion>.Created(version));
+    }
+
+    /// <summary>Toggles whether a version shows up in CV pickers (apply/send flows). Many versions may be active at once.</summary>
+    [HttpPut("{id}/active")]
+    public async Task<IActionResult> SetActive(Guid id, [FromBody] SetVersionActiveDto input)
+    {
+        var userId = _currentUser.UserId;
+        if (userId == null) return Unauthorized();
+
+        var version = await _db.CvVersions.Include(v => v.Cv).FirstOrDefaultAsync(v => v.Id == id);
+        if (version == null || version.Cv.UserId != userId.Value)
+            return NotFound(ApiResponse<CvVersion>.Error("Version not found"));
+
+        version.IsActive = input.IsActive;
+        await _db.SaveChangesAsync();
+        return Ok(ApiResponse<CvVersion>.Ok(version));
     }
 
     [HttpDelete("{id}")]
@@ -191,3 +217,5 @@ public class CvVersionsController : ControllerBase
         return NoContent();
     }
 }
+
+public record SetVersionActiveDto(bool IsActive);

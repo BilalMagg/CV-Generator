@@ -15,6 +15,11 @@
   @if (error(); as msg) {
     <div class="banner error">
       {{ msg }}
+      @if (reauth()) {
+        <a class="btn btn-ghost sm gmail-connect" [href]="gmailConnectUrl">
+          <i class="ti ti-plug-connected"></i> Connect to Gmail
+        </a>
+      }
       <button type="button" class="btn btn-ghost sm" (click)="load()">Try again</button>
     </div>
   }
@@ -32,6 +37,7 @@
     <button type="button" class="chip" [class.active]="filter() === 'all'" (click)="setFilter('all')">
       All <span>{{ counts().all }}</span>
     </button>
+    <button type="button" class="btn btn-primary sm chips-add" (click)="openAdd()">＋ Add</button>
   </div>
 
   @if (shown().length > 0) {
@@ -91,7 +97,11 @@
               <td><span class="cv-chip">{{ cvLabel(item) }}</span></td>
               <td>
                 <span class="src-chip" [class.bulk]="item.source === 'bulk_apply'">
-                  {{ item.source === 'bulk_apply' ? 'Bulk apply' : 'Quick apply' }}
+                  @switch (item.source) {
+                    @case ('bulk_apply') { Bulk apply }
+                    @case ('manual') { Manual }
+                    @default { Quick apply }
+                  }
                 </span>
               </td>
               <td>
@@ -136,6 +146,9 @@
             <option [value]="o.id">{{ o.label }}</option>
           }
         </select>
+        @if (!cvOptionsOnlyActive()) {
+          <em class="hint">{{ cvPickerHint }}</em>
+        }
       </label>
       <label class="field">
         <span>Delay (s)</span>
@@ -165,10 +178,9 @@
       <div class="empty-icon">☰</div>
       <h3>@if (filter() === 'pending') { The queue is empty } @else { Nothing here }</h3>
       <p>
-        When browsing offers, use <b>Save to stack</b> in the
+        Click <b>＋ Add</b> to park an apply manually, or use <b>Save to stack</b> in the
         <a routerLink="/applications/apply">quick-apply wizard</a> or the
-        <a routerLink="/applications/bulk-apply">bulk-apply wizard</a> to park applies here
-        instead of sending right away.
+        <a routerLink="/applications/bulk-apply">bulk-apply wizard</a> while browsing offers.
       </p>
       <button type="button" class="btn btn-ghost sm" (click)="load()">Refresh</button>
     </div>
@@ -176,5 +188,143 @@
 
   @if (loading()) {
     <div class="loading">Loading the queue…</div>
+  }
+
+  @if (addOpen()) {
+    <div class="q-modal-backdrop" (click)="closeAdd()">
+      <div class="q-modal" (click)="$event.stopPropagation()">
+        <header class="qm-head">
+          <div>
+            <h2>Add to queue</h2>
+            <p class="sub">The apply is parked as a SAVED application; execute it later with the rest of the queue.</p>
+          </div>
+          <button type="button" class="qm-close" (click)="closeAdd()" title="Close">✕</button>
+        </header>
+
+        <div class="qm-body">
+          @if (addError(); as msg) {
+            <div class="banner error">{{ msg }}</div>
+          }
+
+          <div class="qm-grid">
+            <label class="form-field required">
+              <span>Recipient email</span>
+              <input
+                type="email"
+                placeholder="hr@company.com"
+                [ngModel]="formEmail()"
+                (ngModelChange)="onAddEmailChange($event)"
+              />
+            </label>
+            <label class="form-field">
+              <span>Recipient name</span>
+              <input
+                type="text"
+                placeholder="Ms. Bennani"
+                [ngModel]="formRecipientName()"
+                (ngModelChange)="onAddNameChange($event)"
+              />
+            </label>
+          </div>
+
+          <div class="qm-grid">
+            <label class="form-field">
+              <span>Company</span>
+              <input
+                type="text"
+                placeholder="Capgemini"
+                [ngModel]="formCompany()"
+                (ngModelChange)="onAddCompanyInput($event)"
+              />
+              @if (!formCompanyTouched() && formEffectiveCompany()) {
+                <em class="hint">Auto-filled from the email domain — edit freely</em>
+              }
+            </label>
+            <label class="form-field">
+              <span>Position / role</span>
+              <input
+                type="text"
+                placeholder="PFE intern"
+                [ngModel]="formPosition()"
+                (ngModelChange)="formPosition.set($event)"
+              />
+            </label>
+          </div>
+
+          <label class="form-field">
+            <span>Email template</span>
+            <select [ngModel]="formTemplateId()" (ngModelChange)="onAddTemplateChange($event)">
+              <option value="">No template (write the email manually)</option>
+              @for (t of templates(); track t.id) {
+                <option [value]="t.id">{{ t.name }}</option>
+              }
+            </select>
+          </label>
+
+          @if (formTemplate(); as t) {
+            <div class="qm-vars">
+              <span class="vars-title">Template fields — {{ t.name }}</span>
+              <div class="qm-grid">
+                @for (f of formVarFields(); track f.token) {
+                  <label class="form-field">
+                    <span>{{ f.label }}</span>
+                    <input
+                      type="text"
+                      [ngModel]="formVars()[f.token] ?? ''"
+                      (ngModelChange)="onAddTokenChange(f.token, $event)"
+                    />
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          <label class="form-field">
+            <span>Subject</span>
+            <input
+              type="text"
+              placeholder="(no subject)"
+              [ngModel]="formSubject()"
+              (ngModelChange)="formSubject.set($event)"
+            />
+          </label>
+
+          <label class="form-field">
+            <span>Body</span>
+            <textarea
+              rows="8"
+              placeholder="Email body…"
+              [ngModel]="formBody()"
+              (ngModelChange)="formBody.set($event)"
+            ></textarea>
+          </label>
+
+          <label class="form-field">
+            <span>CV version</span>
+            <select [ngModel]="formCvVersionId()" (ngModelChange)="formCvVersionId.set($event)">
+              <option value="">Run default (picked when executing)</option>
+              @for (o of cvOptions(); track o.id) {
+                <option [value]="o.id">{{ o.label }}</option>
+              }
+            </select>
+            @if (!cvOptionsOnlyActive()) {
+              <em class="hint">{{ cvPickerHint }}</em>
+            }
+          </label>
+        </div>
+
+        <footer class="qm-foot">
+          <button type="button" class="btn btn-ghost" (click)="closeAdd()">Cancel</button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="addSaving()"
+            (click)="submitAdd()"
+          >
+            @if (addSaving()) { Adding… } @else { Add to queue }
+          </button>
+        </footer>
+      </div>
+    </div>
   }
 </div>

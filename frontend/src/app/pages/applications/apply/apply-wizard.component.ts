@@ -24,6 +24,7 @@ import {
   EmailDraftListItemDto,
 } from '@app/models/apply.model';
 import { CvDocumentDto, CvVersionDto } from '@app/models/document.model';
+import { CV_PICKER_FALLBACK_HINT } from '@app/shared/cv-options';
 import { EmailAttachmentPayload } from '@app/models/apply.model';
 import { CompanyService, CompanyDto } from '@app/services/company.service';
 import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
@@ -154,14 +155,25 @@ export class ApplyWizardComponent implements OnInit {
   saveDraftOpen = signal(false);
   draftName = signal('');
   savingDraft = signal(false);
+  /** False when the CV select fell back to all versions (nothing active → show the hint). */
+  cvOptionsOnlyActive = signal(true);
+  readonly cvPickerHint = CV_PICKER_FALLBACK_HINT;
 
   async ngOnInit() {
     this.history.set(await this.extractionSvc.getHistory('job-extractor').catch(() => []));
     this.templates.set((await this.mailboxSvc.getScheduleTemplates().catch(() => ({ success: true, data: [] }) as any)).data ?? []);
     const cvs = (await this.docsSvc.listCvs().catch(() => ({ success: true, data: [] }) as any)).data ?? [];
+    // CV pickers list ACTIVE versions only; fall back to all when none is active.
+    const anyActive = (cvs as CvDocumentDto[]).some(cv => cv.versions.some(v => v.isActive));
+    const source = anyActive
+      ? (cvs as CvDocumentDto[]).filter(cv => cv.versions.some(v => v.isActive))
+      : (cvs as CvDocumentDto[]);
+    this.cvOptionsOnlyActive.set(anyActive);
     const opts: CvOption[] = [];
-    for (const cv of cvs as CvDocumentDto[]) {
-      for (const v of cv.versions) opts.push({ id: v.id, label: `${cv.title} — ${v.label}` });
+    for (const cv of source) {
+      for (const v of cv.versions.filter(v => v.isActive || !anyActive)) {
+        opts.push({ id: v.id, label: `${cv.title} — ${v.label}` });
+      }
     }
     this.cvOptions.set(opts);
     try {

@@ -260,11 +260,15 @@ public class TemplateRenderService
             UserId = run.UserId,
             Title = title,
             TemplateId = run.TemplateId ?? "default",
-            IsActive = true,
+            IsDefault = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         _db.Cvs.Add(cv);
+        // New saved CV takes over as the default (same rule as manual CV create).
+        await _db.Cvs
+            .Where(c => c.UserId == run.UserId && c.Id != cv.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsDefault, false));
         await _db.SaveChangesAsync(ct);
 
         // Store the LaTeX source alongside the compiled PDF.
@@ -288,6 +292,7 @@ public class TemplateRenderService
             PdfUrl = pdfUrl,
             ThumbnailUrl = null,
             ContentJson = "{}",
+            IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
         _db.CvVersions.Add(version);

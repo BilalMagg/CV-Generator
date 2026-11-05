@@ -11,7 +11,7 @@ public class Cv
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    public bool IsActive { get; set; }
+    public bool IsDefault { get; set; }
 
     public List<CvVersion> Versions { get; set; } = new();
 }

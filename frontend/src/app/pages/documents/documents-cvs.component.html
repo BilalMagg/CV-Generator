@@ -47,7 +47,7 @@
   } @else {
     <div class="cv-list">
       @for (cv of cvs(); track cv.id) {
-        <div class="cv-card" [class.inactive]="!cv.isActive">
+        <div class="cv-card" [class.inactive]="!cv.isDefault && !cv.versions.some(v => v.isActive)">
           <div
             class="cv-thumb"
             [class.clickable]="canPreview(cv)"
@@ -71,10 +71,8 @@
           <div class="cv-main">
             <div class="cv-head">
               <h3>{{ cv.title }}</h3>
-              @if (cv.isActive) {
-                <span class="badge badge-active"><i class="ti ti-check"></i> Active</span>
-              } @else {
-                <span class="badge">Inactive</span>
+              @if (cv.isDefault) {
+                <span class="badge badge-active"><i class="ti ti-star"></i> Default</span>
               }
             </div>
             <div class="cv-meta">
@@ -85,9 +83,28 @@
             @if (cv.versions.length > 0) {
               <div class="versions">
                 @for (ver of cv.versions; track ver.id) {
-                  <div class="version-chip">
+                  <div class="version-chip" [class.version-inactive]="!ver.isActive">
                     <i class="ti ti-file-text"></i>
                     <span>v{{ ver.versionNumber }} — {{ ver.label }}</span>
+                    @if (ver.isActive) {
+                      <span class="badge badge-active"><i class="ti ti-check"></i> Active</span>
+                    }
+                    <button
+                      class="btn-ghost-sm v-toggle"
+                      (click)="toggleVersionActive(ver)"
+                      [title]="ver.isActive ?
+                        'Hide this version from CV pickers (it stays here for history)' :
+                        'Use this version in CV pickers (apply/send flows)'"
+                      [disabled]="togglingVersion() === ver.id"
+                    >
+                      @if (togglingVersion() === ver.id) {
+                        <i class="ti ti-loader ti-spin"></i> …
+                      } @else if (ver.isActive) {
+                        <i class="ti ti-eye-off"></i> Set inactive
+                      } @else {
+                        <i class="ti ti-eye"></i> Set active
+                      }
+                    </button>
                     @if (ver.pdfUrl) {
                       <button class="btn-ghost-sm" (click)="openPreview(ver)">
                         <i class="ti ti-eye"></i> Preview
@@ -138,9 +155,13 @@
           </select>
         </div>
         <label class="check-row">
-          <input type="checkbox" [(ngModel)]="editIsActive" name="cvEditActive">
-          <span>Active CV</span>
+          <input type="checkbox" [(ngModel)]="editIsDefault" name="cvEditDefault">
+          <span>Default CV (the one sent automatically when nothing else is chosen)</span>
         </label>
+        <p class="hint">
+          Use <b>Set active / Set inactive</b> on the versions above to choose which ones
+          appear in CV pickers (application forms, queue, wizards).
+        </p>
       </div>
       <div class="modal-foot">
         <button class="btn-ghost" (click)="closeEdit()">Cancel</button>

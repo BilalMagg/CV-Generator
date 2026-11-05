@@ -131,6 +131,9 @@
             <option [value]="o.id">{{ o.label }}</option>
           }
         </select>
+        @if (!cvOptionsOnlyActive() && cvOptions().length > 0) {
+          <small class="fld-hint">{{ cvPickerHint }}</small>
+        }
       </div>
 
       @if (prepMode() === 'email') {
@@ -321,9 +324,13 @@
         @if (gmailConnected()) {
           Sending from <strong>{{ gmailEmail() }}</strong> via Gmail.
         } @else if (gmailNeedsReauth()) {
-          Gmail session expired — reconnect it in Mailbox → Settings to send now, or pick Schedule.
+          Gmail session expired.
+          <a href="/api/gmail/connect?returnUrl=%2Fapplications%2Fapply"><i class="ti ti-plug-connected"></i> Connect to Gmail</a>,
+          or pick Schedule.
         } @else if (deliverMode() === 'now') {
-          Gmail is not connected — connect it in Mailbox → Settings to send now, or pick Schedule.
+          Gmail is not connected.
+          <a href="/api/gmail/connect?returnUrl=%2Fapplications%2Fapply"><i class="ti ti-plug-connected"></i> Connect to Gmail</a>,
+          or pick Schedule.
         } @else {
           Scheduled emails fire automatically when Gmail is connected.
         }
@@ -376,7 +383,7 @@
         <p class="warn-text">{{ result()!.sendError }}</p>
         <div class="row end">
           @if (result()!.needsReauth) {
-            <a class="btn" routerLink="/mailbox">Reconnect Gmail</a>
+            <a class="btn" href="/api/gmail/connect?returnUrl=%2Fapplications%2Fapply">Connect to Gmail</a>
           }
           <button class="btn" (click)="goApplications()">Open kanban</button>
           <button class="btn primary" (click)="goDetail(result()!.applicationId)">View application & retry</button>

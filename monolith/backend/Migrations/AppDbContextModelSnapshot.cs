@@ -1174,7 +1174,7 @@ namespace CV_Generator.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("IsActive")
+                    b.Property<bool>("IsDefault")
                         .HasColumnType("boolean");
 
                     b.Property<string>("TemplateId")
@@ -1372,6 +1372,9 @@ namespace CV_Generator.Migrations
 
                     b.Property<string>("FileUrl")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Label")
                         .IsRequired()

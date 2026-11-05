@@ -156,6 +156,11 @@ textarea:focus, input[type="text"]:focus, select:focus {
   color: #b45309;
   background: color-mix(in srgb, #d97706 10%, transparent);
   border-color: color-mix(in srgb, #d97706 35%, transparent);
+
+  a {
+    color: inherit;
+    font-weight: 600;
+  }
 }
 
 .hint {

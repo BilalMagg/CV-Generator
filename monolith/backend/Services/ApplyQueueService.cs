@@ -73,7 +73,9 @@ public class ApplyQueueService
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Source = dto.Source == "bulk_apply" ? "bulk_apply" : "quick_apply",
+            Source = dto.Source == "bulk_apply" ? "bulk_apply"
+                   : dto.Source == "manual" ? "manual"
+                   : "quick_apply",
             ApplicationId = app.Id,
             CompanyId = company.Id,
             ContactId = contact.Id,

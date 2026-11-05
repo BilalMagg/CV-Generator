@@ -14,6 +14,8 @@ public class CvVersion
     public string? PdfUrl { get; set; }
     public string? ThumbnailUrl { get; set; }
     public string ContentJson { get; set; } = "{}";
+    /// <summary>Mark a version as USABLE in CV pickers (send/apply flows). Multiple versions can be active; inactive = history only.</summary>
+    public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [JsonIgnore]

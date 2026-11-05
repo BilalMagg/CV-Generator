@@ -165,6 +165,23 @@ img.co-init { object-fit: contain; background: var(--bg-2); padding: 5px; }
   padding: 8px 12px; border-radius: 8px; margin-bottom: 12px;
 }
 
+// Inline "Connect to Gmail" row after a reauth send failure
+.reauth-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+
+  a {
+    text-decoration: none;
+  }
+
+  small {
+    color: var(--text-3, oklch(0.5 0.01 250));
+  }
+}
+
 // ── Contact chips & picker ───────────────────────────────────────────────────
 .contact-chip {
   display: inline-flex; align-items: center; gap: 8px;

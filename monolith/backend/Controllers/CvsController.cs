@@ -33,7 +33,7 @@ public class CvsController : ControllerBase
         if (userId == null) return Unauthorized();
         var cvs = await _db.Cvs
             .Where(c => c.UserId == userId.Value)
-            .Include(c => c.Versions.OrderByDescending(v => v.VersionNumber).Take(3))
+            .Include(c => c.Versions.OrderByDescending(v => v.VersionNumber))
             .OrderByDescending(c => c.UpdatedAt)
             .ToListAsync();
         return Ok(ApiResponse<List<Cv>>.Ok(cvs));
@@ -64,10 +64,10 @@ public class CvsController : ControllerBase
             TemplateId = input.TemplateId ?? string.Empty,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            IsActive = true,
+            IsDefault = true,
         };
         _db.Cvs.Add(cv);
-        await DeactivateOtherCvsAsync(userId.Value, cv.Id);
+        await ClearOtherDefaultsAsync(userId.Value, cv.Id);
         await _db.SaveChangesAsync();
         return Created($"/api/cv/{cv.Id}", ApiResponse<Cv>.Created(cv));
     }
@@ -85,8 +85,8 @@ public class CvsController : ControllerBase
 
         cv.Title = input.Title.Trim();
         cv.TemplateId = input.TemplateId ?? cv.TemplateId;
-        cv.IsActive = input.IsActive;
-        if (cv.IsActive) await DeactivateOtherCvsAsync(userId.Value, cv.Id);
+        cv.IsDefault = input.IsDefault;
+        if (cv.IsDefault) await ClearOtherDefaultsAsync(userId.Value, cv.Id);
         cv.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(ApiResponse<Cv>.Ok(cv));
@@ -108,10 +108,10 @@ public class CvsController : ControllerBase
             TemplateId = "uploaded",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            IsActive = true,
+            IsDefault = true,
         };
         _db.Cvs.Add(cv);
-        await DeactivateOtherCvsAsync(userId.Value, cv.Id);
+        await ClearOtherDefaultsAsync(userId.Value, cv.Id);
         await _db.SaveChangesAsync();
 
         var contentType = GetContentType(file.FileName);
@@ -141,6 +141,7 @@ public class CvsController : ControllerBase
             PdfUrl = contentType == "application/pdf" ? url : null,
             ThumbnailUrl = thumbnailUrl,
             ContentJson = "{}",
+            IsActive = true,
             CreatedAt = DateTime.UtcNow,
         };
         _db.CvVersions.Add(version);
@@ -190,12 +191,12 @@ public class CvsController : ControllerBase
         _       => "application/octet-stream",
     };
 
-    /// Keeps exactly one active CV per user: deactivates every other CV when one is marked active.
-    private async Task DeactivateOtherCvsAsync(Guid userId, Guid keepActiveId)
+    /// Keeps exactly one default CV per user: clears the default flag on every other CV.
+    private async Task ClearOtherDefaultsAsync(Guid userId, Guid keepDefaultId)
     {
         await _db.Cvs
-            .Where(c => c.UserId == userId && c.Id != keepActiveId)
-            .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsActive, false));
+            .Where(c => c.UserId == userId && c.Id != keepDefaultId)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsDefault, false));
     }
 }
 
@@ -209,5 +210,5 @@ public class CvUpdateInput
 {
     public string Title { get; set; } = string.Empty;
     public string? TemplateId { get; set; }
-    public bool IsActive { get; set; } = true;
+    public bool IsDefault { get; set; } = true;
 }
