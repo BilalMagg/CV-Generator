@@ -78,3 +78,6 @@ AGENTS.md
 
 #datasets
 docs/datasets/
+# Propel deployment: local build caches (generated on demand, never committed)
+deploy/wheelhouse/*
+!deploy/wheelhouse/.gitkeep

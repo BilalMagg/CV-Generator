@@ -33,9 +33,6 @@ dependencies = [
     # Optimizer
     "psycopg[binary]>=3.0",
     "langchain-text-splitters>=0.3.0",
-    # Crawler
-    "jobspy>=0.25",
-    "pandas>=2.0",
     # Contact
     "requests>=2.31",
     # Kafka (optional)
@@ -44,6 +41,12 @@ dependencies = [
 
 [project.optional-dependencies]
 kafka = ["confluent-kafka>=2.8.0"]
+# Job-board crawler only (jobspy is sdist-only and pulls a heavy stack —
+# slim images install without it; the crawler surfaces a clear error)
+jobs = [
+    "jobspy>=0.25",
+    "pandas>=2.0",
+]
 
 [build-system]
 requires = ["hatchling"]

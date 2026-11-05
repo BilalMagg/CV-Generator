@@ -5,9 +5,20 @@ from __future__ import annotations
 import logging
 import math
 from typing import Any
-import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+# pandas/jobspy are optional heavy deps (only this crawler needs them); they're
+# imported lazily so the sidecar boots in slim deployments where the crawler
+# isn't installed. The import happens in scrape_jobs_sync before any use.
+pd = None
+
+
+def _ensure_pandas():
+    global pd
+    if pd is None:
+        import pandas as _pd
+        pd = _pd
 
 
 def _sanitize(value: Any) -> Any:
@@ -28,6 +39,7 @@ def _clean_row(row: dict) -> dict:
 
 
 def scrape_jobs_sync(keyword: str, location: str, results_per_site: int) -> list[dict]:
+    _ensure_pandas()
     from jobspy import scrape_jobs
     logger.info("Scraping | keyword=%r location=%r results_per_site=%d", keyword, location, results_per_site)
     try:

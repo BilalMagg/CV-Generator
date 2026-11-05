@@ -1,0 +1,42 @@
+# Propel build context — keep the docker build to what the image needs.
+# (the CI workflow and jetbrains/vcs noise are the biggest offenders)
+
+# version control + IDE
+.git
+.github
+.idea
+.vscode
+*.sln
+*.md
+!frontend/README.md
+
+# legacy microservices + retired python agents (monolith only)
+/ai_agents
+/api_gateway
+/backend
+/frontend_datasource
+
+# non-monolith frontend-ish leftovers
+/fonts
+
+# build outputs + local artifacts (rebuilt inside the image stages)
+**/node_modules
+**/.venv
+**/dist
+**/bin
+**/obj
+**/__pycache__
+
+# local state / scratch
+**/.env
+**/.env.*
+!deploy/.env.example
+**/*.log
+/opencode
+
+# docker files themselves don't need to travel with the context
+deploy/docker-compose*.yml
+
+# the wheelhouse is a local build cache (see deploy/README.md); keep empty
+deploy/wheelhouse/*
+!deploy/wheelhouse/.gitkeep
