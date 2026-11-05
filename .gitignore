@@ -75,6 +75,8 @@ cv-generator.sln
 
 .claude/
 AGENTS.md
+.build-tmp/
+prompts/
 
 #datasets
 docs/datasets/
