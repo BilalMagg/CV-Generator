@@ -109,7 +109,7 @@ public class UserLlmKeyService : IUserLlmKeyService
         try
         {
             var http = _httpClientFactory.CreateClient("agents");
-            var resp = await http.PostAsJsonAsync("llm/keys", new { provider, api_key = apiKey }, ct);
+            var resp = await http.PostAsJsonAsync("api/llm/keys", new { provider, api_key = apiKey }, ct);
             if (!resp.IsSuccessStatusCode)
                 _logger.LogWarning("Sidecar key push for {Provider} returned {Status}", provider, resp.StatusCode);
         }
@@ -124,7 +124,7 @@ public class UserLlmKeyService : IUserLlmKeyService
         try
         {
             var http = _httpClientFactory.CreateClient("agents");
-            var resp = await http.DeleteAsync($"llm/keys/{Uri.EscapeDataString(provider)}", ct);
+            var resp = await http.DeleteAsync($"api/llm/keys/{Uri.EscapeDataString(provider)}", ct);
             if (!resp.IsSuccessStatusCode)
                 _logger.LogWarning("Sidecar key removal for {Provider} returned {Status}", provider, resp.StatusCode);
         }

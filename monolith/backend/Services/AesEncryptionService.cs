@@ -5,20 +5,25 @@ namespace CV_Generator.Services;
 
 public class AesEncryptionService : IAesEncryptionService
 {
-    private readonly byte[] _key;
+    private byte[]? _key;
 
-    public AesEncryptionService()
+    /// <summary>The key is resolved lazily on first use so services that merely
+    /// depend on this class (e.g. LLM key storage) do not fail construction in
+    /// environments that simply haven't configured Gmail.</summary>
+    private byte[] GetKey()
     {
+        if (_key is not null) return _key;
         var keyString = Environment.GetEnvironmentVariable("GMAIL_TOKEN_ENCRYPTION_KEY")
             ?? throw new InvalidOperationException("GMAIL_TOKEN_ENCRYPTION_KEY is not set");
         _key = Convert.FromBase64String(keyString);
+        return _key;
     }
 
     public string Encrypt(string plainText)
     {
         var iv = RandomNumberGenerator.GetBytes(16);
         using var aes = Aes.Create();
-        aes.Key = _key;
+        aes.Key = GetKey();
         aes.IV = iv;
 
         using var encryptor = aes.CreateEncryptor();
@@ -39,7 +44,7 @@ public class AesEncryptionService : IAesEncryptionService
         var cipherBytes = combined[16..];
 
         using var aes = Aes.Create();
-        aes.Key = _key;
+        aes.Key = GetKey();
         aes.IV = iv;
 
         using var decryptor = aes.CreateDecryptor();
