@@ -52,19 +52,18 @@ RUN --mount=type=cache,id=propel-pip,target=/root/.cache/pip \
     fi
 
 # ─── Stage 3: .NET backend publish ────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
+# ─── Stage 3: .NET publishes (backend + gateway) ─────────────────────────────
+# ONE stage publishing both projects in a single RUN: BuildKit runs stages in
+# PARALLEL and two concurrent `dotnet restore`s sharing the same cache mount
+# corrupt each other's download temp files (seen on CI: gateway restore died on
+# a temp file the backend stage deleted). Sequential in one stage = shared
+# cache is safe (gateway reuses every package the backend restored).
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS dotnet
 WORKDIR /src
 COPY monolith/backend/ ./monolith/backend/
-# The nuget cache is SHARED with the gateway stage (same cache id) — the second
-# publish reuses every package the first one already downloaded.
-RUN --mount=type=cache,id=propel-nuget,target=/root/.nuget/packages \
-    dotnet publish monolith/backend/CV_Generator.csproj -c Release -o /publish/backend
-
-# ─── Stage 4: .NET gateway publish ───────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS gateway
-WORKDIR /src
 COPY monolith/gateway/ ./monolith/gateway/
 RUN --mount=type=cache,id=propel-nuget,target=/root/.nuget/packages \
+    dotnet publish monolith/backend/CV_Generator.csproj -c Release -o /publish/backend ; \
     dotnet publish monolith/gateway/ApiGateway.csproj -c Release -o /publish/gateway
 
 # ─── Stage 5: runtime ────────────────────────────────────────────────────────
@@ -87,8 +86,8 @@ RUN if [ "$WITH_LATEX" = "true" ]; then \
     fi
 
 # .NET apps
-COPY --from=backend /publish/backend /app/backend
-COPY --from=gateway /publish/gateway /app/gateway
+COPY --from=dotnet /publish/backend /app/backend
+COPY --from=dotnet /publish/gateway /app/gateway
 
 # Python agents (venv includes its interpreter binaries)
 COPY --from=agents /opt/venv /opt/venv
