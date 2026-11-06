@@ -166,11 +166,22 @@ jobs:
       - name: Check — database reachable + EF migrations ran
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
         run: |
-          docker compose -f deploy/docker-compose.yml exec -T postgres pg_isready -U postgres -d cv_monolith
-          n=$(docker compose -f deploy/docker-compose.yml exec -T postgres \
-            psql -U postgres -d cv_monolith -tAc "select count(*) from \"__EFMigrationsHistory\"")
-          echo "migration history rows: $n"
-          [ "$n" -gt 0 ] || { echo "no migrations applied at startup"; exit 1; }
+          ${{ env.COMPOSE }} exec -T postgres pg_isready -U postgres -d cv_monolith
+          # migrations run at backend STARTUP on a cold DB (60+ migrations +
+          # data-SQL) and can take a while; the check polls instead of racing
+          ok=""
+          for i in $(seq 1 40); do
+            n=$(${{ env.COMPOSE }} exec -T postgres \
+              psql -U postgres -d cv_monolith -tAc "select count(*) from \"__EFMigrationsHistory\"")
+            echo "attempt $i: migration history rows: $n"
+            if [ "${n:-0}" -gt 0 ]; then ok=1; break; fi
+            sleep 5
+          done
+          if [ -z "$ok" ]; then
+            echo "migrations did not complete in 200s — dumping backend log tail"
+            ${{ env.COMPOSE }} logs app --tail 300 | grep -iE "migrat|error|fail" || true
+            exit 1
+          fi
 
       - name: Check — Keycloak realm imported (sign-up enabled)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
