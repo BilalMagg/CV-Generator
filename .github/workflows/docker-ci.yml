@@ -178,8 +178,13 @@ jobs:
             sleep 5
           done
           if [ -z "$ok" ]; then
-            echo "migrations did not complete in 200s — dumping backend log tail"
-            ${{ env.COMPOSE }} logs app --tail 300 | grep -iE "migrat|error|fail" || true
+            echo "migrations did not complete in 200s — dumping diagnostics"
+            echo "── existing tables ──"
+            ${{ env.COMPOSE }} exec -T postgres psql -U postgres -d cv_monolith -tAc \
+              "select tablename from pg_tables where schemaname='public' order by 1"
+            echo "── backend log: migration/startup/error lines ──"
+            docker exec propel-app sh -c \
+              'grep -iE "migrat|now listening|migration failed|exception|error" /var/log/supervisor/backend.log | head -80' || true
             exit 1
           fi
 
@@ -211,8 +216,8 @@ jobs:
             ${{ env.COMPOSE }} ps || true
             echo "── app logs (last 500) ─────────────────"
             ${{ env.COMPOSE }} logs app --tail 500 || true
-            echo "── supervisor program logs (each program: stdout last 60 + stderr last 60) ──"
-            docker exec propel-app sh -c 'for f in /var/log/supervisor/*.log; do echo "== $f"; tail -60 "$f"; done'
+            echo "── supervisor program logs ──"
+            docker exec propel-app sh -c 'for f in /var/log/supervisor/*.log; do echo "== $f"; tail -300 "$f"; done' | head -1500
             echo "── keycloak (last 100) ─────────────────"
             ${{ env.COMPOSE }} logs keycloak --tail 100 || true
           } | sed -E 's/(Password|PASSWORD|api_key|API_KEY|SECRET|token)=[^ ;">]+/\1=[REDACTED]/gi' > docker-diagnostics.txt
