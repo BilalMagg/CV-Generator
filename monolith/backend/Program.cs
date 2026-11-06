@@ -29,9 +29,12 @@ if (File.Exists(envFile))
 var port = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "5000");
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-// Database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? Environment.GetEnvironmentVariable("CONNECTION_STRING")
+// Database — env var takes PRECEDENCE over appsettings: the single-container
+// deployment injects CONNECTION_STRING (postgres service) via compose, and the
+// appsettings DefaultConnection (localhost, for native dev runs) must not
+// shadow it inside the container.
+var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Port=5432;Database=cv_monolith;Username=postgres;Password=postgres";
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));

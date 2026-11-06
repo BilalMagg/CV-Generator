@@ -38,7 +38,10 @@ volumes:
 services:
   # ── application DB ─────────────────────────────────────────────────────────
   postgres:
-    image: postgres:17-alpine
+    # pgvector build: the InitialCreate migration provisions the pgvector
+    # extension ("vector"), so a stock postgres image fails migration 1 on a
+    # fresh DB ('extension "vector" is not available').
+    image: pgvector/pgvector:pg17
     container_name: propel-postgres
     environment:
       POSTGRES_DB: cv_monolith
@@ -54,8 +57,10 @@ services:
     networks: [propel]
 
   # ── object storage ─────────────────────────────────────────────────────────
+  # MinIO removed their community images from Docker Hub (Sept 2025) and the
+  # repo is archived; Chainguard maintains a fresh MinIO build (latest tag).
   minio:
-    image: minio/minio:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: propel-minio
     command: server /data --console-address ":9001"
     environment:
@@ -116,10 +121,11 @@ services:
       keycloak-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:9000/health/ready || exit 1"]
+      # the Keycloak image ships no curl/wget — probe the health TCP port with bash
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/9000' 2>/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 12
       start_period: 30s
     restart: unless-stopped
     networks: [propel]

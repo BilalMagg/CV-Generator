@@ -16,7 +16,9 @@ ARG RUNTIME_BASE=mcr.microsoft.com/dotnet/aspnet:10.0-noble
 FROM node:22-alpine AS frontend
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# BuildKit cache mount: reuses the npm HTTP cache across sibling stages and
+# same-machine rebuilds (GitHub runners rely on the layer cache instead).
+RUN --mount=type=cache,id=propel-npm,target=/root/.npm npm ci --no-audit --no-fund --cache /root/.npm
 COPY frontend/ .
 RUN npx ng build
 
@@ -36,27 +38,33 @@ COPY monolith/agents/pyproject.toml ./
 COPY monolith/agents/shared/ ./shared/
 COPY monolith/agents/agents/ ./agents/
 COPY monolith/agents/main.py ./
-RUN if ls /wh/*.whl >/dev/null 2>&1; then \
+# pip cache mount: faster re-installs (wheelhouse path ignores it; the PyPI
+# path keeps downloaded wheels in /root/.cache/pip)
+RUN --mount=type=cache,id=propel-pip,target=/root/.cache/pip \
+    if ls /wh/*.whl >/dev/null 2>&1; then \
         echo ">> installing from wheelhouse (/wh)"; \
         pip install --no-index --find-links=/wh --upgrade pip setuptools wheel hatchling; \
         pip install --no-index --find-links=/wh --no-build-isolation .; \
     else \
         echo ">> installing from PyPI"; \
-        pip install --no-cache-dir --upgrade pip setuptools wheel hatchling; \
-        pip install --no-cache-dir .; \
+        pip install --upgrade pip setuptools wheel hatchling; \
+        pip install .; \
     fi
 
 # ─── Stage 3: .NET backend publish ────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
+# ─── Stage 3: .NET publishes (backend + gateway) ─────────────────────────────
+# ONE stage publishing both projects in a single RUN: BuildKit runs stages in
+# PARALLEL and two concurrent `dotnet restore`s sharing the same cache mount
+# corrupt each other's download temp files (seen on CI: gateway restore died on
+# a temp file the backend stage deleted). Sequential in one stage = shared
+# cache is safe (gateway reuses every package the backend restored).
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS dotnet
 WORKDIR /src
 COPY monolith/backend/ ./monolith/backend/
-RUN dotnet publish monolith/backend/CV_Generator.csproj -c Release -o /publish/backend
-
-# ─── Stage 4: .NET gateway publish ───────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS gateway
-WORKDIR /src
 COPY monolith/gateway/ ./monolith/gateway/
-RUN dotnet publish monolith/gateway/ApiGateway.csproj -c Release -o /publish/gateway
+RUN --mount=type=cache,id=propel-nuget,target=/root/.nuget/packages \
+    dotnet publish monolith/backend/CV_Generator.csproj -c Release -o /publish/backend ; \
+    dotnet publish monolith/gateway/ApiGateway.csproj -c Release -o /publish/gateway
 
 # ─── Stage 5: runtime ────────────────────────────────────────────────────────
 FROM ${RUNTIME_BASE}
@@ -78,8 +86,8 @@ RUN if [ "$WITH_LATEX" = "true" ]; then \
     fi
 
 # .NET apps
-COPY --from=backend /publish/backend /app/backend
-COPY --from=gateway /publish/gateway /app/gateway
+COPY --from=dotnet /publish/backend /app/backend
+COPY --from=dotnet /publish/gateway /app/gateway
 
 # Python agents (venv includes its interpreter binaries)
 COPY --from=agents /opt/venv /opt/venv

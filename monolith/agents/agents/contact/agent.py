@@ -41,4 +41,7 @@ def create_contact_graph():
     return graph.compile()
 
 
-contact_graph = create_contact_graph()
+# NOTE: no module-level graph build — create_contact_graph() calls get_llm(),
+# which raises "No LLM API keys configured." before any user has configured a
+# key (fresh deployments configure them in-app after the sidecar boots) and
+# crashed the whole sidecar in a restart loop. Build graphs at request time.
