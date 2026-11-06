@@ -38,7 +38,10 @@ volumes:
 services:
   # ── application DB ─────────────────────────────────────────────────────────
   postgres:
-    image: postgres:17-alpine
+    # pgvector build: the InitialCreate migration provisions the pgvector
+    # extension ("vector"), so a stock postgres image fails migration 1 on a
+    # fresh DB ('extension "vector" is not available').
+    image: pgvector/pgvector:pg17
     container_name: propel-postgres
     environment:
       POSTGRES_DB: cv_monolith

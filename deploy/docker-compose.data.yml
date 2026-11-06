@@ -20,7 +20,9 @@ volumes:
 
 services:
   postgres:
-    image: postgres:17-alpine
+    # pgvector build: the InitialCreate migration provisions the pgvector
+    # extension ("vector"); a stock postgres image cannot run it.
+    image: pgvector/pgvector:pg17
     container_name: propel-postgres
     ports:
       - "5432:5432"
