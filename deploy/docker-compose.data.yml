@@ -37,7 +37,9 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    # MinIO removed their community images from Docker Hub (Sept 2025) and the
+    # repo is archived; Chainguard maintains a fresh MinIO build (latest tag).
+    image: cgr.dev/chainguard/minio:latest
     container_name: propel-minio
     command: server /data --console-address ":9001"
     ports:
