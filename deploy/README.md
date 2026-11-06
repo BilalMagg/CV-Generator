@@ -94,7 +94,37 @@ cd monolith/agents
 (`deploy/wheelhouse/` is git-ignored; the build falls back to PyPI when
 it's empty.)
 
-## 4. Developer data services
+## 4. Remote CI (GitHub Actions)
+
+`.github/workflows/docker-ci.yml` builds the real image on GitHub runners and
+ boots the actual friends' compose stack to validate it (health endpoints,
+ migrations, Keycloak realm, SPA serving, auth enforcement). No registry is
+ needed — builds run and are tested on the runner; BuildKit layer cache is
+ persisted via `type=gha` so subsequent builds skip unchanged stages.
+
+```powershell
+# automatic: every push to main/dev (unless only docs changed)
+# manual trigger + live monitoring from PowerShell:
+gh workflow run docker-ci.yml --ref dev
+gh run watch <run-id>                    # live progress
+gh run view <run-id> --log               # full logs
+gh run view <run-id> --log-failed        # only failing steps
+gh run download <run-id> -n docker-diagnostics   # logs captured on failure
+```
+
+Or use the helper (`scripts/ci/run-docker-ci.ps1`) which triggers, watches and
+pulls failed logs automatically — exits nonzero on failure:
+
+```powershell
+./scripts/ci/run-docker-ci.ps1 -Ref dev
+# texlive-variant build, runtime tests skipped:
+./scripts/ci/run-docker-ci.ps1 -Ref dev -Inputs @{ build_full = "true"; run_tests = "false" }
+```
+
+CI builds use the PyPI path (the wheelhouse is git-ignored), so GitHub
+runners also exercise the slow-network fallback path.
+
+## 5. Developer data services
 
 `docker-compose.data.yml` mirrors your current local defaults — Postgres on
 5432 (`postgres/bime`, db `cv_monolith`), Keycloak on 9090, MinIO on 9000
@@ -112,7 +142,7 @@ docker compose -f deploy/docker-compose.data.yml down
 docker compose -f deploy/docker-compose.yml up -d    # and vice-versa
 ```
 
-## 5. How the pieces talk
+## 6. How the pieces talk
 
 - All app processes live inside one container, so they use `localhost`
   (`backend :5000`, `gateway :8080`, `agents :8000`).
@@ -125,7 +155,7 @@ docker compose -f deploy/docker-compose.yml up -d    # and vice-versa
   the internal authority, and the same host is used at code-exchange time, so
   issuers match.
 
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 ```bash
 docker compose -f deploy/docker-compose.yml logs -f app       # supervisor logs
