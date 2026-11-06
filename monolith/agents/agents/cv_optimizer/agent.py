@@ -56,7 +56,11 @@ def create_tool_graph(provider=None, model=None):
 
 class CVOptimizerAgent:
     def __init__(self):
-        self.graph = create_tool_graph()
+        # Graphs are built ON REQUEST: building eagerly in __init__ ran get_llm()
+        # at module import, which raises "No LLM API keys configured." in a fresh
+        # deployment (friends configure keys in-app AFTER the sidecar boots) and
+        # crashed the whole sidecar in a restart loop (CI run 42216310973).
+        self.graph = None
 
     async def chat(
         self, user_id: str, query: str, conversation_id: Optional[str] = None,

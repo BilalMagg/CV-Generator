@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, HTTPException
 from agents.contact.schemas import ContactRequest, ContactEmailResponse
-from agents.contact.agent import contact_graph
+from agents.contact.agent import create_contact_graph  # built on demand (see agent.py)
 from agents.contact.prompt import get_contact_email_messages
 from langchain_core.messages import SystemMessage
 
