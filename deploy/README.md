@@ -88,8 +88,14 @@ Docker build automatically prefers it (offline, instant installs):
 cd monolith/agents
 ../.venv/Scripts/python -m pip download -d ../../deploy/wheelhouse \
     --only-binary=:all: --python-version 312 \
-    --platform manylinux2014_x86_64 --implementation cp .
+    --platform manylinux2014_x86_64 --implementation cp . \
+    hatchling setuptools wheel
 ```
+
+The two download targets matter: without `hatchling setuptools wheel`
+in the wheelhouse, offline installs abort ("No module named 'hatchling'"
+/ "No matching distribution found for setuptools") — the build backend
+is a build dependency, not a runtime one.
 
 (`deploy/wheelhouse/` is git-ignored; the build falls back to PyPI when
 it's empty.)
@@ -124,7 +130,50 @@ pulls failed logs automatically — exits nonzero on failure:
 CI builds use the PyPI path (the wheelhouse is git-ignored), so GitHub
 runners also exercise the slow-network fallback path.
 
-## 5. Developer data services
+## 5. Runtime smoke tests
+
+`scripts/ci/test-docker-stack.sh` is the SINGLE source of truth for runtime
+validation — the GitHub workflow runs exactly this suite, and so can you,
+against your own stack. 13 tests verify the app behaves as friends expect:
+
+| # | Test | What it proves |
+|---|---|---|
+| t01 | containers_healthy | postgres / keycloak-db / minio / keycloak healthy, app running |
+| t02 | backend_health | backend `:5000/health` returns `{"status":"ok"}` |
+| t03 | agents_sidecar | agents sidecar `:8000/health` ok |
+| t04 | llm_catalog | `/api/llm/providers` serves the catalog (works keyless) |
+| t05 | pdf_capabilities | text-PDF stays available; `--latex` also asserts a real LaTeX engine |
+| t06 | minio_reachable | app container reaches MinIO by its compose service name |
+| t07 | postgres_ready | `pg_isready` accepts connections on `cv_monolith` |
+| t08 | migrations_ran | `__EFMigrationsHistory` rows > 0 (polls through backend startup) |
+| t09 | keycloak_realm | imported `cv-realm` serves its OIDC issuer document |
+| t10 | host_ports_published | `:4200` serves the SPA, `:8080` gateway health, `:9090` realm |
+| t11 | gateway_auth_401 | unauthenticated `/api` call via the gateway → 401 |
+| t12 | frontend_api_proxy_401 | nginx `/api` → gateway → 401 (exact browser path) |
+| t13 | supervisor_stable | no process crashed / restart-looped inside the image |
+
+From the repo root:
+
+```bash
+# boot, test, tear down — the full one-command verification:
+bash scripts/ci/test-docker-stack.sh --up --down
+
+# test a stack you already started (docker compose up -d):
+bash scripts/ci/test-docker-stack.sh
+
+# custom host port mappings? skip the host-port tests (t10-t12)
+bash scripts/ci/test-docker-stack.sh --skip 't1[0-2]'
+
+# validating the texlive :full image (propel:full):
+bash scripts/ci/test-docker-stack.sh --latex
+```
+
+Exit code is 1 when any test failed (safe in scripts); every failure prints
+its own diagnosed evidence (response bodies, migration poll attempts, crash
+lines) — no hidden state. Container names and host ports are overridable via
+env (`APP_CONTAINER`, `HOST_FE`, `HOST_GW`, `HOST_KC`, …) if you renamed them.
+
+## 6. Developer data services
 
 `docker-compose.data.yml` mirrors your current local defaults — Postgres on
 5432 (`postgres/bime`, db `cv_monolith`), Keycloak on 9090, MinIO on 9000
@@ -142,7 +191,7 @@ docker compose -f deploy/docker-compose.data.yml down
 docker compose -f deploy/docker-compose.yml up -d    # and vice-versa
 ```
 
-## 6. How the pieces talk
+## 7. How the pieces talk
 
 - All app processes live inside one container, so they use `localhost`
   (`backend :5000`, `gateway :8080`, `agents :8000`).
@@ -155,7 +204,7 @@ docker compose -f deploy/docker-compose.yml up -d    # and vice-versa
   the internal authority, and the same host is used at code-exchange time, so
   issuers match.
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 ```bash
 docker compose -f deploy/docker-compose.yml logs -f app       # supervisor logs

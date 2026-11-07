@@ -3,15 +3,12 @@
 # =============================================================================
 # Builds deploy/Dockerfile (the real production image) on GitHub runners and
 # then boots the full stack through the real compose file
-# (deploy/docker-compose.yml — the same one friends use) and validates:
-#   - image metadata/size
-#   - every service turns healthy (postgres / keycloak / minio / app)
-#   - gateway + backend + agents + nginx health endpoints
-#   - gateway→backend YARP proxying with auth enforcement (401 unauth)
-#   - Keycloak realm (sign-up enabled) issuer document
-#   - EF Core migrations actually ran (migrations history rows > 0)
-#   - sidecar LLM catalog + LaTeX capability probing (a texlive-less default
-#     image must degrade cleanly, not crash)
+# (deploy/docker-compose.yml — the same one friends use) and runs the runtime
+# smoke-test suite scripts/ci/test-docker-stack.sh — the SAME suite developers
+# run locally, covering: container health, gateway + backend + agents +
+# nginx endpoints, gateway→backend YARP proxying with auth enforcement (401),
+# Keycloak realm issuer, EF migrations applied, sidecar LLM catalog + LaTeX
+# capability degradation, and no supervisor restart loops.
 # Dedup with Monolith CI: this workflow does the container build; dotnet-based
 # compile checks remain in monolith-ci.yml.
 #
@@ -123,89 +120,12 @@ jobs:
           ${{ env.COMPOSE }} logs app --tail 200 || true
           exit 1
 
-      - name: Check — all services running/healthy
+      # The runtime test suite lives in scripts/ci/test-docker-stack.sh — the
+      # same suite developers run locally against their own stack, so local
+      # results and CI results are identical (one source of truth).
+      - name: Run runtime test suite (scripts/ci/test-docker-stack.sh)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
-        run: |
-          fail=0
-          for c in propel-postgres propel-keycloak-db propel-minio propel-keycloak; do
-            st=$(docker inspect "$c" --format '{{.State.Health.Status}}')
-            echo "$c health: $st"
-            [ "$st" = "healthy" ] || fail=1
-          done
-          st=$(docker inspect propel-app --format '{{.State.Status}}')
-          echo "propel-app state: $st"
-          [ "$st" = "running" ] || fail=1
-          exit $fail
-
-      - name: Check — backend health (in-container :5000)
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
-        run: |
-          out=$(docker exec propel-app curl -fsS http://localhost:5000/health)
-          echo "$out"
-          echo "$out" | grep -q '"status":"ok"' || { echo "backend health mismatch"; exit 1; }
-
-      - name: Check — agents sidecar health + LLM catalog + latex capabilities
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
-        run: |
-          out=$(docker exec propel-app curl -fsS http://localhost:8000/health)
-          echo "$out"
-          echo "$out" | grep -q '"status":"ok"' || { echo "sidecar health mismatch"; exit 1; }
-          out=$(docker exec propel-app curl -fsS http://localhost:8000/api/llm/providers)
-          echo "$out"
-          echo "$out" | grep -q '"providers"' || { echo "llm catalog mismatch"; exit 1; }
-          out=$(docker exec propel-app curl -fsS http://localhost:8000/api/agents/pdf/capabilities)
-          echo "$out"
-          # a texlive-less default image must degrade CLEANLY (not 500): text PDF
-          # stays available, latex reports engine=null
-          echo "$out" | grep -q '"text_pdf_available":true' || { echo "text_pdf probe failed"; exit 1; }
-
-      - name: Check — MinIO reachable from the app container
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
-        run: docker exec propel-app curl -fsS http://minio:9000/minio/health/live
-
-      - name: Check — database reachable + EF migrations ran
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
-        run: |
-          ${{ env.COMPOSE }} exec -T postgres pg_isready -U postgres -d cv_monolith
-          # migrations run at backend STARTUP on a cold DB (60+ migrations +
-          # data-SQL) and can take a while; the check polls instead of racing
-          ok=""
-          for i in $(seq 1 40); do
-            n=$(${{ env.COMPOSE }} exec -T postgres \
-              psql -U postgres -d cv_monolith -tAc "select count(*) from \"__EFMigrationsHistory\"")
-            echo "attempt $i: migration history rows: $n"
-            if [ "${n:-0}" -gt 0 ]; then ok=1; break; fi
-            sleep 5
-          done
-          if [ -z "$ok" ]; then
-            echo "migrations did not complete in 200s — dumping diagnostics"
-            echo "── existing tables ──"
-            ${{ env.COMPOSE }} exec -T postgres psql -U postgres -d cv_monolith -tAc \
-              "select tablename from pg_tables where schemaname='public' order by 1"
-            echo "── backend log: migration/startup/error lines ──"
-            docker exec propel-app sh -c \
-              'grep -iE "migrat|now listening|migration failed|exception|error" /var/log/supervisor/backend.log | head -80' || true
-            exit 1
-          fi
-
-      - name: Check — Keycloak realm imported (sign-up enabled)
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
-        run: |
-          out=$(curl -fsS http://localhost:9090/realms/cv-realm/.well-known/openid-configuration)
-          echo "$out" | grep -q '"issuer"' || { echo "keycloak realm not ready"; exit 1; }
-
-      - name: Check — frontend SPA served with API proxy config
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
-        run: |
-          out=$(curl -fsS http://localhost:4200)
-          echo "$out" | grep -q '<app-root' || { echo "SPA index not served"; exit 1; }
-
-      - name: Check — gateway proxies /api to the backend and enforces auth
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
-        run: |
-          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/llm-settings)
-          echo "GET /api/llm-settings without auth -> $code"
-          [ "$code" = "401" ] || { echo "expected 401 auth enforcement, got $code"; exit 1; }
+        run: bash scripts/ci/test-docker-stack.sh
 
       # ── Diagnostics (never lose the logs to a failing teardown) ─────────────
       - name: Collect diagnostics
