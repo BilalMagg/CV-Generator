@@ -9,6 +9,9 @@
 # nginx endpoints, gateway→backend YARP proxying with auth enforcement (401),
 # Keycloak realm issuer, EF migrations applied, sidecar LLM catalog + LaTeX
 # capability degradation, and no supervisor restart loops.
+# After the smoke suite, the Playwright E2E suite (frontend/e2e) walks REAL
+# user journeys through the served SPA (:4200): sign-up/login/session and,
+# as it grows, companies/applications/career CRUD through the browser.
 # Dedup with Monolith CI: this workflow does the container build; dotnet-based
 # compile checks remain in monolith-ci.yml.
 #
@@ -128,6 +131,42 @@ jobs:
       - name: Run runtime test suite (scripts/ci/test-docker-stack.sh)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
         run: bash scripts/ci/test-docker-stack.sh
+
+      # ── E2E: full functional journeys through the served SPA (:4200) ───────
+      # Playwright drives the app exactly like a user: sign-up in Keycloak,
+      # login, landing view, session handling. Runs BEFORE the diagnostics
+      # collector so a failing journey still produces compose/supervisor logs.
+      - name: Set up Node for E2E
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: E2E pre — install frontend deps + chromium
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E suite (Playwright)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
+        working-directory: frontend
+        run: npx playwright test
+        env:
+          CI: 'true'
+
+      - name: Upload Playwright report
+        if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.run_tests) }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7
 
       # ── Diagnostics (never lose the logs to a failing teardown) ─────────────
       - name: Collect diagnostics
