@@ -10,9 +10,13 @@ import type { FullConfig } from '@playwright/test';
 export default async function globalSetup(_config: FullConfig): Promise<void> {
   const { chromium } = await import('@playwright/test');
   const { registerAndSignIn, RUNNER_STATE } = await import('./e2e-utils');
+  // Manually launched contexts do NOT inherit the config's `use.baseURL`
+  // (that only applies to test-fixture contexts) — resolve it the same way
+  // playwright.config.ts does, or page.goto('/login…') is an invalid URL.
+  const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:4200';
   const browser = await chromium.launch();
   try {
-    const context = await browser.newContext();
+    const context = await browser.newContext({ baseURL });
     const page = await context.newPage();
     await registerAndSignIn(page);
     await context.storageState({ path: RUNNER_STATE });
