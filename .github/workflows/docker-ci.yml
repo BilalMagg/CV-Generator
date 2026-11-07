@@ -12,7 +12,9 @@
 # Dedup with Monolith CI: this workflow does the container build; dotnet-based
 # compile checks remain in monolith-ci.yml.
 #
-# No registry is required — images are built and tested on the runner only.
+# Registry: after a green validation cycle, branch pushes publish the image to
+# Docker Hub (secrets DOCKERHUB_USERNAME/DOCKERHUB_TOKEN): main → :latest,
+# dev → :dev, both also → :<short-sha>. PRs and ci/docker-image don't publish.
 # Cache: BuildKit layers via type=gha (mode=max); RUN-level dependency caches
 # (nuget shared between stages, npm, pip) are BuildKit cache mounts in the
 # Dockerfile.
@@ -157,3 +159,32 @@ jobs:
       - name: Shutdown the stack
         if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.run_tests) }}
         run: ${{ env.COMPOSE }} down -v --remove-orphans || true
+
+      # ── Publish the validated image to Docker Hub ───────────────────────────
+      # Runs only after the full cycle above succeeded on a real branch push
+      # (never on PRs / ci/docker-image). main → :latest + :sha, dev → :dev + :sha
+      - name: Push image to Docker Hub
+        if: ${{ success() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') }}
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          for i in $(seq 1 3); do
+            if echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin; then break; fi
+            if [ "$i" = 3 ]; then echo "docker hub login failed after 3 attempts" >&2; exit 1; fi
+            sleep 10
+          done
+
+          HUB_IMAGE="$DOCKERHUB_USERNAME/propel"
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            docker tag propel:latest "$HUB_IMAGE:latest"
+            docker push "$HUB_IMAGE:latest"
+          else
+            docker tag propel:latest "$HUB_IMAGE:dev"
+            docker push "$HUB_IMAGE:dev"
+          fi
+          docker tag propel:latest "$HUB_IMAGE:$SHORT_SHA"
+          docker push "$HUB_IMAGE:$SHORT_SHA"
+          echo "published: $HUB_IMAGE ($GITHUB_REF_NAME)"
