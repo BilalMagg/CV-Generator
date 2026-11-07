@@ -8,7 +8,7 @@ import { signUp, signIn, logout, uniqueUser } from './e2e-utils';
  */
 
 test.describe('auth @smoke', () => {
-  test('sign up → confirm → sign in → lands on the applications board', async ({ page }) => {
+  test('sign up → confirm → sign in → lands on the dashboard, board reachable', async ({ page }) => {
     const user = uniqueUser();
 
     await signUp(page, user); // success banner = account created in Keycloak AND backend
@@ -18,7 +18,12 @@ test.describe('auth @smoke', () => {
 
     await signIn(page, user.email, user.password);
 
-    // Kanban board is the /applications landing view
+    // /applications redirects to the dashboard child route — the real landing view
+    await expect(page).toHaveURL(/\/applications\/dashboard$/);
+    await expect(page.locator('h1.greeting')).toContainText('E2E');
+
+    // The kanban board is the dedicated /applications/kanban route
+    await page.goto('/applications/kanban');
     await expect(page.locator('h1.kb-title')).toContainText('Move applications across stages');
     // The freshly created user is reflected in the sidebar identity
     await expect(page.locator('.sidebar .user-email')).toHaveText(user.email);
@@ -64,6 +69,7 @@ test.describe('auth @smoke', () => {
     const user = uniqueUser();
     await signUp(page, user);
     await signIn(page, user.email, user.password);
+    await page.goto('/applications/kanban');
     await expect(page.locator('h1.kb-title')).toContainText('Move applications across stages');
 
     // Cookies only — no localStorage dependency in the session

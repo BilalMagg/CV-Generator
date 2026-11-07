@@ -44,8 +44,10 @@ export async function signIn(page: Page, email: string, password: string): Promi
   await form.locator("input[name='signInEmail']").fill(email);
   await form.locator("input[name='signInPassword']").fill(password);
   await form.locator("button[type='submit']").click();
-  // Sign-in does a full-page redirect to /applications on success.
-  await page.waitForURL('**/applications', { timeout: 30_000 });
+  // Full-page redirect to /applications, which the router then replaces with
+  // /applications/dashboard — accept both (regex, not glob) so the redirect
+  // transit never races the wait.
+  await page.waitForURL(/\/applications(\/|$)/, { timeout: 30_000 });
 }
 
 /** Sign up AND then sign in from a brand-new browser state — the canonical journey. */
