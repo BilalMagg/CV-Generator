@@ -16,14 +16,17 @@ namespace CV_Generator.Migrations
         /// </remarks>
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // The Skill entity maps to lowercase "skills" ([Table("skills")]) —
+            // InitialCreate creates it unquoted, so quoted "Skills" would fail
+            // with 'relation "Skills" does not exist' on every database.
             migrationBuilder.Sql("""
-                DELETE FROM "Skills" dup
+                DELETE FROM skills dup
                 USING (
                     SELECT "Id",
                            ROW_NUMBER() OVER (
                                PARTITION BY "UserId", lower(trim("Name")) ORDER BY "Id"
                            ) AS rn
-                    FROM "Skills"
+                    FROM skills
                 ) ranked
                 WHERE ranked."Id" = dup."Id" AND ranked.rn > 1;
                 """);
@@ -31,12 +34,12 @@ namespace CV_Generator.Migrations
             migrationBuilder.Sql("""
                 DELETE FROM "EntityCategoryTags"
                 WHERE "SourceType" = 'skills'
-                  AND "SourceId" NOT IN (SELECT "Id" FROM "Skills");
+                  AND "SourceId" NOT IN (SELECT "Id" FROM skills);
                 """);
 
             migrationBuilder.Sql("""
                 CREATE UNIQUE INDEX "IX_Skills_UserId_NameNormalized"
-                ON "Skills" ("UserId", lower(trim("Name")));
+                ON skills ("UserId", lower(trim("Name")));
                 """);
         }
 
