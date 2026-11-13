@@ -59,7 +59,10 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9001:9001"           # console only — data flows stay in-network
+      - "9001:9001"           # console
+      - "9000:9000"           # data port — stored URLs use host.docker.internal:9000
+                              # (works for both the browser on the host and the
+                              # in-container backend fetching Gmail attachments)
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
@@ -135,8 +138,15 @@ services:
       # the credentials live in deploy/.env (LOCAL_CONNECTION_STRING /
       # LOCAL_DATABASE_URL) so no password is committed
       CONNECTION_STRING: ${LOCAL_CONNECTION_STRING:?set LOCAL_CONNECTION_STRING in deploy/.env}
-      # data services (in-network containers, adopting existing volumes)
-      MINIO_ENDPOINT: minio:9000
+      # data services — endpoint must be reachable from BOTH contexts:
+      # the in-container backend (object ops + attachment downloads) and the
+      # browser on the host (thumbnails/images render from the stored URLs).
+      # The machine's LAN IP satisfies both: published :9000 binds 0.0.0.0.
+      # (host.docker.internal resolves in containers but its host-side
+      # hosts-file entry was stale; the machine hostname doesn't resolve
+      # in containers. If the DHCP lease changes, update MINIO_ENDPOINT
+      # AND rewrite the stored URLs — better: reserve this IP in the router.)
+      MINIO_ENDPOINT: 192.168.1.110:9000
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
       # auth — internal URL for token validation by backend+gateway,
