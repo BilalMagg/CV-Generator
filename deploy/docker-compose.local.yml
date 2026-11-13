@@ -1,0 +1,167 @@
+# =============================================================================
+# Propel — LOCAL one-click deployment (the owner's machine).
+# =============================================================================
+# Difference vs docker-compose.yml (the friends' full stack): the application
+# database is NOT a container here — the app uses the machine's real local
+# PostgreSQL (Windows service) over host.docker.internal, so the data is
+# exactly what local development used. Keycloak + MinIO still run in Docker,
+# but they ADOPT the pre-existing volumes from the old dev containers
+# (monolith_minio_data / monolith_keycloak_db_data, external: true) so realm,
+# users, buckets and uploaded files carry over untouched.
+#
+# Usage:
+#   1) deploy/.env carries GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET /
+#      GMAIL_TOKEN_ENCRYPTION_KEY (copied from the repo root .env)
+#   2) docker compose -f deploy/docker-compose.local.yml up -d --wait
+#   3) open http://localhost:4200 and log in with the existing account —
+#      same Keycloak user, same userId, all data intact
+#   4) stop = docker compose -f deploy/docker-compose.local.yml down
+#      (external volumes and the local Postgres are never touched;
+#      'down -v' also cannot remove external volumes)
+#
+# Requirements:
+#   - the local Postgres must accept connections from Docker (verified:
+#     host.docker.internal:5432 works on this install)
+#   - the old dev containers (cv-keycloak, cv-minio, cv-keycloak-db) must be
+#     STOPPED — this stack publishes the same host ports (9090/9001/4200/8080)
+#     and mounts the same volumes
+# =============================================================================
+
+name: propel-local
+
+networks:
+  propel:
+    name: propel-local-network
+
+volumes:
+  minio_data:
+    external: true
+    name: monolith_minio_data
+  keycloak_db_data:
+    external: true
+    name: monolith_keycloak_db_data
+  keycloak_data:
+
+services:
+  # ── object storage — ADOPTS the dev MinIO data (buckets + files) ──────────
+  # NOTE: the OFFICIAL minio image is used here (not the Chainguard build the
+  # friends' compose needs) because monolith_minio_data was created by the old
+  # minio/minio container running as root — Chainguard's nonroot user cannot
+  # write to it. The official image is already present locally; fresh friend
+  # deployments keep using Chainguard with a fresh volume.
+  minio:
+    image: minio/minio:latest
+    container_name: propel-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9001:9001"           # console only — data flows stay in-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    restart: unless-stopped
+    networks: [propel]
+
+  # ── Keycloak's DB — ADOPTS the dev keycloak database (realm + users) ───────
+  keycloak-db:
+    image: postgres:17-alpine
+    container_name: propel-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak_secret
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks: [propel]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    container_name: propel-keycloak
+    ports:
+      - "9090:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak_secret
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KC_HOSTNAME_STRICT: false
+      # exact env parity with the old cv-keycloak container
+      KC_PROXY: edge
+      KC_FEATURES: token-exchange
+      JAVA_OPTS_APPEND: -Xms256m -Xmx768m
+    command: ["start-dev", "--import-realm"]
+    volumes:
+      - ./keycloak-realm:/opt/keycloak/data/import
+      - keycloak_data:/opt/keycloak/data
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    healthcheck:
+      # the Keycloak image ships no curl/wget — probe the health TCP port with bash
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/9000' 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+    networks: [propel]
+
+  # ── the application image (backend + gateway + agents + frontend) ─────────
+  app:
+    image: bilalmagg/propel:dev
+    container_name: propel-app
+    ports:
+      - "4200:4200"           # frontend (nginx)
+      - "8080:8080"           # gateway (OAuth callback + direct API access)
+    environment:
+      # application DB = the machine's REAL local Postgres (Windows service);
+      # the credentials live in deploy/.env (LOCAL_CONNECTION_STRING /
+      # LOCAL_DATABASE_URL) so no password is committed
+      CONNECTION_STRING: ${LOCAL_CONNECTION_STRING:?set LOCAL_CONNECTION_STRING in deploy/.env}
+      # data services (in-network containers, adopting existing volumes)
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      # auth — internal URL for token validation by backend+gateway,
+      # external localhost:9090 for the browser-facing login pages
+      JWT_AUTHORITY: http://keycloak:8080/realms/cv-realm
+      KEYCLOAK_HOST: keycloak
+      KEYCLOAK_PORT: "8080"
+      KEYCLOAK_EXTERNAL_HOST: localhost
+      KEYCLOAK_EXTERNAL_PORT: "9090"
+      KEYCLOAK_ADMIN_USERNAME: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # services inside this container
+      AGENTS_URL: http://localhost:8000
+      BACKEND_BASE_URL: http://localhost:5000
+      # sidecar extras
+      DATABASE_URL: ${LOCAL_DATABASE_URL:?set LOCAL_DATABASE_URL in deploy/.env}
+      # gmail (values come from deploy/.env — same keys as local dev)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GMAIL_TOKEN_ENCRYPTION_KEY: ${GMAIL_TOKEN_ENCRYPTION_KEY:-}
+      Gmail__CallbackBaseUrl: http://localhost:4200
+    depends_on:
+      minio:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [propel]
