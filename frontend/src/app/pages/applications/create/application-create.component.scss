@@ -407,6 +407,21 @@ textarea { resize: vertical; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   min-height: 1em;
 }
+.pv-domain {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: oklch(0.45 0.14 250);
+  background: oklch(0.6 0.16 250 / 0.08);
+  padding: 2px 7px;
+  border-radius: 5px;
+  align-self: flex-start;
+  margin: 2px 0;
+
+  i { font-size: 12px; }
+}
 .pv-footer { display: flex; align-items: center; justify-content: space-between; }
 .pv-date { font-size: 11.5px; color: var(--text-3); }
 

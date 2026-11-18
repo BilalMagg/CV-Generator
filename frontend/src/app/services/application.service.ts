@@ -18,6 +18,8 @@ import {
   SendAttemptDto,
   ContactSummaryDto,
   FollowUpAction,
+  ApplicationDomainDto,
+  ApplicationDomainCheckDto,
   ApiResponse,
 } from '../models/application.model';
 import { CalendarEventDto } from '@app/models/calendar-event.model';
@@ -178,5 +180,32 @@ export class ApplicationService {
   /** Applications reached through a contact (null → contact not found). */
   async getApplicationsForContact(contactId: string): Promise<ApiResponse<ApplicationResponseDto[] | null>> {
     return this.http.get<ApiResponse<ApplicationResponseDto[] | null>>(`/api/contacts/${contactId}/applications`);
+  }
+
+  /** Application domain categories for current user. */
+  async getDomains(): Promise<ApiResponse<ApplicationDomainDto[]>> {
+    return this.http.get<ApiResponse<ApplicationDomainDto[]>>('/api/applications/domains');
+  }
+
+  /** Check if a domain name exists or shares similarity with existing domains. */
+  async checkDomainSimilarity(name: string): Promise<ApiResponse<ApplicationDomainCheckDto>> {
+    return this.http.get<ApiResponse<ApplicationDomainCheckDto>>(
+      `/api/applications/domains/check?name=${encodeURIComponent(name)}`
+    );
+  }
+
+  /** Create a new domain category. */
+  async createDomain(name: string): Promise<ApiResponse<ApplicationDomainDto>> {
+    return this.http.post<ApiResponse<ApplicationDomainDto>>('/api/applications/domains', { name });
+  }
+
+  /** Update/rename a domain category. */
+  async updateDomain(id: string, name: string): Promise<ApiResponse<ApplicationDomainDto>> {
+    return this.http.put<ApiResponse<ApplicationDomainDto>>(`/api/applications/domains/${id}`, { name });
+  }
+
+  /** Delete a domain category. */
+  async deleteDomain(id: string): Promise<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`/api/applications/domains/${id}`);
   }
 }

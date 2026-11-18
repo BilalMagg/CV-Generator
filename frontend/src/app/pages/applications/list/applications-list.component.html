@@ -136,6 +136,9 @@
                     <div class="co-name">
                       <span class="prio-dot" [style.background]="priorityColor(app.priority)" [title]="'Priority: ' + PRIORITY_LABELS[app.priority || 'MEDIUM']"></span>
                       {{ app.companyName }}
+                      @if (app.domain) {
+                        <span class="co-domain">{{ app.domain }}</span>
+                      }
                     </div>
                     <div class="co-role">{{ app.positionTitle }}</div>
                   </div>

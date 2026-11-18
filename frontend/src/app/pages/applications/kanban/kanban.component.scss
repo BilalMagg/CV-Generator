@@ -706,3 +706,19 @@ img.saved-logo {
 
   &:hover { background: oklch(0.96 0.005 250); color: var(--text); }
 }
+
+.kb-domain {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: oklch(0.45 0.14 250);
+  background: oklch(0.6 0.16 250 / 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  align-self: flex-start;
+
+  i { font-size: 11px; }
+}

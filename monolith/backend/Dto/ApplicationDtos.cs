@@ -17,6 +17,7 @@ public record ApplicationResponseDto(
     string Origin = "MANUAL",
     string? InternshipType = null,
     string? WorkType = null,
+    string? Domain = null,
     string Priority = "MEDIUM",
     List<StatusHistoryDto>? History = null,
     List<AttemptResponseDto>? Attempts = null,
@@ -47,6 +48,7 @@ public record CreateApplicationDto(
     bool AllowDuplicate = false,
     string? InternshipType = null,
     string? WorkType = null,
+    string? Domain = null,
     string Priority = "MEDIUM",
     DateTime? AppliedAt = null,
     List<ScheduleAttachmentRef>? Attachments = null
@@ -64,11 +66,32 @@ public record UpdateApplicationDto(
     string? Notes,
     string? InternshipType = null,
     string? WorkType = null,
+    string? Domain = null,
     string? Priority = null,
     List<ScheduleAttachmentRef>? Attachments = null,
     Guid? CvVersionId = null,
     DateTime? FollowUpDate = null,
     bool ClearFollowUp = false
+);
+
+public record ApplicationDomainDto(
+    Guid Id,
+    string Name,
+    int ApplicationCount = 0,
+    DateTime? CreatedAt = null
+);
+
+public record CreateApplicationDomainDto(
+    string Name
+);
+
+public record UpdateApplicationDomainDto(
+    string Name
+);
+
+public record ApplicationDomainCheckDto(
+    bool Exists,
+    List<string> SimilarNames
 );
 
 /// <summary>

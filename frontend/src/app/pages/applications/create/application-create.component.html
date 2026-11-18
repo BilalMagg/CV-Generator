@@ -104,8 +104,8 @@
             </ui-field>
 
             <ui-field>
-              <ui-field-label htmlFor="offerSourceSelect">Found Via / Source</ui-field-label>
-              <ui-select id="offerSourceSelect" [ngModel]="offerSource()" (valueChange)="setOfferSource($event)" name="offerSource" placeholder="Select source" [options]="applySources"></ui-select>
+              <ui-field-label htmlFor="domainSelect">Field / Domain</ui-field-label>
+              <app-domain-select id="domainSelect" [ngModel]="domain()" (valueChange)="setDomain($event)" name="domain" placeholder="Select domain (e.g. Web dev, AI & LLMs)"></app-domain-select>
             </ui-field>
           </div>
 
@@ -121,16 +121,21 @@
             </ui-field>
 
             <ui-field>
-              <ui-field-label>Priority</ui-field-label>
-              <div class="priority-segmented">
-                @for (p of PRIORITY_ORDER; track p) {
-                  <button type="button" [class.active]="priority() === p"
-                    [style.--p-color]="p === 'HIGH' ? 'oklch(0.62 0.19 25)' : p === 'MEDIUM' ? 'oklch(0.72 0.14 80)' : 'oklch(0.6 0.1 250)'"
-                    (click)="priority.set(p)">{{ PRIORITY_LABELS[p] }}</button>
-                }
-              </div>
+              <ui-field-label htmlFor="offerSourceSelect">Found Via / Source</ui-field-label>
+              <ui-select id="offerSourceSelect" [ngModel]="offerSource()" (valueChange)="setOfferSource($event)" name="offerSource" placeholder="Select source" [options]="applySources"></ui-select>
             </ui-field>
           </div>
+
+          <ui-field>
+            <ui-field-label>Priority</ui-field-label>
+            <div class="priority-segmented">
+              @for (p of PRIORITY_ORDER; track p) {
+                <button type="button" [class.active]="priority() === p"
+                  [style.--p-color]="p === 'HIGH' ? 'oklch(0.62 0.19 25)' : p === 'MEDIUM' ? 'oklch(0.72 0.14 80)' : 'oklch(0.6 0.1 250)'"
+                  (click)="priority.set(p)">{{ PRIORITY_LABELS[p] }}</button>
+              }
+            </div>
+          </ui-field>
         </ui-field-group>
       </ui-field-set>
 
@@ -337,6 +342,9 @@
           <span class="pv-company">{{ companyName().trim() || 'Company' }}</span>
         </div>
         <div class="pv-role">{{ positionTitle().trim() || 'Position title' }}</div>
+        @if (domain()) {
+          <div class="pv-domain"><i class="ti ti-folder"></i> {{ domain() }}</div>
+        }
         <div class="pv-footer">
           <span class="status-pill" [attr.data-status]="previewStatus()">{{ STATUS_LABELS[previewStatus()] }}</span>
           <span class="pv-date">{{ formatPreviewDate(previewDate()) }}</span>

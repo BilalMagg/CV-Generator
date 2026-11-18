@@ -1,0 +1,248 @@
+<div class="domain-select-wrapper">
+  <ui-select
+    [id]="id"
+    [placeholder]="placeholder"
+    [options]="options()"
+    [disabled]="disabled"
+    [isInvalid]="isInvalid"
+    [className]="className"
+    [ngModel]="currentValue()"
+    (valueChange)="onSelectValueChange($event)"
+  ></ui-select>
+</div>
+
+<!-- ========================================== -->
+<!-- POPUP 1: ADD CATEGORY MODAL               -->
+<!-- ========================================== -->
+@if (showAddModal()) {
+  <div class="modal-backdrop" (click)="closeAddModal()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="ti ti-folder-plus modal-icon"></i>
+          <div>
+            <h3>Add Category</h3>
+            <p class="modal-sub">Create a new domain category for your job applications.</p>
+          </div>
+        </div>
+        <button type="button" class="close-btn" (click)="closeAddModal()" title="Close">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        @if (addError()) {
+          <div class="alert alert-error">
+            <i class="ti ti-alert-circle"></i>
+            <span>{{ addError() }}</span>
+          </div>
+        }
+
+        <div class="form-group">
+          <label for="newCatInput" class="form-label">Category Name</label>
+          <input
+            id="newCatInput"
+            type="text"
+            class="modal-input"
+            [class.is-invalid]="exactMatch() !== null"
+            [(ngModel)]="newCategoryName"
+            placeholder="e.g. Data & AI, Cloud & DevOps, Mobile dev…"
+            (keydown.enter)="submitNewCategory()"
+            autofocus
+          />
+        </div>
+
+        <!-- Exact Match Alert -->
+        @if (exactMatch()) {
+          <div class="alert alert-error">
+            <i class="ti ti-alert-circle"></i>
+            <div>
+              <strong>Duplicate Category:</strong> A category named "<strong>{{ exactMatch()!.name }}</strong>" already exists.
+            </div>
+          </div>
+        }
+
+        <!-- Similarity Alert / Existing matches recommendation -->
+        @if (!exactMatch() && similarCategories().length > 0) {
+          <div class="alert alert-warning">
+            <div class="warn-header">
+              <i class="ti ti-alert-triangle"></i>
+              <span>Similar category found:</span>
+            </div>
+
+            <div class="warn-chips">
+              @for (sim of similarCategories(); track sim) {
+                <button
+                  type="button"
+                  class="warn-chip"
+                  (click)="selectExistingAndClose(sim)"
+                  title="Select this existing category"
+                >
+                  <i class="ti ti-check"></i> Use "<strong>{{ sim }}</strong>"
+                </button>
+              }
+            </div>
+
+            <p class="warn-footer">
+              You can click to use an existing category above, or create "<strong>{{ newCategoryName() }}</strong>" anyway.
+            </p>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeAddModal()">Cancel</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!newCategoryName().trim() || exactMatch() !== null || savingCategory()"
+          (click)="submitNewCategory()"
+        >
+          @if (savingCategory()) {
+            <i class="ti ti-loader ti-spin"></i> Creating…
+          } @else if (similarCategories().length > 0) {
+            <i class="ti ti-plus"></i> Create anyway
+          } @else {
+            <i class="ti ti-plus"></i> Create category
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ========================================== -->
+<!-- POPUP 2: MANAGE CATEGORIES MODAL          -->
+<!-- ========================================== -->
+@if (showManageModal()) {
+  <div class="modal-backdrop" (click)="closeManageModal()">
+    <div class="modal-dialog manage-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="ti ti-category modal-icon"></i>
+          <div>
+            <h3>Manage Categories</h3>
+            <p class="modal-sub">Edit or delete your application domain categories.</p>
+          </div>
+        </div>
+        <button type="button" class="close-btn" (click)="closeManageModal()" title="Close">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        @if (managingError()) {
+          <div class="alert alert-error">
+            <i class="ti ti-alert-circle"></i>
+            <span>{{ managingError() }}</span>
+          </div>
+        }
+
+        <div class="categories-list">
+          @if (domains().length === 0) {
+            <div class="empty-state">
+              <i class="ti ti-folder-off"></i>
+              <p>No categories defined yet.</p>
+            </div>
+          }
+
+          @for (d of domains(); track d.id) {
+            <div class="category-row" [class.editing]="editingId() === d.id">
+              <!-- Inline Edit Mode -->
+              @if (editingId() === d.id) {
+                <div class="inline-edit-box">
+                  <input
+                    type="text"
+                    class="modal-input inline-input"
+                    [(ngModel)]="editingName"
+                    (keydown.enter)="saveEdit(d)"
+                    (keydown.escape)="cancelEdit()"
+                    autofocus
+                  />
+                  <div class="inline-edit-actions">
+                    <button
+                      type="button"
+                      class="btn-icon btn-save"
+                      title="Save"
+                      [disabled]="!editingName().trim()"
+                      (click)="saveEdit(d)"
+                    >
+                      <i class="ti ti-check"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-icon btn-cancel"
+                      title="Cancel"
+                      (click)="cancelEdit()"
+                    >
+                      <i class="ti ti-x"></i>
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <!-- Delete Confirmation Mode -->
+              @else if (confirmDeleteId() === d.id) {
+                <div class="inline-delete-box">
+                  <div class="delete-msg">
+                    <i class="ti ti-alert-triangle"></i>
+                    <span>Delete <strong>{{ d.name }}</strong>? Applications with this domain will become undefined.</span>
+                  </div>
+                  <div class="delete-actions">
+                    <button
+                      type="button"
+                      class="btn btn-danger btn-sm"
+                      (click)="confirmDelete(d)"
+                    >
+                      Confirm Delete
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      (click)="cancelDelete()"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <!-- Normal Display Mode -->
+              @else {
+                <div class="category-info">
+                  <span class="category-name">{{ d.name }}</span>
+                  <span class="category-count" [class.zero]="!d.applicationCount">
+                    {{ d.applicationCount || 0 }} {{ d.applicationCount === 1 ? 'app' : 'apps' }}
+                  </span>
+                </div>
+
+                <div class="category-actions">
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    title="Rename category"
+                    (click)="startEdit(d)"
+                  >
+                    <i class="ti ti-pencil"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon btn-danger-icon"
+                    title="Delete category"
+                    (click)="promptDelete(d)"
+                  >
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeManageModal()">Done</button>
+      </div>
+    </div>
+  </div>
+}

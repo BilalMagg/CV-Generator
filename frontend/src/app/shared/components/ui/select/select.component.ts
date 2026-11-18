@@ -27,6 +27,8 @@ export interface SelectOption<T = any> {
   description?: string;
   disabled?: boolean;
   className?: string;
+  action?: () => void;
+  isDivider?: boolean;
 }
 
 /**
@@ -187,27 +189,32 @@ export class UiSelectGroupComponent {
         <div class="ui-select-items-list" #itemsList>
           <!-- When options array is supplied -->
           @if (items() && items().length > 0) {
-            @for (opt of filteredOptions(); track opt.value) {
-              <div
-                class="ui-select-item-inner"
-                [class.selected]="opt.value === currentValue()"
-                [class.disabled]="opt.disabled"
-                role="option"
-                [attr.aria-selected]="opt.value === currentValue()"
-                (click)="selectOption(opt, $event)"
-              >
-                <div class="ui-select-item-content">
-                  <i *ngIf="opt.icon" [class]="opt.icon + ' opt-icon'"></i>
-                  <span class="opt-label" [class]="opt.className || ''">{{ opt.label }}</span>
-                  <span *ngIf="opt.description" class="opt-desc">{{ opt.description }}</span>
-                </div>
+            @for (opt of filteredOptions(); track opt.value ?? $index) {
+              @if (opt.isDivider) {
+                <div class="ui-select-divider" role="separator"></div>
+              } @else {
+                <div
+                  class="ui-select-item-inner"
+                  [class.is-action]="opt.action"
+                  [class.selected]="!opt.action && opt.value === currentValue()"
+                  [class.disabled]="opt.disabled"
+                  role="option"
+                  [attr.aria-selected]="!opt.action && opt.value === currentValue()"
+                  (click)="selectOption(opt, $event)"
+                >
+                  <div class="ui-select-item-content">
+                    <i *ngIf="opt.icon" [class]="opt.icon + ' opt-icon'"></i>
+                    <span class="opt-label" [class]="opt.className || ''">{{ opt.label }}</span>
+                    <span *ngIf="opt.description" class="opt-desc">{{ opt.description }}</span>
+                  </div>
 
-                <span class="ui-select-item-check" *ngIf="opt.value === currentValue()">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                </span>
-              </div>
+                  <span class="ui-select-item-check" *ngIf="!opt.action && opt.value === currentValue()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </span>
+                </div>
+              }
             }
             @if (filteredOptions().length === 0) {
               <div class="ui-select-empty">No matching options</div>
@@ -349,7 +356,13 @@ export class UiSelectComponent implements ControlValueAccessor, AfterContentInit
 
   selectOption(opt: SelectOption, event?: MouseEvent) {
     if (event) event.stopPropagation();
-    if (opt.disabled) return;
+    if (opt.disabled || opt.isDivider) return;
+
+    if (opt.action) {
+      this.close();
+      opt.action();
+      return;
+    }
 
     this.setValue(opt.value);
     this.close();

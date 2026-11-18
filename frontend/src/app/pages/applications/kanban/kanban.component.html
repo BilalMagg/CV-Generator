@@ -109,6 +109,9 @@
                   </button>
                 </div>
                 <div class="kb-role">{{ item.positionTitle }}</div>
+                @if (item.domain) {
+                  <div class="kb-domain"><i class="ti ti-folder"></i> {{ item.domain }}</div>
+                }
                 <div class="kb-card-footer">
                   <span class="kb-date">{{ formatDate(item.appliedAt) }}</span>
                   @if (item.offerSource) {

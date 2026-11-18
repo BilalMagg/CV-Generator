@@ -30,6 +30,18 @@ export const INTERNSHIP_TYPES: string[] = ['PFA', 'PFE', 'CDI', 'CDD'];
 /** Predefined work arrangement / workplace types. */
 export const WORK_TYPES: string[] = ['On-site', 'Hybrid', 'Remote'];
 
+export interface ApplicationDomainDto {
+  id: string;
+  name: string;
+  applicationCount?: number;
+  createdAt?: string;
+}
+
+export interface ApplicationDomainCheckDto {
+  exists: boolean;
+  similarNames: string[];
+}
+
 export type AttemptChannel =
   | 'EMAIL_GMAIL'
   | 'EMAIL_SMTP'
@@ -150,6 +162,7 @@ export interface ApplicationResponseDto {
   notes?: string;
   internshipType?: string;
   workType?: string;
+  domain?: string;
   priority: ApplicationPriority;
   history?: StatusHistoryDto[];
   attempts?: AttemptResponseDto[];
@@ -171,6 +184,7 @@ export interface CreateApplicationDto {
   allowDuplicate?: boolean;
   internshipType?: string;
   workType?: string;
+  domain?: string;
   priority?: ApplicationPriority;
   appliedAt?: string;
 }
@@ -187,6 +201,7 @@ export interface UpdateApplicationDto {
   notes?: string;
   internshipType?: string;
   workType?: string;
+  domain?: string;
   priority?: ApplicationPriority;
   attachments?: ScheduleAttachmentRef[];
   cvVersionId?: string;

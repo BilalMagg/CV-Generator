@@ -66,6 +66,7 @@ public class AppDbContext : DbContext
     public DbSet<BulkApplyRun> BulkApplyRuns => Set<BulkApplyRun>();
     public DbSet<BulkApplyRow> BulkApplyRows => Set<BulkApplyRow>();
     public DbSet<ApplyQueueItem> ApplyQueueItems => Set<ApplyQueueItem>();
+    public DbSet<ApplicationDomain> ApplicationDomains => Set<ApplicationDomain>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -349,6 +350,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AgentEntity>(entity =>
         {
             entity.HasIndex(e => e.AgentId).IsUnique();
+        });
+
+        modelBuilder.Entity<ApplicationDomain>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.Name }).IsUnique();
         });
 
         modelBuilder.Entity<AgentEntity>().HasData(

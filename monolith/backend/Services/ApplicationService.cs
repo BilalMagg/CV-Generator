@@ -86,6 +86,9 @@ public class ApplicationService : IApplicationService
         var workType = dto.WorkType?.Trim();
         if (workType is { Length: > 50 })
             throw new ArgumentException("Work type cannot exceed 50 characters");
+        var domain = dto.Domain?.Trim();
+        if (domain is { Length: > 100 })
+            throw new ArgumentException("Domain cannot exceed 100 characters");
 
         // Soft dedup: warn when an equivalent application already exists
         var fingerprint = FingerprintHelper.Compute(dto.CompanyName, dto.PositionTitle);
@@ -116,6 +119,7 @@ public class ApplicationService : IApplicationService
             Origin = origin,
             InternshipType = string.IsNullOrEmpty(internshipType) ? null : internshipType,
             WorkType = string.IsNullOrEmpty(workType) ? null : workType,
+            Domain = string.IsNullOrEmpty(domain) ? null : domain,
             Priority = priority,
             Status = initialStatus,
             AppliedAt = initialStatus == ApplicationStatus.SAVED ? null : (dto.AppliedAt ?? DateTime.UtcNow),
@@ -224,6 +228,11 @@ public class ApplicationService : IApplicationService
         {
             if (dto.WorkType.Length > 50) throw new ArgumentException("Work type cannot exceed 50 characters");
             app.WorkType = string.IsNullOrWhiteSpace(dto.WorkType) ? null : dto.WorkType.Trim();
+        }
+        if (dto.Domain != null)
+        {
+            if (dto.Domain.Length > 100) throw new ArgumentException("Domain cannot exceed 100 characters");
+            app.Domain = string.IsNullOrWhiteSpace(dto.Domain) ? null : dto.Domain.Trim();
         }
         if (dto.Priority != null)
         {
@@ -1178,7 +1187,7 @@ public class ApplicationService : IApplicationService
             a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
             a.CompanyName, company.Id, company.LogoUrl, a.PositionTitle, a.OfferSource,
             a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString(),
-            a.InternshipType, a.WorkType, a.Priority.ToString(),
+            a.InternshipType, a.WorkType, a.Domain, a.Priority.ToString(),
             Attachments: DeserializeAttachments(a),
             FollowUpDate: a.FollowUpDate,
             FollowUpStatus: a.FollowUpStatus.ToString()
@@ -1192,7 +1201,7 @@ public class ApplicationService : IApplicationService
             a.Id, a.CandidateId, a.CvVersionId, a.JobOfferId,
             a.CompanyName, company.Id, company.LogoUrl, a.PositionTitle, a.OfferSource,
             a.Status.ToString(), a.AppliedAt, a.UpdatedAt, a.Notes, a.Origin.ToString(),
-            a.InternshipType, a.WorkType, a.Priority.ToString(),
+            a.InternshipType, a.WorkType, a.Domain, a.Priority.ToString(),
             a.StatusHistory?.Select(h => new StatusHistoryDto(
                 h.Id, h.OldStatus?.ToString(), h.NewStatus.ToString(),
                 h.ChangedAt, h.ChangedBy, h.Comment

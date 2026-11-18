@@ -31,6 +31,7 @@ import {
 import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
 import { CompanyCredentialsComponent } from '@app/shared/components/company-credentials/company-credentials.component';
 import { UI_FIELD_COMPONENTS } from '@app/shared/components/ui/field/field.component';
+import { DomainSelectComponent } from '@app/shared/components/domain-select';
 
 interface ChannelTile {
   value: AttemptChannel;
@@ -41,7 +42,7 @@ interface ChannelTile {
 @Component({
   selector: 'app-application-create',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CompanyFieldComponent, CompanyCredentialsComponent, ...UI_FIELD_COMPONENTS],
+  imports: [CommonModule, FormsModule, RouterLink, CompanyFieldComponent, CompanyCredentialsComponent, DomainSelectComponent, ...UI_FIELD_COMPONENTS],
   templateUrl: './application-create.component.html',
   styleUrl: './application-create.component.scss',
 })
@@ -76,6 +77,7 @@ export class ApplicationCreateComponent implements OnInit {
   notes = signal('');
   internshipType = signal('');
   workType = signal('');
+  domain = signal('');
   priority = signal<ApplicationPriority>('MEDIUM');
 
   /** Where the candidate stands at creation time. */
@@ -342,6 +344,10 @@ export class ApplicationCreateComponent implements OnInit {
       if (savedWorkType && this.workTypes.includes(savedWorkType)) {
         this.workType.set(savedWorkType);
       }
+      const savedDomain = localStorage.getItem('propel:last_application_domain');
+      if (savedDomain) {
+        this.domain.set(savedDomain);
+      }
       const savedChannel = localStorage.getItem('propel:last_apply_channel');
       if (savedChannel && this.channels.some(c => c.value === savedChannel)) {
         this.channel.set(savedChannel as AttemptChannel);
@@ -368,6 +374,15 @@ export class ApplicationCreateComponent implements OnInit {
     if (val) {
       try { localStorage.setItem('propel:last_work_type', val); } catch {}
     }
+  }
+
+  setDomain(val: string | undefined) {
+    const clean = val?.trim() || '';
+    this.domain.set(clean);
+    try {
+      if (clean) localStorage.setItem('propel:last_application_domain', clean);
+      else localStorage.removeItem('propel:last_application_domain');
+    } catch {}
   }
 
   setChannel(val: AttemptChannel) {
@@ -456,6 +471,7 @@ export class ApplicationCreateComponent implements OnInit {
         allowDuplicate: force || undefined,
         internshipType: this.internshipType().trim() || undefined,
         workType: this.workType().trim() || undefined,
+        domain: this.domain().trim() || undefined,
         priority: this.priority(),
         appliedAt: this.stage() === 'APPLIED' ? this.isoFromDate(this.appliedDate()) : undefined,
       });

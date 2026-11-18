@@ -35,6 +35,10 @@ public class Application
     [MaxLength(50)]
     public string? WorkType { get; set; }
 
+    /// <summary>Domain/category of the application (e.g. Web dev, Mobile dev, Data Science, AI & LLMs, Systems).</summary>
+    [MaxLength(100)]
+    public string? Domain { get; set; }
+
     /// <summary>Candidate's own priority for follow-up energy allocation.</summary>
     [Required]
     public ApplicationPriority Priority { get; set; } = ApplicationPriority.MEDIUM;

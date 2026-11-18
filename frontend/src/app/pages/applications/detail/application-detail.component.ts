@@ -35,6 +35,7 @@ import { RefreshButtonComponent } from '@app/shared/components/refresh-button/re
 import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
 import { ConfirmService } from '@app/services/confirm.service';
 import { UI_SELECT_COMPONENTS } from '@app/shared/components/ui/select/select.component';
+import { DomainSelectComponent } from '@app/shared/components/domain-select';
 
 type AttemptForm = {
   channel: AttemptChannel;
@@ -50,7 +51,7 @@ type AttemptForm = {
 @Component({
   selector: 'app-application-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RefreshButtonComponent, CompanyFieldComponent, ...UI_SELECT_COMPONENTS],
+  imports: [CommonModule, FormsModule, RouterLink, RefreshButtonComponent, CompanyFieldComponent, DomainSelectComponent, ...UI_SELECT_COMPONENTS],
   templateUrl: './application-detail.component.html',
   styleUrl: './application-detail.component.scss',
 })
@@ -81,6 +82,7 @@ export class ApplicationDetailComponent implements OnInit {
   editNotes = signal('');
   editInternshipType = signal('');
   editWorkType = signal('');
+  editDomain = signal('');
   editPriority = signal<ApplicationPriority>('MEDIUM');
   readonly internshipTypes = INTERNSHIP_TYPES;
   readonly workTypes = WORK_TYPES;
@@ -275,6 +277,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.editNotes.set(app.notes || '');
     this.editInternshipType.set(app.internshipType || '');
     this.editWorkType.set(app.workType || '');
+    this.editDomain.set(app.domain || '');
     this.editPriority.set(app.priority || 'MEDIUM');
   }
 
@@ -606,6 +609,7 @@ export class ApplicationDetailComponent implements OnInit {
         offerSource: this.editOfferSource() || undefined, notes: this.editNotes() || undefined,
         internshipType: this.editInternshipType().trim() || undefined,
         workType: this.editWorkType().trim() || undefined,
+        domain: this.editDomain().trim() || undefined,
         priority: this.editPriority(),
       });
       if (res.success && res.data) this.application.set(res.data);
