@@ -20,13 +20,23 @@ public class UsersController : ControllerBase
     private readonly IEventBus _eventBus;
     private readonly ILogger<UsersController> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly Microsoft.AspNetCore.Identity.IPasswordHasher<User> _hasher;
+    private readonly CV_Generator.Services.Storage.IObjectStorage _storage;
 
-    public UsersController(AppDbContext db, IEventBus eventBus, ILogger<UsersController> logger, IServiceScopeFactory scopeFactory)
+    public UsersController(
+        AppDbContext db,
+        IEventBus eventBus,
+        ILogger<UsersController> logger,
+        IServiceScopeFactory scopeFactory,
+        Microsoft.AspNetCore.Identity.IPasswordHasher<User> hasher,
+        CV_Generator.Services.Storage.IObjectStorage storage)
     {
         _db = db;
         _eventBus = eventBus;
         _logger = logger;
         _scopeFactory = scopeFactory;
+        _hasher = hasher;
+        _storage = storage;
     }
 
     [HttpGet]
@@ -90,6 +100,103 @@ public class UsersController : ControllerBase
         }
 
         return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
+    }
+
+    [HttpPost("authenticate")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Authenticate([FromBody] AuthenticateRequestDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+            return BadRequest(ApiResponse<UserResponseDto>.Error("Email and password are required"));
+
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
+        if (user == null)
+            return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid email or password"));
+
+        if (!user.IsActive)
+            return Unauthorized(ApiResponse<UserResponseDto>.Error("Account is inactive"));
+
+        if (string.IsNullOrEmpty(user.PasswordHash))
+        {
+            return Unauthorized(ApiResponse<UserResponseDto>.Error("This account was created via Keycloak. Please reset your password to enable native login."));
+        }
+
+        var verifyResult = _hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
+        if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
+            return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid email or password"));
+
+        if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.SuccessRehashNeeded)
+        {
+            user.PasswordHash = _hasher.HashPassword(user, dto.Password);
+        }
+
+        user.LastLogin = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
+    }
+
+    [HttpPost("register-native")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RegisterNative([FromBody] RegisterNativeUserDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+            return BadRequest(ApiResponse<UserResponseDto>.Error("Email and password are required"));
+
+        if (dto.Password.Length < 8)
+            return BadRequest(ApiResponse<UserResponseDto>.Error("Password must be at least 8 characters long"));
+
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var existing = await _db.Users.AnyAsync(u => u.Email.ToLower() == email);
+        if (existing)
+            return Conflict(ApiResponse<UserResponseDto>.Error("User with this email already exists"));
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            FirstName = dto.FirstName.Trim(),
+            LastName = dto.LastName.Trim(),
+            Email = email,
+            Role = Role.USER,
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            EmailConfirmed = true,
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        user.PasswordHash = _hasher.HashPassword(user, dto.Password);
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+        SearchSyncHelper.TriggerSync(_scopeFactory, user.Id, _logger, "User.RegisterNative");
+
+        _logger.LogInformation("Natively registered user {Id} ({Email})", user.Id, user.Email);
+        await _eventBus.PublishAsync(new UserCreatedEvent(user.Id, user.Email, user.FirstName, user.LastName));
+
+        return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
+    }
+
+    [HttpPost("reset-password-native")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPasswordNative([FromBody] ResetPasswordNativeDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 8)
+            return BadRequest(ApiResponse<bool>.Error("A valid email and a password of at least 8 characters are required"));
+
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
+        if (user == null)
+            return NotFound(ApiResponse<bool>.Error("No account found with this email."));
+
+        user.PasswordHash = _hasher.HashPassword(user, dto.Password);
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+        user.PasswordResetToken = null;
+        user.PasswordResetExpiresAt = null;
+
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Password reset for user {Id} ({Email})", user.Id, user.Email);
+
+        return Ok(ApiResponse<bool>.Ok(true, "Password updated successfully"));
     }
 
     /// <summary>
@@ -217,10 +324,10 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
-    private static UserResponseDto ToDto(User u) => new(
+    private UserResponseDto ToDto(User u) => new(
         u.Id, u.KeycloakId, u.FirstName, u.LastName, u.Email,
         u.PhoneNumber, u.BirthDate?.ToString("O"), u.Role.ToString(),
-        u.AvatarUrl, u.CreatedAt, u.LastLogin, u.IsActive,
+        _storage.NormalizeUrl(u.AvatarUrl), u.CreatedAt, u.LastLogin, u.IsActive,
         u.AiProfileDataJson, u.PreferencesJson,
         u.Headline, u.Bio, u.City, u.Country, u.AuthorizedCountry,
         u.RequiresVisaSponsorship, u.NoticePeriod, u.EmploymentTypes,

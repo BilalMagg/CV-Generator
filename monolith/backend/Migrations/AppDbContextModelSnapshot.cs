@@ -2711,6 +2711,9 @@ namespace CV_Generator.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("EmploymentTypes")
                         .HasColumnType("text");
 
@@ -2727,7 +2730,6 @@ namespace CV_Generator.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("KeycloakId")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
@@ -2742,6 +2744,15 @@ namespace CV_Generator.Migrations
                     b.Property<string>("NoticePeriod")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PasswordResetExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
@@ -2768,6 +2779,9 @@ namespace CV_Generator.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("text");
 
                     b.Property<string>("WillingToRelocate")
                         .HasMaxLength(20)

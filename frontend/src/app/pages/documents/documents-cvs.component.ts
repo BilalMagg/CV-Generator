@@ -16,7 +16,7 @@ import { CvDocumentDto, CvTemplateDto, CvVersionDto } from '@app/models/document
   styleUrl: './documents-cvs.component.scss',
 })
 export class DocumentsCvsComponent implements OnInit, OnDestroy {
-  private readonly service = inject(DocumentsService);
+  readonly service = inject(DocumentsService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -96,7 +96,7 @@ export class DocumentsCvsComponent implements OnInit, OnDestroy {
   thumbSrc(cv: CvDocumentDto): string | null {
     const v = this.thumbVersionOf(cv);
     if (!v) return null;
-    return v.thumbnailUrl ?? this.service.versionThumbnailUrl(v.id);
+    return this.service.versionThumbnailUrl(v.id);
   }
 
   openPreviewFor(cv: CvDocumentDto): void {

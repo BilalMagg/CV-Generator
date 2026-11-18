@@ -109,11 +109,11 @@
                       <button class="btn-ghost-sm" (click)="openPreview(ver)">
                         <i class="ti ti-eye"></i> Preview
                       </button>
-                      <a class="btn-ghost-sm" [href]="ver.pdfUrl" target="_blank" rel="noopener">
+                      <a class="btn-ghost-sm" [href]="service.versionFileUrl(ver.id, true)" target="_blank" rel="noopener">
                         <i class="ti ti-download"></i> PDF
                       </a>
                     } @else if (ver.fileUrl) {
-                      <a class="btn-ghost-sm" [href]="ver.fileUrl" target="_blank" rel="noopener">
+                      <a class="btn-ghost-sm" [href]="service.versionFileUrl(ver.id, true)" target="_blank" rel="noopener">
                         <i class="ti ti-download"></i> File
                       </a>
                     }
@@ -180,7 +180,7 @@
         <h2>PDF Preview</h2>
         <div class="preview-head-actions">
           <span class="preview-version-label">v{{ previewVersion()!.versionNumber }} — {{ previewVersion()!.label }}</span>
-          <a class="btn-ghost-sm" [href]="previewVersion()!.pdfUrl" target="_blank" rel="noopener">
+          <a class="btn-ghost-sm" [href]="service.versionFileUrl(previewVersion()!.id)" target="_blank" rel="noopener">
             <i class="ti ti-external-link"></i> Open in new tab
           </a>
           <a class="btn-ghost-sm" [href]="downloadUrl()">

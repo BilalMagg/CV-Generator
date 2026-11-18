@@ -5,6 +5,7 @@ using CV_Generator.Data;
 using CV_Generator.Dto;
 using CV_Generator.Models;
 using CV_Generator.Services;
+using CV_Generator.Services.Storage;
 
 namespace CV_Generator.Controllers;
 
@@ -19,13 +20,13 @@ public class ImagesController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
-    private readonly IMinioStorageService _storage;
+    private readonly IObjectStorage _storage;
     private readonly IHttpClientFactory _httpClientFactory;
 
     public ImagesController(
         AppDbContext db,
         ICurrentUserService currentUser,
-        IMinioStorageService storage,
+        IObjectStorage storage,
         IHttpClientFactory httpClientFactory)
     {
         _db = db;
@@ -210,11 +211,11 @@ public class ImagesController : ControllerBase
         return Ok(ApiResponse<object>.Ok(null, "Image deleted"));
     }
 
-    private static ImageDto ToDto(UserImage i) => new()
+    private ImageDto ToDto(UserImage i) => new()
     {
         Id = i.Id,
         Name = i.Name,
-        Url = i.Url,
+        Url = _storage.NormalizeUrl(i.Url),
         ObjectKey = i.ObjectKey,
         ContentType = i.ContentType,
         SizeBytes = i.SizeBytes,

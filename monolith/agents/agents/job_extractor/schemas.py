@@ -30,7 +30,7 @@ class JobExtractionResult(BaseModel):
       required_experience_years, seniority_level, employment_type, location,
       location_type, salary_range, currency, certifications, languages,
       education_requirements, benefits, application_deadline, contact_email,
-      source_url, field_confidences, overall_confidence.
+      email_subject, source_url, field_confidences, overall_confidence.
     """
 
     enterprise_name: str = ""
@@ -54,6 +54,7 @@ class JobExtractionResult(BaseModel):
     benefits: List[str] = []
     application_deadline: str = ""
     contact_email: str = ""
+    email_subject: str = ""
     source_url: str = ""
     field_confidences: Dict[str, float] = {}
     overall_confidence: float = 0.0

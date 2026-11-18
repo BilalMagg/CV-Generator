@@ -149,7 +149,7 @@ export class DocumentsImagesComponent implements OnInit {
   }
 
   imageUrl(img: ImageDto): string {
-    return img.url;
+    return img.objectKey ? this.imagesApi.fileUrl(img.id) : img.url;
   }
 
   srcLabel(source: ImageDto['source']): string {

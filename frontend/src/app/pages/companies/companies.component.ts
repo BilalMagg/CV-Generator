@@ -1,7 +1,7 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CompanyService, CompanyDto } from '@app/services/company.service';
 import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
@@ -23,6 +23,7 @@ export class CompaniesComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   companies = signal<CompanyDto[]>([]);
   loading = signal(true);
@@ -53,7 +54,54 @@ export class CompaniesComponent implements OnInit {
   protected readonly COUNTRIES = COUNTRIES;
 
   async ngOnInit() {
+    this.restoreFromUrl();
     await this.loadCompanies();
+  }
+
+  /** List state lives in the URL query string so navigating into a company detail and
+   * pressing Back (or a fresh link/refresh) restores the exact page, search and filters. */
+  private restoreFromUrl(): void {
+    const q = this.route.snapshot.queryParamMap;
+    const page = Number(q.get('page'));
+    if (Number.isFinite(page) && page > 1) this.page.set(Math.trunc(page));
+    const search = q.get('q');
+    if (search) this.search.set(search);
+    const country = q.get('country');
+    if (country) this.countryFilter.set(country);
+    const city = q.get('city');
+    if (city) this.cityFilter.set(city);
+    const minApps = Number(q.get('minApps'));
+    if (Number.isFinite(minApps) && minApps > 0) this.minAppsFilter.set(Math.trunc(minApps));
+    const sortBy = q.get('sortBy');
+    if (sortBy === 'name' || sortBy === 'apps' || sortBy === 'applied') this.sortBy.set(sortBy);
+    if (q.get('dir') === 'desc') this.sortDir.set('desc');
+  }
+
+  private buildQueryParams(): Record<string, string | number> {
+    const params: Record<string, string | number> = {};
+    params['page'] = this.page();
+    const search = this.search().trim();
+    if (search) params['q'] = search;
+    const country = this.countryFilter();
+    if (country) params['country'] = country;
+    const city = this.cityFilter().trim();
+    if (city) params['city'] = city;
+    const minApps = this.minAppsFilter();
+    if (minApps !== null && minApps > 0) params['minApps'] = minApps;
+    const sortBy = this.sortBy();
+    if (sortBy !== 'name') params['sortBy'] = sortBy;
+    const sortDir = this.sortDir();
+    if (sortDir !== 'asc') params['dir'] = sortDir;
+    return params;
+  }
+
+  /** Mirrors the current list state into the URL (history entry replaced, no reload). */
+  private syncUrl(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: this.buildQueryParams(),
+      replaceUrl: true,
+    });
   }
 
   async loadCompanies() {
@@ -75,6 +123,7 @@ export class CompaniesComponent implements OnInit {
       const maxPage = Math.max(1, Math.ceil(this.total() / this.pageSize));
       if (this.page() > maxPage) {
         this.page.set(maxPage);
+        this.syncUrl();
         this.loading.set(false);
         await this.loadCompanies();
         return;
@@ -99,6 +148,7 @@ export class CompaniesComponent implements OnInit {
     if (this.searchDebounce) clearTimeout(this.searchDebounce);
     this.searchDebounce = setTimeout(() => {
       this.page.set(1);
+      this.syncUrl();
       void this.loadCompanies();
     }, 300);
   }
@@ -108,6 +158,7 @@ export class CompaniesComponent implements OnInit {
     if (this.cityDebounce) clearTimeout(this.cityDebounce);
     this.cityDebounce = setTimeout(() => {
       this.page.set(1);
+      this.syncUrl();
       void this.loadCompanies();
     }, 300);
   }
@@ -115,6 +166,7 @@ export class CompaniesComponent implements OnInit {
   onCountryFilterChange(value: string) {
     this.countryFilter.set(value);
     this.page.set(1);
+    this.syncUrl();
     void this.loadCompanies();
   }
 
@@ -124,6 +176,7 @@ export class CompaniesComponent implements OnInit {
     if (next === this.minAppsFilter()) return;
     this.minAppsFilter.set(next);
     this.page.set(1);
+    this.syncUrl();
     void this.loadCompanies();
   }
 
@@ -132,11 +185,13 @@ export class CompaniesComponent implements OnInit {
     // Sensible default direction per category; still toggleable afterwards.
     this.sortDir.set(value === 'name' ? 'asc' : 'desc');
     this.page.set(1);
+    this.syncUrl();
     void this.loadCompanies();
   }
 
   toggleSortDir() {
     this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
+    this.syncUrl();
     void this.loadCompanies();
   }
 
@@ -148,6 +203,7 @@ export class CompaniesComponent implements OnInit {
     this.sortBy.set('name');
     this.sortDir.set('asc');
     this.page.set(1);
+    this.syncUrl();
     void this.loadCompanies();
   }
 
@@ -155,6 +211,7 @@ export class CompaniesComponent implements OnInit {
     const clamped = Math.min(Math.max(1, target), this.pageCount());
     if (clamped === this.page()) return;
     this.page.set(clamped);
+    this.syncUrl();
     void this.loadCompanies();
   }
 

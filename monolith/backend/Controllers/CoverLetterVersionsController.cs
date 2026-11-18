@@ -6,6 +6,7 @@ using CV_Generator.Data;
 using CV_Generator.Dto;
 using CV_Generator.Models;
 using CV_Generator.Services;
+using CV_Generator.Services.Storage;
 
 namespace CV_Generator.Controllers;
 
@@ -16,13 +17,13 @@ public class CoverLetterVersionsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
-    private readonly IMinioStorageService _storage;
+    private readonly IObjectStorage _storage;
     private readonly IPdfThumbnailService _pdfThumbnails;
 
     public CoverLetterVersionsController(
         AppDbContext db,
         ICurrentUserService currentUser,
-        IMinioStorageService storage,
+        IObjectStorage storage,
         IPdfThumbnailService pdfThumbnails)
     {
         _db = db;
@@ -181,9 +182,9 @@ public class CoverLetterVersionsController : ControllerBase
         return NoContent();
     }
 
-    private static CoverLetterVersionDto Map(CoverLetterVersion v) => new(
+    private CoverLetterVersionDto Map(CoverLetterVersion v) => new(
         v.Id, v.CoverLetterId, v.VersionNumber, v.Label,
-        v.FileUrl, v.PdfUrl, v.ThumbnailUrl, v.CreatedAt);
+        _storage.NormalizeUrl(v.FileUrl), _storage.NormalizeUrl(v.PdfUrl), _storage.NormalizeUrl(v.ThumbnailUrl), v.CreatedAt);
 
     private static bool TryResolveObject(string url, out string bucket, out string key)
     {

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using CV_Generator.Data;
 using CV_Generator.Dto;
 using CV_Generator.Models;
+using CV_Generator.Services.Storage;
 
 namespace CV_Generator.Services;
 
@@ -10,11 +11,13 @@ public class ApplicationService : IApplicationService
 {
     private readonly AppDbContext _db;
     private readonly ILogger<ApplicationService> _logger;
+    private readonly IObjectStorage _storage;
 
-    public ApplicationService(AppDbContext db, ILogger<ApplicationService> logger)
+    public ApplicationService(AppDbContext db, ILogger<ApplicationService> logger, IObjectStorage storage)
     {
         _db = db;
         _logger = logger;
+        _storage = storage;
     }
 
     public async Task<ApplicationListDto> GetAllAsync(Guid userId, int page, int pageSize, string[]? statuses = null, string? search = null, DateTime? appliedFrom = null, DateTime? appliedTo = null, DateTime? updatedFrom = null, DateTime? updatedTo = null, string? sortBy = null, string? sortDir = null)
@@ -1154,7 +1157,7 @@ public class ApplicationService : IApplicationService
         foreach (var c in companies)
         {
             if (string.IsNullOrWhiteSpace(c.Name)) continue;
-            map[c.Name.Trim().ToLower()] = (c.Id, c.LogoUrl);
+            map[c.Name.Trim().ToLower()] = (c.Id, _storage.NormalizeUrl(c.LogoUrl));
         }
         return map;
     }

@@ -52,6 +52,9 @@
         <div><strong>Company</strong><div>{{ extraction()!.enterpriseName || '—' }}</div></div>
         <div><strong>Role</strong><div>{{ extraction()!.jobRole || '—' }}</div></div>
         <div><strong>Contact email</strong><div>{{ extraction()!.contactEmail || '—' }}</div></div>
+        @if (extraction()!.emailSubject) {
+          <div><strong>Email subject (from post)</strong><div>{{ extraction()!.emailSubject }}</div></div>
+        }
         <div><strong>Location</strong><div>{{ extraction()!.location || '—' }}</div></div>
         <div><strong>Experience</strong><div>{{ extraction()!.requiredExperienceYears ?? '—' }} yrs</div></div>
         <div><strong>Employment</strong><div>{{ extraction()!.employmentType || '—' }}</div></div>

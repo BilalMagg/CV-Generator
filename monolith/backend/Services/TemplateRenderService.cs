@@ -20,7 +20,7 @@ public class TemplateRenderService
     private readonly AppDbContext _db;
     private readonly ISearchAgentClient _searchAgent;
     private readonly ITemplateAgentClient _templateAgent;
-    private readonly IMinioStorageService _storage;
+    private readonly Storage.IObjectStorage _storage;
     private readonly IAgentLlmSettingsService _agentLlm;
     private readonly ILogger<TemplateRenderService> _logger;
 
@@ -28,7 +28,7 @@ public class TemplateRenderService
         AppDbContext db,
         ISearchAgentClient searchAgent,
         ITemplateAgentClient templateAgent,
-        IMinioStorageService storage,
+        Storage.IObjectStorage storage,
         IAgentLlmSettingsService agentLlm,
         ILogger<TemplateRenderService> logger)
     {

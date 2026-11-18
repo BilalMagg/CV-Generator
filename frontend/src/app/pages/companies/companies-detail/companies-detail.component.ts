@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Location } from '@angular/common';
 import { CompanyService, CompanyDto } from '@app/services/company.service';
 import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
@@ -36,6 +37,7 @@ interface ActivityEntry { appId: string; position: string; entry: StatusHistoryD
 export class CompaniesDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly companyService = inject(CompanyService);
   private readonly contactService = inject(ContactService);
   private readonly employeeService = inject(EmployeeService);
@@ -53,6 +55,15 @@ export class CompaniesDetailComponent {
   dialogOpen = signal(false);
   editingCompany = signal<CompanyDto | null>(null);
   extractOpen = signal(false);
+
+  /** Back to the list — history-back (keeps the synced page/search/filters) when the
+   * user arrived from in-app navigation; plain /companies on a fresh/deep-link load. */
+  backToList(event?: Event): void {
+    event?.preventDefault();
+    const state = this.location.getState() as { navigationId?: number } | null;
+    if (state && (state.navigationId ?? 0) > 1) this.location.back();
+    else void this.router.navigate(['/companies']);
+  }
 
   statusCounts = computed<StatusCount[]>(() => {
     const counts = new Map<string, number>();

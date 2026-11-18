@@ -42,6 +42,11 @@ var userServiceUrl = $"http://{monolithHost}:{monolithPort}";
 var keycloakAdminUsername = Env("KEYCLOAK_ADMIN_USERNAME", "admin");
 var keycloakAdminPassword = Env("KEYCLOAK_ADMIN_PASSWORD", "admin");
 
+var authProvider = Env("AUTH_PROVIDER", "Native");
+var isKeycloakEnabled = authProvider.Equals("Keycloak", StringComparison.OrdinalIgnoreCase) ||
+                        authProvider.Equals("Hybrid", StringComparison.OrdinalIgnoreCase);
+var isNativeEnabled = authProvider.Equals("Native", StringComparison.OrdinalIgnoreCase) ||
+                      authProvider.Equals("Hybrid", StringComparison.OrdinalIgnoreCase);
 
 var authority = $"{keycloakInternalUrl}/realms/{keycloakRealm}";
 var keycloakLoginUrl = $"{keycloakExternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/auth";
@@ -105,11 +110,18 @@ builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDef
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        options.Authority = authority;
+        if (isKeycloakEnabled)
+        {
+            options.Authority = authority;
+        }
+        else
+        {
+            options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration();
+        }
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
-            ValidateIssuer = true,
+            ValidateIssuer = isKeycloakEnabled,
             ValidateAudience = false,
             ValidateLifetime = true,
         };
@@ -201,80 +213,165 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, IHttpClientFactory httpCl
             return;
         }
 
-        var tokenUrl = $"{keycloakInternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/token";
         var http = httpClientFactory.CreateClient();
-        var tokenContent = new FormUrlEncodedContent(new[]
+
+        // 1. Try Native authentication if enabled
+        if (isNativeEnabled)
         {
-            new KeyValuePair<string, string>("grant_type", "password"),
-            new KeyValuePair<string, string>("client_id", keycloakClientId),
-            new KeyValuePair<string, string>("client_secret", keycloakClientSecret),
-            new KeyValuePair<string, string>("username", email),
-            new KeyValuePair<string, string>("password", password),
-            new KeyValuePair<string, string>("scope", "openid profile email"),
-        });
-
-        var tokenResponse = await http.PostAsync(tokenUrl, tokenContent);
-        if (!tokenResponse.IsSuccessStatusCode)
-        {
-            ctx.Response.StatusCode = 401;
-            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid email or password" });
-            return;
-        }
-
-        var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<Dictionary<string, object>>();
-        if (tokenJson == null)
-        {
-            ctx.Response.StatusCode = 500;
-            await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token response" });
-            return;
-        }
-
-        var accessToken = tokenJson.GetValueOrDefault("access_token")?.ToString() ?? "";
-        var idToken = tokenJson.GetValueOrDefault("id_token")?.ToString() ?? "";
-
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(string.IsNullOrEmpty(idToken) ? accessToken : idToken);
-        var claims = jwt.Claims.ToList();
-
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        identity.AddClaim(new Claim("access_token", accessToken));
-
-        var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
-        if (!string.IsNullOrEmpty(userId))
-        {
-            identity.AddClaim(new Claim("user_id", userId));
-        }
-
-        var principal = new ClaimsPrincipal(identity);
-        var authProps = new AuthenticationProperties
-        {
-            IsPersistent = true,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
-        };
-        authProps.Items["id_token"] = idToken;
-
-        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
-
-        var firstName = jwt.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value ?? "";
-        var lastName = jwt.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
-        var jwtEmail = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value ?? "";
-        var sub = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? "";
-
-        await ctx.Response.WriteAsJsonAsync(new
-        {
-            success = true,
-            data = new
+            try
             {
-                userId = userId ?? sub,
-                keycloakId = sub,
-                firstName,
-                lastName,
-                email = jwtEmail,
-                role = "user",
-                isActive = true,
-                tokens = new { accessToken },
-            },
-        });
+                var nativeResponse = await http.PostAsJsonAsync($"{userServiceUrl}/api/users/authenticate", new { email, password });
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    var userEnvelope = await nativeResponse.Content.ReadFromJsonAsync<JsonElement>();
+                    if (userEnvelope.TryGetProperty("data", out var userData))
+                    {
+                        var userId = userData.GetProperty("id").GetString() ?? "";
+                        var keycloakId = userData.TryGetProperty("keycloakId", out var kid) && kid.ValueKind == JsonValueKind.String ? kid.GetString() ?? userId : userId;
+                        var firstName = userData.GetProperty("firstName").GetString() ?? "";
+                        var lastName = userData.GetProperty("lastName").GetString() ?? "";
+                        var userEmail = userData.GetProperty("email").GetString() ?? email;
+                        var role = userData.TryGetProperty("role", out var r) ? r.GetString() ?? "user" : "user";
+                        var accessToken = $"propel-native-{Guid.NewGuid():N}";
+
+                        var claims = new List<Claim>
+                        {
+                            new Claim("sub", userId),
+                            new Claim("user_id", userId),
+                            new Claim("email", userEmail),
+                            new Claim("given_name", firstName),
+                            new Claim("family_name", lastName),
+                            new Claim("roles", role),
+                            new Claim("access_token", accessToken)
+                        };
+
+                        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                        var principal = new ClaimsPrincipal(identity);
+                        var authProps = new AuthenticationProperties
+                        {
+                            IsPersistent = true,
+                            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24),
+                        };
+
+                        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
+
+                        await ctx.Response.WriteAsJsonAsync(new
+                        {
+                            success = true,
+                            data = new
+                            {
+                                userId,
+                                keycloakId,
+                                firstName,
+                                lastName,
+                                email = userEmail,
+                                role,
+                                isActive = true,
+                                tokens = new { accessToken }
+                            }
+                        });
+                        return;
+                    }
+                }
+                else if (!isKeycloakEnabled)
+                {
+                    var errJson = await nativeResponse.Content.ReadFromJsonAsync<JsonElement>();
+                    var message = errJson.TryGetProperty("message", out var m) ? m.GetString() : "Invalid email or password";
+                    ctx.Response.StatusCode = (int)nativeResponse.StatusCode;
+                    await ctx.Response.WriteAsJsonAsync(new { success = false, message });
+                    return;
+                }
+            }
+            catch (Exception ex) when (!isKeycloakEnabled)
+            {
+                Console.Error.WriteLine($"Native auth error: {ex.Message}");
+                ctx.Response.StatusCode = 500;
+                await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Authentication service unavailable" });
+                return;
+            }
+        }
+
+        // 2. If Keycloak is enabled and native didn't succeed, try Keycloak
+        if (isKeycloakEnabled)
+        {
+            var tokenUrl = $"{keycloakInternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/token";
+            var tokenContent = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("grant_type", "password"),
+                new KeyValuePair<string, string>("client_id", keycloakClientId),
+                new KeyValuePair<string, string>("client_secret", keycloakClientSecret),
+                new KeyValuePair<string, string>("username", email),
+                new KeyValuePair<string, string>("password", password),
+                new KeyValuePair<string, string>("scope", "openid profile email"),
+            });
+
+            var tokenResponse = await http.PostAsync(tokenUrl, tokenContent);
+            if (!tokenResponse.IsSuccessStatusCode)
+            {
+                ctx.Response.StatusCode = 401;
+                await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid email or password" });
+                return;
+            }
+
+            var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+            if (tokenJson == null)
+            {
+                ctx.Response.StatusCode = 500;
+                await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid token response" });
+                return;
+            }
+
+            var accessToken = tokenJson.GetValueOrDefault("access_token")?.ToString() ?? "";
+            var idToken = tokenJson.GetValueOrDefault("id_token")?.ToString() ?? "";
+
+            var handler = new JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(string.IsNullOrEmpty(idToken) ? accessToken : idToken);
+            var claims = jwt.Claims.ToList();
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            identity.AddClaim(new Claim("access_token", accessToken));
+
+            var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
+            if (!string.IsNullOrEmpty(userId))
+            {
+                identity.AddClaim(new Claim("user_id", userId));
+            }
+
+            var principal = new ClaimsPrincipal(identity);
+            var authProps = new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
+            };
+            authProps.Items["id_token"] = idToken;
+
+            await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
+
+            var firstName = jwt.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value ?? "";
+            var lastName = jwt.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
+            var jwtEmail = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value ?? "";
+            var sub = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? "";
+
+            await ctx.Response.WriteAsJsonAsync(new
+            {
+                success = true,
+                data = new
+                {
+                    userId = userId ?? sub,
+                    keycloakId = sub,
+                    firstName,
+                    lastName,
+                    email = jwtEmail,
+                    role = "user",
+                    isActive = true,
+                    tokens = new { accessToken },
+                },
+            });
+            return;
+        }
+
+        ctx.Response.StatusCode = 401;
+        await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Invalid email or password" });
     }
     catch (JsonException)
     {
@@ -467,15 +564,50 @@ app.MapPost("/api/auth/register", async (HttpContext ctx, IHttpClientFactory htt
             return;
         }
 
-        var adminToken = await GetKeycloakAdminTokenAsync(httpClientFactory);
-        if (adminToken == null)
+        if (isNativeEnabled)
+        {
+            var http = httpClientFactory.CreateClient();
+            var payload = new { email, password, firstName, lastName };
+            var response = await http.PostAsJsonAsync($"{userServiceUrl}/api/users/register-native", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                if (isKeycloakEnabled)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var adminToken = await GetKeycloakAdminTokenAsync(httpClientFactory);
+                            if (adminToken != null)
+                            {
+                                await CreateKeycloakUserAsync(httpClientFactory, adminToken, email, password, firstName, lastName);
+                            }
+                        }
+                        catch { }
+                    });
+                }
+
+                await ctx.Response.WriteAsJsonAsync(new { success = true, message = "Account created successfully. You can now login." });
+                return;
+            }
+
+            var errJson = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var message = errJson.TryGetProperty("message", out var m) ? m.GetString() : "Registration failed";
+            ctx.Response.StatusCode = (int)response.StatusCode;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message });
+            return;
+        }
+
+        var adminTokenKc = await GetKeycloakAdminTokenAsync(httpClientFactory);
+        if (adminTokenKc == null)
         {
             ctx.Response.StatusCode = 502;
             await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Failed to authenticate with Keycloak admin" });
             return;
         }
 
-        var keycloakUserId = await CreateKeycloakUserAsync(httpClientFactory, adminToken, email, password, firstName, lastName);
+        var keycloakUserId = await CreateKeycloakUserAsync(httpClientFactory, adminTokenKc, email, password, firstName, lastName);
         if (string.IsNullOrEmpty(keycloakUserId))
         {
             ctx.Response.StatusCode = 409;
@@ -501,7 +633,7 @@ app.MapPost("/api/auth/register", async (HttpContext ctx, IHttpClientFactory htt
 })
 .RequireCors("Default");
 
-// ── Password Reset (Keycloak admin API, no SMTP required) ────────────────────
+// ── Password Reset ──────────────────────────────────────────────────────────
 app.MapPost("/api/auth/reset-password", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
 {
     try
@@ -517,15 +649,54 @@ app.MapPost("/api/auth/reset-password", async (HttpContext ctx, IHttpClientFacto
             return;
         }
 
-        var adminToken = await GetKeycloakAdminTokenAsync(httpClientFactory);
-        if (adminToken == null)
+        if (isNativeEnabled)
+        {
+            var http = httpClientFactory.CreateClient();
+            var payload = new { email, password };
+            var response = await http.PostAsJsonAsync($"{userServiceUrl}/api/users/reset-password-native", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                if (isKeycloakEnabled)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var adminToken = await GetKeycloakAdminTokenAsync(httpClientFactory);
+                            if (adminToken != null)
+                            {
+                                var kId = await FindKeycloakUserIdByEmailAsync(httpClientFactory, adminToken, email);
+                                if (!string.IsNullOrEmpty(kId))
+                                {
+                                    await ResetKeycloakPasswordAsync(httpClientFactory, adminToken, kId, password);
+                                }
+                            }
+                        }
+                        catch { }
+                    });
+                }
+
+                await ctx.Response.WriteAsJsonAsync(new { success = true, message = "Password updated. You can now sign in with your new password." });
+                return;
+            }
+
+            var errJson = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var message = errJson.TryGetProperty("message", out var m) ? m.GetString() : "Password reset failed";
+            ctx.Response.StatusCode = (int)response.StatusCode;
+            await ctx.Response.WriteAsJsonAsync(new { success = false, message });
+            return;
+        }
+
+        var adminTokenKc = await GetKeycloakAdminTokenAsync(httpClientFactory);
+        if (adminTokenKc == null)
         {
             ctx.Response.StatusCode = 502;
             await ctx.Response.WriteAsJsonAsync(new { success = false, message = "Failed to authenticate with Keycloak admin" });
             return;
         }
 
-        var keycloakUserId = await FindKeycloakUserIdByEmailAsync(httpClientFactory, adminToken, email);
+        var keycloakUserId = await FindKeycloakUserIdByEmailAsync(httpClientFactory, adminTokenKc, email);
         if (string.IsNullOrEmpty(keycloakUserId))
         {
             ctx.Response.StatusCode = 404;
@@ -533,7 +704,7 @@ app.MapPost("/api/auth/reset-password", async (HttpContext ctx, IHttpClientFacto
             return;
         }
 
-        var resetOk = await ResetKeycloakPasswordAsync(httpClientFactory, adminToken, keycloakUserId, password);
+        var resetOk = await ResetKeycloakPasswordAsync(httpClientFactory, adminTokenKc, keycloakUserId, password);
         if (!resetOk)
         {
             ctx.Response.StatusCode = 502;
@@ -791,6 +962,14 @@ app.Run();
 
 static async Task ConfigureKeycloakAsync()
 {
+    var authProvider = Environment.GetEnvironmentVariable("AUTH_PROVIDER") ?? "Native";
+    if (!authProvider.Equals("Keycloak", StringComparison.OrdinalIgnoreCase) &&
+        !authProvider.Equals("Hybrid", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine($"AUTH_PROVIDER is '{authProvider}' — skipping Keycloak configuration.");
+        return;
+    }
+
     var keycloakHost = Environment.GetEnvironmentVariable("KEYCLOAK_HOST") ?? "localhost";
     var keycloakPort = Environment.GetEnvironmentVariable("KEYCLOAK_PORT") ?? "9090";
     var keycloakExtHost = Environment.GetEnvironmentVariable("KEYCLOAK_EXTERNAL_HOST") ?? "localhost";

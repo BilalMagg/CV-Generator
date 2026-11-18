@@ -9,6 +9,8 @@ using CV_Generator.Dto;
 using CV_Generator.Models;
 using CV_Generator.Services;
 
+using CV_Generator.Services.Storage;
+
 namespace CV_Generator.Controllers;
 
 [ApiController]
@@ -20,7 +22,7 @@ public class ApplicationsController : ControllerBase
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<ApplicationsController> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IMinioStorageService _minio;
+    private readonly IObjectStorage _minio;
     private readonly IGmailSendService _gmailSend;
     private readonly AppDbContext _db;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -30,7 +32,7 @@ public class ApplicationsController : ControllerBase
         ICurrentUserService currentUser,
         ILogger<ApplicationsController> logger,
         IServiceScopeFactory scopeFactory,
-        IMinioStorageService minio,
+        IObjectStorage minio,
         IGmailSendService gmailSend,
         AppDbContext db,
         IHttpClientFactory httpClientFactory)

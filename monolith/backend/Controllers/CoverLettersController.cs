@@ -6,6 +6,7 @@ using CV_Generator.Data;
 using CV_Generator.Dto;
 using CV_Generator.Models;
 using CV_Generator.Services;
+using CV_Generator.Services.Storage;
 
 namespace CV_Generator.Controllers;
 
@@ -16,14 +17,14 @@ public class CoverLettersController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
-    private readonly IMinioStorageService _storage;
+    private readonly IObjectStorage _storage;
     private readonly IPdfThumbnailService _pdfThumbnails;
     private readonly ITextPdfService _textPdf;
 
     public CoverLettersController(
         AppDbContext db,
         ICurrentUserService currentUser,
-        IMinioStorageService storage,
+        IObjectStorage storage,
         IPdfThumbnailService pdfThumbnails,
         ITextPdfService textPdf)
     {
@@ -231,7 +232,7 @@ public class CoverLettersController : ControllerBase
             l.Versions.OrderByDescending(v => v.VersionNumber)
                 .Select(v => new CoverLetterVersionDto(
                     v.Id, v.CoverLetterId, v.VersionNumber, v.Label,
-                    v.FileUrl, v.PdfUrl, v.ThumbnailUrl, v.CreatedAt))
+                    _storage.NormalizeUrl(v.FileUrl), _storage.NormalizeUrl(v.PdfUrl), _storage.NormalizeUrl(v.ThumbnailUrl), v.CreatedAt))
                 .ToList()))
             .ToList();
     }

@@ -33,6 +33,7 @@
 #   GATEWAY_WAIT (default 120)   seconds to wait for the gateway before testing
 #   WAIT_TIMEOUT (default 300)   --wait timeout for compose --up
 #   MIGRATION_ATTEMPTS (40) x MIGRATION_INTERVAL (5)   migrations poll budget
+#   BACKEND_ATTEMPTS (60) x BACKEND_INTERVAL (3)   backend health poll budget (fresh-DB cold start)
 #   HOST_FE/HOST_GW/HOST_KC (4200/8080/9090)           host-side published ports
 #   APP_CONTAINER/PG_CONTAINER/.../KC_CONTAINER        container names
 #
@@ -47,6 +48,8 @@ GATEWAY_WAIT="${GATEWAY_WAIT:-120}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-300}"
 MIGRATION_ATTEMPTS="${MIGRATION_ATTEMPTS:-40}"
 MIGRATION_INTERVAL="${MIGRATION_INTERVAL:-5}"
+BACKEND_ATTEMPTS="${BACKEND_ATTEMPTS:-60}"
+BACKEND_INTERVAL="${BACKEND_INTERVAL:-3}"
 
 # container names must match container_name: in the compose files
 APP_C="${APP_CONTAINER:-propel-app}"
@@ -108,11 +111,22 @@ run_t01_containers_healthy() {
 }
 
 # ── t02: monolith backend health endpoint (in-container :5000) ────────────────
+# Patient on purpose: on a fresh volume the backend applies ALL EF migrations
+# from scratch before listening on :5000 (observed >5s after boot — CI run
+# 42388726496 raced exactly that window). t08 has a poll budget; t02 needs one too.
 run_t02_backend_health() {
-  local out
-  out=$(docker exec "$APP_C" curl -fsS http://localhost:5000/health) || { echo "  backend :5000/health unreachable"; return 1; }
-  echo "  $out"
-  echo "$out" | grep -q '"status":"ok"'
+  local i out waittotal
+  waittotal=$((BACKEND_ATTEMPTS * BACKEND_INTERVAL))
+  for i in $(seq 1 "$BACKEND_ATTEMPTS"); do
+    if out=$(docker exec "$APP_C" curl -fsS http://localhost:5000/health 2>/dev/null); then
+      [ "$i" -gt 1 ] && echo "  backend ready after $((i * BACKEND_INTERVAL))s"
+      echo "  $out"
+      echo "$out" | grep -q '"status":"ok"'
+      return
+    fi
+    sleep "$BACKEND_INTERVAL"
+  done
+  echo "  backend :5000/health unreachable after ${waittotal}s (still migrating or broken)"; return 1
 }
 
 # ── t03: agents sidecar health ────────────────────────────────────────────────

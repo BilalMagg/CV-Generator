@@ -1,26 +1,25 @@
 # =============================================================================
-# Propel — friends' deployment: one `docker compose up` and everything runs.
+# Propel — Unified Deployment
 # =============================================================================
 # Usage (from the repo root or wherever this compose file lives):
-#   1) copy deploy/.env.example to .env (next to this file) and fill in values
+#   1) copy deploy/.env.example to .env (next to this file) and configure:
+#      - COMPOSE_PROFILES=minio   (default: local PostgreSQL + MinIO + Native Auth)
+#      - COMPOSE_PROFILES=minimal (leanest: local PostgreSQL + Cloudflare R2 + Native Auth)
+#      - COMPOSE_PROFILES=full    (full stack: local PostgreSQL + MinIO + Keycloak)
 #   2) docker compose -f deploy/docker-compose.yml up -d --build
-#   3) open http://localhost:4200 — first user registers through the sign-up
-#      flow (Keycloak realm import leaves registration enabled)
+#   3) open http://localhost:4200 — register with native auth or log in
 #
 # Exposed ports:
 #   4200 → frontend (nginx proxies /api to the gateway)
-#   8080 → gateway (used for the OAuth callback and direct API debugging)
-#   9090 → Keycloak (browser-facing login)
+#   8080 → gateway (used for OAuth callback and direct API debugging)
+#   9001 → MinIO console (when minio profile is active)
+#   9090 → Keycloak (when keycloak/full profile is active)
 #
-# Gmail sends additionally need:
-#   - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET (Google Cloud OAuth client,
-#     authorized redirect: http://localhost:4200/api/gmail/callback)
-#   - GMAIL_TOKEN_ENCRYPTION_KEY — base64 of a 32-byte key, e.g.
-#     openssl rand -base64 32
-#
-# LLM API keys are NOT needed here: friends enter them in the app under
-# Settings → AI Model (they are encrypted and pushed to the agent sidecar in
-# memory). Env keys remain a valid fallback for power users.
+# Profiles available:
+#   (none)   → postgres + app (minimal cloud stack, e.g. with Cloudflare R2 + Native Auth)
+#   minio    → postgres + minio + app (local storage + native auth)
+#   keycloak → postgres + keycloak-db + keycloak + app (Keycloak auth)
+#   full     → postgres + minio + keycloak-db + keycloak + app (all self-hosted)
 # =============================================================================
 
 name: propel
@@ -38,9 +37,7 @@ volumes:
 services:
   # ── application DB ─────────────────────────────────────────────────────────
   postgres:
-    # pgvector build: the InitialCreate migration provisions the pgvector
-    # extension ("vector"), so a stock postgres image fails migration 1 on a
-    # fresh DB ('extension "vector" is not available').
+    # pgvector build: provisions the pgvector extension ("vector")
     image: pgvector/pgvector:pg17
     container_name: propel-postgres
     environment:
@@ -56,16 +53,15 @@ services:
       retries: 10
     networks: [propel]
 
-  # ── object storage ─────────────────────────────────────────────────────────
-  # MinIO removed their community images from Docker Hub (Sept 2025) and the
-  # repo is archived; Chainguard maintains a fresh MinIO build (latest tag).
+  # ── object storage (optional if using Cloudflare R2) ────────────────────────
   minio:
+    profiles: ["minio", "full"]
     image: cgr.dev/chainguard/minio:latest
     container_name: propel-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - minio_data:/data
     ports:
@@ -79,8 +75,9 @@ services:
     restart: unless-stopped
     networks: [propel]
 
-  # ── Keycloak (+ its own DB) ────────────────────────────────────────────────
+  # ── Keycloak (+ its own DB) (optional if using Native Auth) ────────────────
   keycloak-db:
+    profiles: ["keycloak", "full"]
     image: postgres:17-alpine
     container_name: propel-keycloak-db
     environment:
@@ -97,6 +94,7 @@ services:
     networks: [propel]
 
   keycloak:
+    profiles: ["keycloak", "full"]
     image: quay.io/keycloak/keycloak:26.2
     container_name: propel-keycloak
     ports:
@@ -121,7 +119,6 @@ services:
       keycloak-db:
         condition: service_healthy
     healthcheck:
-      # the Keycloak image ships no curl/wget — probe the health TCP port with bash
       test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/9000' 2>/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
@@ -141,36 +138,47 @@ services:
       - "4200:4200"           # frontend (nginx)
       - "8080:8080"           # gateway (OAuth callback + direct API access)
     environment:
-      # data services (in-network names)
+      # Provider selections
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-MinIO}
+      AUTH_PROVIDER: ${AUTH_PROVIDER:-Native}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-Gmail}
+
+      # Database connection
       CONNECTION_STRING: Host=postgres;Port=5432;Database=cv_monolith;Username=postgres;Password=bime
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-      # auth — internal URL for token validation by backend+gateway,
-      # external localhost:9090 for the browser-facing login pages
-      JWT_AUTHORITY: http://keycloak:8080/realms/cv-realm
-      KEYCLOAK_HOST: keycloak
-      KEYCLOAK_PORT: "8080"
-      KEYCLOAK_EXTERNAL_HOST: localhost
-      KEYCLOAK_EXTERNAL_PORT: "9090"
-      KEYCLOAK_ADMIN_USERNAME: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      # services inside this container
+      DATABASE_URL: postgresql://postgres:bime@postgres:5432/cv_monolith
+
+      # MinIO storage (active when STORAGE_PROVIDER=MinIO)
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+
+      # Cloudflare R2 storage (active when STORAGE_PROVIDER=CloudflareR2)
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-propel}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
+
+      # Keycloak settings (active when AUTH_PROVIDER=Keycloak or Hybrid)
+      JWT_AUTHORITY: ${JWT_AUTHORITY:-http://keycloak:8080/realms/cv-realm}
+      KEYCLOAK_HOST: ${KEYCLOAK_HOST:-keycloak}
+      KEYCLOAK_PORT: ${KEYCLOAK_PORT:-8080}
+      KEYCLOAK_EXTERNAL_HOST: ${KEYCLOAK_EXTERNAL_HOST:-localhost}
+      KEYCLOAK_EXTERNAL_PORT: ${KEYCLOAK_EXTERNAL_PORT:-9090}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+
+      # In-container services
       AGENTS_URL: http://localhost:8000
       BACKEND_BASE_URL: http://localhost:5000
-      # sidecar extras
-      DATABASE_URL: postgresql://postgres:bime@postgres:5432/cv_monolith
-      # gmail (optional but strongly recommended)
+
+      # Gmail integration (per-user, decoupled from Keycloak)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GMAIL_TOKEN_ENCRYPTION_KEY: ${GMAIL_TOKEN_ENCRYPTION_KEY:-}
-      Gmail__CallbackBaseUrl: http://localhost:4200
+      Gmail__CallbackBaseUrl: ${GMAIL_CALLBACK_BASE_URL:-http://localhost:4200}
     depends_on:
       postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      keycloak:
         condition: service_healthy
     restart: unless-stopped
     networks: [propel]

@@ -40,19 +40,12 @@ public class GmailController : BaseApiController
     [HttpGet("callback")]
     public async Task<IActionResult> Callback([FromQuery] string code, [FromQuery] string state)
     {
-        // Split "userId|returnUrl" (the '|' part is optional and URL-encoded).
-        var guidPart = state ?? string.Empty;
-        var returnUrl = "/mailbox";
-        var sep = guidPart.IndexOf('|');
-        if (sep >= 0)
+        if (!_gmailAuthSvc.TryValidateState(state, out _, out var returnUrl))
         {
-            var decoded = Uri.UnescapeDataString(guidPart[(sep + 1)..]);
-            if (decoded.StartsWith('/') && !decoded.StartsWith("//"))
-                returnUrl = decoded;
-            guidPart = guidPart[..sep];
+            return BadRequest("Invalid or expired OAuth state parameter.");
         }
 
-        await _gmailAuthSvc.HandleCallbackAsync(code, guidPart);
+        await _gmailAuthSvc.HandleCallbackAsync(code, state);
         return Redirect($"{_frontendUrl}{returnUrl}");
     }
 

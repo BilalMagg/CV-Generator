@@ -20,6 +20,7 @@ export interface ExtractorOutput {
   benefits: string[];
   applicationDeadline?: string;
   contactEmail?: string;
+  emailSubject?: string;
   sourceUrl?: string;
   fieldConfidences: Record<string, number>;
   overallConfidence: number;

@@ -5,6 +5,7 @@ using CV_Generator.Dto;
 using CV_Generator.Models;
 using CV_Generator.Services;
 using CV_Generator.Services.AgentClients;
+using CV_Generator.Services.Storage;
 
 namespace CV_Generator.Controllers;
 
@@ -17,19 +18,22 @@ public class CompanyResearchController : BaseApiController
     private readonly ILogger<CompanyResearchController> _logger;
     private readonly ICompanyResearchClient _client;
     private readonly IAgentLlmSettingsService _agentLlm;
+    private readonly IObjectStorage _storage;
 
     public CompanyResearchController(
         ICurrentUserService currentUser,
         AppDbContext db,
         ILogger<CompanyResearchController> logger,
         ICompanyResearchClient client,
-        IAgentLlmSettingsService agentLlm)
+        IAgentLlmSettingsService agentLlm,
+        IObjectStorage storage)
         : base(currentUser)
     {
         _db = db;
         _logger = logger;
         _client = client;
         _agentLlm = agentLlm;
+        _storage = storage;
     }
 
     /// <summary>
@@ -128,7 +132,7 @@ public class CompanyResearchController : BaseApiController
             company.CompanyFactsJson = CompanyResearchJson.SerializeList(result.CompanyFacts);
     }
 
-    private static CompanyDto Map(Company c) => new()
+    private CompanyDto Map(Company c) => new()
     {
         Id = c.Id,
         UserId = c.UserId,
@@ -144,7 +148,7 @@ public class CompanyResearchController : BaseApiController
         Size = c.Size,
         Specialties = c.Specialties,
         LogoImageId = c.LogoImageId,
-        LogoUrl = c.LogoUrl,
+        LogoUrl = _storage.NormalizeUrl(c.LogoUrl),
         Note = c.Note,
         Description = c.Description,
         Address = c.Address,

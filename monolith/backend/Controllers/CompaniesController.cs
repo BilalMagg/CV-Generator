@@ -5,6 +5,7 @@ using CV_Generator.Data;
 using CV_Generator.Dto;
 using CV_Generator.Models;
 using CV_Generator.Services;
+using CV_Generator.Services.Storage;
 
 namespace CV_Generator.Controllers;
 
@@ -16,6 +17,7 @@ public class CompaniesController : BaseApiController
     private readonly IApplicationService _applications;
     private readonly IContactService _contacts;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IObjectStorage _storage;
 
     public CompaniesController(
         ICurrentUserService currentUser,
@@ -23,7 +25,8 @@ public class CompaniesController : BaseApiController
         ILogger<CompaniesController> logger,
         IApplicationService applications,
         IContactService contacts,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IObjectStorage storage)
         : base(currentUser)
     {
         _db = db;
@@ -31,6 +34,7 @@ public class CompaniesController : BaseApiController
         _applications = applications;
         _contacts = contacts;
         _scopeFactory = scopeFactory;
+        _storage = storage;
     }
 
     [HttpGet]
@@ -930,7 +934,7 @@ public class CompaniesController : BaseApiController
             {
                 var image = await _db.UserImages.FirstOrDefaultAsync(i => i.Id == imageId.Value && i.UserId == userId);
                 if (image is null) return ("Logo image not found in your library", null);
-                return (null, image.Url);
+                return (null, _storage.NormalizeUrl(image.Url));
             }
             return (null, null);
         }
@@ -940,7 +944,7 @@ public class CompaniesController : BaseApiController
             var owned = await _db.UserImages.AnyAsync(i => i.Id == imageId.Value && i.UserId == userId);
             if (!owned) return ("Logo image not found in your library", null);
         }
-        return (null, logoUrl.Trim());
+        return (null, _storage.NormalizeUrl(logoUrl.Trim()));
     }
 
     /// <summary>Application count + last applied date for one company (normalized name match).</summary>
@@ -956,7 +960,7 @@ public class CompaniesController : BaseApiController
         return (count, last);
     }
 
-    private static CompanyDto Map(Company c) => new()
+    private CompanyDto Map(Company c) => new()
     {
         Id = c.Id,
         UserId = c.UserId,
@@ -972,7 +976,7 @@ public class CompaniesController : BaseApiController
         Size = c.Size,
         Specialties = c.Specialties,
         LogoImageId = c.LogoImageId,
-        LogoUrl = c.LogoUrl,
+        LogoUrl = _storage.NormalizeUrl(c.LogoUrl),
         Note = c.Note,
         Description = c.Description,
         Address = c.Address,

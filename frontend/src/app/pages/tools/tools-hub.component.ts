@@ -1,10 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { HttpService } from '@app/services/http.service';
 import { LinkedInToolService } from '@app/services/linkedin-tool.service';
+import { ApplyService } from '@app/services/apply.service';
+import { DocumentsService } from '@app/services/documents.service';
 import { ToastService } from '@app/services/toast.service';
 import { ApiResponse } from '@app/models/application.model';
+import { buildCvOptions, CV_PICKER_FALLBACK_HINT, CvVersionOption } from '@app/shared/cv-options';
+import { parseAiContacts } from '@app/shared/components/contacts-extract-dialog/contacts-extract-dialog.component';
 import {
   EmojifyDensity,
   LinkedInLength,
@@ -47,6 +52,9 @@ export class ToolsHubComponent {
   private readonly service = inject(LinkedInToolService);
   private readonly http = inject(HttpService);
   private readonly toast = inject(ToastService);
+  private readonly applyService = inject(ApplyService);
+  private readonly documents = inject(DocumentsService);
+  private readonly router = inject(Router);
 
   tool = signal<ToolTab>('post');
 
@@ -103,6 +111,23 @@ export class ToolsHubComponent {
   adjustingItem = signal<SavedToolContent | null>(null);
   /** Index of the result card whose Save is in flight. */
   savingId = signal<number | null>(null);
+
+  // Save as application (message tool) — the selected/adjusted variant becomes a
+  // SAVED application + DRAFT LinkedIn-message attempt.
+  saveApplyOpen = signal<number | null>(null);
+  saveCompany = signal('');
+  savePosition = signal('');
+  saveContactName = signal('');
+  saveContactEmail = signal('');   // optional; used silently when extraction finds one
+  saveContactPhone = signal('');
+  saveContactLinkedin = signal('');
+  saveCvVersionId = signal('');
+  saveApplying = signal(false);
+  saveError = signal('');
+  cvOptions = signal<CvVersionOption[]>([]);
+  cvOnlyActive = signal(true);
+  /** Exposed for the template (fallback hint when the CV list fell back to all versions). */
+  readonly cvFallbackHint = CV_PICKER_FALLBACK_HINT;
 
   // Career picker
   careerGroups = signal<CareerGroup[]>([]);
@@ -471,6 +496,104 @@ export class ToolsHubComponent {
     }
   }
 
+  // --- Save as application (message tool) ---
+
+  private async ensureCvOptionsLoaded(): Promise<void> {
+    if (this.cvOptions().length > 0) return;
+    try {
+      const res = await this.documents.listCvs();
+      const { options, onlyActive } = buildCvOptions(res.data ?? []);
+      this.cvOptions.set(options);
+      this.cvOnlyActive.set(onlyActive);
+    } catch {
+      this.cvOptions.set([]); // pickers stay optional — saving works without a CV
+    }
+  }
+
+  /** Context text scanned for company + contact details when the save form opens. */
+  private composeOutreachContext(): string {
+    return [this.recipientContext().trim(), this.senderContext().trim()]
+      .filter(Boolean)
+      .join('\n\n');
+  }
+
+  async openSaveAsApply(index: number): Promise<void> {
+    const variant = this.results()[index];
+    if (!variant) return;
+    const ctx = this.composeOutreachContext();
+    const drafts = parseAiContacts(ctx);
+    const person = drafts.find((d) => d.person) ?? drafts[0];
+    // Labeled person/company blocks first, then a light "at <Company>" heuristic
+    // over free-form sentences. Empty result = user fills it manually.
+    const company =
+      drafts.map((d) => d.company).find(Boolean) || guessCompanyFromText(ctx) || '';
+    const linkedin =
+      person?.linkedinUrl || extractFirstLinkedin(ctx) || '';
+    this.saveCompany.set(company);
+    this.savePosition.set('');
+    this.saveContactName.set(this.recipientName().trim() || person?.name || '');
+    this.saveContactEmail.set(person?.email || '');
+    this.saveContactPhone.set(person?.phone || person?.mobile || '');
+    this.saveContactLinkedin.set(linkedin);
+    this.saveCvVersionId.set('');
+    this.saveError.set('');
+    this.saveApplyOpen.set(index);
+    await this.ensureCvOptionsLoaded();
+  }
+
+  closeSaveAsApply(): void {
+    if (!this.saveApplying()) this.saveApplyOpen.set(null);
+  }
+
+  async submitSaveAsApply(index: number, allowDuplicate = false): Promise<void> {
+    const variant = this.results()[index];
+    if (!variant) return;
+    if (!this.saveCompany().trim()) {
+      this.saveError.set('Company name is required — fill it manually if the context does not mention it');
+      return;
+    }
+    this.saveApplying.set(true);
+    this.saveError.set('');
+    try {
+      const res = await this.applyService.saveAsApply({
+        companyName: this.saveCompany().trim(),
+        message: variant.text,
+        positionTitle: this.savePosition().trim() || undefined,
+        cvVersionId: this.saveCvVersionId() || undefined,
+        contactName: this.saveContactName().trim() || undefined,
+        contactEmail: this.saveContactEmail().trim() || undefined,
+        contactPhone: this.saveContactPhone().trim() || undefined,
+        contactLinkedInUrl: this.saveContactLinkedin().trim() || undefined,
+        allowDuplicate,
+      });
+      const saved = res.data;
+      const contactBits = saved?.companyCreated ? 'company created' : 'existing company';
+      const contactWord = saved?.contactCreated ? 'contact added and attached' : 'existing contact used';
+      this.toast.success(`Saved as an application — ${contactBits}, ${contactWord}`);
+      this.saveApplyOpen.set(null);
+      if (saved?.applicationId) this.router.navigate(['/applications', saved.applicationId]);
+    } catch (e: unknown) {
+      const err = e as { status?: number; error?: { message?: string } };
+      const status = err.status ?? (err as { httpStatus?: number })?.httpStatus;
+      const message = err?.error?.message || 'Could not save this as an application — try again';
+      if ((status === 409 || message.includes('Duplicate')) && !allowDuplicate) {
+        const proceed = await window.confirm(
+          'An application for this company and position already exists. Save another one anyway?',
+        );
+        if (proceed) {
+          this.saveApplying.set(false);
+          await this.submitSaveAsApply(index, true);
+          return;
+        }
+        this.saveError.set('Duplicate — review the existing application in your kanban instead.');
+      } else {
+        this.saveError.set(message);
+      }
+    } finally {
+      this.saveApplying.set(false);
+    }
+  }
+
   // --- Saved library ---
 
   toolLabel(tool: ToolTab): string {
@@ -700,4 +823,27 @@ export class ToolsHubComponent {
       this.careerLoading.set(false);
     }
   }
+}
+
+/** Best-effort Linkedin URL scanner over free-form text (used by the save-as-apply prefill). */
+export function extractFirstLinkedin(text: string): string {
+  const m = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[A-Za-z0-9._%-]+/i);
+  return m ? (m[0].startsWith('http') ? m[0] : 'https://' + m[0]) : '';
+}
+
+const COMPANY_AT_RE =
+  /\b(?:works?\s+at|working\s+at|recruiter(?:e)?\s+at|talent\s+(?:acquisition|sourcing)?\s*(?:at|for)|hiring\s+at|engineer\s+at|consultant(?:e)?\s+at|sourcing\s+at)\s+([A-Z][A-Za-z0-9&.,'’\-]*(?:\s+[A-Z][A-Za-z0-9&.,'’\-]*){0,3})/i;
+
+/**
+ * Light company guesser for free-form outreach context ("Recruiter at Capgemini Morocco…").
+ * Prefill only — the user can always type the company manually when nothing matches.
+ */
+export function guessCompanyFromText(text: string): string {
+  const m = text.match(COMPANY_AT_RE);
+  if (!m) return '';
+  return m[1]
+    .split(/[.!?]\s/)[0]
+    .replace(/[.,;:]+$/, '')
+    .replace(/\s+(?:for|in|and|the|to|on)\s+.*$/i, '')
+    .trim();
 }

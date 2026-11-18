@@ -1,11 +1,29 @@
 namespace CV_Generator.Dto;
 
 public record CreateUserDto(
-    string KeycloakId,
+    string? KeycloakId,
     string FirstName,
     string LastName,
     string Email,
     string Role
+);
+
+public record AuthenticateRequestDto(
+    string Email,
+    string Password
+);
+
+public record RegisterNativeUserDto(
+    string Email,
+    string Password,
+    string FirstName,
+    string LastName
+);
+
+public record ResetPasswordNativeDto(
+    string Email,
+    string Password,
+    string? Token
 );
 
 public record UpdateUserDto(
@@ -34,7 +52,7 @@ public record UpdateUserDto(
 
 public record UserResponseDto(
     Guid Id,
-    string KeycloakId,
+    string? KeycloakId,
     string FirstName,
     string LastName,
     string Email,

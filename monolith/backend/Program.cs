@@ -9,20 +9,28 @@ using CV_Generator.Dto;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load optional .env (git-ignored) from the backend project dir; real env vars win.
-var envFile = Path.Combine(builder.Environment.ContentRootPath, ".env");
-if (File.Exists(envFile))
+// Load optional .env from the backend project dir and deploy/.env; real env vars win.
+var candidateEnvFiles = new[]
 {
-    foreach (var line in File.ReadAllLines(envFile))
+    Path.Combine(builder.Environment.ContentRootPath, ".env"),
+    Path.Combine(builder.Environment.ContentRootPath, "..", "..", "deploy", ".env"),
+    Path.Combine(builder.Environment.ContentRootPath, "..", "deploy", ".env")
+};
+foreach (var envFile in candidateEnvFiles)
+{
+    if (File.Exists(envFile))
     {
-        var trimmed = line.Trim();
-        if (trimmed.Length == 0 || trimmed.StartsWith('#')) continue;
-        var eq = trimmed.IndexOf('=');
-        if (eq <= 0) continue;
-        var key = trimmed[..eq].Trim();
-        var value = trimmed[(eq + 1)..].Trim().Trim('"');
-        if (Environment.GetEnvironmentVariable(key) is null)
-            Environment.SetEnvironmentVariable(key, value);
+        foreach (var line in File.ReadAllLines(envFile))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0 || trimmed.StartsWith('#')) continue;
+            var eq = trimmed.IndexOf('=');
+            if (eq <= 0) continue;
+            var key = trimmed[..eq].Trim();
+            var value = trimmed[(eq + 1)..].Trim().Trim('"', '\'');
+            if (Environment.GetEnvironmentVariable(key) is null)
+                Environment.SetEnvironmentVariable(key, value);
+        }
     }
 }
 
@@ -105,6 +113,7 @@ builder.Services.AddScoped<IAesEncryptionService, AesEncryptionService>();
 builder.Services.AddScoped<IGmailAuthService, GmailAuthService>();
 builder.Services.AddScoped<IGmailTokenRefresher, GmailTokenRefresher>();
 builder.Services.AddScoped<IGmailSendService, GmailSendService>();
+builder.Services.AddScoped<CV_Generator.Services.Email.IEmailProvider, CV_Generator.Services.Email.GmailEmailProvider>();
 builder.Services.AddScoped<ITemplateRenderer, TemplateRenderer>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
@@ -157,7 +166,29 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddSingleton<CvGenerationBackgroundService>();
 builder.Services.AddSingleton<TemplateRenderBackgroundService>();
 builder.Services.AddSingleton<BulkApplyBackgroundService>();
-builder.Services.AddSingleton<IMinioStorageService, MinioStorageService>();
+// Storage provider configuration (MinIO vs Cloudflare R2)
+var storageProvider = (Environment.GetEnvironmentVariable("STORAGE_PROVIDER")
+    ?? builder.Configuration["Storage:Provider"]
+    ?? "MinIO").Trim();
+
+if (storageProvider.Equals("CloudflareR2", StringComparison.OrdinalIgnoreCase) ||
+    storageProvider.Equals("R2", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<CV_Generator.Services.Storage.CloudflareR2ObjectStorage>();
+    builder.Services.AddSingleton<CV_Generator.Services.Storage.IObjectStorage>(sp =>
+        sp.GetRequiredService<CV_Generator.Services.Storage.CloudflareR2ObjectStorage>());
+    builder.Services.AddSingleton<IMinioStorageService>(sp =>
+        sp.GetRequiredService<CV_Generator.Services.Storage.CloudflareR2ObjectStorage>());
+}
+else
+{
+    builder.Services.AddSingleton<CV_Generator.Services.Storage.MinioObjectStorage>();
+    builder.Services.AddSingleton<CV_Generator.Services.Storage.IObjectStorage>(sp =>
+        sp.GetRequiredService<CV_Generator.Services.Storage.MinioObjectStorage>());
+    builder.Services.AddSingleton<IMinioStorageService>(sp =>
+        sp.GetRequiredService<CV_Generator.Services.Storage.MinioObjectStorage>());
+}
+builder.Services.AddTransient<CV_Generator.Services.Storage.StorageMigrationService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CvGenerationBackgroundService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<TemplateRenderBackgroundService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<BulkApplyBackgroundService>());
@@ -175,9 +206,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-// User context resolution
+// User context resolution & password hashing
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Identity.IPasswordHasher<CV_Generator.Models.User>, Microsoft.AspNetCore.Identity.PasswordHasher<CV_Generator.Models.User>>();
 
 // Controllers + Swagger
 builder.Services.AddControllers();

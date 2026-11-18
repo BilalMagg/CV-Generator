@@ -57,6 +57,7 @@ public class JobExtractorClient : IJobExtractorClient
             Benefits = full.Benefits,
             ApplicationDeadline = full.ApplicationDeadline,
             ContactEmail = full.ContactEmail,
+            EmailSubject = full.EmailSubject,
             SourceUrl = full.SourceUrl,
             Languages = full.Languages,
             OverallConfidence = full.OverallConfidence,

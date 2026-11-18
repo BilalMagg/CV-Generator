@@ -52,4 +52,30 @@ public class ApplicationsApplyController : ControllerBase
             return StatusCode(502, ApiResponse<ApplyEmailResult>.Error("Gmail is not connected: " + ex.Message));
         }
     }
+
+    /// <summary>
+    /// Saves an outreach message generated in Tools (LinkedIn-message tool) as a tracked
+    /// application: upserts company + contact (email-less / LinkedIn keyed), creates a SAVED
+    /// application and logs the message as a DRAFT LINKEDIN_MESSAGE attempt.
+    /// </summary>
+    [HttpPost("save-as-apply")]
+    public async Task<IActionResult> SaveAsApply([FromBody] SaveAsApplyDto dto)
+    {
+        var userId = _currentUser.UserId;
+        if (userId is null) return Unauthorized();
+
+        try
+        {
+            var result = await _apply.SaveFromMessageAsync(userId.Value, dto);
+            return Ok(ApiResponse<SaveAsApplyResultDto>.Ok(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<SaveAsApplyResultDto>.Error(ex.Message));
+        }
+        catch (DuplicateApplicationException ex)
+        {
+            return Conflict(ApiResponse<SaveAsApplyResultDto>.Error("Duplicate application", ex.Payload));
+        }
+    }
 }

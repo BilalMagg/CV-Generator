@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using CV_Generator;
 using CV_Generator.Dto;
 using CV_Generator.Services;
+using CV_Generator.Services.Storage;
 
 namespace CV_Generator.Controllers;
 
@@ -10,9 +11,9 @@ namespace CV_Generator.Controllers;
 public class EmailDraftsController : BaseApiController
 {
     private readonly EmailDraftService _svc;
-    private readonly IMinioStorageService _minio;
+    private readonly IObjectStorage _minio;
 
-    public EmailDraftsController(ICurrentUserService currentUser, EmailDraftService svc, IMinioStorageService minio)
+    public EmailDraftsController(ICurrentUserService currentUser, EmailDraftService svc, IObjectStorage minio)
         : base(currentUser)
     {
         _svc = svc;

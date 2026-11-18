@@ -25,6 +25,7 @@ You must return a JSON object with the following structure:
     "benefits": ["list of mentioned benefits (empty if none)"],
     "application_deadline": "string - e.g. '2026-07-15' if mentioned, otherwise empty",
     "contact_email": "string - application/contact email if mentioned, otherwise empty",
+    "email_subject": "string - the application email subject line (objet) if the posting specifies one, e.g. after 'Objet:', 'Subject:', 'Email subject:', or an instruction like 'mention [JobRef-123] in your subject'; copy it VERBATIM otherwise empty",
     "source_url": "string - empty (the caller supplies it)",
     "field_confidences": {"object - map of field name to 0-1 confidence, e.g. job_role: 0.98, enterprise_name: 0.9; include the fields you are confident about"},
     "overall_confidence": "number between 0 and 1 - overall confidence in the extraction"
@@ -35,7 +36,8 @@ Rules:
 2. required_skills must list the MUST-HAVE skills; do not merge preferred/nice-to-have skills into it.
 3. Keep enterprise_description to 1-2 sentences.
 4. Extract exact requirements and responsibilities as separate items.
-5. Return ONLY the JSON object, no additional text or explanation.
+5. email_subject: only fill it when the posting EXPLICITLY specifies what the application email's subject should be (labels like 'Objet:', 'Subject:', 'Sujet:', 'mention ... in the subject'). Do NOT use the job title as the subject when no subject is specified — leave it empty instead.
+6. Return ONLY the JSON object, no additional text or explanation.
 """
 
 

@@ -11,9 +11,8 @@ public class User
     [Key]
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    [Required]
     [MaxLength(50)]
-    public string KeycloakId { get; set; } = default!;
+    public string? KeycloakId { get; set; }
 
     [Required]
     [MaxLength(50)]
@@ -27,6 +26,12 @@ public class User
     [EmailAddress]
     [MaxLength(100)]
     public required string Email { get; set; }
+
+    public string? PasswordHash { get; set; }
+    public string? SecurityStamp { get; set; }
+    public bool EmailConfirmed { get; set; } = true;
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetExpiresAt { get; set; }
 
     [MaxLength(20)]
     public string? PhoneNumber { get; set; }

@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
@@ -52,11 +54,8 @@ public class GmailAuthService : IGmailAuthService
     {
         var redirectUri = $"{_callbackBaseUrl}/api/gmail/callback";
         var scope = Uri.EscapeDataString(string.Join(" ", Scopes));
-        // Google redirects the state back verbatim: "userId" or "userId|{escaped returnUrl}"
-        // — the controller splits on the first '|' and bounces to the originating page.
-        var state = string.IsNullOrWhiteSpace(returnUrl)
-            ? userId.ToString()
-            : $"{userId}|{Uri.EscapeDataString(returnUrl)}";
+        var state = GenerateSignedState(userId, returnUrl);
+
         return $"https://accounts.google.com/o/oauth2/v2/auth" +
                $"?client_id={Uri.EscapeDataString(_clientId)}" +
                $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
@@ -67,9 +66,83 @@ public class GmailAuthService : IGmailAuthService
                $"&state={Uri.EscapeDataString(state)}";
     }
 
+    public string GenerateSignedState(Guid userId, string? returnUrl = null)
+    {
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var safeReturn = string.IsNullOrWhiteSpace(returnUrl) ? "" : Uri.EscapeDataString(returnUrl);
+        var rawPayload = $"{userId}|{safeReturn}|{timestamp}";
+        var signature = ComputeHmac(rawPayload);
+        return $"{rawPayload}|{signature}";
+    }
+
+    public bool TryValidateState(string state, out Guid userId, out string returnUrl)
+    {
+        userId = Guid.Empty;
+        returnUrl = "/mailbox";
+
+        if (string.IsNullOrWhiteSpace(state)) return false;
+
+        var parts = state.Split('|');
+        // Backward-compatible fallback for legacy simple userId states
+        if (parts.Length == 1 && Guid.TryParse(parts[0], out var legacyId))
+        {
+            userId = legacyId;
+            return true;
+        }
+        if (parts.Length == 2 && Guid.TryParse(parts[0], out var legacyIdWithReturn))
+        {
+            userId = legacyIdWithReturn;
+            if (!string.IsNullOrWhiteSpace(parts[1])) returnUrl = Uri.UnescapeDataString(parts[1]);
+            return true;
+        }
+
+        if (parts.Length < 4) return false;
+
+        if (!Guid.TryParse(parts[0], out userId)) return false;
+        var encodedReturn = parts[1];
+        if (!long.TryParse(parts[2], out var timestamp)) return false;
+        var signature = parts[3];
+
+        // Check expiration (15 minutes)
+        var age = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - timestamp;
+        if (age < -60 || age > 900)
+        {
+            _logger.LogWarning("Expired OAuth state token for user {UserId}", userId);
+            userId = Guid.Empty;
+            return false;
+        }
+
+        var rawPayload = $"{userId}|{encodedReturn}|{timestamp}";
+        var expectedSignature = ComputeHmac(rawPayload);
+
+        if (!CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(signature),
+            Encoding.UTF8.GetBytes(expectedSignature)))
+        {
+            _logger.LogWarning("Invalid OAuth state signature for user {UserId}", userId);
+            userId = Guid.Empty;
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(encodedReturn))
+        {
+            returnUrl = Uri.UnescapeDataString(encodedReturn);
+        }
+
+        return true;
+    }
+
+    private static string ComputeHmac(string data)
+    {
+        var key = Environment.GetEnvironmentVariable("GMAIL_TOKEN_ENCRYPTION_KEY") ?? "propel-oauth-fallback-key-32bytes-len";
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
+        return Convert.ToHexString(hash);
+    }
+
     public async Task HandleCallbackAsync(string code, string state)
     {
-        if (!Guid.TryParse(state, out var userId))
+        if (!TryValidateState(state, out var userId, out _))
         {
             _logger.LogWarning("Invalid state in OAuth callback: {State}", state);
             return;

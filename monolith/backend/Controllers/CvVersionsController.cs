@@ -5,6 +5,7 @@ using CV_Generator;
 using CV_Generator.Data;
 using CV_Generator.Models;
 using CV_Generator.Services;
+using CV_Generator.Services.Storage;
 
 namespace CV_Generator.Controllers;
 
@@ -15,13 +16,13 @@ public class CvVersionsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
-    private readonly IMinioStorageService _storage;
+    private readonly IObjectStorage _storage;
     private readonly IPdfThumbnailService _pdfThumbnails;
 
     public CvVersionsController(
         AppDbContext db,
         ICurrentUserService currentUser,
-        IMinioStorageService storage,
+        IObjectStorage storage,
         IPdfThumbnailService pdfThumbnails)
     {
         _db = db;
@@ -34,6 +35,12 @@ public class CvVersionsController : ControllerBase
     public async Task<IActionResult> GetByCvId(Guid cvId)
     {
         var versions = await _db.CvVersions.Where(v => v.CvId == cvId).Include(v => v.Sections).ToListAsync();
+        foreach (var v in versions)
+        {
+            v.PdfUrl = _storage.NormalizeUrl(v.PdfUrl);
+            v.FileUrl = _storage.NormalizeUrl(v.FileUrl);
+            v.ThumbnailUrl = _storage.NormalizeUrl(v.ThumbnailUrl);
+        }
         return Ok(ApiResponse<List<CvVersion>>.Ok(versions));
     }
 

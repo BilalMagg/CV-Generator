@@ -14,11 +14,11 @@ namespace CV_Generator.Services;
 public class EmailDraftService
 {
     private readonly AppDbContext _db;
-    private readonly IMinioStorageService _minio;
+    private readonly Storage.IObjectStorage _minio;
     private readonly ILogger<EmailDraftService> _logger;
     private const string AttachmentBucket = "mail-attachments";
 
-    public EmailDraftService(AppDbContext db, IMinioStorageService minio, ILogger<EmailDraftService> logger)
+    public EmailDraftService(AppDbContext db, Storage.IObjectStorage minio, ILogger<EmailDraftService> logger)
     {
         _db = db;
         _minio = minio;

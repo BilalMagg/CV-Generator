@@ -13,6 +13,8 @@ import {
   ApplyPrepMessageResult,
   EmailDraftDto,
   EmailDraftListItemDto,
+  SaveAsApplyRequest,
+  SaveAsApplyResult,
   SaveEmailDraftDto,
 } from '../models/apply.model';
 
@@ -23,6 +25,11 @@ export class ApplyService {
 
   apply(dto: ApplyEmailRequest): Promise<ApiResponse<ApplyEmailResult>> {
     return this.http.post<ApiResponse<ApplyEmailResult>>('/api/applications/apply', dto);
+  }
+
+  /** Tools message → SAVED application + DRAFT LinkedIn-message attempt. */
+  saveAsApply(dto: SaveAsApplyRequest): Promise<ApiResponse<SaveAsApplyResult>> {
+    return this.http.post<ApiResponse<SaveAsApplyResult>>('/api/applications/save-as-apply', dto);
   }
 
   generateFormResponses(dto: ApplyPrepFormRequest): Promise<ApiResponse<ApplyPrepFormResult>> {

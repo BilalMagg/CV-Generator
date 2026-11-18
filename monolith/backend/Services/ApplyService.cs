@@ -20,7 +20,7 @@ public class ApplyService
     private readonly AppDbContext _db;
     private readonly ILogger<ApplyService> _logger;
     private readonly IGmailSendService _gmail;
-    private readonly IMinioStorageService _minio;
+    private readonly CV_Generator.Services.Storage.IObjectStorage _minio;
     private readonly IApplicationService _applications;
     private readonly IHttpClientFactory _httpClientFactory;
     private const string AttachmentBucket = "mail-attachments";
@@ -29,7 +29,7 @@ public class ApplyService
         AppDbContext db,
         ILogger<ApplyService> logger,
         IGmailSendService gmail,
-        IMinioStorageService minio,
+        CV_Generator.Services.Storage.IObjectStorage minio,
         IApplicationService applications,
         IHttpClientFactory httpClientFactory)
     {
@@ -442,6 +442,122 @@ public class ApplyService
         }
         await _db.SaveChangesAsync();
         return contact;
+    }
+
+    /// <summary>
+    /// Saves a message generated in Tools (LinkedIn-message tool) as a tracked application:
+    /// upserts the company, upserts a contact keyed by email → LinkedIn URL → phone →
+    /// company+name (email may be absent), creates a SAVED application, and logs the
+    /// message as a DRAFT LINKEDIN_MESSAGE attempt so it shows in the timeline.
+    /// </summary>
+    public async Task<SaveAsApplyResultDto> SaveFromMessageAsync(Guid userId, SaveAsApplyDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.CompanyName)) throw new ArgumentException("CompanyName is required");
+        if (string.IsNullOrWhiteSpace(dto.Message)) throw new ArgumentException("Message text is required");
+
+        var companyName = dto.CompanyName.Trim();
+        var companyCreated = !await _db.Companies.AnyAsync(c =>
+            c.UserId == userId && c.Name.ToLower() == companyName.ToLower());
+        var company = await UpsertCompanyAsync(userId, companyName, null);
+
+        var existingContact = await FindExistingContactAsync(userId, company,
+            dto.ContactEmail, dto.ContactPhone, dto.ContactLinkedInUrl, dto.ContactName);
+        var contactCreated = existingContact is null;
+        var contact = await UpsertContactFromMessageAsync(userId, company, existingContact,
+            dto.ContactEmail, dto.ContactName, dto.ContactPhone, dto.ContactLinkedInUrl);
+
+        var app = await _applications.CreateAsync(new CreateApplicationDto(
+            CandidateId: userId,
+            CvVersionId: dto.CvVersionId,
+            JobOfferId: null,
+            CompanyName: company.Name,
+            PositionTitle: string.IsNullOrWhiteSpace(dto.PositionTitle) ? "Application" : dto.PositionTitle.Trim(),
+            OfferSource: "tools_message",
+            Notes: null,
+            Origin: "MANUAL",
+            Status: "SAVED",
+            AllowDuplicate: dto.AllowDuplicate
+        ), userId);
+
+        var attempt = await _applications.CreateAttemptAsync(app.Id, new CreateAttemptDto(
+            Channel: "LINKEDIN_MESSAGE",
+            InitiatedBy: "USER",
+            Status: "DRAFT",
+            Subject: null,
+            Body: dto.Message.Trim(),
+            RecipientName: dto.ContactName,
+            RecipientContact: dto.ContactLinkedInUrl,
+            ContactId: contact.Id,
+            CvVersionId: dto.CvVersionId
+        ), userId);
+
+        await _db.SaveChangesAsync();
+        _logger.LogInformation(
+            "Tools message saved as application {App} for {Company} (attempt {Attempt})",
+            app.Id, company.Name, attempt.Id);
+
+        return new SaveAsApplyResultDto(app.Id, company.Id, contact.Id, attempt.Id, companyCreated, contactCreated);
+    }
+
+    /// <summary>Dedup chain for LinkedIn/phone-keyed contacts — mirrors the extract-import rules:
+    /// email → LinkedIn URL → phone → same company + same name.</summary>
+    private async Task<Contact?> FindExistingContactAsync(Guid userId, Company company,
+        string? email, string? phone, string? linkedInUrl, string? name)
+    {
+        var emailNorm = (email ?? string.Empty).Trim();
+        var linkedNorm = (linkedInUrl ?? string.Empty).Trim();
+        var phoneNorm = (phone ?? string.Empty).Trim();
+
+        if (!string.IsNullOrWhiteSpace(emailNorm))
+            return await _db.Contacts.FirstOrDefaultAsync(c => c.UserId == userId && c.Email == emailNorm);
+        if (!string.IsNullOrWhiteSpace(linkedNorm))
+            return await _db.Contacts.FirstOrDefaultAsync(c => c.UserId == userId && c.LinkedInUrl != null
+                && c.LinkedInUrl.Trim().ToLower() == linkedNorm.ToLower());
+        if (!string.IsNullOrWhiteSpace(phoneNorm))
+            return await _db.Contacts.FirstOrDefaultAsync(c => c.UserId == userId && c.Phone != null
+                && c.Phone.Trim() == phoneNorm);
+        if (!string.IsNullOrWhiteSpace(name))
+            return await _db.Contacts.FirstOrDefaultAsync(c => c.UserId == userId
+                && c.Company != null && c.Company.ToLower() == company.Name.ToLower()
+                && c.Name.ToLower() == name.Trim().ToLower());
+        return null;
+    }
+
+    private async Task<Contact> UpsertContactFromMessageAsync(Guid userId, Company company,
+        Contact? existing, string? email, string? name, string? phone, string? linkedInUrl)
+    {
+        var emailNorm = (email ?? string.Empty).Trim();
+        var nameNorm = string.IsNullOrWhiteSpace(name) ? company.Name : name.Trim();
+        var phoneNorm = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+        var linkedNorm = string.IsNullOrWhiteSpace(linkedInUrl) ? null : linkedInUrl.Trim();
+
+        if (existing is null)
+        {
+            var contact = new Contact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Name = nameNorm,
+                Email = emailNorm,
+                Phone = phoneNorm,
+                LinkedInUrl = linkedNorm,
+                Company = company.Name,
+                Source = "tools_message",
+                Notes = "Saved from a generated outreach message"
+            };
+            _db.Contacts.Add(contact);
+            await _db.SaveChangesAsync();
+            return contact;
+        }
+
+        existing.Name = string.IsNullOrWhiteSpace(name) ? existing.Name : name.Trim();
+        if (!string.IsNullOrWhiteSpace(phoneNorm) && string.IsNullOrWhiteSpace(existing.Phone)) existing.Phone = phoneNorm;
+        if (!string.IsNullOrWhiteSpace(linkedNorm) && string.IsNullOrWhiteSpace(existing.LinkedInUrl)) existing.LinkedInUrl = linkedNorm;
+        if (!string.IsNullOrWhiteSpace(emailNorm) && string.IsNullOrWhiteSpace(existing.Email)) existing.Email = emailNorm;
+        if (string.IsNullOrWhiteSpace(existing.Company)) existing.Company = company.Name;
+        existing.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return existing;
     }
 
     private async Task<(string? PdfUrl, string? Title)> ResolveCvPdfUrlAsync(Guid? cvVersionId)

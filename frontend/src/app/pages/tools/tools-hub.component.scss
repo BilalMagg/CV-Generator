@@ -59,6 +59,62 @@
   padding: 20px;
 }
 
+// Save-as-apply form (inline expansion on a message variant card)
+.save-apply {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--border, #e3e8ef);
+  border-radius: 10px;
+  background: #f8fafc;
+
+  .save-apply-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  .save-apply-close {
+    border: none;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 4px;
+    line-height: 1;
+  }
+
+  .save-apply-sub {
+    margin: 4px 0 12px;
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  .cv-fallback-hint {
+    margin: -8px 0 12px;
+    font-size: 11.5px;
+    color: #94a3b8;
+  }
+
+  .save-apply-error {
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #fef2f2;
+    border: 1px solid #fecdd3;
+    color: #be123c;
+    font-size: 12.5px;
+  }
+
+  .save-apply-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
+
 .fld {
   display: flex;
   flex-direction: column;

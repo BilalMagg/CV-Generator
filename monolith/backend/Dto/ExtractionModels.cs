@@ -40,6 +40,7 @@ public class ExtractionFullResult
     public List<string> Benefits { get; set; } = new();
     public string? ApplicationDeadline { get; set; }
     public string? ContactEmail { get; set; }
+    public string? EmailSubject { get; set; }
     public string? SourceUrl { get; set; }
     public Dictionary<string, double> FieldConfidences { get; set; } = new();
     public double OverallConfidence { get; set; }

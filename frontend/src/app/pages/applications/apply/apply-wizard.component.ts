@@ -249,6 +249,9 @@ export class ApplyWizardComponent implements OnInit {
     this.companyDescription = output.enterpriseDescription || '';
     this.recipientEmail = output.contactEmail || this.recipientEmail;
     this.prefillCompose();
+    // A subject line specified by the post ("Objet:", "Subject:", ref to mention) wins
+    // over the generated default; the user can still change it in compose.
+    if (output.emailSubject?.trim()) this.subject = output.emailSubject.trim();
   }
 
   private prefillCompose() {

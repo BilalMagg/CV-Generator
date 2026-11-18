@@ -109,6 +109,9 @@ public class ExtractorOutput : JobRequirements
     [JsonPropertyName("contact_email")]
     public string? ContactEmail { get; set; }
 
+    [JsonPropertyName("email_subject")]
+    public string? EmailSubject { get; set; }
+
     [JsonPropertyName("source_url")]
     public string? SourceUrl { get; set; }
 

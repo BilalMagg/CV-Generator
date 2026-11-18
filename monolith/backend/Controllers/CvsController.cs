@@ -5,6 +5,7 @@ using CV_Generator;
 using CV_Generator.Data;
 using CV_Generator.Models;
 using CV_Generator.Services;
+using CV_Generator.Services.Storage;
 
 namespace CV_Generator.Controllers;
 
@@ -15,10 +16,10 @@ public class CvsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
-    private readonly IMinioStorageService _storage;
+    private readonly IObjectStorage _storage;
     private readonly IPdfThumbnailService _pdfThumbnails;
 
-    public CvsController(AppDbContext db, ICurrentUserService currentUser, IMinioStorageService storage, IPdfThumbnailService pdfThumbnails)
+    public CvsController(AppDbContext db, ICurrentUserService currentUser, IObjectStorage storage, IPdfThumbnailService pdfThumbnails)
     {
         _db = db;
         _currentUser = currentUser;
@@ -36,6 +37,17 @@ public class CvsController : ControllerBase
             .Include(c => c.Versions.OrderByDescending(v => v.VersionNumber))
             .OrderByDescending(c => c.UpdatedAt)
             .ToListAsync();
+
+        foreach (var c in cvs)
+        {
+            foreach (var v in c.Versions)
+            {
+                v.PdfUrl = _storage.NormalizeUrl(v.PdfUrl);
+                v.FileUrl = _storage.NormalizeUrl(v.FileUrl);
+                v.ThumbnailUrl = _storage.NormalizeUrl(v.ThumbnailUrl);
+            }
+        }
+
         return Ok(ApiResponse<List<Cv>>.Ok(cvs));
     }
 
@@ -46,6 +58,14 @@ public class CvsController : ControllerBase
         if (userId == null) return Unauthorized();
         var cv = await _db.Cvs.Include(c => c.Versions).FirstOrDefaultAsync(c => c.Id == id);
         if (cv == null || cv.UserId != userId.Value) return NotFound(ApiResponse<Cv>.Error("CV not found"));
+
+        foreach (var v in cv.Versions)
+        {
+            v.PdfUrl = _storage.NormalizeUrl(v.PdfUrl);
+            v.FileUrl = _storage.NormalizeUrl(v.FileUrl);
+            v.ThumbnailUrl = _storage.NormalizeUrl(v.ThumbnailUrl);
+        }
+
         return Ok(ApiResponse<Cv>.Ok(cv));
     }
 

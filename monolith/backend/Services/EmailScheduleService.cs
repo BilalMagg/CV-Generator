@@ -13,7 +13,7 @@ public class EmailScheduleService
     private readonly AppDbContext _db;
     private readonly ILogger<EmailScheduleService> _logger;
     private readonly IGmailSendService _gmail;
-    private readonly IMinioStorageService _minio;
+    private readonly Storage.IObjectStorage _minio;
     private readonly IApplicationService _applications;
     private readonly IHttpClientFactory _httpClientFactory;
     private const string AttachmentBucket = "mail-attachments";
@@ -22,7 +22,7 @@ public class EmailScheduleService
         AppDbContext db,
         ILogger<EmailScheduleService> logger,
         IGmailSendService gmail,
-        IMinioStorageService minio,
+        Storage.IObjectStorage minio,
         IApplicationService applications,
         IHttpClientFactory httpClientFactory)
     {

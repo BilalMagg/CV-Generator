@@ -197,3 +197,29 @@ export interface ApplyPrepMessageResult {
   applicationId?: string;
   message: string;
 }
+
+// ── Tools message → Save as application ────────────────────────────────────────
+
+/** Saves an outreach message generated in Tools (LinkedIn-message tool) as a tracked
+ * application: company + contact are upserted, the message lands as a DRAFT
+ * LINKEDIN_MESSAGE attempt on the created application. */
+export interface SaveAsApplyRequest {
+  companyName: string;
+  message: string;
+  positionTitle?: string;
+  cvVersionId?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactLinkedInUrl?: string;
+  allowDuplicate?: boolean;
+}
+
+export interface SaveAsApplyResult {
+  applicationId: string;
+  companyId: string;
+  contactId?: string;
+  attemptId: string;
+  companyCreated: boolean;
+  contactCreated: boolean;
+}

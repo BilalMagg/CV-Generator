@@ -428,11 +428,82 @@ We did the same at our hackathon…"
                 @if (generatedTool() !== 'emojify') {
                   <button type="button" class="btn btn-ghost btn-sm" (click)="openAdjust(v)">Adjust</button>
                 }
+                @if (generatedTool() === 'message') {
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="openSaveAsApply($index)">
+                    Save as application
+                  </button>
+                }
                 <button type="button" class="btn btn-ghost btn-sm" (click)="saveVariant(v)" [disabled]="savingId() === $index">
                   {{ savingId() === $index ? 'Saving…' : 'Save' }}
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm" (click)="copy(v)">Copy</button>
               </div>
+
+              @if (saveApplyOpen() === $index) {
+                <div class="save-apply">
+                  <div class="save-apply-head">
+                    <span>Track this message as an application</span>
+                    <button type="button" class="save-apply-close" (click)="closeSaveAsApply()" aria-label="Close">✕</button>
+                  </div>
+                  <p class="save-apply-sub">
+                    The message is stored as a draft LinkedIn-message attempt on the created application.
+                  </p>
+                  <div class="row-opts">
+                    <label class="fld">
+                      <span>Company <em class="req">*</em></span>
+                      <input type="text" placeholder="e.g. Capgemini Morocco" [ngModel]="saveCompany()" (ngModelChange)="saveCompany.set($event)" />
+                    </label>
+                    <label class="fld">
+                      <span>Position</span>
+                      <input type="text" placeholder="Application" [ngModel]="savePosition()" (ngModelChange)="savePosition.set($event)" />
+                    </label>
+                  </div>
+                  <div class="row-opts">
+                    <label class="fld">
+                      <span>Contact name</span>
+                      <input type="text" placeholder="e.g. Leila Benali" [ngModel]="saveContactName()" (ngModelChange)="saveContactName.set($event)" />
+                    </label>
+                    <label class="fld">
+                      <span>LinkedIn profile</span>
+                      <input type="text" placeholder="https://linkedin.com/in/…" [ngModel]="saveContactLinkedin()" (ngModelChange)="saveContactLinkedin.set($event)" />
+                    </label>
+                    <label class="fld">
+                      <span>Phone</span>
+                      <input type="text" placeholder="+212 6 00 00 00 00" [ngModel]="saveContactPhone()" (ngModelChange)="saveContactPhone.set($event)" />
+                    </label>
+                  </div>
+                  <label class="fld">
+                    <span>CV sent <em class="hint">(optional)</em></span>
+                    <select [ngModel]="saveCvVersionId()" (ngModelChange)="saveCvVersionId.set($event)">
+                      <option value="">No specific CV</option>
+                      @for (o of cvOptions(); track o.id) {
+                        <option [value]="o.id">{{ o.label }}</option>
+                      }
+                    </select>
+                  </label>
+                  @if (!cvOnlyActive() && cvOptions().length > 0) {
+                    <p class="cv-fallback-hint">{{ cvFallbackHint }}</p>
+                  }
+                  @if (saveError()) {
+                    <div class="save-apply-error">{{ saveError() }}</div>
+                  }
+                  <div class="save-apply-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="closeSaveAsApply()">Cancel</button>
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-sm"
+                      (click)="submitSaveAsApply($index)"
+                      [disabled]="saveApplying() || !saveCompany().trim()"
+                    >
+                      @if (saveApplying()) {
+                        <span class="spinner"></span> Saving…
+                      } @else {
+                        Save as application
+                      }
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
           }
         </div>

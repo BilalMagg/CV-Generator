@@ -143,7 +143,7 @@ export class DocumentsCoverLettersComponent implements OnInit, OnDestroy {
   thumbSrc(letter: CoverLetterDto): string | null {
     const v = this.previewVersionOf(letter);
     if (!v) return null;
-    return v.thumbnailUrl ?? this.service.coverLetterVersionThumbnailUrl(v.id);
+    return this.service.coverLetterVersionThumbnailUrl(v.id);
   }
 
   onFileSelected(event: Event): void {

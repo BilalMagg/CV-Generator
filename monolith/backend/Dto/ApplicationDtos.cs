@@ -152,6 +152,30 @@ public record SendAttemptDto(
     List<ScheduleAttachmentRef>? Attachments = null
 );
 
+/// <summary>Saves an outreach message generated in Tools (e.g. a LinkedIn message) as a tracked
+/// application: upserts the company + a LinkedIn/phone-keyed contact, creates a SAVED application,
+/// and logs the message as a DRAFT LINKEDIN_MESSAGE attempt on it.</summary>
+public record SaveAsApplyDto(
+    string CompanyName,
+    string Message,
+    string? PositionTitle = null,
+    Guid? CvVersionId = null,
+    string? ContactName = null,
+    string? ContactEmail = null,
+    string? ContactPhone = null,
+    string? ContactLinkedInUrl = null,
+    bool AllowDuplicate = false
+);
+
+public record SaveAsApplyResultDto(
+    Guid ApplicationId,
+    Guid CompanyId,
+    Guid? ContactId,
+    Guid AttemptId,
+    bool CompanyCreated,
+    bool ContactCreated
+);
+
 public record AttemptResponseDto(
     Guid Id,
     Guid ApplicationId,

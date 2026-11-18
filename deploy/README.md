@@ -17,14 +17,35 @@ Everything needed to run Propel is in this folder. Two workflows:
 From the repo root:
 
 ```bash
-cp deploy/.env.example deploy/.env   # fill the Gmail values (optional)
+cp deploy/.env.example deploy/.env   # configure profile and providers
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
-Then open **http://localhost:4200** — the first user signs up through the
-in-app registration flow (the imported Keycloak realm has registration
-enabled). Configure LLM API keys under **Settings → AI Model** inside the app
-(no `.env` editing needed — see below).
+Then open **http://localhost:4200** — register or log in. Configure LLM API keys under **Settings → AI Model** inside the app (no `.env` editing needed — see below).
+
+### Deployment Profiles & Infrastructure Stacks
+
+You can run Propel in different deployment profiles via `COMPOSE_PROFILES` in `deploy/.env`:
+
+| Profile | Command / Setting | Infrastructure Running | Best For |
+|---|---|---|---|
+| **Local Storage (Default)** | `COMPOSE_PROFILES=minio` | PostgreSQL + MinIO + Propel App | Local self-contained usage with Native Auth |
+| **Minimal Cloud** | `COMPOSE_PROFILES=minimal` (or unset) | PostgreSQL + Propel App | Running with Cloudflare R2 + Native Auth (2 containers only!) |
+| **Keycloak Auth** | `COMPOSE_PROFILES=keycloak` | PostgreSQL + Keycloak-DB + Keycloak + Propel App | Environments requiring Keycloak SSO |
+| **Full Self-Hosted** | `COMPOSE_PROFILES=full` | PostgreSQL + MinIO + Keycloak-DB + Keycloak + Propel App | Full local stack with all services containerized |
+
+### Storage Providers: MinIO or Cloudflare R2
+
+Propel supports provider-agnostic storage via `IObjectStorage`:
+
+- **MinIO**: Set `STORAGE_PROVIDER=MinIO` (default). Runs against local or remote MinIO.
+- **Cloudflare R2**: Set `STORAGE_PROVIDER=CloudflareR2`. Enter `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET_NAME` in `deploy/.env`. Requires no MinIO container.
+
+### Authentication: Native vs. Keycloak
+
+- **Native Auth (Default)**: Set `AUTH_PROVIDER=Native`. Uses ASP.NET Core password hashing directly in the database. Eliminates the Keycloak container entirely!
+- **Keycloak Auth**: Set `AUTH_PROVIDER=Keycloak`. Uses Keycloak for realm management and JWT validation.
+- **Hybrid**: Set `AUTH_PROVIDER=Hybrid`. Supports existing Keycloak accounts while allowing native credential registration.
 
 Exposed ports:
 

@@ -4,6 +4,7 @@ using System.Text.Json;
 using CV_Generator;
 using CV_Generator.Dto;
 using CV_Generator.Services;
+using CV_Generator.Services.Storage;
 using CV_Generator.Models;
 using CV_Generator.Data;
 
@@ -16,7 +17,7 @@ public class MailboxController : BaseApiController
     private readonly IGmailSendService _gmailSendSvc;
     private readonly IContactService _contactSvc;
     private readonly IApplicationService _applicationSvc;
-    private readonly IMinioStorageService _minio;
+    private readonly IObjectStorage _minio;
     private readonly ILogger<MailboxController> _logger;
 
     public MailboxController(
@@ -25,7 +26,7 @@ public class MailboxController : BaseApiController
         IGmailSendService gmailSendSvc,
         IContactService contactSvc,
         IApplicationService applicationSvc,
-        IMinioStorageService minio,
+        IObjectStorage minio,
         ILogger<MailboxController> logger)
         : base(currentUser)
     {
