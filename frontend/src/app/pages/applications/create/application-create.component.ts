@@ -36,7 +36,8 @@ import { DomainSelectComponent } from '@app/shared/components/domain-select';
 interface ChannelTile {
   value: AttemptChannel;
   label: string;
-  icon: string;
+  icon?: string;
+  iconUrl?: string;
 }
 
 @Component({
@@ -391,14 +392,14 @@ export class ApplicationCreateComponent implements OnInit {
   }
 
   readonly channels: ChannelTile[] = [
-    { value: 'EMAIL_GMAIL',          label: 'Gmail',              icon: 'ti-brand-gmail' },
-    { value: 'EMAIL_SMTP',           label: 'Email (SMTP)',       icon: 'ti-mail' },
-    { value: 'WHATSAPP',             label: 'WhatsApp',           icon: 'ti-brand-whatsapp' },
-    { value: 'LINKEDIN_MESSAGE',     label: 'LinkedIn message',   icon: 'ti-brand-linkedin' },
-    { value: 'LINKEDIN_CONNECTION',  label: 'LinkedIn connect',   icon: 'ti-user-plus' },
-    { value: 'LINKEDIN_APPLY',       label: 'LinkedIn apply',     icon: 'ti-brand-linkedin' },
-    { value: 'INDEED_APPLY',         label: 'Indeed apply',       icon: 'ti-briefcase' },
-    { value: 'WEB_FORM',             label: 'Web form',           icon: 'ti-world' },
+    { value: 'EMAIL_GMAIL',          label: 'Gmail',              icon: 'ti-mail',            iconUrl: 'https://cdn.simpleicons.org/gmail/EA4335' },
+    { value: 'EMAIL_SMTP',           label: 'Email (SMTP)',       icon: 'ti-mail',            iconUrl: 'https://cdn.simpleicons.org/maildotru/005FF9' },
+    { value: 'WHATSAPP',             label: 'WhatsApp',           icon: 'ti-brand-whatsapp',  iconUrl: 'https://cdn.simpleicons.org/whatsapp/25D366' },
+    { value: 'LINKEDIN_MESSAGE',     label: 'LinkedIn message',   icon: 'ti-brand-linkedin',  iconUrl: 'https://cdn.simpleicons.org/linkedin/0A66C2' },
+    { value: 'LINKEDIN_CONNECTION',  label: 'LinkedIn connect',   icon: 'ti-user-plus',       iconUrl: 'https://cdn.simpleicons.org/linkedin/0A66C2' },
+    { value: 'LINKEDIN_APPLY',       label: 'LinkedIn apply',     icon: 'ti-brand-linkedin',  iconUrl: 'https://cdn.simpleicons.org/linkedin/0A66C2' },
+    { value: 'INDEED_APPLY',         label: 'Indeed apply',       icon: 'ti-briefcase',       iconUrl: 'https://cdn.simpleicons.org/indeed/003A9A' },
+    { value: 'WEB_FORM',             label: 'Web form',           icon: 'ti-world',           iconUrl: 'https://cdn.simpleicons.org/googleforms/7248B9' },
     { value: 'IN_PERSON',            label: 'In person',          icon: 'ti-users-group' },
     { value: 'OTHER',                label: 'Other',              icon: 'ti-dots' },
   ];

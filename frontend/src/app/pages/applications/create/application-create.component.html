@@ -1,8 +1,16 @@
 <div class="topbar">
-  <button class="back-btn" (click)="router.navigate(['/applications/kanban'])" title="Back to Kanban">
-    <i class="ti ti-arrow-left"></i>
-  </button>
-  <div class="topbar-title">New Application</div>
+  <div class="topbar-left">
+    <button type="button" class="back-btn" (click)="router.navigate(['/applications/kanban'])" title="Back to Kanban">
+      <i class="ti ti-arrow-left"></i>
+    </button>
+    <div class="topbar-title">New Application</div>
+  </div>
+  <div class="topbar-actions">
+    <button type="button" class="btn btn-secondary" (click)="router.navigate(['/applications/kanban'])">Cancel</button>
+    <button type="button" class="btn btn-primary" (click)="onSubmit()" [disabled]="submitting() || !isFormValid">
+      {{ submitting() ? 'Creating…' : (stage() === 'APPLIED' ? 'Log Application' : 'Save Application') }}
+    </button>
+  </div>
 </div>
 
 <div class="create-shell">
@@ -172,7 +180,11 @@
               <div class="channel-grid">
                 @for (c of channels; track c.value) {
                   <button type="button" class="channel-tile" [class.active]="channel() === c.value" (click)="setChannel(c.value)">
-                    <i class="{{ c.icon }}"></i>
+                    @if (c.iconUrl) {
+                      <img [src]="c.iconUrl" [alt]="c.label" class="channel-logo" loading="lazy" />
+                    } @else {
+                      <i class="ti {{ c.icon }}"></i>
+                    }
                     <span>{{ c.label }}</span>
                   </button>
                 }
@@ -399,18 +411,4 @@
       </p>
     </div>
   </aside>
-</div>
-
-<!-- Sticky footer -->
-<div class="footer">
-  <span class="footer-summary">
-    @if (stage() === 'APPLIED' && markSent()) { Will be marked as <strong>Applied</strong> on <strong>{{ formatPreviewDate(previewDate()) }}</strong> }
-    @else { Will be saved as <strong>{{ STATUS_LABELS[previewStatus()] }}</strong> }
-  </span>
-  <div class="footer-btns">
-    <button type="button" class="btn btn-secondary" (click)="router.navigate(['/applications/kanban'])">Cancel</button>
-    <button type="button" class="btn btn-primary" (click)="onSubmit()" [disabled]="submitting() || !isFormValid">
-      {{ submitting() ? 'Creating…' : (stage() === 'APPLIED' ? 'Log Application' : 'Save Application') }}
-    </button>
-  </div>
 </div>

@@ -1,19 +1,90 @@
 :host { display: flex; flex-direction: column; height: 100%; }
 
 .topbar {
-  padding: 12px 20px; background: white;
+  padding: 12px 24px;
+  background: white;
   border-bottom: 1px solid oklch(0.92 0.004 80);
-  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .back-btn {
-  width: 28px; height: 28px; border-radius: 7px;
-  border: 1px solid oklch(0.9 0.004 80); background: transparent;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; color: var(--text-2); cursor: pointer;
-  transition: background 0.12s;
-  &:hover { background: var(--bg); }
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid oklch(0.9 0.004 80);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.12s;
+  &:hover { background: var(--bg); color: var(--text); }
 }
-.topbar-title { font-size: 14px; font-weight: 600; color: var(--text); }
+
+.topbar-title {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.12s;
+    border: 1px solid transparent;
+
+    &.btn-secondary {
+      background: var(--surface, #ffffff);
+      border-color: var(--border, #d1d5db);
+      color: var(--text-2, #374151);
+      &:hover { background: var(--bg-2, #f3f4f6); color: var(--text, #111827); }
+    }
+
+    &.btn-primary {
+      background: var(--dark, oklch(0.18 0.01 80));
+      border-color: var(--dark, oklch(0.18 0.01 80));
+      color: #ffffff;
+      box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+
+      &:hover:not(:disabled) {
+        background: oklch(0.12 0.01 80);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
 
 /* ── Shell ─────────────────────────────────────────────────────────────────── */
 
@@ -278,16 +349,27 @@ textarea { resize: vertical; }
   background: white;
   cursor: pointer;
   font-family: var(--font-body);
-  transition: border-color 0.12s, background 0.12s;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
 
-  i { font-size: 19px; color: var(--text-3); transition: color 0.12s; }
+  i { font-size: 20px; color: var(--text-3); transition: color 0.12s; }
+  .channel-logo {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    transition: transform 0.12s;
+  }
   span { font-size: 11px; font-weight: 500; color: var(--text-2); text-align: center; line-height: 1.25; }
 
-  &:hover { border-color: oklch(0.82 0.01 80); i { color: var(--text-2); } }
+  &:hover {
+    border-color: oklch(0.82 0.01 80);
+    i { color: var(--text-2); }
+    .channel-logo { transform: scale(1.08); }
+  }
 
   &.active {
     border-color: oklch(0.6 0.16 250);
     background: oklch(0.97 0.015 250);
+    box-shadow: 0 0 0 1px oklch(0.6 0.16 250);
 
     i { color: oklch(0.5 0.16 250); }
     span { color: oklch(0.45 0.13 250); font-weight: 600; }
@@ -469,17 +551,6 @@ textarea { resize: vertical; }
   font-size: 12px; line-height: 1.55; color: var(--text-3);
   strong { color: var(--text-2); font-weight: 600; }
 }
-
-/* ── Sticky footer ─────────────────────────────────────────────────────────── */
-
-.footer {
-  padding: 12px 24px; background: white;
-  border-top: 1px solid oklch(0.92 0.004 80);
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  flex-shrink: 0;
-}
-.footer-summary { font-size: 12.5px; color: var(--text-3); strong { color: var(--text-2); } }
-.footer-btns { display: flex; gap: 10px; }
 
 .ghost-btn, .cancel-btn {
   padding: 8px 18px; border: 1px solid oklch(0.9 0.004 80);
