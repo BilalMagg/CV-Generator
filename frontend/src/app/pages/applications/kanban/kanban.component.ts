@@ -1,7 +1,8 @@
-import { Component, signal, inject, OnInit, computed, effect } from '@angular/core';
+import { Component, signal, inject, OnInit, computed, effect, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { ApplicationService } from '@app/services/application.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import {
   ApplicationResponseDto,
   ApplicationStatus,
@@ -39,6 +40,8 @@ const COLUMNS: { status: ApplicationStatus; label: string; colorVar: string }[] 
 })
 export class KanbanComponent implements OnInit {
   private appService = inject(ApplicationService);
+  private shortcut = inject(ShortcutService);
+  private destroyRef = inject(DestroyRef);
 
   columns = signal<Column[]>(COLUMNS.map(c => ({ ...c, items: [] })));
   loading = signal(true);
@@ -61,6 +64,9 @@ export class KanbanComponent implements OnInit {
   );
 
   ngOnInit() {
+    this.shortcut.register({ key: 'a', label: 'New Application', handler: () => void this.router.navigate(['/applications/new']) }, this.destroyRef);
+    this.shortcut.register({ key: 'c', label: 'New Application', handler: () => void this.router.navigate(['/applications/new']) }, this.destroyRef);
+    this.shortcut.register({ key: 'l', label: 'List view', handler: () => void this.router.navigate(['/applications/list']) }, this.destroyRef);
     this.loadApps();
     if (this.view() === 'activity') this.loadActivity();
   }

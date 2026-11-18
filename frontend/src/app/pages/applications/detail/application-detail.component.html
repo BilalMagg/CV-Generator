@@ -44,7 +44,8 @@
             <div class="info-cell"><div class="info-lbl">Applied</div><div class="info-val">{{ formatDate(app.appliedAt) }}</div></div>
             <div class="info-cell"><div class="info-lbl">Last updated</div><div class="info-val">{{ formatDate(app.updatedAt) }}</div></div>
             <div class="info-cell"><div class="info-lbl">Source</div><div class="info-val">{{ app.offerSource || '—' }}</div></div>
-            <div class="info-cell"><div class="info-lbl">Internship</div><div class="info-val">{{ app.internshipType || '—' }}</div></div>
+            <div class="info-cell"><div class="info-lbl">Contract</div><div class="info-val">{{ app.internshipType || '—' }}</div></div>
+            <div class="info-cell" *ngIf="app.workType"><div class="info-lbl">Workplace</div><div class="info-val">{{ app.workType }}</div></div>
             <div class="info-cell">
               <div class="info-lbl">Priority</div>
               <div class="info-val prio" [style.color]="priorityColor(app.priority)">
@@ -472,7 +473,14 @@
           </select>
         </div>
         <div class="attempt-grid">
-          <div class="form-group"><label>Internship type</label><input class="form-input" [(ngModel)]="editInternshipType" placeholder="e.g. PFA, PFE"></div>
+          <div class="form-group">
+            <label>Contract / Internship</label>
+            <ui-select [ngModel]="editInternshipType()" (valueChange)="editInternshipType.set($event)" placeholder="Select type" [options]="internshipTypes"></ui-select>
+          </div>
+          <div class="form-group">
+            <label>Workplace</label>
+            <ui-select [ngModel]="editWorkType()" (valueChange)="editWorkType.set($event)" placeholder="Select arrangement" [options]="workTypes"></ui-select>
+          </div>
           <div class="form-group"><label>Priority</label>
             <select class="form-select" [(ngModel)]="editPriority" name="editPriority">
               @for (p of PRIORITY_ORDER; track p) {

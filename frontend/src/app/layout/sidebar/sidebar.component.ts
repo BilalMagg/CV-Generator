@@ -2,6 +2,7 @@ import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import { APP_NAME } from '@app/app-name';
 
 interface NavItem {
@@ -22,6 +23,7 @@ interface NavItem {
 })
 export class SidebarComponent {
   appName = APP_NAME;
+  shortcutService = inject(ShortcutService);
   private router = inject(Router);
   private authService = inject(AuthService);
 

@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit, computed, effect } from '@angular/core';
+import { Component, signal, inject, OnInit, computed, effect, DestroyRef } from '@angular/core';
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 import { CronBuilderComponent } from '@app/shared/components/cron-builder/cron-builder.component';
@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { MailboxService } from '@app/services/mailbox.service';
 import { ContactService } from '@app/services/contact.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
 import { DocumentsService } from '@app/services/documents.service';
@@ -111,6 +112,8 @@ export class MailboxComponent implements OnInit {
   private readonly directAi = inject(DirectAiService);
   private readonly authSvc = inject(AuthService);
   private readonly companySvc = inject(CompanyService);
+  private readonly shortcut = inject(ShortcutService);
+  private readonly destroyRef = inject(DestroyRef);
 
   view = signal<MailboxView>((localStorage.getItem('mailbox-view') as MailboxView) || 'compose');
 
@@ -543,6 +546,26 @@ export class MailboxComponent implements OnInit {
   loadMoreModalContacts() { this.loadContacts(false, this.modalContactSearch()); }
 
   async ngOnInit() {
+    this.shortcut.register({
+      key: 'c',
+      label: 'Compose email',
+      handler: () => this.view.set('compose')
+    }, this.destroyRef);
+
+    this.shortcut.register({
+      key: 'a',
+      label: 'Add contact / schedule / compose',
+      handler: () => {
+        if (this.view() === 'contacts') {
+          this.startNewContact();
+        } else if (this.view() === 'schedules') {
+          this.openNewSchedule();
+        } else {
+          this.view.set('compose');
+        }
+      }
+    }, this.destroyRef);
+
     this.applyQueryParams();
     this.loading.set(true);
     try {

@@ -1,10 +1,24 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpService } from './http.service';
 import type { BimeChatRequest, BimeChatResponse, BimeConversationSummary, BimeConversationDetail } from '../models/bime.model';
 
 @Injectable({ providedIn: 'root' })
 export class BimeService {
   private readonly http = inject(HttpService);
+
+  readonly isOpen = signal(false);
+
+  toggle(): void {
+    this.isOpen.update(v => !v);
+  }
+
+  open(): void {
+    this.isOpen.set(true);
+  }
+
+  close(): void {
+    this.isOpen.set(false);
+  }
 
   async chat(message: string, conversationId?: string, provider?: string, model?: string): Promise<BimeChatResponse> {
     const body: BimeChatRequest = { message };

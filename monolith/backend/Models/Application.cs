@@ -31,6 +31,10 @@ public class Application
     [MaxLength(50)]
     public string? InternshipType { get; set; }
 
+    /// <summary>Work arrangement (e.g. On-site, Hybrid, Remote).</summary>
+    [MaxLength(50)]
+    public string? WorkType { get; set; }
+
     /// <summary>Candidate's own priority for follow-up energy allocation.</summary>
     [Required]
     public ApplicationPriority Priority { get; set; } = ApplicationPriority.MEDIUM;

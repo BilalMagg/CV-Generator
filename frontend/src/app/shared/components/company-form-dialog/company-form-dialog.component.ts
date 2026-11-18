@@ -8,11 +8,12 @@ import { AutoFillDialogComponent } from '@app/shared/components/auto-fill-dialog
 import { AutofillField } from '@app/services/autofill.service';
 import { ImagePickerComponent } from '@app/shared/components/image-picker/image-picker.component';
 import { ImageDto, ImageService } from '@app/services/image.service';
+import { UI_FIELD_COMPONENTS } from '@app/shared/components/ui/field/field.component';
 
 @Component({
   selector: 'app-company-form-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, AutoFillDialogComponent, ImagePickerComponent],
+  imports: [CommonModule, FormsModule, AutoFillDialogComponent, ImagePickerComponent, ...UI_FIELD_COMPONENTS],
   templateUrl: './company-form-dialog.component.html',
   styleUrl: './company-form-dialog.component.scss',
 })

@@ -1,0 +1,100 @@
+@if (shortcuts.helpOpen()) {
+  <div class="shortcuts-backdrop" (click)="close()">
+    <div class="shortcuts-dialog" (click)="$event.stopPropagation()">
+      <div class="shortcuts-header">
+        <div class="header-title">
+          <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10"/>
+          </svg>
+          <h3>Keyboard Shortcuts</h3>
+        </div>
+        <button class="close-btn" (click)="close()" title="Close (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="shortcuts-content">
+        <!-- Active Context Shortcuts (if any are registered on current page) -->
+        @if (shortcuts.activeContextActions().length > 0) {
+          <div class="shortcut-section context-section">
+            <div class="section-badge">Current Page</div>
+            <div class="shortcut-list">
+              @for (action of shortcuts.activeContextActions(); track action.key) {
+                <div class="shortcut-row">
+                  <span class="shortcut-desc">{{ action.label }}</span>
+                  <div class="key-combo">
+                    <kbd>{{ action.key.toUpperCase() }}</kbd>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Global Quick Actions -->
+        <div class="shortcut-section">
+          <h4>Global Actions</h4>
+          <div class="shortcut-list">
+            @for (s of globalShortcuts; track s.description) {
+              <div class="shortcut-row">
+                <span class="shortcut-desc">{{ s.description }}</span>
+                <div class="key-combo">
+                  @for (k of s.keys; track k) {
+                    <kbd>{{ k }}</kbd>
+                  }
+                  @if (s.altKeys) {
+                    <span class="or-sep">or</span>
+                    @for (ak of s.altKeys; track ak) {
+                      <kbd>{{ ak }}</kbd>
+                    }
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Fast Navigation -->
+        <div class="shortcut-section">
+          <h4>Fast Navigation (Press G then key)</h4>
+          <div class="shortcut-grid">
+            @for (s of navigationShortcuts; track s.description) {
+              <div class="shortcut-row">
+                <span class="shortcut-desc">{{ s.description }}</span>
+                <div class="key-combo">
+                  <kbd>{{ s.seq[0] }}</kbd>
+                  <span class="seq-sep">then</span>
+                  <kbd>{{ s.seq[1] }}</kbd>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Form & Dialog Controls -->
+        <div class="shortcut-section">
+          <h4>Forms & Dialogs</h4>
+          <div class="shortcut-list">
+            @for (s of formShortcuts; track s.description) {
+              <div class="shortcut-row">
+                <span class="shortcut-desc">{{ s.description }}</span>
+                <div class="key-combo">
+                  @for (k of s.keys; track k) {
+                    <kbd>{{ k }}</kbd>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcuts-footer">
+        <span class="footer-hint">Single-key shortcuts are automatically ignored while typing in input fields.</span>
+      </div>
+    </div>
+  </div>
+}

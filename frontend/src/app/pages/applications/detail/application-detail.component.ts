@@ -21,6 +21,8 @@ import {
   PRIORITY_COLORS,
   attemptChannelFields,
   APPLY_SOURCES,
+  INTERNSHIP_TYPES,
+  WORK_TYPES,
   ATTEMPT_CHANNEL_LABELS,
   ATTEMPT_STATUS_LABELS,
 } from '@app/models/application.model';
@@ -32,6 +34,7 @@ import { DocumentsService } from '@app/services/documents.service';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
 import { ConfirmService } from '@app/services/confirm.service';
+import { UI_SELECT_COMPONENTS } from '@app/shared/components/ui/select/select.component';
 
 type AttemptForm = {
   channel: AttemptChannel;
@@ -47,7 +50,7 @@ type AttemptForm = {
 @Component({
   selector: 'app-application-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RefreshButtonComponent, CompanyFieldComponent],
+  imports: [CommonModule, FormsModule, RouterLink, RefreshButtonComponent, CompanyFieldComponent, ...UI_SELECT_COMPONENTS],
   templateUrl: './application-detail.component.html',
   styleUrl: './application-detail.component.scss',
 })
@@ -77,7 +80,10 @@ export class ApplicationDetailComponent implements OnInit {
   editOfferSource = signal('');
   editNotes = signal('');
   editInternshipType = signal('');
+  editWorkType = signal('');
   editPriority = signal<ApplicationPriority>('MEDIUM');
+  readonly internshipTypes = INTERNSHIP_TYPES;
+  readonly workTypes = WORK_TYPES;
 
   attemptForm = signal<AttemptForm>({
     channel: 'EMAIL_GMAIL',
@@ -268,6 +274,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.editOfferSource.set(app.offerSource || '');
     this.editNotes.set(app.notes || '');
     this.editInternshipType.set(app.internshipType || '');
+    this.editWorkType.set(app.workType || '');
     this.editPriority.set(app.priority || 'MEDIUM');
   }
 
@@ -598,6 +605,7 @@ export class ApplicationDetailComponent implements OnInit {
         companyName: this.editCompanyName(), positionTitle: this.editPositionTitle(),
         offerSource: this.editOfferSource() || undefined, notes: this.editNotes() || undefined,
         internshipType: this.editInternshipType().trim() || undefined,
+        workType: this.editWorkType().trim() || undefined,
         priority: this.editPriority(),
       });
       if (res.success && res.data) this.application.set(res.data);

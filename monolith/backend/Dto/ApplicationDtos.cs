@@ -16,6 +16,7 @@ public record ApplicationResponseDto(
     string? Notes,
     string Origin = "MANUAL",
     string? InternshipType = null,
+    string? WorkType = null,
     string Priority = "MEDIUM",
     List<StatusHistoryDto>? History = null,
     List<AttemptResponseDto>? Attempts = null,
@@ -45,6 +46,7 @@ public record CreateApplicationDto(
     string Status = "APPLIED",
     bool AllowDuplicate = false,
     string? InternshipType = null,
+    string? WorkType = null,
     string Priority = "MEDIUM",
     DateTime? AppliedAt = null,
     List<ScheduleAttachmentRef>? Attachments = null
@@ -61,6 +63,7 @@ public record UpdateApplicationDto(
     string? OfferSource,
     string? Notes,
     string? InternshipType = null,
+    string? WorkType = null,
     string? Priority = null,
     List<ScheduleAttachmentRef>? Attachments = null,
     Guid? CvVersionId = null,

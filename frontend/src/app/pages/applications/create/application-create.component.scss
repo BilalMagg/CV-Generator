@@ -97,6 +97,12 @@
   &[data-status='WITHDRAWN'] { background: oklch(0.94 0.004 80); color: var(--text-3); }
 }
 
+.create-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 /* ── Sections ──────────────────────────────────────────────────────────────── */
 
 .section {

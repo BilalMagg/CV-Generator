@@ -8,8 +8,8 @@
         </svg>
       </div>
       <div>
-        <h1>Personal Info</h1>
-        <p class="subtitle">Your canonical profile, used as the base for every tailored CV</p>
+        <h1>Personal Profile</h1>
+        <p class="subtitle">Your canonical profile, used as the foundational baseline for tailored CV generation</p>
       </div>
     </div>
     @if (profile(); as p) {
@@ -17,7 +17,7 @@
         @if (saving()) {
           <span class="mini-spinner"></span> Saving…
         } @else {
-          <i class="ti ti-device-floppy"></i> Save changes
+          <i class="ti ti-device-floppy"></i> Save Changes
         }
       </button>
     }
@@ -32,7 +32,7 @@
     <div class="error-banner">{{ err }}</div>
   } @else if (profile(); as p) {
     @if (saved()) {
-      <div class="success-banner">Profile saved successfully</div>
+      <div class="success-banner">Profile updated successfully.</div>
     }
 
     <div class="pi-layout">
@@ -69,267 +69,242 @@
         </div>
       </aside>
 
-      <!-- Main form -->
+      <!-- Main form with FieldSets -->
       <div class="pi-form">
 
-        <!-- Section: Basic Info -->
-        <section class="form-card">
-          <div class="section-head">
-            <i class="ti ti-user"></i>
-            <div>
-              <h2>Basic Information</h2>
-              <p class="section-desc">Your name, contact details and professional headline</p>
-            </div>
-          </div>
+        <!-- Section 1: Basic Information -->
+        <ui-field-set>
+          <ui-field-legend>Basic Information</ui-field-legend>
+          <ui-field-description>Your legal name, contact channels, and professional identity.</ui-field-description>
 
-          <div class="form-row two-col">
-            <div class="form-group">
-              <label for="firstName">First name</label>
-              <input id="firstName" type="text" [(ngModel)]="p.firstName" name="firstName" />
-            </div>
-            <div class="form-group">
-              <label for="lastName">Last name</label>
-              <input id="lastName" type="text" [(ngModel)]="p.lastName" name="lastName" />
-            </div>
-          </div>
+          <ui-field-group>
+            <div class="ui-grid-2">
+              <ui-field>
+                <ui-field-label htmlFor="firstName" [required]="true">First Name</ui-field-label>
+                <input id="firstName" type="text" class="ui-input" [(ngModel)]="p.firstName" name="firstName" required />
+              </ui-field>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="headline">Professional headline</label>
-              <input id="headline" type="text" [(ngModel)]="p.headline" name="headline" placeholder="e.g. Senior Product Designer | 8+ years in SaaS" />
+              <ui-field>
+                <ui-field-label htmlFor="lastName" [required]="true">Last Name</ui-field-label>
+                <input id="lastName" type="text" class="ui-input" [(ngModel)]="p.lastName" name="lastName" required />
+              </ui-field>
             </div>
-          </div>
 
-          <div class="form-row two-col">
-            <div class="form-group">
-              <label for="email">Email</label>
-              <input id="email" type="email" [value]="p.email" disabled />
-            </div>
-            <div class="form-group">
-              <label for="phone">Phone</label>
-              <input id="phone" type="tel" [(ngModel)]="p.phoneNumber" name="phone" placeholder="+1 (555) 123-4567" />
-            </div>
-          </div>
+            <ui-field>
+              <ui-field-label htmlFor="headline">Professional Headline</ui-field-label>
+              <input id="headline" type="text" class="ui-input" [(ngModel)]="p.headline" name="headline" placeholder="e.g. Senior Full-Stack Engineer | Distributed Systems & Cloud Architecture" />
+            </ui-field>
 
-          <div class="form-row two-col">
-            <div class="form-group">
-              <label for="birthDate">Birth date</label>
-              <input id="birthDate" type="date" [(ngModel)]="p.birthDate" name="birthDate" />
-            </div>
-            <div class="form-group">
-              <label for="avatarUrl">Avatar URL</label>
-              <input id="avatarUrl" type="url" [(ngModel)]="p.avatarUrl" name="avatarUrl" placeholder="https://example.com/avatar.jpg" />
-            </div>
-          </div>
-        </section>
+            <div class="ui-grid-2">
+              <ui-field>
+                <ui-field-label htmlFor="email">Email Address</ui-field-label>
+                <input id="email" type="email" class="ui-input" [value]="p.email" disabled />
+                <ui-field-hint>Managed through authentication account</ui-field-hint>
+              </ui-field>
 
-        <!-- Section: Professional Titles (1:N) -->
-        <section class="form-card">
-          <div class="section-head">
-            <i class="ti ti-briefcase"></i>
-            <div>
-              <h2>Professional Titles</h2>
-              <p class="section-desc">Multiple role titles you can switch between when applying. One is set as default.</p>
+              <ui-field>
+                <ui-field-label htmlFor="phone">Phone Number</ui-field-label>
+                <input id="phone" type="tel" class="ui-input" [(ngModel)]="p.phoneNumber" name="phone" placeholder="+212 600 000000" />
+              </ui-field>
             </div>
-          </div>
 
-          <div class="titles-list">
-            @if ((p.professionalTitles ?? []).length === 0) {
-              <div class="empty-titles">
-                <p>No titles yet. Add one to get started.</p>
+            <div class="ui-grid-2">
+              <ui-field>
+                <ui-field-label htmlFor="birthDate">Date of Birth</ui-field-label>
+                <input id="birthDate" type="date" class="ui-input" [(ngModel)]="p.birthDate" name="birthDate" />
+              </ui-field>
+
+              <ui-field>
+                <ui-field-label htmlFor="avatarUrl">Avatar Image URL</ui-field-label>
+                <input id="avatarUrl" type="url" class="ui-input" [(ngModel)]="p.avatarUrl" name="avatarUrl" placeholder="https://example.com/avatar.jpg" />
+              </ui-field>
+            </div>
+          </ui-field-group>
+        </ui-field-set>
+
+        <!-- Section 2: Professional Titles -->
+        <ui-field-set>
+          <ui-field-legend>Professional Titles</ui-field-legend>
+          <ui-field-description>Multiple role titles you can toggle between when generating CVs. One is designated as default.</ui-field-description>
+
+          <ui-field-group>
+            <div class="titles-list">
+              @if ((p.professionalTitles ?? []).length === 0) {
+                <div class="empty-titles">
+                  <p>No titles added yet. Add one to customize your CV headers.</p>
+                </div>
+              }
+              @for (title of p.professionalTitles; track title) {
+                <div class="title-row" [class.default]="title.isDefault">
+                  <div class="title-left">
+                    @if (title.isDefault) {
+                      <span class="default-badge">Default</span>
+                    }
+                    <span class="title-text">{{ title.title }}</span>
+                  </div>
+                  <div class="title-actions">
+                    <button class="btn-icon" (click)="setDefaultTitle(title)" [title]="'Set as default'">
+                      <i class="ti ti-star"></i>
+                    </button>
+                    <button class="btn-icon" (click)="editTitle(title)" [title]="'Edit'">
+                      <i class="ti ti-pencil"></i>
+                    </button>
+                    <button class="btn-icon danger" (click)="removeTitle(title)" [title]="'Remove'">
+                      <i class="ti ti-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            @if (showTitleForm()) {
+              <div class="title-form">
+                <input
+                  type="text"
+                  class="ui-input"
+                  [(ngModel)]="titleInput"
+                  name="titleInput"
+                  placeholder="e.g. Senior Full-Stack Engineer"
+                  (keyup.enter)="saveTitle()"
+                />
+                <div class="title-form-actions">
+                  <button class="btn btn-primary btn-sm" (click)="saveTitle()">Save</button>
+                  <button class="btn btn-secondary btn-sm" (click)="cancelTitleForm()">Cancel</button>
+                </div>
+              </div>
+            } @else {
+              <div>
+                <button class="btn btn-secondary btn-sm add-title-btn" (click)="openTitleForm()">
+                  <i class="ti ti-plus"></i> Add Title
+                </button>
               </div>
             }
-            @for (title of p.professionalTitles; track title) {
-              <div class="title-row" [class.default]="title.isDefault">
-                <div class="title-left">
-                  @if (title.isDefault) {
-                    <span class="default-badge">Default</span>
-                  }
-                  <span class="title-text">{{ title.title }}</span>
-                </div>
-                <div class="title-actions">
-                  <button class="btn-icon" (click)="setDefaultTitle(title)" [title]="'Set as default'">
-                    <i class="ti ti-star"></i>
-                  </button>
-                  <button class="btn-icon" (click)="editTitle(title)" [title]="'Edit'">
-                    <i class="ti ti-pencil"></i>
-                  </button>
-                  <button class="btn-icon danger" (click)="removeTitle(title)" [title]="'Remove'">
-                    <i class="ti ti-trash"></i>
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
+          </ui-field-group>
+        </ui-field-set>
 
-          @if (showTitleForm()) {
-            <div class="title-form">
-              <input
-                type="text"
-                [(ngModel)]="titleInput"
-                name="titleInput"
-                placeholder="e.g. Senior Full-Stack Engineer"
-                (keyup.enter)="saveTitle()"
-              />
-              <div class="title-form-actions">
-                <button class="btn btn-primary btn-sm" (click)="saveTitle()">Save</button>
-                <button class="btn btn-sm" (click)="cancelTitleForm()">Cancel</button>
-              </div>
-            </div>
-          } @else {
-            <button class="btn btn-sm add-title-btn" (click)="openTitleForm()">
-              <i class="ti ti-plus"></i> Add title
-            </button>
-          }
-        </section>
+        <!-- Section 3: Location & Work Eligibility -->
+        <ui-field-set>
+          <ui-field-legend>Location &amp; Work Eligibility</ui-field-legend>
+          <ui-field-description>Where you are currently based and your jurisdictional work permissions.</ui-field-description>
 
-        <!-- Section: Location & Work Eligibility -->
-        <section class="form-card">
-          <div class="section-head">
-            <i class="ti ti-map-pin"></i>
-            <div>
-              <h2>Location &amp; Work Eligibility</h2>
-              <p class="section-desc">Where you are and your right to work</p>
-            </div>
-          </div>
+          <ui-field-group>
+            <div class="ui-grid-2">
+              <ui-field>
+                <ui-field-label htmlFor="city">City</ui-field-label>
+                <input id="city" type="text" class="ui-input" [(ngModel)]="p.city" name="city" placeholder="e.g. Casablanca, San Francisco" />
+              </ui-field>
 
-          <div class="form-row two-col">
-            <div class="form-group">
-              <label for="city">City</label>
-              <input id="city" type="text" [(ngModel)]="p.city" name="city" placeholder="e.g. San Francisco" />
+              <ui-field>
+                <ui-field-label htmlFor="country">Country</ui-field-label>
+                <input id="country" type="text" class="ui-input" [(ngModel)]="p.country" name="country" placeholder="e.g. Morocco, France, United States" />
+              </ui-field>
             </div>
-            <div class="form-group">
-              <label for="country">Country</label>
-              <input id="country" type="text" [(ngModel)]="p.country" name="country" placeholder="e.g. United States" />
-            </div>
-          </div>
 
-          <div class="form-row two-col">
-            <div class="form-group">
-              <label for="authorizedCountry">Authorized to work in</label>
-              <input id="authorizedCountry" type="text" [(ngModel)]="p.authorizedCountry" name="authorizedCountry" placeholder="e.g. United States" />
-            </div>
-            <div class="form-group">
-              <label>Requires visa sponsorship</label>
-              <label class="toggle-wrap">
-                <input type="checkbox" [(ngModel)]="p.requiresVisaSponsorship" name="requiresVisaSponsorship" />
-                <span class="toggle-track">
-                  <span class="toggle-thumb"></span>
-                </span>
-                <span class="toggle-label">{{ p.requiresVisaSponsorship ? 'Yes' : 'No' }}</span>
-              </label>
-            </div>
-          </div>
+            <div class="ui-grid-2">
+              <ui-field>
+                <ui-field-label htmlFor="authorizedCountry">Authorized to Work In</ui-field-label>
+                <input id="authorizedCountry" type="text" class="ui-input" [(ngModel)]="p.authorizedCountry" name="authorizedCountry" placeholder="e.g. Morocco, EU, United States" />
+              </ui-field>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="noticePeriod">Notice period</label>
-              <select id="noticePeriod" [(ngModel)]="p.noticePeriod" name="noticePeriod" class="select">
-                <option value="" disabled>Select notice period</option>
-                @for (opt of noticeOptions; track opt) {
-                  <option [value]="opt">{{ opt }}</option>
-                }
-              </select>
+              <ui-field orientation="horizontal">
+                <input id="visaSponsorship" type="checkbox" class="ui-checkbox" [(ngModel)]="p.requiresVisaSponsorship" name="requiresVisaSponsorship" />
+                <ui-field-label htmlFor="visaSponsorship">Requires visa sponsorship for international relocation</ui-field-label>
+              </ui-field>
             </div>
-          </div>
-        </section>
 
-        <!-- Section: Work Preferences -->
-        <section class="form-card">
-          <div class="section-head">
-            <i class="ti ti-settings"></i>
-            <div>
-              <h2>Work Preferences</h2>
-              <p class="section-desc">Your ideal role setup, helps us match you better</p>
-            </div>
-          </div>
+            <ui-field>
+              <ui-field-label htmlFor="noticePeriod">Notice Period</ui-field-label>
+              <ui-select id="noticePeriod" [(ngModel)]="p.noticePeriod" name="noticePeriod" placeholder="Select notice period" [options]="noticeOptions"></ui-select>
+            </ui-field>
+          </ui-field-group>
+        </ui-field-set>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="desiredJobTitle">Desired job title</label>
-              <input id="desiredJobTitle" type="text" [(ngModel)]="p.desiredJobTitle" name="desiredJobTitle" placeholder="e.g. Product Designer" />
-            </div>
-          </div>
+        <!-- Section 4: Work Preferences -->
+        <ui-field-set>
+          <ui-field-legend>Work Preferences</ui-field-legend>
+          <ui-field-description>Your targeted role setup and compensation expectations.</ui-field-description>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Employment type</label>
+          <ui-field-group>
+            <ui-field>
+              <ui-field-label htmlFor="desiredJobTitle">Targeted / Desired Position</ui-field-label>
+              <input id="desiredJobTitle" type="text" class="ui-input" [(ngModel)]="p.desiredJobTitle" name="desiredJobTitle" placeholder="e.g. Staff Software Engineer" />
+            </ui-field>
+
+            <ui-field>
+              <ui-field-label>Employment Types</ui-field-label>
               <div class="chip-group">
                 @for (opt of employmentTypeOptions; track opt) {
                   <button
+                    type="button"
                     class="chip"
                     [class.active]="(p.employmentTypes ?? []).includes(opt)"
                     (click)="toggleEmployment(opt)"
                   >{{ opt }}</button>
                 }
               </div>
-            </div>
-          </div>
+            </ui-field>
 
-          <div class="form-row two-col">
-            <div class="form-group">
-              <label>Remote preference</label>
-              <div class="chip-group">
-                @for (opt of remoteOptions; track opt) {
-                  <button
-                    class="chip"
-                    [class.active]="p.remotePreference === opt"
-                    (click)="setRemote(opt)"
-                  >{{ opt }}</button>
-                }
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Willing to relocate</label>
-              <div class="chip-group">
-                @for (opt of relocateOptions; track opt) {
-                  <button
-                    class="chip"
-                    [class.active]="p.willingToRelocate === opt"
-                    (click)="setRelocate(opt)"
-                  >{{ opt }}</button>
-                }
-              </div>
-            </div>
-          </div>
+            <div class="ui-grid-2">
+              <ui-field>
+                <ui-field-label>Workplace Setting</ui-field-label>
+                <div class="chip-group">
+                  @for (opt of remoteOptions; track opt) {
+                    <button
+                      type="button"
+                      class="chip"
+                      [class.active]="p.remotePreference === opt"
+                      (click)="setRemote(opt)"
+                    >{{ opt }}</button>
+                  }
+                </div>
+              </ui-field>
 
-          <div class="form-row two-col">
-            <div class="form-group">
-              <label for="salaryMin">Desired salary (min)</label>
-              <div class="input-prefix">
-                <span class="prefix">$</span>
-                <input id="salaryMin" type="number" [(ngModel)]="p.desiredSalaryMin" name="salaryMin" placeholder="80000" />
-              </div>
+              <ui-field>
+                <ui-field-label>Willing to Relocate</ui-field-label>
+                <div class="chip-group">
+                  @for (opt of relocateOptions; track opt) {
+                    <button
+                      type="button"
+                      class="chip"
+                      [class.active]="p.willingToRelocate === opt"
+                      (click)="setRelocate(opt)"
+                    >{{ opt }}</button>
+                  }
+                </div>
+              </ui-field>
             </div>
-            <div class="form-group">
-              <label for="salaryMax">Desired salary (max)</label>
-              <div class="input-prefix">
-                <span class="prefix">$</span>
-                <input id="salaryMax" type="number" [(ngModel)]="p.desiredSalaryMax" name="salaryMax" placeholder="150000" />
-              </div>
-            </div>
-          </div>
-        </section>
 
-        <!-- Section: Professional Summary -->
-        <section class="form-card">
-          <div class="section-head">
-            <i class="ti ti-file-text"></i>
-            <div>
-              <h2>Professional Summary</h2>
-              <p class="section-desc">A short bio that appears at the top of your CV</p>
-            </div>
-          </div>
+            <div class="ui-grid-2">
+              <ui-field>
+                <ui-field-label htmlFor="salaryMin">Target Salary Minimum</ui-field-label>
+                <input id="salaryMin" type="number" class="ui-input" [(ngModel)]="p.desiredSalaryMin" name="salaryMin" placeholder="e.g. 50000" />
+              </ui-field>
 
-          <div class="form-group">
-            <textarea
-              [(ngModel)]="p.bio"
-              name="bio"
-              rows="5"
-              placeholder="Write a short professional summary that highlights your key achievements and career goals…"
-            ></textarea>
-          </div>
-        </section>
+              <ui-field>
+                <ui-field-label htmlFor="salaryMax">Target Salary Maximum</ui-field-label>
+                <input id="salaryMax" type="number" class="ui-input" [(ngModel)]="p.desiredSalaryMax" name="salaryMax" placeholder="e.g. 80000" />
+              </ui-field>
+            </div>
+          </ui-field-group>
+        </ui-field-set>
+
+        <!-- Section 5: Professional Summary -->
+        <ui-field-set>
+          <ui-field-legend>Executive Summary &amp; Bio</ui-field-legend>
+          <ui-field-description>A succinct, impactful overview that introduces you at the top of your generated CVs.</ui-field-description>
+
+          <ui-field-group>
+            <ui-field>
+              <textarea
+                class="ui-textarea"
+                [(ngModel)]="p.bio"
+                name="bio"
+                rows="5"
+                placeholder="Write a compelling professional summary highlighting your career achievements, core technical competencies, and unique value proposition…"
+              ></textarea>
+            </ui-field>
+          </ui-field-group>
+        </ui-field-set>
 
       </div>
     </div>

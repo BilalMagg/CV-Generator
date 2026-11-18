@@ -7,11 +7,12 @@ import { AuthService } from '@app/services/auth.service';
 import { UserProfile, UpdateUserProfileDto, ProfessionalTitle } from '@app/models/user-profile.model';
 import { ImagePickerComponent } from '@app/shared/components/image-picker/image-picker.component';
 import { ImageDto } from '@app/services/image.service';
+import { UI_FIELD_COMPONENTS } from '@app/shared/components/ui/field/field.component';
 
 @Component({
   selector: 'app-personal-info',
   standalone: true,
-  imports: [CommonModule, FormsModule, ImagePickerComponent],
+  imports: [CommonModule, FormsModule, ImagePickerComponent, ...UI_FIELD_COMPONENTS],
   templateUrl: './personal-info.component.html',
   styleUrl: './personal-info.component.scss',
 })

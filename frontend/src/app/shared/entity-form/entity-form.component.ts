@@ -1,4 +1,4 @@
-import { Component, inject, computed, OnInit, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, computed, OnInit, signal, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
@@ -11,6 +11,7 @@ import { ToastService } from '@app/services/toast.service';
 import { CategoryTreeComponent } from '@app/shared/components/category-tree/category-tree.component';
 import { AutoFillDialogComponent } from '@app/shared/components/auto-fill-dialog/auto-fill-dialog.component';
 import { AutofillField } from '@app/services/autofill.service';
+import { UI_FIELD_COMPONENTS } from '@app/shared/components/ui/field/field.component';
 
 export function toDateInputValue(value: unknown): string {
   const s = String(value ?? '').trim();
@@ -33,7 +34,14 @@ export function toDateInputValue(value: unknown): string {
 @Component({
   selector: 'app-entity-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CategoryTreeComponent, AutoFillDialogComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    CategoryTreeComponent,
+    AutoFillDialogComponent,
+    ...UI_FIELD_COMPONENTS
+  ],
   templateUrl: './entity-form.component.html',
   styleUrl: './entity-form.component.css',
 })
@@ -64,6 +72,14 @@ export class EntityFormComponent implements OnInit {
 
   autofillFields = computed(() => this.fields);
   entityLabel: string = '';
+
+  @HostListener('keydown', ['$event'])
+  handleKeydown(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      this.submit();
+    }
+  }
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {

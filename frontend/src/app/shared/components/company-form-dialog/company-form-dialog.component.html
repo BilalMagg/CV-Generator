@@ -2,20 +2,26 @@
   <div class="modal-backdrop" (click)="close()">
     <div class="modal" (click)="$event.stopPropagation()">
       <div class="modal-head">
-        <h2>{{ editing() ? 'Edit company' : 'Add company' }}</h2>
-        <button class="icon-btn" (click)="close()">✕</button>
-      </div>
-      <div class="modal-afbar">
-        <button type="button" class="btn btn-primary" (click)="openAutofill()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16M6 16l2-6m0 0l4-6 4 6m-8 0h8m-2 6l2-6"/></svg>
-          Auto-fill from text
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Name <span class="req">*</span></label>
-          <input type="text" [(ngModel)]="formName" placeholder="e.g. Capgemini" name="coName">
+        <div>
+          <h2>{{ editing() ? 'Edit Company' : 'Add Company' }}</h2>
+          <p class="modal-subtitle">Manage company details, branding logo, and background notes.</p>
         </div>
+        <div class="modal-head-actions">
+          <button type="button" class="btn btn-autofill-sm" (click)="openAutofill()" title="Autofill from text">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 3l1.912 5.886a2 2 0 001.272 1.272L21 12l-5.816 1.842a2 2 0 00-1.272 1.272L12 21l-1.912-5.886a2 2 0 00-1.272-1.272L3 12l5.816-1.842a2 2 0 001.272-1.272L12 3z"/>
+            </svg>
+            Auto-fill
+          </button>
+          <button class="icon-btn" (click)="close()" title="Close dialog">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <ui-field>
+          <ui-field-label htmlFor="coName" [required]="true">Company Name</ui-field-label>
+          <input id="coName" type="text" class="ui-input" [(ngModel)]="formName" placeholder="e.g. Capgemini, Google, Stripe" name="coName" required />
+        </ui-field>
 
         <div class="logo-field">
           <div class="logo-avatar-wrap">
@@ -67,18 +73,19 @@
               <div class="logo-url-row">
                 <input
                   type="url"
+                  class="ui-input"
                   placeholder="https://example.com/logo.png"
                   [ngModel]="logoUrlDraft()"
                   (ngModelChange)="logoUrlDraft.set($event)"
                   name="coLogoUrl"
                   (keydown.enter)="saveLogoUrl()"
                 >
-                <button type="button" class="logo-url-ok" (click)="saveLogoUrl()">OK</button>
+                <button type="button" class="btn btn-primary btn-sm" (click)="saveLogoUrl()">OK</button>
               </div>
               <p class="logo-hint">The image is added to your library so it works everywhere in the app.</p>
             } @else {
-              <p class="logo-side-label">Company logo</p>
-              <p class="logo-hint">Click the tile to upload, pick from your image library or paste a URL. Drag &amp; drop also works.</p>
+              <p class="logo-side-label">Company Logo</p>
+              <p class="logo-hint">Click the tile to upload, pick from your library or paste a URL. Drag &amp; drop also works.</p>
               @if (formLogoUrl()) {
                 <p class="logo-current">Current: {{ formLogoUrl().length > 60 ? (formLogoUrl() | slice: 0 : 60) + '…' : formLogoUrl() }}</p>
               }
@@ -86,80 +93,90 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Website</label>
-          <input type="url" [(ngModel)]="formWebsite" placeholder="https://…" name="coWebsite">
+        <div class="ui-grid-2">
+          <ui-field>
+            <ui-field-label htmlFor="coWebsite">Website</ui-field-label>
+            <input id="coWebsite" type="url" class="ui-input" [(ngModel)]="formWebsite" placeholder="https://company.com" name="coWebsite">
+          </ui-field>
+
+          <ui-field>
+            <ui-field-label htmlFor="coLinkedin">LinkedIn Profile</ui-field-label>
+            <input id="coLinkedin" type="url" class="ui-input" [(ngModel)]="formLinkedinUrl" placeholder="https://www.linkedin.com/company/…" name="coLinkedin">
+          </ui-field>
         </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Country</label>
-            <select [(ngModel)]="formCountry" name="coCountry">
-              @for (country of COUNTRIES; track country) {
-                <option [value]="country">{{ country }}</option>
-              }
-            </select>
-          </div>
-          <div class="form-group">
-            <label>City</label>
-            <input type="text" [(ngModel)]="formLocation" [attr.list]="'city-suggestions'" name="coCity"
-              placeholder="e.g. Casablanca">
+
+        <div class="ui-grid-2">
+          <ui-field>
+            <ui-field-label htmlFor="coCountry">Country</ui-field-label>
+            <ui-select id="coCountry" [ngModel]="formCountry()" (valueChange)="formCountry.set($event)" name="coCountry" placeholder="Select country" [options]="COUNTRIES" [searchable]="true"></ui-select>
+          </ui-field>
+
+          <ui-field>
+            <ui-field-label htmlFor="coCity">City</ui-field-label>
+            <input id="coCity" type="text" class="ui-input" [(ngModel)]="formLocation" [attr.list]="'city-suggestions'" name="coCity" placeholder="e.g. Casablanca">
             <datalist id="city-suggestions">
               @for (city of citySuggestions(); track city) {
                 <option [value]="city"></option>
               }
             </datalist>
-          </div>
+          </ui-field>
         </div>
-        <div class="form-group">
-          <label>Map link</label>
-          <input type="url" [(ngModel)]="formLocationUrl" placeholder="https://maps.google.com/…" name="coLocUrl">
+
+        <ui-field>
+          <ui-field-label htmlFor="coLocUrl">Map Location Link</ui-field-label>
+          <input id="coLocUrl" type="url" class="ui-input" [(ngModel)]="formLocationUrl" placeholder="https://maps.google.com/…" name="coLocUrl">
+        </ui-field>
+
+        <div class="ui-grid-2">
+          <ui-field>
+            <ui-field-label htmlFor="coRegion">Region / State</ui-field-label>
+            <input id="coRegion" type="text" class="ui-input" [(ngModel)]="formRegion" placeholder="e.g. Casablanca-Settat" name="coRegion">
+          </ui-field>
+
+          <ui-field>
+            <ui-field-label htmlFor="coSector">Industry / Sector</ui-field-label>
+            <input id="coSector" type="text" class="ui-input" [(ngModel)]="formSector" placeholder="e.g. IT Services, Fintech" name="coSector">
+          </ui-field>
         </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Region</label>
-            <input type="text" [(ngModel)]="formRegion" placeholder="e.g. Casablanca-Settat" name="coRegion">
-          </div>
-          <div class="form-group">
-            <label>Industry / Sector</label>
-            <input type="text" [(ngModel)]="formSector" placeholder="e.g. IT services" name="coSector">
-          </div>
+
+        <div class="ui-grid-2">
+          <ui-field>
+            <ui-field-label htmlFor="coFounded">Founded Year</ui-field-label>
+            <input id="coFounded" type="number" min="1800" max="2100" class="ui-input" [(ngModel)]="formFoundedYear" placeholder="e.g. 2020" name="coFounded">
+          </ui-field>
+
+          <ui-field>
+            <ui-field-label htmlFor="coSize">Employee Size</ui-field-label>
+            <input id="coSize" type="text" class="ui-input" [(ngModel)]="formSize" placeholder="e.g. 50-200 employees" name="coSize">
+          </ui-field>
         </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Founded year</label>
-            <input type="number" min="1800" max="2100" [(ngModel)]="formFoundedYear" placeholder="e.g. 2023" name="coFounded">
-          </div>
-          <div class="form-group">
-            <label>Employee size</label>
-            <input type="text" [(ngModel)]="formSize" placeholder="e.g. 10-50 employees" name="coSize">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>LinkedIn</label>
-          <input type="url" [(ngModel)]="formLinkedinUrl" placeholder="https://www.linkedin.com/company/…" name="coLinkedin">
-        </div>
-        <div class="form-group">
-          <label>Note</label>
-          <textarea rows="3" [(ngModel)]="formNote" placeholder="Anything worth remembering about this company…" name="coNote"></textarea>
-        </div>
-        <div class="form-group">
-          <label>Description</label>
-          <textarea rows="4" [(ngModel)]="formDescription" placeholder="Describe the company (used by {{ '{{company_description}}' }} in templates)…" name="coDesc"></textarea>
-        </div>
+
+        <ui-field>
+          <ui-field-label htmlFor="coNote">Personal Notes</ui-field-label>
+          <textarea id="coNote" rows="2" class="ui-textarea" [(ngModel)]="formNote" placeholder="Anything worth remembering about this company (referrals, culture, hiring cycle)…" name="coNote"></textarea>
+        </ui-field>
+
+        <ui-field>
+          <ui-field-label htmlFor="coDesc">Company Description</ui-field-label>
+          <textarea id="coDesc" rows="3" class="ui-textarea" [(ngModel)]="formDescription" placeholder="Describe what the company does (usable as {{ '{{company_description}}' }} in templates)…" name="coDesc"></textarea>
+        </ui-field>
       </div>
+
       <div class="modal-foot">
         <button class="btn btn-secondary" (click)="close()">Cancel</button>
         <button class="btn btn-primary" [disabled]="saving()" (click)="save()">
-          {{ saving() ? 'Saving…' : (editing() ? 'Save changes' : 'Add company') }}
+          {{ saving() ? 'Saving…' : (editing() ? 'Save Changes' : 'Add Company') }}
         </button>
       </div>
     </div>
+
     <app-auto-fill-dialog
       [(open)]="autofillOpen"
       entityLabel="company"
       [fields]="autofillFields"
       (filled)="applyAutofill($event)"
     ></app-auto-fill-dialog>
+
     <app-image-picker
       [(open)]="imagePickerOpen"
       title="Company logo"

@@ -27,6 +27,15 @@
       <span>Export</span>
     </button>
 
+    <button class="header-btn" (click)="shortcutService.toggleHelp()" title="Keyboard shortcuts (?)">
+      <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10"/>
+      </svg>
+      <span>Shortcuts</span>
+      <kbd class="hdr-kbd">?</kbd>
+    </button>
+
     <div class="import-wrap">
       <button class="header-btn" (click)="importMenuOpen.set(!importMenuOpen())" title="Import data">
         <svg viewBox="0 0 24 24" fill="none" width="14" height="14">

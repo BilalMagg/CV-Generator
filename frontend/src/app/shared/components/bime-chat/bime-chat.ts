@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, ElementRef, ViewChild, AfterViewChecked, SecurityContext } from '@angular/core';
+import { Component, inject, signal, computed, ElementRef, ViewChild, AfterViewChecked, SecurityContext, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -22,10 +22,19 @@ export class BimeChatComponent implements AfterViewChecked {
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef<HTMLDivElement>;
 
-  open = signal(false);
+  readonly open = this.bime.isOpen;
   loading = signal(false);
   sending = signal(false);
   view = signal<'chat' | 'history'>('chat');
+
+  constructor() {
+    effect(() => {
+      if (this.open() && this.messages().length === 0) {
+        this.messages.set([this.greeting]);
+        this.loadCatalog();
+      }
+    });
+  }
 
   messages = signal<BimeChatMessage[]>([]);
   conversations = signal<BimeConversationSummary[]>([]);
@@ -52,11 +61,7 @@ export class BimeChatComponent implements AfterViewChecked {
   });
 
   toggle() {
-    this.open.update(v => !v);
-    if (this.open() && this.messages().length === 0) {
-      this.messages.set([this.greeting]);
-      this.loadCatalog();
-    }
+    this.bime.toggle();
   }
 
   private withTimeout<T>(promise: Promise<T>, fallback: T, ms = 15000): Promise<T> {

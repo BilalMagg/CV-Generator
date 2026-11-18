@@ -4,8 +4,9 @@
       <h2>My CVs</h2>
       <p class="muted">{{ cvs().length }} document{{ cvs().length === 1 ? '' : 's' }}</p>
     </div>
-    <button class="btn-primary" (click)="toggleUpload()">
+    <button class="btn-primary" (click)="toggleUpload()" title="Upload ready CV [A]">
       <i class="ti ti-upload"></i> Upload ready CV
+      <kbd class="btn-kbd">A</kbd>
     </button>
   </div>
 

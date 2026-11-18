@@ -22,12 +22,15 @@ import {
   ContactSummaryDto,
   attemptChannelFields,
   APPLY_SOURCES,
+  INTERNSHIP_TYPES,
+  WORK_TYPES,
   STATUS_LABELS,
   PRIORITY_LABELS,
   PRIORITY_ORDER,
 } from '@app/models/application.model';
 import { CompanyFieldComponent } from '@app/shared/components/company-field/company-field.component';
 import { CompanyCredentialsComponent } from '@app/shared/components/company-credentials/company-credentials.component';
+import { UI_FIELD_COMPONENTS } from '@app/shared/components/ui/field/field.component';
 
 interface ChannelTile {
   value: AttemptChannel;
@@ -38,7 +41,7 @@ interface ChannelTile {
 @Component({
   selector: 'app-application-create',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CompanyFieldComponent, CompanyCredentialsComponent],
+  imports: [CommonModule, FormsModule, RouterLink, CompanyFieldComponent, CompanyCredentialsComponent, ...UI_FIELD_COMPONENTS],
   templateUrl: './application-create.component.html',
   styleUrl: './application-create.component.scss',
 })
@@ -55,6 +58,10 @@ export class ApplicationCreateComponent implements OnInit {
     // Prefill support, e.g. /applications/new?companyName=… from a company detail page.
     const prefill = this.route.snapshot.queryParamMap.get('companyName');
     if (prefill) this.companyName.set(prefill);
+
+    // Restore persistent defaults from last created application
+    this.restoreDefaults();
+
     void this.loadCvVersions();
   }
 
@@ -68,6 +75,7 @@ export class ApplicationCreateComponent implements OnInit {
   offerSource = signal('');
   notes = signal('');
   internshipType = signal('');
+  workType = signal('');
   priority = signal<ApplicationPriority>('MEDIUM');
 
   /** Where the candidate stands at creation time. */
@@ -317,6 +325,55 @@ export class ApplicationCreateComponent implements OnInit {
   protected readonly PRIORITY_LABELS = PRIORITY_LABELS;
   protected readonly PRIORITY_ORDER = PRIORITY_ORDER;
   protected readonly applySources = APPLY_SOURCES;
+  protected readonly internshipTypes = INTERNSHIP_TYPES;
+  protected readonly workTypes = WORK_TYPES;
+
+  private restoreDefaults() {
+    try {
+      const savedSource = localStorage.getItem('propel:last_offer_source');
+      if (savedSource && this.applySources.includes(savedSource)) {
+        this.offerSource.set(savedSource);
+      }
+      const savedInternship = localStorage.getItem('propel:last_internship_type');
+      if (savedInternship && this.internshipTypes.includes(savedInternship)) {
+        this.internshipType.set(savedInternship);
+      }
+      const savedWorkType = localStorage.getItem('propel:last_work_type');
+      if (savedWorkType && this.workTypes.includes(savedWorkType)) {
+        this.workType.set(savedWorkType);
+      }
+      const savedChannel = localStorage.getItem('propel:last_apply_channel');
+      if (savedChannel && this.channels.some(c => c.value === savedChannel)) {
+        this.channel.set(savedChannel as AttemptChannel);
+      }
+    } catch { /* localStorage access safe guard */ }
+  }
+
+  setOfferSource(val: string) {
+    this.offerSource.set(val || '');
+    if (val) {
+      try { localStorage.setItem('propel:last_offer_source', val); } catch {}
+    }
+  }
+
+  setInternshipType(val: string) {
+    this.internshipType.set(val || '');
+    if (val) {
+      try { localStorage.setItem('propel:last_internship_type', val); } catch {}
+    }
+  }
+
+  setWorkType(val: string) {
+    this.workType.set(val || '');
+    if (val) {
+      try { localStorage.setItem('propel:last_work_type', val); } catch {}
+    }
+  }
+
+  setChannel(val: AttemptChannel) {
+    this.channel.set(val);
+    try { localStorage.setItem('propel:last_apply_channel', val); } catch {}
+  }
 
   readonly channels: ChannelTile[] = [
     { value: 'EMAIL_GMAIL',          label: 'Gmail',              icon: 'ti-brand-gmail' },
@@ -398,6 +455,7 @@ export class ApplicationCreateComponent implements OnInit {
         status: this.stage(),
         allowDuplicate: force || undefined,
         internshipType: this.internshipType().trim() || undefined,
+        workType: this.workType().trim() || undefined,
         priority: this.priority(),
         appliedAt: this.stage() === 'APPLIED' ? this.isoFromDate(this.appliedDate()) : undefined,
       });

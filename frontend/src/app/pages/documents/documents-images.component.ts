@@ -1,10 +1,11 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ImageDto, ImageService } from '@app/services/image.service';
 import { UserProfileService } from '@app/services/user-profile.service';
 import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import { ImagePickerComponent } from '@app/shared/components/image-picker/image-picker.component';
 
 const PAGE_SIZE = 40;
@@ -21,6 +22,8 @@ export class DocumentsImagesComponent implements OnInit {
   private readonly profileSvc = inject(UserProfileService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
+  private readonly shortcut = inject(ShortcutService);
+  private readonly destroyRef = inject(DestroyRef);
 
   images = signal<ImageDto[]>([]);
   total = signal(0);
@@ -34,6 +37,9 @@ export class DocumentsImagesComponent implements OnInit {
   pickerOpen = signal(false);
 
   ngOnInit() {
+    this.shortcut.register({ key: 'a', label: 'Upload Image', handler: () => this.toggleUpload() }, this.destroyRef);
+    this.shortcut.register({ key: 'c', label: 'Upload Image', handler: () => this.toggleUpload() }, this.destroyRef);
+    this.shortcut.register({ key: 'u', label: 'Upload Image', handler: () => this.toggleUpload() }, this.destroyRef);
     this.load();
   }
 

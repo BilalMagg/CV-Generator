@@ -1,10 +1,11 @@
-import { Component, signal, computed, inject, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, ViewChild, ElementRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentsService } from '@app/services/documents.service';
 import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import { extractError } from '@app/shared/error-utils';
 import { CvTemplateDto } from '@app/models/document.model';
 
@@ -20,6 +21,8 @@ export class DocumentsTemplatesComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
+  private readonly shortcut = inject(ShortcutService);
+  private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild('srcTa') srcTa?: ElementRef<HTMLTextAreaElement>;
 
@@ -69,6 +72,8 @@ export class DocumentsTemplatesComponent implements OnInit {
   );
 
   async ngOnInit() {
+    this.shortcut.register({ key: 'a', label: 'New Template', handler: () => this.openCreate() }, this.destroyRef);
+    this.shortcut.register({ key: 'c', label: 'New Template', handler: () => this.openCreate() }, this.destroyRef);
     await this.load();
   }
 

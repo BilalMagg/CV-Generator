@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, OnDestroy, DestroyRef } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +6,7 @@ import { DocumentsService } from '@app/services/documents.service';
 import { CompanyService, CompanyDto } from '@app/services/company.service';
 import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import { extractError } from '@app/shared/error-utils';
 import { CoverLetterDto, CoverLetterVersionDto } from '@app/models/document.model';
 
@@ -22,6 +23,8 @@ export class DocumentsCoverLettersComponent implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly shortcut = inject(ShortcutService);
+  private readonly destroyRef = inject(DestroyRef);
 
   letters = signal<CoverLetterDto[]>([]);
   companies = signal<CompanyDto[]>([]);
@@ -61,6 +64,8 @@ export class DocumentsCoverLettersComponent implements OnInit, OnDestroy {
   });
 
   async ngOnInit() {
+    this.shortcut.register({ key: 'a', label: 'Upload Cover Letter', handler: () => this.toggleUpload() }, this.destroyRef);
+    this.shortcut.register({ key: 'c', label: 'Upload Cover Letter', handler: () => this.toggleUpload() }, this.destroyRef);
     await Promise.all([this.load(), this.loadCompanies()]);
   }
 

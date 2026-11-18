@@ -1,9 +1,10 @@
-import { Component, signal, inject, OnInit, computed } from '@angular/core';
+import { Component, signal, inject, OnInit, computed, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { ApplicationService } from '@app/services/application.service';
 import { AuthService } from '@app/services/auth.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import { StatisticsTrendsDto, MonthlyTrendDto, ApplicationResponseDto } from '@app/models/application.model';
 import { RefreshButtonComponent } from '@app/shared/components/refresh-button/refresh-button.component';
 
@@ -39,13 +40,19 @@ export class DashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private sanitizer = inject(DomSanitizer);
   private router = inject(Router);
+  private shortcut = inject(ShortcutService);
+  private destroyRef = inject(DestroyRef);
 
   trends = signal<StatisticsTrendsDto | null>(null);
   applications = signal<ApplicationResponseDto[]>([]);
   loading = signal(true);
   refreshing = signal(false);
 
-  ngOnInit() { this.loadTrends(); }
+  ngOnInit() {
+    this.shortcut.register({ key: 'a', label: 'New Application', handler: () => void this.router.navigate(['/applications/new']) }, this.destroyRef);
+    this.shortcut.register({ key: 'c', label: 'New Application', handler: () => void this.router.navigate(['/applications/new']) }, this.destroyRef);
+    this.loadTrends();
+  }
 
   async loadTrends() {
     try {

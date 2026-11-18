@@ -1,121 +1,477 @@
 <div class="form-container">
+  <!-- Top Navigation & Header -->
   <div class="form-header">
-    <div>
-      <h2>{{ id ? 'Edit' : 'Add' }} {{ entity | titlecase }}</h2>
-      <p class="subtitle">Enter the details for your {{ entity }}</p>
+    <div class="header-titles">
+      <div class="header-breadcrumbs">
+        <a [routerLink]="['/my-career', entity]" class="breadcrumb-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          Back to {{ entity | titlecase }}
+        </a>
+      </div>
+      <h2>{{ id ? 'Edit' : 'Add' }} {{ entity === 'projects' ? 'Project' : (entity | titlecase) }}</h2>
+      <p class="subtitle">
+        {{ entity === 'projects' 
+          ? 'Showcase your engineering accomplishments, responsibilities, and technical stack.' 
+          : 'Enter the details for your ' + entityLabel + '.' }}
+      </p>
     </div>
-    <button type="button" class="btn btn-primary" (click)="openAutofill()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16M6 16l2-6m0 0l4-6 4 6m-8 0h8m-2 6l2-6"/></svg>
-      Auto-fill
-    </button>
+    
+    <div class="header-actions">
+      <button type="button" class="btn btn-autofill" (click)="openAutofill()" title="Autofill fields using AI">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l1.912 5.886a2 2 0 001.272 1.272L21 12l-5.816 1.842a2 2 0 00-1.272 1.272L12 21l-1.912-5.886a2 2 0 00-1.272-1.272L3 12l5.816-1.842a2 2 0 001.272-1.272L12 3z"/>
+        </svg>
+        <span>Auto-fill with AI</span>
+      </button>
+    </div>
   </div>
 
-  <section class="taxonomy-summary">
-    <div class="taxonomy-summary-head">
-      <div>
-        <h3>Categories</h3>
-        <p class="subtitle">Tag this {{ entity }} with one or more categories from the taxonomy to power filtering across your career.</p>
+  <form (ngSubmit)="submit()" novalidate class="modern-form-wrapper">
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- PROJECTS TAILORED FORM (Unified Modern FieldSet Architecture)      -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    @if (entity === 'projects') {
+      <div class="form-sections-stack">
+
+        <!-- 1. Project Details -->
+        <ui-field-set>
+          <ui-field-legend>Project Details</ui-field-legend>
+          <ui-field-description>
+            Core identifying information, your leadership role, and current progress.
+          </ui-field-description>
+
+          <ui-field-group>
+            <div class="ui-grid-2">
+              <ui-field className="ui-col-span-full">
+                <ui-field-label htmlFor="project-title" [required]="true">Project Title</ui-field-label>
+                <input 
+                  id="project-title" 
+                  type="text" 
+                  class="ui-input" 
+                  [(ngModel)]="form.title" 
+                  name="title" 
+                  placeholder="e.g. Real-Time Distributed Task Queue" 
+                  maxlength="150"
+                  required
+                  (ngModelChange)="clearFieldError('title')" 
+                  [class.is-invalid]="fieldErrors['title']" />
+                <ui-field-error *ngIf="fieldErrors['title']">{{ fieldErrors['title'] }}</ui-field-error>
+              </ui-field>
+
+              <ui-field>
+                <ui-field-label htmlFor="project-role">Your Role</ui-field-label>
+                <input 
+                  id="project-role" 
+                  type="text" 
+                  class="ui-input" 
+                  [(ngModel)]="form.role" 
+                  name="role" 
+                  placeholder="e.g. Lead Architect, Full-Stack Engineer" 
+                  maxlength="50"
+                  (ngModelChange)="clearFieldError('role')" 
+                  [class.is-invalid]="fieldErrors['role']" />
+                <ui-field-error *ngIf="fieldErrors['role']">{{ fieldErrors['role'] }}</ui-field-error>
+              </ui-field>
+
+              <ui-field>
+                <ui-field-label htmlFor="project-status">Project Status</ui-field-label>
+                <ui-select 
+                  id="project-status" 
+                  [(ngModel)]="form.status" 
+                  name="status"
+                  placeholder="Select status">
+                  <ui-select-item value="Ongoing">Ongoing</ui-select-item>
+                  <ui-select-item value="Completed">Completed</ui-select-item>
+                  <ui-select-item value="On Hold">On Hold</ui-select-item>
+                </ui-select>
+                <ui-field-error *ngIf="fieldErrors['status']">{{ fieldErrors['status'] }}</ui-field-error>
+              </ui-field>
+
+              <ui-field>
+                <ui-field-label htmlFor="project-category">Category</ui-field-label>
+                <input 
+                  id="project-category" 
+                  type="text" 
+                  class="ui-input" 
+                  [(ngModel)]="form.category" 
+                  name="category" 
+                  placeholder="e.g. Cloud Infrastructure, Web App, ML" 
+                  maxlength="100"
+                  (ngModelChange)="clearFieldError('category')" 
+                  [class.is-invalid]="fieldErrors['category']" />
+                <ui-field-error *ngIf="fieldErrors['category']">{{ fieldErrors['category'] }}</ui-field-error>
+              </ui-field>
+
+              <ui-field>
+                <ui-field-label htmlFor="project-sort-order">Sort / Priority Order</ui-field-label>
+                <input 
+                  id="project-sort-order" 
+                  type="number" 
+                  class="ui-input" 
+                  [(ngModel)]="form.sortOrder" 
+                  name="sortOrder" 
+                  placeholder="e.g. 1 (displayed first)" />
+              </ui-field>
+            </div>
+          </ui-field-group>
+        </ui-field-set>
+
+        <!-- 2. Timeline & Team -->
+        <ui-field-set>
+          <ui-field-legend>Timeline & Team Scope</ui-field-legend>
+          <ui-field-description>
+            Dates active and the size of the team you collaborated with.
+          </ui-field-description>
+
+          <ui-field-group>
+            <div class="ui-grid-3">
+              <ui-field>
+                <ui-field-label htmlFor="project-start-date" [required]="true">Start Date</ui-field-label>
+                <input 
+                  id="project-start-date" 
+                  type="date" 
+                  class="ui-input" 
+                  [(ngModel)]="form.startDate" 
+                  name="startDate" 
+                  required
+                  (ngModelChange)="clearFieldError('startDate')" 
+                  [class.is-invalid]="fieldErrors['startDate']" />
+                <ui-field-error *ngIf="fieldErrors['startDate']">{{ fieldErrors['startDate'] }}</ui-field-error>
+              </ui-field>
+
+              <ui-field>
+                <ui-field-label htmlFor="project-end-date">End Date</ui-field-label>
+                <input 
+                  id="project-end-date" 
+                  type="date" 
+                  class="ui-input" 
+                  [(ngModel)]="form.endDate" 
+                  name="endDate" 
+                  (ngModelChange)="clearFieldError('endDate')" 
+                  [class.is-invalid]="fieldErrors['endDate']" />
+                <ui-field-hint>Leave empty if project is ongoing</ui-field-hint>
+                <ui-field-error *ngIf="fieldErrors['endDate']">{{ fieldErrors['endDate'] }}</ui-field-error>
+              </ui-field>
+
+              <ui-field>
+                <ui-field-label htmlFor="project-team-size">Team Size</ui-field-label>
+                <input 
+                  id="project-team-size" 
+                  type="number" 
+                  class="ui-input" 
+                  [(ngModel)]="form.teamSize" 
+                  name="teamSize" 
+                  placeholder="e.g. 4 engineers" 
+                  min="1" />
+              </ui-field>
+            </div>
+          </ui-field-group>
+        </ui-field-set>
+
+        <!-- 3. Description & Technologies -->
+        <ui-field-set>
+          <ui-field-legend>Overview & Tech Stack</ui-field-legend>
+          <ui-field-description>
+            Articulate the problem, architecture, measurable outcomes, and technologies utilized.
+          </ui-field-description>
+
+          <ui-field-group>
+            <ui-field>
+              <div class="field-label-row">
+                <ui-field-label htmlFor="project-description">Detailed Description</ui-field-label>
+                <span class="char-count-pill">{{ (form.description ? form.description.length : 0) }}/3000</span>
+              </div>
+              <textarea 
+                id="project-description" 
+                class="ui-textarea" 
+                [(ngModel)]="form.description" 
+                name="description" 
+                rows="5" 
+                maxlength="3000"
+                placeholder="Highlight the project objectives, engineering challenges solved, architectural decisions, and tangible outcomes (e.g. reduced latency by 35%, deployed to 10k users)..."
+                (ngModelChange)="clearFieldError('description')" 
+                [class.is-invalid]="fieldErrors['description']"></textarea>
+              <ui-field-error *ngIf="fieldErrors['description']">{{ fieldErrors['description'] }}</ui-field-error>
+            </ui-field>
+
+            <ui-field>
+              <ui-field-label htmlFor="project-skills">Technologies & Skills</ui-field-label>
+              <input 
+                id="project-skills" 
+                type="text" 
+                class="ui-input" 
+                [(ngModel)]="form.skillsJson" 
+                name="skillsJson" 
+                placeholder="e.g. Angular 21, TypeScript, .NET 10, PostgreSQL, Docker, Redis, TailwindCSS" 
+                (ngModelChange)="clearFieldError('skillsJson')" />
+              <ui-field-hint>Comma-separated list of languages, frameworks, libraries, and tools</ui-field-hint>
+            </ui-field>
+          </ui-field-group>
+        </ui-field-set>
+
+        <!-- 4. Links & Deliverables -->
+        <ui-field-set>
+          <ui-field-legend>Links & Deliverables</ui-field-legend>
+          <ui-field-description>
+            Direct links for recruiters and reviewers to inspect your code and live product.
+          </ui-field-description>
+
+          <ui-field-group>
+            <div class="ui-grid-2">
+              <ui-field>
+                <ui-field-label htmlFor="project-repo">Repository URL</ui-field-label>
+                <input 
+                  id="project-repo" 
+                  type="url" 
+                  class="ui-input" 
+                  [(ngModel)]="form.repositoryUrl" 
+                  name="repositoryUrl" 
+                  placeholder="https://github.com/username/project" 
+                  maxlength="300"
+                  (ngModelChange)="clearFieldError('repositoryUrl')" 
+                  [class.is-invalid]="fieldErrors['repositoryUrl']" />
+                <ui-field-error *ngIf="fieldErrors['repositoryUrl']">{{ fieldErrors['repositoryUrl'] }}</ui-field-error>
+              </ui-field>
+
+              <ui-field>
+                <ui-field-label htmlFor="project-demo">Live Demo URL</ui-field-label>
+                <input 
+                  id="project-demo" 
+                  type="url" 
+                  class="ui-input" 
+                  [(ngModel)]="form.demoUrl" 
+                  name="demoUrl" 
+                  placeholder="https://my-project-demo.com" 
+                  maxlength="300"
+                  (ngModelChange)="clearFieldError('demoUrl')" 
+                  [class.is-invalid]="fieldErrors['demoUrl']" />
+                <ui-field-error *ngIf="fieldErrors['demoUrl']">{{ fieldErrors['demoUrl'] }}</ui-field-error>
+              </ui-field>
+            </div>
+          </ui-field-group>
+        </ui-field-set>
+
+        <!-- 5. Career Taxonomy -->
+        <ui-field-set>
+          <div class="fieldset-header-with-action">
+            <div>
+              <ui-field-legend>Career Categories</ui-field-legend>
+              <ui-field-description>
+                Tag this project with taxonomy categories to power smart filtering across your CVs.
+              </ui-field-description>
+            </div>
+            <button type="button" class="btn btn-outline-action" (click)="openTaxonomy()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              <span>{{ selectedCategoryIds().length ? 'Edit Categories' : 'Assign Categories' }}</span>
+            </button>
+          </div>
+
+          <div class="taxonomy-chip-container" *ngIf="selectedCategoryIds().length">
+            <span class="modern-chip" *ngFor="let catId of selectedCategoryIds()">
+              <span class="chip-dot"></span>
+              {{ categoryName(catId) }}
+            </span>
+          </div>
+
+          <div class="taxonomy-empty-state" *ngIf="!selectedCategoryIds().length">
+            <span class="empty-icon">🏷️</span>
+            <span>No categories linked yet. Click above to classify this project in your career taxonomy.</span>
+          </div>
+        </ui-field-set>
+
       </div>
-      <button type="button" class="btn btn-outline" (click)="openTaxonomy()">Edit Categories</button>
-    </div>
-    <div class="taxonomy-chips" *ngIf="selectedCategoryIds().length">
-      <span class="chip" *ngFor="let id of selectedCategoryIds()">{{ categoryName(id) }}</span>
-    </div>
-    <p class="taxonomy-empty" *ngIf="!selectedCategoryIds().length">No categories selected yet.</p>
-  </section>
+    }
 
-  <form (ngSubmit)="submit()" novalidate class="dynamic-form">
-    <div class="fields-grid">
-      <div *ngFor="let field of fields" class="form-group" [class.full-width]="field.type === 'textarea'" [class.has-error]="fieldErrors[field.name]">
-        <label [for]="field.name">{{ field.label }} <span *ngIf="field.required" class="required">*</span></label>
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- DYNAMIC FORM FOR OTHER CAREER ENTITIES (Using Unified UI System)  -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    @else {
+      <div class="form-sections-stack">
+        <!-- Taxonomy section -->
+        <ui-field-set>
+          <div class="fieldset-header-with-action">
+            <div>
+              <ui-field-legend>Categories</ui-field-legend>
+              <ui-field-description>
+                Tag this {{ entityLabel }} with categories to power filtering and discovery.
+              </ui-field-description>
+            </div>
+            <button type="button" class="btn btn-outline-action" (click)="openTaxonomy()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              <span>{{ selectedCategoryIds().length ? 'Edit Categories' : 'Assign Categories' }}</span>
+            </button>
+          </div>
 
-        <!-- Skill Category select (skills-only): single-level container -->
-        <select *ngIf="isSkillCategory(field.name)"
-          [id]="field.name"
-          [(ngModel)]="form.category"
-          [name]="field.name"
-          (ngModelChange)="onSkillCategoryChange($event)"
-          class="form-control">
-          <option value="">Uncategorized</option>
-          <option *ngFor="let cat of skillCategoryNames()" [value]="cat">{{ cat }}</option>
-        </select>
+          <div class="taxonomy-chip-container" *ngIf="selectedCategoryIds().length">
+            <span class="modern-chip" *ngFor="let catId of selectedCategoryIds()">
+              <span class="chip-dot"></span>
+              {{ categoryName(catId) }}
+            </span>
+          </div>
 
-        <!-- Text Input -->
-        <input *ngIf="field.type === 'text' && !isHiddenField(field.name) && !isSkillCategory(field.name)" 
-          [type]="field.type" 
-          [id]="field.name" 
-          [(ngModel)]="form[field.name]" 
-          [name]="field.name" 
-          [placeholder]="field.placeholder || ''"
-          [required]="field.required || false"
-          [attr.maxLength]="field.maxLength || null"
-          (ngModelChange)="clearFieldError(field.name)"
-          class="form-control" />
+          <p class="taxonomy-empty-state" *ngIf="!selectedCategoryIds().length">
+            No categories selected yet.
+          </p>
+        </ui-field-set>
 
-        <!-- Number Input -->
-        <input *ngIf="field.type === 'number'" 
-          type="number" 
-          [id]="field.name" 
-          [(ngModel)]="form[field.name]" 
-          [name]="field.name" 
-          (ngModelChange)="clearFieldError(field.name)"
-          class="form-control" />
+        <!-- General Form Fields -->
+        <ui-field-set>
+          <ui-field-legend>{{ entity | titlecase }} Information</ui-field-legend>
+          <ui-field-description>Complete the required and optional fields below.</ui-field-description>
 
-        <!-- Date Input -->
-        <input *ngIf="field.type === 'date'" 
-          type="date" 
-          [id]="field.name" 
-          [(ngModel)]="form[field.name]" 
-          [name]="field.name" 
-          (ngModelChange)="clearFieldError(field.name)"
-          class="form-control" />
+          <ui-field-group>
+            <div class="ui-grid-2">
+              <ng-container *ngFor="let field of fields">
+                @if (!isHiddenField(field.name)) {
+                  <ui-field [className]="field.type === 'textarea' ? 'ui-col-span-full' : ''" [orientation]="field.type === 'checkbox' ? 'horizontal' : 'vertical'">
+                    
+                    @if (field.type === 'checkbox') {
+                      <input 
+                        type="checkbox" 
+                        class="ui-checkbox" 
+                        [id]="field.name" 
+                        [(ngModel)]="form[field.name]" 
+                        [name]="field.name" />
+                      <ui-field-label [htmlFor]="field.name">{{ field.label }}</ui-field-label>
+                    }
+                    @else {
+                      <div class="field-label-row">
+                        <ui-field-label [htmlFor]="field.name" [required]="field.required || false">{{ field.label }}</ui-field-label>
+                        <span *ngIf="field.type === 'textarea' && field.maxLength" class="char-count-pill">
+                          {{ (form[field.name] ? form[field.name].length : 0) }}/{{ field.maxLength }}
+                        </span>
+                      </div>
 
-        <!-- Textarea -->
-        <textarea *ngIf="field.type === 'textarea'" 
-          [id]="field.name" 
-          [(ngModel)]="form[field.name]" 
-          [name]="field.name" 
-          [placeholder]="field.placeholder || ''"
-          [attr.maxLength]="field.maxLength || null"
-          (ngModelChange)="clearFieldError(field.name)"
-          rows="4"
-          class="form-control"></textarea>
-        <small *ngIf="field.type === 'textarea' && field.maxLength" class="char-count">
-          {{ (form[field.name] ? form[field.name].length : 0) }}/{{ field.maxLength }}
-        </small>
-        <small class="field-error" *ngIf="fieldErrors[field.name]">{{ fieldErrors[field.name] }}</small>
+                      <!-- Skill Category select (skills-only) -->
+                      <ui-select *ngIf="isSkillCategory(field.name)"
+                        [id]="field.name"
+                        [(ngModel)]="form.category"
+                        [name]="field.name"
+                        (valueChange)="onSkillCategoryChange($event)"
+                        placeholder="Uncategorized"
+                        [isInvalid]="!!fieldErrors[field.name]">
+                        <ui-select-item value="">Uncategorized</ui-select-item>
+                        @for (cat of skillCategoryNames(); track cat) {
+                          <ui-select-item [value]="cat">{{ cat }}</ui-select-item>
+                        }
+                      </ui-select>
 
-        <!-- Select -->
-        <select *ngIf="field.type === 'select'" 
-          [id]="field.name" 
-          [(ngModel)]="form[field.name]" 
-          [name]="field.name" 
-          (ngModelChange)="clearFieldError(field.name)"
-          class="form-control">
-          <option *ngFor="let opt of field.options" [value]="opt">{{ opt }}</option>
-        </select>
+                      <!-- Text Input -->
+                      <input *ngIf="field.type === 'text' && !isSkillCategory(field.name)" 
+                        type="text" 
+                        [id]="field.name" 
+                        [(ngModel)]="form[field.name]" 
+                        [name]="field.name" 
+                        [placeholder]="field.placeholder || ''"
+                        [required]="field.required || false"
+                        [attr.maxLength]="field.maxLength || null"
+                        (ngModelChange)="clearFieldError(field.name)"
+                        class="ui-input"
+                        [class.is-invalid]="fieldErrors[field.name]" />
 
-        <!-- Checkbox -->
-        <div *ngIf="field.type === 'checkbox'" class="checkbox-group">
-          <input type="checkbox" [id]="field.name" [(ngModel)]="form[field.name]" [name]="field.name" />
-          <label [for]="field.name" class="checkbox-label">{{ field.label }}</label>
-        </div>
+                      <!-- Number Input -->
+                      <input *ngIf="field.type === 'number'" 
+                        type="number" 
+                        [id]="field.name" 
+                        [(ngModel)]="form[field.name]" 
+                        [name]="field.name" 
+                        (ngModelChange)="clearFieldError(field.name)"
+                        class="ui-input"
+                        [class.is-invalid]="fieldErrors[field.name]" />
+
+                      <!-- Date Input -->
+                      <input *ngIf="field.type === 'date'" 
+                        type="date" 
+                        [id]="field.name" 
+                        [(ngModel)]="form[field.name]" 
+                        [name]="field.name" 
+                        (ngModelChange)="clearFieldError(field.name)"
+                        class="ui-input"
+                        [class.is-invalid]="fieldErrors[field.name]" />
+
+                      <!-- Textarea -->
+                      <textarea *ngIf="field.type === 'textarea'" 
+                        [id]="field.name" 
+                        [(ngModel)]="form[field.name]" 
+                        [name]="field.name" 
+                        [placeholder]="field.placeholder || ''"
+                        [attr.maxLength]="field.maxLength || null"
+                        (ngModelChange)="clearFieldError(field.name)"
+                        rows="4"
+                        class="ui-textarea"
+                        [class.is-invalid]="fieldErrors[field.name]"></textarea>
+
+                      <!-- Select -->
+                      <ui-select *ngIf="field.type === 'select'" 
+                        [id]="field.name" 
+                        [(ngModel)]="form[field.name]" 
+                        [name]="field.name" 
+                        (valueChange)="clearFieldError(field.name)"
+                        [options]="field.options"
+                        [placeholder]="'Select ' + field.label"
+                        [isInvalid]="!!fieldErrors[field.name]">
+                      </ui-select>
+
+                      <ui-field-error *ngIf="fieldErrors[field.name]">{{ fieldErrors[field.name] }}</ui-field-error>
+                    }
+                  </ui-field>
+                }
+              </ng-container>
+            </div>
+          </ui-field-group>
+        </ui-field-set>
+      </div>
+    }
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- ACTIONS BAR & NOTIFICATIONS                                       -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <div class="form-actions-panel">
+      <div class="form-shortcut-hint">
+        <span class="hint-text">Press</span>
+        <kbd class="kbd-badge">Ctrl</kbd>
+        <span class="hint-text">+</span>
+        <kbd class="kbd-badge">↵ Enter</kbd>
+        <span class="hint-text">to save</span>
+      </div>
+
+      <div class="actions-buttons-group">
+        <button type="button" class="btn btn-secondary" (click)="cancel()">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving">
+          <span *ngIf="saving" class="spinner-sm"></span>
+          <span>{{ saving ? 'Saving…' : (id ? 'Save Changes' : 'Add ' + (entity === 'projects' ? 'Project' : entityLabel)) }}</span>
+        </button>
       </div>
     </div>
 
-    <div class="form-actions">
-      <button type="button" class="btn btn-secondary" (click)="cancel()">Cancel</button>
-      <button type="submit" class="btn btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : (id ? 'Save Changes' : 'Add ' + entityLabel) }}</button>
+    <div class="form-error-banner" *ngIf="errorMessage" role="alert">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>{{ errorMessage }}</span>
     </div>
-    <div class="form-error" *ngIf="errorMessage">{{ errorMessage }}</div>
   </form>
 </div>
 
-<!-- Taxonomy selection modal -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- MODALS                                                             -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+
+<!-- Taxonomy Modal -->
 <div class="tax-modal-backdrop" *ngIf="taxonomyOpen()" (click)="closeTaxonomy()">
   <div class="tax-modal" (click)="$event.stopPropagation()">
     <div class="tax-modal-header">
-      <h3>Select categories</h3>
+      <div>
+        <h3>Select Categories</h3>
+        <p class="modal-sub">Tag this {{ entityLabel }} within the career taxonomy</p>
+      </div>
       <button type="button" class="tax-close" (click)="closeTaxonomy()" aria-label="Close">×</button>
     </div>
     <div class="tax-modal-body">
@@ -133,10 +489,10 @@
   </div>
 </div>
 
+<!-- Auto-fill Dialog -->
 <app-auto-fill-dialog
   [(open)]="autofillOpen"
   [entityLabel]="entityLabel"
   [fields]="autofillFields()"
   (filled)="applyAutofill($event)"
 ></app-auto-fill-dialog>
-

@@ -16,13 +16,13 @@
   </div>
 
   <!-- Search bar -->
-  <button class="search-bar" [title]="collapsed() ? 'Search' : null">
+  <button class="search-bar" (click)="shortcutService.focusSearch()" [title]="collapsed() ? 'Search (Ctrl+K)' : null">
     <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
       <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/>
       <path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
     </svg>
     <span class="search-text">Search…</span>
-    <kbd class="keycap">⌘K</kbd>
+    <kbd class="keycap">Ctrl K</kbd>
   </button>
 
   <!-- Scrollable nav -->

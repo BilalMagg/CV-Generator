@@ -52,6 +52,22 @@
   cursor: pointer;
 
   &:disabled { opacity: .6; cursor: default; }
+
+  .btn-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0 4px;
+    height: 16px;
+    border-radius: 4px;
+    background: rgb(255 255 255 / 0.25);
+    color: #fff;
+    margin-left: 2px;
+    line-height: 1;
+  }
 }
 .btn-ghost {
   padding: 8px 14px;

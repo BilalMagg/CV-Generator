@@ -1,10 +1,11 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CompanyService, CompanyDto } from '@app/services/company.service';
 import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import { SheetImportDialogComponent } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
 import { CompanyFormDialogComponent } from '@app/shared/components/company-form-dialog/company-form-dialog.component';
 import { CompanyMergeDialogComponent } from '@app/shared/components/company-merge-dialog/company-merge-dialog.component';
@@ -24,6 +25,8 @@ export class CompaniesComponent implements OnInit {
   private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly shortcut = inject(ShortcutService);
+  private readonly destroyRef = inject(DestroyRef);
 
   companies = signal<CompanyDto[]>([]);
   loading = signal(true);
@@ -54,6 +57,10 @@ export class CompaniesComponent implements OnInit {
   protected readonly COUNTRIES = COUNTRIES;
 
   async ngOnInit() {
+    this.shortcut.register({ key: 'a', label: 'Add Company', handler: () => this.openCreate() }, this.destroyRef);
+    this.shortcut.register({ key: 'c', label: 'Add Company', handler: () => this.openCreate() }, this.destroyRef);
+    this.shortcut.register({ key: 'm', label: 'Merge duplicate companies', handler: () => this.openMerge() }, this.destroyRef);
+
     this.restoreFromUrl();
     await this.loadCompanies();
   }
@@ -62,6 +69,9 @@ export class CompaniesComponent implements OnInit {
    * pressing Back (or a fresh link/refresh) restores the exact page, search and filters. */
   private restoreFromUrl(): void {
     const q = this.route.snapshot.queryParamMap;
+    if (q.get('create') === '1' || q.get('new') === '1') {
+      this.openCreate();
+    }
     const page = Number(q.get('page'));
     if (Number.isFinite(page) && page > 1) this.page.set(Math.trunc(page));
     const search = q.get('q');

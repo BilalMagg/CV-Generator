@@ -1,6 +1,8 @@
 <div class="topbar">
-  <button class="back-btn" (click)="router.navigate(['/applications/kanban'])"><i class="ti ti-arrow-left"></i></button>
-  <div class="topbar-title">New application</div>
+  <button class="back-btn" (click)="router.navigate(['/applications/kanban'])" title="Back to Kanban">
+    <i class="ti ti-arrow-left"></i>
+  </button>
+  <div class="topbar-title">New Application</div>
 </div>
 
 <div class="create-shell">
@@ -40,12 +42,14 @@
       </div>
     }
 
-    <form (ngSubmit)="onSubmit()">
+    <form (ngSubmit)="onSubmit()" class="create-form-stack">
 
-      <!-- ── Company & position ── -->
-      <div class="section">
-        <div class="section-header"><i class="ti ti-building"></i> Company &amp; position</div>
-        <div class="section-body">
+      <!-- ── 1. Company & position ── -->
+      <ui-field-set>
+        <ui-field-legend>Company &amp; Position</ui-field-legend>
+        <ui-field-description>The organization you are targeting and the job title being pursued.</ui-field-description>
+
+        <ui-field-group>
           <div class="identity-row">
             <div class="logo-chip">
               @if (companyLogoUrl(); as logo) {
@@ -54,13 +58,16 @@
                 {{ (companyName().trim()[0] || '?') | uppercase }}
               }
             </div>
-            <div class="field grow company-field">
-              <label>Company name <span class="req">*</span></label>
-              <input type="text" placeholder="e.g. Stripe" [ngModel]="companyName()"
-                name="companyName" required autocomplete="off"
-                (ngModelChange)="onCompanyInput($event)"
-                (focus)="onCompanyFocus()"
-                (blur)="companySuggestOpen.set(false)" />
+            <div class="grow company-field">
+              <ui-field>
+                <ui-field-label htmlFor="companyNameInput" [required]="true">Company Name</ui-field-label>
+                <input id="companyNameInput" type="text" class="ui-input" placeholder="e.g. Stripe, Google, Spotify" [ngModel]="companyName()"
+                  name="companyName" required autocomplete="off"
+                  (ngModelChange)="onCompanyInput($event)"
+                  (focus)="onCompanyFocus()"
+                  (blur)="companySuggestOpen.set(false)" />
+              </ui-field>
+
               @if (companySuggestOpen() && (searchingCompanies() || companyMatches().length > 0)) {
                 <div class="company-dropdown">
                   @if (searchingCompanies() && companyMatches().length === 0) {
@@ -81,7 +88,7 @@
               }
               @if (companyIsNew() && companyName().trim()) {
                 <label class="save-company">
-                  <input type="checkbox" [checked]="saveCompanyInfo()"
+                  <input type="checkbox" class="ui-checkbox" [checked]="saveCompanyInfo()"
                     (change)="saveCompanyInfo.set($any($event.target).checked)" />
                   <span>Save this company to my directory
                     <em>— you can complete its details later</em></span>
@@ -89,28 +96,32 @@
               }
             </div>
           </div>
-          <div class="two-col">
-            <div class="field">
-              <label>Position title <span class="req">*</span></label>
-              <input type="text" placeholder="e.g. Senior Backend Engineer" [(ngModel)]="positionTitle" name="positionTitle" required>
-            </div>
-            <div class="field">
-              <label>Found via</label>
-              <select [(ngModel)]="offerSource" name="offerSource">
-                <option value="">Select source</option>
-                @for (s of applySources; track s) {
-                  <option [value]="s">{{ s }}</option>
-                }
-              </select>
-            </div>
+
+          <div class="ui-grid-2">
+            <ui-field>
+              <ui-field-label htmlFor="posTitleInput" [required]="true">Position Title</ui-field-label>
+              <input id="posTitleInput" type="text" class="ui-input" placeholder="e.g. Senior Backend Engineer" [ngModel]="positionTitle()" (ngModelChange)="positionTitle.set($event)" name="positionTitle" required>
+            </ui-field>
+
+            <ui-field>
+              <ui-field-label htmlFor="offerSourceSelect">Found Via / Source</ui-field-label>
+              <ui-select id="offerSourceSelect" [ngModel]="offerSource()" (valueChange)="setOfferSource($event)" name="offerSource" placeholder="Select source" [options]="applySources"></ui-select>
+            </ui-field>
           </div>
-          <div class="two-col">
-            <div class="field">
-              <label>Internship type</label>
-              <input type="text" placeholder="e.g. PFA, PFE, Full-time" [(ngModel)]="internshipType" name="internshipType" maxlength="50">
-            </div>
-            <div class="field">
-              <label>Priority</label>
+
+          <div class="ui-grid-3">
+            <ui-field>
+              <ui-field-label htmlFor="internshipTypeSelect">Contract / Internship Type</ui-field-label>
+              <ui-select id="internshipTypeSelect" [ngModel]="internshipType()" (valueChange)="setInternshipType($event)" name="internshipType" placeholder="Select type" [options]="internshipTypes"></ui-select>
+            </ui-field>
+
+            <ui-field>
+              <ui-field-label htmlFor="workTypeSelect">Work Arrangement</ui-field-label>
+              <ui-select id="workTypeSelect" [ngModel]="workType()" (valueChange)="setWorkType($event)" name="workType" placeholder="Select arrangement" [options]="workTypes"></ui-select>
+            </ui-field>
+
+            <ui-field>
+              <ui-field-label>Priority</ui-field-label>
               <div class="priority-segmented">
                 @for (p of PRIORITY_ORDER; track p) {
                   <button type="button" [class.active]="priority() === p"
@@ -118,50 +129,54 @@
                     (click)="priority.set(p)">{{ PRIORITY_LABELS[p] }}</button>
                 }
               </div>
-            </div>
+            </ui-field>
           </div>
-        </div>
-      </div>
+        </ui-field-group>
+      </ui-field-set>
 
-      <!-- ── Stage ── -->
-      <div class="section">
-        <div class="section-header"><i class="ti ti-route"></i> Where are you in the process?</div>
-        <div class="section-body">
+      <!-- ── 2. Stage ── -->
+      <ui-field-set>
+        <ui-field-legend>Application Stage</ui-field-legend>
+        <ui-field-description>Where are you currently in the application process?</ui-field-description>
+
+        <ui-field-group>
           <div class="choice-grid">
             <button type="button" class="choice-card" [class.active]="stage() === 'SAVED'" (click)="setStage('SAVED')">
               <span class="choice-icon saved"><i class="ti ti-bookmark"></i></span>
-              <span class="choice-name">Saved for later</span>
-              <span class="choice-desc">Haven't applied yet. Track it as a bookmark on your board.</span>
+              <span class="choice-name">Saved for Later</span>
+              <span class="choice-desc">Haven't applied yet. Track it as a bookmark on your Kanban board.</span>
             </button>
             <button type="button" class="choice-card" [class.active]="stage() === 'APPLIED'" (click)="setStage('APPLIED')">
               <span class="choice-icon applied"><i class="ti ti-send"></i></span>
-              <span class="choice-name">Already applied</span>
+              <span class="choice-name">Already Applied</span>
               <span class="choice-desc">Log how you reached out so the timeline starts today.</span>
             </button>
           </div>
-        </div>
-      </div>
+        </ui-field-group>
+      </ui-field-set>
 
-      <!-- ── First attempt (conditional) ── -->
+      <!-- ── 3. First attempt (conditional) ── -->
       @if (stage() === 'APPLIED') {
-        <div class="section attempt-section">
-          <div class="section-header"><i class="ti ti-send"></i> First apply attempt</div>
-          <div class="section-body">
-            <div class="field">
-              <label>Channel</label>
+        <ui-field-set className="attempt-fieldset">
+          <ui-field-legend>First Apply Attempt</ui-field-legend>
+          <ui-field-description>Record the channel, recipient, and communication details.</ui-field-description>
+
+          <ui-field-group>
+            <ui-field>
+              <ui-field-label>Outreach Channel</ui-field-label>
               <div class="channel-grid">
                 @for (c of channels; track c.value) {
-                  <button type="button" class="channel-tile" [class.active]="channel() === c.value" (click)="channel.set(c.value)">
+                  <button type="button" class="channel-tile" [class.active]="channel() === c.value" (click)="setChannel(c.value)">
                     <i class="{{ c.icon }}"></i>
                     <span>{{ c.label }}</span>
                   </button>
                 }
               </div>
-            </div>
+            </ui-field>
 
             <div class="inline-row">
-              <div class="field">
-                <label>Initiated by</label>
+              <ui-field>
+                <ui-field-label>Initiated By</ui-field-label>
                 <div class="seg-control">
                   @for (opt of INITIATORS; track opt.value) {
                     <button type="button" class="seg-btn" [class.active]="initiatedBy() === opt.value" (click)="initiatedBy.set(opt.value)">
@@ -169,18 +184,19 @@
                     </button>
                   }
                 </div>
-              </div>
-              <div class="field sent-toggle-field">
-                <label>Status</label>
+              </ui-field>
+
+              <ui-field className="sent-toggle-field">
+                <ui-field-label>Status</ui-field-label>
                 <button type="button" class="sent-toggle" [class.on]="markSent()" (click)="markSent.set(!markSent())">
                   <span class="toggle-track"><span class="toggle-thumb"></span></span>
                   <span class="toggle-text">{{ markSent() ? 'Already sent' : 'Save as draft' }}</span>
                 </button>
-              </div>
+              </ui-field>
             </div>
 
-            <div class="field">
-              <label>Link a contact</label>
+            <ui-field>
+              <ui-field-label>Link a Contact</ui-field-label>
               @if (pickedContact(); as pc) {
                 <div class="picked-contact">
                   <span class="chip-avatar">{{ pc.name.charAt(0) }}</span>
@@ -192,43 +208,43 @@
                 </div>
               } @else if (newContactMode()) {
                 <div class="new-contact-form">
-                  <div class="two-col">
-                    <div class="field">
-                      <label>Name <span class="req">*</span></label>
-                      <input type="text" placeholder="e.g. Jane Doe" [(ngModel)]="newContactName" name="ncName">
-                    </div>
-                    <div class="field">
-                      <label>Email <span class="req">*</span></label>
-                      <input type="email" placeholder="jane@example.com" [(ngModel)]="newContactEmail" name="ncEmail">
-                    </div>
+                  <div class="ui-grid-2">
+                    <ui-field>
+                      <ui-field-label [required]="true">Name</ui-field-label>
+                      <input type="text" class="ui-input" placeholder="e.g. Jane Doe" [(ngModel)]="newContactName" name="ncName">
+                    </ui-field>
+                    <ui-field>
+                      <ui-field-label [required]="true">Email</ui-field-label>
+                      <input type="email" class="ui-input" placeholder="jane@example.com" [(ngModel)]="newContactEmail" name="ncEmail">
+                    </ui-field>
                   </div>
-                  <div class="two-col">
-                    <div class="field">
-                      <label>Company</label>
+                  <div class="ui-grid-2">
+                    <ui-field>
+                      <ui-field-label>Company</ui-field-label>
                       <app-company-field
                         [(model)]="newContactCompany"
                         placeholder="Company name"
                         nameInput="ncCompany"
                         newCompanyHint="Not in your company list" />
-                    </div>
-                    <div class="field">
-                      <label>Position</label>
-                      <input type="text" placeholder="e.g. Recruiter" [(ngModel)]="newContactPosition" name="ncPosition">
-                    </div>
+                    </ui-field>
+                    <ui-field>
+                      <ui-field-label>Position</ui-field-label>
+                      <input type="text" class="ui-input" placeholder="e.g. Technical Recruiter" [(ngModel)]="newContactPosition" name="ncPosition">
+                    </ui-field>
                   </div>
                   @if (newContactError()) {
                     <div class="nc-error"><i class="ti ti-alert-circle"></i> {{ newContactError() }}</div>
                   }
                   <div class="nc-actions">
-                    <button type="button" class="ghost-btn" (click)="closeNewContact()">Cancel</button>
-                    <button type="button" class="create-btn" (click)="saveNewContact()" [disabled]="creatingContact()">
-                      {{ creatingContact() ? 'Saving…' : 'Save contact' }}
+                    <button type="button" class="btn btn-secondary btn-sm" (click)="closeNewContact()">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" (click)="saveNewContact()" [disabled]="creatingContact()">
+                      {{ creatingContact() ? 'Saving…' : 'Save Contact' }}
                     </button>
                   </div>
                 </div>
               } @else {
                 <div class="contact-search-row">
-                  <input type="text" placeholder="Search contacts by name, email or company…" [(ngModel)]="contactSearch"
+                  <input type="text" class="ui-input" placeholder="Search contacts by name, email or company…" [(ngModel)]="contactSearch"
                     name="contactSearch" (ngModelChange)="searchContacts()">
                   <button type="button" class="add-contact-btn" title="Add a new contact" (click)="openNewContact()">
                     <i class="ti ti-user-plus"></i>
@@ -247,59 +263,60 @@
                     <button type="button" class="link-btn" (click)="openNewContact()">add "{{ contactSearch().trim() }}"</button>
                   </div>
                 }
-                <small>Optional — pick an existing contact or add a new one.</small>
+                <ui-field-hint>Optional — pick an existing contact or register a new one.</ui-field-hint>
               }
-            </div>
+            </ui-field>
 
             @if (channelFields().recipientName || channelFields().recipientContact) {
-              <div class="two-col">
+              <div class="ui-grid-2">
                 @if (channelFields().recipientName) {
-                  <div class="field">
-                    <label>Recipient name</label>
-                    <input type="text" placeholder="e.g. Jane Doe" [(ngModel)]="recipientName" name="recipientName">
-                  </div>
+                  <ui-field>
+                    <ui-field-label>Recipient Name</ui-field-label>
+                    <input type="text" class="ui-input" placeholder="e.g. Jane Doe" [(ngModel)]="recipientName" name="recipientName">
+                  </ui-field>
                 }
                 @if (channelFields().recipientContact) {
-                  <div class="field">
-                    <label>{{ channelFields().recipientContactLabel }}</label>
-                    <input type="text" [placeholder]="channelFields().recipientContactPlaceholder"
+                  <ui-field>
+                    <ui-field-label>{{ channelFields().recipientContactLabel }}</ui-field-label>
+                    <input type="text" class="ui-input" [placeholder]="channelFields().recipientContactPlaceholder"
                       [(ngModel)]="recipientContact" name="recipientContact">
-                  </div>
+                  </ui-field>
                 }
               </div>
             }
 
             @if (channelFields().subject) {
-              <div class="field">
-                <label>Subject</label>
-                <input type="text" placeholder="Application – {{ positionTitle().trim() || 'Position title' }}" [(ngModel)]="subject" name="attemptSubject">
-              </div>
+              <ui-field>
+                <ui-field-label>Subject</ui-field-label>
+                <input type="text" class="ui-input" placeholder="Application – {{ positionTitle().trim() || 'Position title' }}" [(ngModel)]="subject" name="attemptSubject">
+              </ui-field>
             }
 
             @if (channelFields().message) {
-              <div class="field">
-                <label>{{ channelFields().messageLabel }}</label>
-                <textarea rows="4" [placeholder]="channelFields().messagePlaceholder" [(ngModel)]="body" name="attemptBody"></textarea>
-              </div>
+              <ui-field>
+                <ui-field-label>{{ channelFields().messageLabel }}</ui-field-label>
+                <textarea rows="4" class="ui-textarea" [placeholder]="channelFields().messagePlaceholder" [(ngModel)]="body" name="attemptBody"></textarea>
+              </ui-field>
             }
 
             @if (channel() === 'WEB_FORM') {
               <p class="webform-hint"><i class="ti ti-world"></i> The form URL is saved so you can find it again later.</p>
             }
-          </div>
-        </div>
+          </ui-field-group>
+        </ui-field-set>
       }
 
-      <!-- ── Notes ── -->
-      <div class="section">
-        <div class="section-header"><i class="ti ti-notes"></i> Details</div>
-        <div class="section-body">
-          <div class="field full">
-            <label>Notes</label>
-            <textarea rows="3" placeholder="Job posting link, salary expectations, referral name… anything worth remembering." [(ngModel)]="notes" name="notes"></textarea>
-          </div>
-        </div>
-      </div>
+      <!-- ── 4. Notes ── -->
+      <ui-field-set>
+        <ui-field-legend>Details &amp; Notes</ui-field-legend>
+        <ui-field-description>Capture job description link, salary range, interview steps, or referral contacts.</ui-field-description>
+
+        <ui-field-group>
+          <ui-field>
+            <textarea rows="3" class="ui-textarea" placeholder="Job posting URL, salary expectations, referral names, interview tips… anything worth remembering." [(ngModel)]="notes" name="notes"></textarea>
+          </ui-field>
+        </ui-field-group>
+      </ui-field-set>
 
     </form>
   </div>
@@ -307,7 +324,7 @@
   <!-- ══ Sidebar ══ -->
   <aside class="side-col">
     <div class="preview-wrap">
-      <div class="preview-label">Board preview</div>
+      <div class="preview-label">Board Preview</div>
       <div class="preview-card">
         <div class="pv-head">
           <div class="pv-logo">
@@ -328,36 +345,39 @@
 
       @if (stage() === 'APPLIED') {
         <div class="apply-date-field">
-          <label for="appliedDate">First applied on</label>
-          <input id="appliedDate" type="date"
-            [ngModel]="appliedDate()" (ngModelChange)="appliedDate.set($event)" name="appliedDate">
-          <small>Backdate an application you logged late.</small>
+          <ui-field>
+            <ui-field-label htmlFor="appliedDate">First Applied On</ui-field-label>
+            <input id="appliedDate" type="date" class="ui-input"
+              [ngModel]="appliedDate()" (ngModelChange)="appliedDate.set($event)" name="appliedDate">
+            <ui-field-hint>Backdate an application you logged late.</ui-field-hint>
+          </ui-field>
         </div>
       }
 
       <div class="cv-select-field">
-        <label for="appliedCv">{{ stage() === 'APPLIED' ? 'CV sent' : 'CV to use' }}</label>
-        <select id="appliedCv" [ngModel]="cvVersionId()" name="appliedCv"
-          (ngModelChange)="cvVersionId.set($event)">
-          <option value="">None (no CV attached)</option>
-          @for (cv of cvVersions(); track cv.version.id) {
-            <option [value]="cv.version.id">{{ cv.label }}</option>
+        <ui-field>
+          <ui-field-label htmlFor="appliedCv">{{ stage() === 'APPLIED' ? 'CV Sent' : 'CV to Use' }}</ui-field-label>
+          <ui-select id="appliedCv" [ngModel]="cvVersionId()" (valueChange)="cvVersionId.set($event)" name="appliedCv" placeholder="None (no CV attached)">
+            <ui-select-item value="">None (no CV attached)</ui-select-item>
+            @for (cv of cvVersions(); track cv.version.id) {
+              <ui-select-item [value]="cv.version.id">{{ cv.label }}</ui-select-item>
+            }
+          </ui-select>
+          @if (cvLoading()) {
+            <ui-field-hint><i class="ti ti-loader"></i> Loading your CVs…</ui-field-hint>
+          } @else if (cvVersions().length === 0) {
+            <ui-field-hint>No CVs yet — upload one on the Documents page.</ui-field-hint>
+          } @else if (!cvPickersFiltered) {
+            <ui-field-hint>{{ cvPickerHint }}</ui-field-hint>
+          } @else {
+            <ui-field-hint>Your default CV (<strong>{{ activeCvName() }}</strong>) is pre-selected.</ui-field-hint>
           }
-        </select>
-        @if (cvLoading()) {
-          <small><i class="ti ti-loader"></i> Loading your CVs…</small>
-        } @else if (cvVersions().length === 0) {
-          <small>No CVs yet — upload one on the Documents page.</small>
-        } @else if (!cvPickersFiltered) {
-          <small>{{ cvPickerHint }}</small>
-        } @else {
-          <small>Your default CV (<strong>{{ activeCvName() }}</strong>) is pre-selected — inactive versions are hidden.</small>
-        }
+        </ui-field>
       </div>
 
       @if (pickedCompany()?.id; as credCompanyId) {
         <div class="side-cred-card">
-          <div class="preview-label">Company credentials</div>
+          <div class="preview-label">Company Credentials</div>
           <app-company-credentials [companyId]="credCompanyId" [compact]="true" />
         </div>
       }
@@ -366,7 +386,7 @@
         @if (stage() === 'SAVED') {
           Lands in the <strong>Saved</strong> column — drag it across the board when you apply.
         } @else {
-          Created as <strong>Applied</strong> on <strong>{{ formatPreviewDate(previewDate()) }}</strong>@if (markSent()) {<span>, and the attempt is logged in the application's timeline</span>}.
+          Created as <strong>Applied</strong> on <strong>{{ formatPreviewDate(previewDate()) }}</strong>@if (markSent()) {<span>, and the attempt is logged in the timeline</span>}.
         }
       </p>
     </div>
@@ -380,9 +400,9 @@
     @else { Will be saved as <strong>{{ STATUS_LABELS[previewStatus()] }}</strong> }
   </span>
   <div class="footer-btns">
-    <button type="button" class="cancel-btn" (click)="router.navigate(['/applications/kanban'])">Cancel</button>
-    <button type="button" class="create-btn" (click)="onSubmit()" [disabled]="submitting() || !isFormValid">
-      {{ submitting() ? 'Creating…' : (stage() === 'APPLIED' ? 'Log application' : 'Save application') }}
+    <button type="button" class="btn btn-secondary" (click)="router.navigate(['/applications/kanban'])">Cancel</button>
+    <button type="button" class="btn btn-primary" (click)="onSubmit()" [disabled]="submitting() || !isFormValid">
+      {{ submitting() ? 'Creating…' : (stage() === 'APPLIED' ? 'Log Application' : 'Save Application') }}
     </button>
   </div>
 </div>

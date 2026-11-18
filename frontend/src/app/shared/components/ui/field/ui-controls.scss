@@ -1,0 +1,166 @@
+/* ═════════════════════════════════════════════════════════════════
+   UNIFIED FORM CONTROLS — Propel UI System
+   ═════════════════════════════════════════════════════════════════ */
+
+.ui-input,
+.ui-select,
+.ui-textarea,
+.form-control {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 7px);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.03);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+  &::placeholder {
+    color: var(--text-4);
+  }
+
+  &:hover:not(:disabled):not(:focus) {
+    border-color: oklch(0.8 0.006 80);
+  }
+
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px oklch(0.6 0.16 250 / 0.14);
+    background: #ffffff;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    background: var(--surface-2, oklch(0.985 0.003 80));
+    cursor: not-allowed;
+  }
+
+  &.is-invalid {
+    border-color: oklch(0.62 0.18 25);
+    background: oklch(0.98 0.02 25 / 0.2);
+
+    &:focus {
+      box-shadow: 0 0 0 3px oklch(0.62 0.18 25 / 0.15);
+    }
+  }
+}
+
+.ui-input,
+input.form-control {
+  height: 38px;
+  padding: 0 12px;
+  line-height: 38px;
+
+  &[type="date"] {
+    padding-right: 8px;
+  }
+
+  &[type="number"] {
+    -moz-appearance: textfield;
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      margin: 0;
+    }
+  }
+}
+
+.ui-select,
+select.form-control {
+  height: 38px;
+  padding: 0 32px 0 12px;
+  line-height: 38px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+}
+
+.ui-textarea,
+textarea.form-control {
+  min-height: 96px;
+  padding: 9px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.ui-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 4px;
+  border: 1.5px solid oklch(0.78 0.008 80);
+  background: var(--surface);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  vertical-align: middle;
+  transition: all 0.12s ease;
+  position: relative;
+  flex-shrink: 0;
+
+  &:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  &:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 11px;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px oklch(0.6 0.16 250 / 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* ── Grid Utilities ── */
+.ui-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+.ui-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+.ui-col-span-2 {
+  grid-column: span 2;
+
+  @media (max-width: 640px) {
+    grid-column: span 1;
+  }
+}
+
+.ui-col-span-full {
+  grid-column: 1 / -1;
+}

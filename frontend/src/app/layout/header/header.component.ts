@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { AuthService } from '@app/services/auth.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import { APP_NAME } from '@app/app-name';
 import { ExportDialogComponent } from '@app/shared/components/export-dialog/export-dialog.component';
 import { SheetImportDialogComponent, type ImportType } from '@app/shared/components/sheet-import-dialog/sheet-import-dialog.component';
@@ -17,6 +18,7 @@ import { SheetImportDialogComponent, type ImportType } from '@app/shared/compone
 export class HeaderComponent {
   appName = APP_NAME;
   authService = inject(AuthService);
+  shortcutService = inject(ShortcutService);
   router = inject(Router);
 
   pageName = 'Dashboard';

@@ -1,10 +1,11 @@
-import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, OnDestroy, DestroyRef } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DocumentsService } from '@app/services/documents.service';
 import { ToastService } from '@app/services/toast.service';
 import { ConfirmService } from '@app/services/confirm.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import { extractError } from '@app/shared/error-utils';
 import { CvDocumentDto, CvTemplateDto, CvVersionDto } from '@app/models/document.model';
 
@@ -20,6 +21,8 @@ export class DocumentsCvsComponent implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly shortcut = inject(ShortcutService);
+  private readonly destroyRef = inject(DestroyRef);
 
   cvs = signal<CvDocumentDto[]>([]);
   templates = signal<CvTemplateDto[]>([]);
@@ -52,6 +55,9 @@ export class DocumentsCvsComponent implements OnInit, OnDestroy {
   });
 
   async ngOnInit() {
+    this.shortcut.register({ key: 'a', label: 'Upload CV', handler: () => this.toggleUpload() }, this.destroyRef);
+    this.shortcut.register({ key: 'c', label: 'Upload CV', handler: () => this.toggleUpload() }, this.destroyRef);
+    this.shortcut.register({ key: 'u', label: 'Upload CV', handler: () => this.toggleUpload() }, this.destroyRef);
     await this.load();
   }
 

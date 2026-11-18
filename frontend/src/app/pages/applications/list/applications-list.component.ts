@@ -1,8 +1,9 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { ApplicationService } from '@app/services/application.service';
+import { ShortcutService } from '@app/services/shortcut.service';
 import {
   ApplicationResponseDto,
   ApplicationStatisticsDto,
@@ -30,6 +31,8 @@ interface SortOption { key: SortKey; label: string; }
 export class ApplicationsListComponent implements OnInit {
   private appService = inject(ApplicationService);
   private confirm = inject(ConfirmService);
+  private shortcut = inject(ShortcutService);
+  private destroyRef = inject(DestroyRef);
   protected router = inject(Router);
 
   applications = signal<ApplicationResponseDto[]>([]);
@@ -101,7 +104,12 @@ export class ApplicationsListComponent implements OnInit {
   protected readonly ALL_STATUSES = STATUS_ORDER;
   protected readonly Math = Math;
 
-  ngOnInit() { this.loadData(); }
+  ngOnInit() {
+    this.shortcut.register({ key: 'a', label: 'New Application', handler: () => void this.router.navigate(['/applications/new']) }, this.destroyRef);
+    this.shortcut.register({ key: 'c', label: 'New Application', handler: () => void this.router.navigate(['/applications/new']) }, this.destroyRef);
+    this.shortcut.register({ key: 'k', label: 'Kanban view', handler: () => void this.router.navigate(['/applications/kanban']) }, this.destroyRef);
+    this.loadData();
+  }
 
   async loadData() {
     this.loading.set(true);
