@@ -124,6 +124,8 @@ services:
   app:
     image: bilalmagg/propel:dev
     container_name: propel-app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "4200:4200"           # frontend (nginx)
       - "8080:8080"           # gateway (OAuth callback + direct API access)
