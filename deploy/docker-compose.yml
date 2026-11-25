@@ -132,7 +132,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: propel:latest
+    image: ${APP_IMAGE:-propel:latest}
     container_name: propel-app
     ports:
       - "4200:4200"           # frontend (nginx)
