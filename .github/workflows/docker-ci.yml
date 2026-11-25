@@ -58,7 +58,8 @@ permissions:
   contents: read
 
 env:
-  COMPOSE: docker compose -f deploy/docker-compose.yml
+  COMPOSE: docker compose --profile full -f deploy/docker-compose.yml
+  COMPOSE_PROFILES: full
 
 jobs:
   docker:

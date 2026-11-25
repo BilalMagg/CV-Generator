@@ -1,4 +1,5 @@
 using CV_Generator.Services.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;

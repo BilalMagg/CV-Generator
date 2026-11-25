@@ -1,11 +1,15 @@
 using System;
+using CV_Generator.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace CV_Generator.Migrations
 {
-    /// <inheritdoc />
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20261118210600_AddApplicationDomain")]
     public partial class AddApplicationDomain : Migration
     {
         /// <inheritdoc />

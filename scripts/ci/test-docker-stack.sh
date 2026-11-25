@@ -42,6 +42,7 @@
 # =============================================================================
 set -u
 
+export COMPOSE_PROFILES="${COMPOSE_PROFILES:-full}"
 COMPOSE_ARGS=(-f "deploy/docker-compose.yml")
 DO_UP=0; DO_DOWN=0; LATEX=0; ONLY=""; SKIPRE=""
 GATEWAY_WAIT="${GATEWAY_WAIT:-120}"
@@ -91,7 +92,7 @@ run_test() {
   if [ "$rc" = 0 ]; then pass "$name" "$t0"
   else fail "$name" "$t0"
     echo "    ${C_D}output:${C_0}"
-    sed -n '1,40p' /tmp/propel-test-$name.log | sed 's/^/      /'
+    tail -n 40 /tmp/propel-test-$name.log | sed 's/^/      /'
   fi
   rm -f /tmp/propel-test-$name.log
 }
@@ -177,7 +178,9 @@ run_t08_migrations_ran() {
   for i in $(seq 1 "$MIGRATION_ATTEMPTS"); do
     n=$(compose exec -T postgres psql -U postgres -d cv_monolith \
       -tAc 'select count(*) from "__EFMigrationsHistory"' 2>/dev/null) || n=""
-    echo "  attempt $i: migration history rows: ${n:-n/a}"
+    if [ $((i % 5)) -eq 0 ] || [ "$i" -eq 1 ] || [ "${n:-0}" -gt 0 ] 2>/dev/null; then
+      echo "  attempt $i: migration history rows: ${n:-n/a}"
+    fi
     if [ "${n:-0}" -gt 0 ] 2>/dev/null; then ok=1; break; fi
     sleep "$MIGRATION_INTERVAL"
   done

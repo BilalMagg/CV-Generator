@@ -1,10 +1,14 @@
+using CV_Generator.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace CV_Generator.Migrations
 {
-    /// <inheritdoc />
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20261118204000_AddApplicationWorkType")]
     public partial class AddApplicationWorkType : Migration
     {
         /// <inheritdoc />
