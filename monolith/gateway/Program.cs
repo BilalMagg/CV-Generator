@@ -139,8 +139,18 @@ builder.Services.AddSwaggerGen();
 // ── HTTP Client for token exchange ───────────────────────────────────────────
 builder.Services.AddHttpClient();
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+        | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+        | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -389,7 +399,9 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, IHttpClientFactory httpCl
 
 app.MapGet("/api/auth/logout", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
 {
-    var postLogoutRedirectUri = $"{frontendUrl}/login";
+    var postLogoutRedirectUri = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("FRONTEND_HOST"))
+        ? $"{frontendUrl}/login"
+        : "/login";
 
     var authResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     var idToken = authResult?.Properties?.Items?.TryGetValue("id_token", out var t) == true ? t ?? "" : "";
