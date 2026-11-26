@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { Router, RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './layout/header/header.component';
@@ -12,6 +12,21 @@ import { ShortcutsDialogComponent } from './shared/components/shortcuts-dialog/s
 import { ShortcutService } from './services/shortcut.service';
 import { APP_NAME } from './app-name';
 
+const MODAL_BACKDROP_SELECTOR = [
+  '.modal-backdrop',
+  '.modal-overlay',
+  '.tpl-overlay',
+  '.q-modal-backdrop',
+  '.cat-modal-backdrop',
+  '.tax-modal-backdrop',
+  '.shortcuts-backdrop',
+  '.move-backdrop',
+  '.popover-overlay',
+  '.filter-backdrop',
+  '.backdrop',
+  '.map-backdrop',
+].join(', ');
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -23,11 +38,13 @@ export class App {
   private router = inject(Router);
   private title = inject(Title);
   private shortcutService = inject(ShortcutService);
+  private destroyRef = inject(DestroyRef);
 
   isAuthPage = false;
   showHeader = false;
 
   ngOnInit(): void {
+    this.installBackdropDragGuard();
     this.shortcutService.init();
     this.title.setTitle(APP_NAME);
     this.router.events.subscribe(() => {
@@ -38,5 +55,32 @@ export class App {
     const initialUrl = this.router.url.split('#')[0].split('?')[0];
     this.isAuthPage = initialUrl === '/' || initialUrl === '/login' || initialUrl === '/register' || initialUrl.startsWith('/about') || initialUrl.startsWith('/contact');
     this.showHeader = !this.isAuthPage;
+  }
+
+  // Prevent text-selection drags that start inside a modal form and release on
+  // the backdrop from triggering the backdrop's (click) close handler.
+  private installBackdropDragGuard(): void {
+    if (typeof document === 'undefined') return;
+    let lastMouseDownTarget: EventTarget | null = null;
+    const onMouseDown = (e: MouseEvent) => {
+      lastMouseDownTarget = e.target;
+    };
+    const onClickCapture = (e: MouseEvent) => {
+      const target = e.target;
+      if (
+        target instanceof Element &&
+        target.matches(MODAL_BACKDROP_SELECTOR) &&
+        lastMouseDownTarget !== target
+      ) {
+        e.stopPropagation();
+      }
+      lastMouseDownTarget = null;
+    };
+    document.addEventListener('mousedown', onMouseDown, true);
+    document.addEventListener('click', onClickCapture, true);
+    this.destroyRef.onDestroy(() => {
+      document.removeEventListener('mousedown', onMouseDown, true);
+      document.removeEventListener('click', onClickCapture, true);
+    });
   }
 }
