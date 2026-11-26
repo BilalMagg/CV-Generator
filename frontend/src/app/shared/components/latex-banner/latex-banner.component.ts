@@ -28,12 +28,19 @@ import { CapabilitiesService } from '@app/services/capabilities.service';
     }
   `,
   styles: [`
+    :host {
+      display: block;
+      flex-shrink: 0;
+    }
+    :host(:empty) {
+      display: none;
+    }
     .latex-banner {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 9px 14px;
-      margin: 10px 18px 0;
+      margin: 12px 20px 8px;
       border: 1px solid var(--border, #e2e8f0);
       border-left: 3px solid #f59e0b;
       border-radius: 8px;

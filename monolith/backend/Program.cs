@@ -38,12 +38,14 @@ var port = int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "5000");
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // Database — env var takes PRECEDENCE over appsettings: the single-container
-// deployment injects CONNECTION_STRING (postgres service) via compose, and the
-// appsettings DefaultConnection (localhost, for native dev runs) must not
-// shadow it inside the container.
-var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+// deployment injects CONNECTION_STRING (compose) or DATABASE_URL (Render/Supabase),
+// and the appsettings DefaultConnection (localhost, for native dev runs) must not
+// shadow it inside the container. Accepts both Npgsql key=value and postgres:// URIs.
+var rawConnectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+    ?? Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Port=5432;Database=cv_monolith;Username=postgres;Password=postgres";
+var connectionString = NormalizePostgresConnectionString(rawConnectionString);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -274,3 +276,49 @@ app.MapHub<JobHub>("/hubs/jobs");
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "cv-monolith" }));
 
 app.Run();
+
+static string NormalizePostgresConnectionString(string raw)
+{
+    if (!raw.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+        !raw.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        return raw;
+    }
+
+    var uri = new Uri(raw);
+    var db = uri.AbsolutePath.Trim('/');
+    var csb = new Npgsql.NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.Port > 0 ? uri.Port : 5432,
+        Database = string.IsNullOrWhiteSpace(db) ? "postgres" : db,
+    };
+
+    if (!string.IsNullOrEmpty(uri.UserInfo))
+    {
+        var colon = uri.UserInfo.IndexOf(':');
+        if (colon >= 0)
+        {
+            csb.Username = Uri.UnescapeDataString(uri.UserInfo[..colon]);
+            csb.Password = Uri.UnescapeDataString(uri.UserInfo[(colon + 1)..]);
+        }
+        else
+        {
+            csb.Username = Uri.UnescapeDataString(uri.UserInfo);
+        }
+    }
+
+    var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+    if (query.TryGetValue("sslmode", out var sslMode) && Enum.TryParse<Npgsql.SslMode>(sslMode.ToString(), true, out var parsedSsl))
+    {
+        csb.SslMode = parsedSsl;
+    }
+    else if (!string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(uri.Host, "postgres", StringComparison.OrdinalIgnoreCase))
+    {
+        csb.SslMode = Npgsql.SslMode.Require;
+    }
+
+    return csb.ConnectionString;
+}

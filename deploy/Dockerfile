@@ -99,11 +99,14 @@ COPY --from=frontend /src/frontend/dist/frontend/browser/ /usr/share/nginx/html/
 
 COPY deploy/supervisord.conf /etc/supervisor/supervisord.conf
 COPY deploy/nginx.conf /etc/nginx/sites-available/propel.conf
+COPY deploy/entrypoint.sh /entrypoint.sh
 
 RUN ln -sf /etc/nginx/sites-available/propel.conf /etc/nginx/sites-enabled/propel.conf \
     && rm -f /etc/nginx/sites-enabled/default \
-    && mkdir -p /var/log/supervisor /var/log/nginx
+    && mkdir -p /var/log/supervisor /var/log/nginx \
+    && sed -i 's/\r$//' /entrypoint.sh \
+    && chmod +x /entrypoint.sh
 
 EXPOSE 4200 8080
 
-ENTRYPOINT ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
+ENTRYPOINT ["/entrypoint.sh"]

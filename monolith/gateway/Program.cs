@@ -1,10 +1,10 @@
+using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.Extensions.Caching.Distributed;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -82,10 +82,12 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ── In-memory session cache ──────────────────────────────────────────────────
-builder.Services.AddDistributedMemoryCache();
+var sessionExpireDays = int.TryParse(Env("SESSION_EXPIRE_DAYS", "30"), out var parsedDays) && parsedDays > 0
+    ? parsedDays
+    : 30;
+var sessionLifetime = TimeSpan.FromDays(sessionExpireDays);
 
-// ── Authentication: Cookies + JWT ────────────────────────────────────────────
+// ── Authentication: Stateless Encrypted Cookies + JWT ────────────────────────
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -97,14 +99,9 @@ builder.Services.AddAuthentication(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.ExpireTimeSpan = TimeSpan.FromHours(1);
+    options.ExpireTimeSpan = sessionLifetime;
     options.SlidingExpiration = true;
 });
-
-builder.Services.AddSingleton<ITicketStore>(sp =>
-    new MemoryCacheTicketStore(sp.GetRequiredService<IDistributedCache>()));
-builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
-    .Configure<ITicketStore>((options, store) => options.SessionStore = store);
 
 // ── JWT Bearer for downstream services ───────────────────────────────────────
 builder.Services.AddAuthentication("Bearer")
@@ -250,8 +247,9 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, IHttpClientFactory httpCl
                         var authProps = new AuthenticationProperties
                         {
                             IsPersistent = true,
-                            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24),
+                            ExpiresUtc = DateTimeOffset.UtcNow.Add(sessionLifetime),
                         };
+                        authProps.Items["auth_type"] = "native";
 
                         await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
 
@@ -323,27 +321,27 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, IHttpClientFactory httpCl
 
             var accessToken = tokenJson.GetValueOrDefault("access_token")?.ToString() ?? "";
             var idToken = tokenJson.GetValueOrDefault("id_token")?.ToString() ?? "";
+            var refreshToken = tokenJson.GetValueOrDefault("refresh_token")?.ToString() ?? "";
+            var expiresInSeconds = ParseExpiresIn(tokenJson.GetValueOrDefault("expires_in"));
 
             var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(string.IsNullOrEmpty(idToken) ? accessToken : idToken);
-            var claims = jwt.Claims.ToList();
+            var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
+            var claims = BuildKeycloakClaims(jwt, accessToken, userId);
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            identity.AddClaim(new Claim("access_token", accessToken));
-
-            var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
-            if (!string.IsNullOrEmpty(userId))
-            {
-                identity.AddClaim(new Claim("user_id", userId));
-            }
-
             var principal = new ClaimsPrincipal(identity);
             var authProps = new AuthenticationProperties
             {
                 IsPersistent = true,
-                ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
+                ExpiresUtc = DateTimeOffset.UtcNow.Add(sessionLifetime),
             };
-            authProps.Items["id_token"] = idToken;
+            authProps.Items["auth_type"] = "keycloak";
+            if (!string.IsNullOrEmpty(idToken))
+                authProps.Items["id_token"] = idToken;
+            if (!string.IsNullOrEmpty(refreshToken))
+                authProps.Items["refresh_token"] = refreshToken;
+            authProps.Items["expires_at"] = DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds).ToString("O");
 
             await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
 
@@ -475,29 +473,29 @@ app.MapGet("/api/auth/callback", async (HttpContext ctx, IHttpClientFactory http
 
     var accessToken = tokenJson.GetValueOrDefault("access_token")?.ToString() ?? "";
     var idToken = tokenJson.GetValueOrDefault("id_token")?.ToString() ?? "";
+    var refreshToken = tokenJson.GetValueOrDefault("refresh_token")?.ToString() ?? "";
+    var expiresInSeconds = ParseExpiresIn(tokenJson.GetValueOrDefault("expires_in"));
 
     var handler = new JwtSecurityTokenHandler();
-    var jwt = handler.ReadJwtToken(idToken);
-    var claims = jwt.Claims.ToList();
+    var jwt = handler.ReadJwtToken(string.IsNullOrEmpty(idToken) ? accessToken : idToken);
+    var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
+    var claims = BuildKeycloakClaims(jwt, accessToken, userId);
 
     var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-    identity.AddClaim(new Claim("access_token", accessToken));
-
-    var userId = await SyncUserAsync(httpClientFactory, userServiceUrl, accessToken);
-    if (!string.IsNullOrEmpty(userId))
-    {
-        identity.AddClaim(new Claim("user_id", userId));
-    }
-
     var principal = new ClaimsPrincipal(identity);
 
     var authProps = new AuthenticationProperties
     {
         IsPersistent = true,
-        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
+        ExpiresUtc = DateTimeOffset.UtcNow.Add(sessionLifetime),
         RedirectUri = expectedReturn,
     };
-    authProps.Items["id_token"] = idToken;
+    authProps.Items["auth_type"] = "keycloak";
+    if (!string.IsNullOrEmpty(idToken))
+        authProps.Items["id_token"] = idToken;
+    if (!string.IsNullOrEmpty(refreshToken))
+        authProps.Items["refresh_token"] = refreshToken;
+    authProps.Items["expires_at"] = DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds).ToString("O");
 
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
 
@@ -505,7 +503,7 @@ app.MapGet("/api/auth/callback", async (HttpContext ctx, IHttpClientFactory http
 })
 .RequireCors("Default");
 
-app.MapGet("/api/auth/me", async (HttpContext ctx) =>
+app.MapGet("/api/auth/me", async (HttpContext ctx, IHttpClientFactory httpClientFactory) =>
 {
     var result = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
@@ -516,15 +514,24 @@ app.MapGet("/api/auth/me", async (HttpContext ctx) =>
         return;
     }
 
-    var accessToken = result.Principal.FindFirstValue("access_token") ?? "";
-    var userId = result.Principal.FindFirstValue("user_id")
-        ?? result.Principal.FindFirstValue("sub")
+    var principal = await EnsureFreshKeycloakSessionAsync(ctx, result, httpClientFactory);
+    if (principal == null)
+    {
+        await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        ctx.Response.StatusCode = 401;
+        await ctx.Response.WriteAsJsonAsync(new { authenticated = false });
+        return;
+    }
+
+    var accessToken = principal.FindFirstValue("access_token") ?? "";
+    var userId = principal.FindFirstValue("user_id")
+        ?? principal.FindFirstValue("sub")
         ?? "";
-    var keycloakId = result.Principal.FindFirstValue("sub") ?? "";
-    var firstName = result.Principal.FindFirstValue("given_name") ?? "";
-    var lastName = result.Principal.FindFirstValue("family_name") ?? "";
-    var email = result.Principal.FindFirstValue("email") ?? "";
-    var role = result.Principal.FindFirstValue("roles") ?? "user";
+    var keycloakId = principal.FindFirstValue("sub") ?? "";
+    var firstName = principal.FindFirstValue("given_name") ?? "";
+    var lastName = principal.FindFirstValue("family_name") ?? "";
+    var email = principal.FindFirstValue("email") ?? "";
+    var role = principal.FindFirstValue("roles") ?? "user";
 
     await ctx.Response.WriteAsJsonAsync(new
     {
@@ -736,19 +743,28 @@ app.MapReverseProxy(proxyApp =>
         var authResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         if (authResult.Succeeded)
         {
-            var token = authResult.Principal?.FindFirstValue("access_token");
-            if (!string.IsNullOrEmpty(token))
+            var httpClientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+            var principal = await EnsureFreshKeycloakSessionAsync(ctx, authResult, httpClientFactory);
+            if (principal == null)
             {
-                ctx.Request.Headers.Authorization = $"Bearer {token}";
+                await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             }
-
-            var internalUserId = authResult.Principal?.FindFirstValue("user_id")
-                               ?? authResult.Principal?.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
-                               ?? authResult.Principal?.FindFirstValue("sub");
-
-            if (!string.IsNullOrEmpty(internalUserId))
+            else
             {
-                ctx.Request.Headers["X-User-Id"] = internalUserId;
+                var token = principal.FindFirstValue("access_token");
+                if (!string.IsNullOrEmpty(token))
+                {
+                    ctx.Request.Headers.Authorization = $"Bearer {token}";
+                }
+
+                var internalUserId = principal.FindFirstValue("user_id")
+                                   ?? principal.FindFirstValue(ClaimTypes.NameIdentifier)
+                                   ?? principal.FindFirstValue("sub");
+
+                if (!string.IsNullOrEmpty(internalUserId))
+                {
+                    ctx.Request.Headers["X-User-Id"] = internalUserId;
+                }
             }
         }
         await next();
@@ -1218,89 +1234,138 @@ static async Task ConfigureClientUrisAsync(HttpClient client, string keycloakUrl
     }
 }
 
-class MemoryCacheTicketStore : ITicketStore
+static int ParseExpiresIn(object? raw)
 {
-    private readonly IDistributedCache _cache;
-    private readonly TimeSpan _defaultExpiry = TimeSpan.FromHours(1);
-    private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = false };
+    if (raw is JsonElement el && el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var secs) && secs > 0)
+        return secs;
+    if (raw != null && int.TryParse(raw.ToString(), out var parsed) && parsed > 0)
+        return parsed;
+    return 3600;
+}
 
-    public MemoryCacheTicketStore(IDistributedCache cache)
+static List<Claim> BuildKeycloakClaims(JwtSecurityToken jwt, string accessToken, string? userId)
+{
+    var keepTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        _cache = cache;
+        "sub", "email", "given_name", "family_name", "roles"
+    };
+
+    var claims = jwt.Claims
+        .Where(c => keepTypes.Contains(c.Type))
+        .GroupBy(c => c.Type)
+        .Select(g => g.First())
+        .ToList();
+
+    claims.Add(new Claim("access_token", accessToken));
+    if (!string.IsNullOrEmpty(userId))
+        claims.Add(new Claim("user_id", userId));
+
+    return claims;
+}
+
+async Task<ClaimsPrincipal?> EnsureFreshKeycloakSessionAsync(
+    HttpContext ctx,
+    AuthenticateResult authResult,
+    IHttpClientFactory httpClientFactory)
+{
+    var principal = authResult.Principal;
+    if (principal == null) return null;
+
+    var items = authResult.Properties?.Items;
+    if (items == null || !items.TryGetValue("auth_type", out var authType) || authType != "keycloak")
+        return principal;
+
+    if (items.TryGetValue("expires_at", out var expiresAtStr)
+        && DateTimeOffset.TryParse(expiresAtStr, out var expiresAt)
+        && expiresAt > DateTimeOffset.UtcNow.AddMinutes(2))
+    {
+        return principal;
     }
 
-    public async Task<string> StoreAsync(AuthenticationTicket ticket)
-    {
-        var key = "cv-session-" + Guid.NewGuid().ToString("N");
-        await RenewAsync(key, ticket);
-        return key;
-    }
+    if (!items.TryGetValue("refresh_token", out var refreshToken) || string.IsNullOrEmpty(refreshToken))
+        return null;
 
-    public async Task RenewAsync(string key, AuthenticationTicket ticket)
+    var gate = KeycloakRefreshStore.Locks.GetOrAdd(refreshToken, _ => new SemaphoreSlim(1, 1));
+    await gate.WaitAsync(ctx.RequestAborted);
+    try
     {
-        var options = new DistributedCacheEntryOptions
+        string newAccessToken, newRefreshToken, newIdToken;
+        DateTimeOffset newExpiresAt;
+
+        if (KeycloakRefreshStore.Recent.TryGetValue(refreshToken, out var cached)
+            && cached.CachedAt > DateTimeOffset.UtcNow.AddMinutes(-2))
         {
-            AbsoluteExpirationRelativeToNow = _defaultExpiry,
-            SlidingExpiration = TimeSpan.FromMinutes(30),
-        };
-
-        var bytes = SerializeTicket(ticket);
-        await _cache.SetAsync(key, bytes, options);
-    }
-
-    public async Task<AuthenticationTicket?> RetrieveAsync(string key)
-    {
-        var bytes = await _cache.GetAsync(key);
-        if (bytes == null) return null;
-        return DeserializeTicket(bytes);
-    }
-
-    public async Task RemoveAsync(string key)
-    {
-        await _cache.RemoveAsync(key);
-    }
-
-    private static byte[] SerializeTicket(AuthenticationTicket ticket)
-    {
-        var claims = ticket.Principal.Claims.Select(c => new { c.Type, c.Value }).ToList();
-        var data = new
+            newAccessToken = cached.AccessToken;
+            newRefreshToken = cached.RefreshToken;
+            newIdToken = cached.IdToken;
+            newExpiresAt = cached.ExpiresAt;
+        }
+        else
         {
-            Scheme = ticket.AuthenticationScheme,
-            Claims = claims,
-            AuthProps = ticket.Properties?.Items,
-        };
-        return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(data, _jsonOptions));
-    }
-
-    private static AuthenticationTicket? DeserializeTicket(byte[] bytes)
-    {
-        try
-        {
-            var json = Encoding.UTF8.GetString(bytes);
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            var scheme = root.GetProperty("Scheme").GetString() ?? "";
-            var claimsList = root.GetProperty("Claims").EnumerateArray();
-            var identity = new ClaimsIdentity(claimsList.Select(c =>
-                new Claim(c.GetProperty("Type").GetString() ?? "",
-                          c.GetProperty("Value").GetString() ?? "")), scheme);
-            var principal = new ClaimsPrincipal(identity);
-            var props = new AuthenticationProperties();
-
-            if (root.TryGetProperty("AuthProps", out var authProps) && authProps.ValueKind == JsonValueKind.Object)
+            var tokenUrl = $"{keycloakInternalUrl}/realms/{keycloakRealm}/protocol/openid-connect/token";
+            var http = httpClientFactory.CreateClient();
+            var content = new FormUrlEncodedContent(new[]
             {
-                foreach (var prop in authProps.EnumerateObject())
-                {
-                    props.Items[prop.Name] = prop.Value.GetString();
-                }
-            }
+                new KeyValuePair<string, string>("grant_type", "refresh_token"),
+                new KeyValuePair<string, string>("refresh_token", refreshToken),
+                new KeyValuePair<string, string>("client_id", keycloakClientId),
+                new KeyValuePair<string, string>("client_secret", keycloakClientSecret),
+            });
 
-            return new AuthenticationTicket(principal, props, scheme);
+            var resp = await http.PostAsync(tokenUrl, content, ctx.RequestAborted);
+            if (!resp.IsSuccessStatusCode)
+                return null;
+
+            var tokenJson = await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>(ctx.RequestAborted);
+            if (tokenJson == null)
+                return null;
+
+            newAccessToken = tokenJson.GetValueOrDefault("access_token")?.ToString() ?? "";
+            if (string.IsNullOrEmpty(newAccessToken))
+                return null;
+
+            newRefreshToken = tokenJson.GetValueOrDefault("refresh_token")?.ToString() ?? refreshToken;
+            newIdToken = tokenJson.GetValueOrDefault("id_token")?.ToString()
+                ?? (items.TryGetValue("id_token", out var oldId) ? oldId ?? "" : "");
+            newExpiresAt = DateTimeOffset.UtcNow.AddSeconds(ParseExpiresIn(tokenJson.GetValueOrDefault("expires_in")));
+
+            KeycloakRefreshStore.Recent[refreshToken] = (newAccessToken, newRefreshToken, newIdToken, newExpiresAt, DateTimeOffset.UtcNow);
         }
-        catch
+
+        var updatedClaims = principal.Claims
+            .Where(c => c.Type != "access_token")
+            .Append(new Claim("access_token", newAccessToken))
+            .ToList();
+
+        var newIdentity = new ClaimsIdentity(updatedClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var newPrincipal = new ClaimsPrincipal(newIdentity);
+
+        var newProps = new AuthenticationProperties
         {
-            return null;
-        }
+            IsPersistent = true,
+            ExpiresUtc = DateTimeOffset.UtcNow.Add(sessionLifetime),
+        };
+        newProps.Items["auth_type"] = "keycloak";
+        if (!string.IsNullOrEmpty(newIdToken))
+            newProps.Items["id_token"] = newIdToken;
+        newProps.Items["refresh_token"] = newRefreshToken;
+        newProps.Items["expires_at"] = newExpiresAt.ToString("O");
+
+        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, newPrincipal, newProps);
+        return newPrincipal;
     }
+    catch
+    {
+        return null;
+    }
+    finally
+    {
+        gate.Release();
+    }
+}
+
+static class KeycloakRefreshStore
+{
+    public static readonly ConcurrentDictionary<string, SemaphoreSlim> Locks = new();
+    public static readonly ConcurrentDictionary<string, (string AccessToken, string RefreshToken, string IdToken, DateTimeOffset ExpiresAt, DateTimeOffset CachedAt)> Recent = new();
 }
