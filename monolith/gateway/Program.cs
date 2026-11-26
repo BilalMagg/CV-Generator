@@ -273,8 +273,10 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, IHttpClientFactory httpCl
                 }
                 else if (!isKeycloakEnabled)
                 {
-                    var errJson = await nativeResponse.Content.ReadFromJsonAsync<JsonElement>();
-                    var message = errJson.TryGetProperty("message", out var m) ? m.GetString() : "Invalid email or password";
+                    var fallback = (int)nativeResponse.StatusCode >= 500
+                        ? "Backend database/service error"
+                        : "Invalid email or password";
+                    var message = await ReadBackendErrorMessageAsync(nativeResponse, fallback);
                     ctx.Response.StatusCode = (int)nativeResponse.StatusCode;
                     await ctx.Response.WriteAsJsonAsync(new { success = false, message });
                     return;
@@ -599,8 +601,10 @@ app.MapPost("/api/auth/register", async (HttpContext ctx, IHttpClientFactory htt
                 return;
             }
 
-            var errJson = await response.Content.ReadFromJsonAsync<JsonElement>();
-            var message = errJson.TryGetProperty("message", out var m) ? m.GetString() : "Registration failed";
+            var fallback = (int)response.StatusCode >= 500
+                ? "Backend database/service error"
+                : "Registration failed";
+            var message = await ReadBackendErrorMessageAsync(response, fallback);
             ctx.Response.StatusCode = (int)response.StatusCode;
             await ctx.Response.WriteAsJsonAsync(new { success = false, message });
             return;
@@ -688,8 +692,10 @@ app.MapPost("/api/auth/reset-password", async (HttpContext ctx, IHttpClientFacto
                 return;
             }
 
-            var errJson = await response.Content.ReadFromJsonAsync<JsonElement>();
-            var message = errJson.TryGetProperty("message", out var m) ? m.GetString() : "Password reset failed";
+            var fallback = (int)response.StatusCode >= 500
+                ? "Backend database/service error"
+                : "Password reset failed";
+            var message = await ReadBackendErrorMessageAsync(response, fallback);
             ctx.Response.StatusCode = (int)response.StatusCode;
             await ctx.Response.WriteAsJsonAsync(new { success = false, message });
             return;
@@ -1232,6 +1238,24 @@ static async Task ConfigureClientUrisAsync(HttpClient client, string keycloakUrl
     {
         Console.Error.WriteLine($"Error configuring client '{clientId}': {ex.Message}");
     }
+}
+
+static async Task<string> ReadBackendErrorMessageAsync(HttpResponseMessage response, string fallback)
+{
+    try
+    {
+        var text = await response.Content.ReadAsStringAsync();
+        if (string.IsNullOrWhiteSpace(text))
+            return fallback;
+        using var doc = JsonDocument.Parse(text);
+        if (doc.RootElement.TryGetProperty("message", out var msg) && msg.ValueKind == JsonValueKind.String)
+            return msg.GetString() ?? fallback;
+    }
+    catch
+    {
+        // Ignore non-JSON error bodies from downstream services
+    }
+    return fallback;
 }
 
 static int ParseExpiresIn(object? raw)
