@@ -109,32 +109,40 @@ public class UsersController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
             return BadRequest(ApiResponse<UserResponseDto>.Error("Email and password are required"));
 
-        var email = dto.Email.Trim().ToLowerInvariant();
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
-        if (user == null)
-            return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid email or password"));
-
-        if (!user.IsActive)
-            return Unauthorized(ApiResponse<UserResponseDto>.Error("Account is inactive"));
-
-        if (string.IsNullOrEmpty(user.PasswordHash))
+        try
         {
-            return Unauthorized(ApiResponse<UserResponseDto>.Error("This account was created via Keycloak. Please reset your password to enable native login."));
+            var email = dto.Email.Trim().ToLowerInvariant();
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
+            if (user == null)
+                return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid email or password"));
+
+            if (!user.IsActive)
+                return Unauthorized(ApiResponse<UserResponseDto>.Error("Account is inactive"));
+
+            if (string.IsNullOrEmpty(user.PasswordHash))
+            {
+                return Unauthorized(ApiResponse<UserResponseDto>.Error("This account was created via Keycloak. Please reset your password to enable native login."));
+            }
+
+            var verifyResult = _hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
+            if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
+                return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid email or password"));
+
+            if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                user.PasswordHash = _hasher.HashPassword(user, dto.Password);
+            }
+
+            user.LastLogin = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
         }
-
-        var verifyResult = _hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
-        if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
-            return Unauthorized(ApiResponse<UserResponseDto>.Error("Invalid email or password"));
-
-        if (verifyResult == Microsoft.AspNetCore.Identity.PasswordVerificationResult.SuccessRehashNeeded)
+        catch (Exception ex)
         {
-            user.PasswordHash = _hasher.HashPassword(user, dto.Password);
+            _logger.LogError(ex, "Native authenticate failed for {Email}", dto.Email);
+            return StatusCode(500, ApiResponse<UserResponseDto>.Error(ex.InnerException?.Message ?? ex.Message));
         }
-
-        user.LastLogin = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
     }
 
     [HttpPost("register-native")]
@@ -147,33 +155,41 @@ public class UsersController : ControllerBase
         if (dto.Password.Length < 8)
             return BadRequest(ApiResponse<UserResponseDto>.Error("Password must be at least 8 characters long"));
 
-        var email = dto.Email.Trim().ToLowerInvariant();
-        var existing = await _db.Users.AnyAsync(u => u.Email.ToLower() == email);
-        if (existing)
-            return Conflict(ApiResponse<UserResponseDto>.Error("User with this email already exists"));
-
-        var user = new User
+        try
         {
-            Id = Guid.NewGuid(),
-            FirstName = dto.FirstName.Trim(),
-            LastName = dto.LastName.Trim(),
-            Email = email,
-            Role = Role.USER,
-            SecurityStamp = Guid.NewGuid().ToString("N"),
-            EmailConfirmed = true,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        user.PasswordHash = _hasher.HashPassword(user, dto.Password);
+            var email = dto.Email.Trim().ToLowerInvariant();
+            var existing = await _db.Users.AnyAsync(u => u.Email.ToLower() == email);
+            if (existing)
+                return Conflict(ApiResponse<UserResponseDto>.Error("User with this email already exists"));
 
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
-        SearchSyncHelper.TriggerSync(_scopeFactory, user.Id, _logger, "User.RegisterNative");
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                FirstName = dto.FirstName.Trim(),
+                LastName = dto.LastName.Trim(),
+                Email = email,
+                Role = Role.USER,
+                SecurityStamp = Guid.NewGuid().ToString("N"),
+                EmailConfirmed = true,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+            user.PasswordHash = _hasher.HashPassword(user, dto.Password);
 
-        _logger.LogInformation("Natively registered user {Id} ({Email})", user.Id, user.Email);
-        await _eventBus.PublishAsync(new UserCreatedEvent(user.Id, user.Email, user.FirstName, user.LastName));
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
+            SearchSyncHelper.TriggerSync(_scopeFactory, user.Id, _logger, "User.RegisterNative");
 
-        return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
+            _logger.LogInformation("Natively registered user {Id} ({Email})", user.Id, user.Email);
+            await _eventBus.PublishAsync(new UserCreatedEvent(user.Id, user.Email, user.FirstName, user.LastName));
+
+            return Ok(ApiResponse<UserResponseDto>.Ok(ToDto(user)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Native registration failed for {Email}", dto.Email);
+            return StatusCode(500, ApiResponse<UserResponseDto>.Error(ex.InnerException?.Message ?? ex.Message));
+        }
     }
 
     [HttpPost("reset-password-native")]
