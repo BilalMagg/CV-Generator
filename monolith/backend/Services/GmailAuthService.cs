@@ -27,7 +27,7 @@ public class GmailAuthService : IGmailAuthService
     private readonly ILogger<GmailAuthService> _logger;
     private readonly string _clientId;
     private readonly string _clientSecret;
-    private readonly string _callbackBaseUrl;
+    private readonly string? _callbackBaseUrl;
 
     public GmailAuthService(
         AppDbContext db,
@@ -46,13 +46,20 @@ public class GmailAuthService : IGmailAuthService
             ?? throw new InvalidOperationException("GOOGLE_CLIENT_ID is not set");
         _clientSecret = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET")
             ?? throw new InvalidOperationException("GOOGLE_CLIENT_SECRET is not set");
-        _callbackBaseUrl = config.GetValue<string>("Gmail:CallbackBaseUrl")
-            ?? "http://localhost:8080";
+        _callbackBaseUrl = config.GetValue<string>("Gmail:CallbackBaseUrl")?.TrimEnd('/');
     }
 
-    public string GetOAuthUrl(Guid userId, string? returnUrl = null)
+    private string ResolveRedirectUri(string? requestBaseUrl)
     {
-        var redirectUri = $"{_callbackBaseUrl}/api/gmail/callback";
+        var baseUrl = !string.IsNullOrWhiteSpace(_callbackBaseUrl)
+            ? _callbackBaseUrl
+            : (!string.IsNullOrWhiteSpace(requestBaseUrl) ? requestBaseUrl.TrimEnd('/') : "http://localhost:8080");
+        return $"{baseUrl}/api/gmail/callback";
+    }
+
+    public string GetOAuthUrl(Guid userId, string? returnUrl = null, string? callbackBaseUrl = null)
+    {
+        var redirectUri = ResolveRedirectUri(callbackBaseUrl);
         var scope = Uri.EscapeDataString(string.Join(" ", Scopes));
         var state = GenerateSignedState(userId, returnUrl);
 
@@ -140,7 +147,7 @@ public class GmailAuthService : IGmailAuthService
         return Convert.ToHexString(hash);
     }
 
-    public async Task HandleCallbackAsync(string code, string state)
+    public async Task HandleCallbackAsync(string code, string state, string? callbackBaseUrl = null)
     {
         if (!TryValidateState(state, out var userId, out _))
         {
@@ -148,7 +155,7 @@ public class GmailAuthService : IGmailAuthService
             return;
         }
 
-        var redirectUri = $"{_callbackBaseUrl}/api/gmail/callback";
+        var redirectUri = ResolveRedirectUri(callbackBaseUrl);
 
         var tokenResponse = await ExchangeCodeAsync(code, redirectUri);
 

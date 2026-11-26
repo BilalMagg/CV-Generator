@@ -8,20 +8,31 @@ namespace CV_Generator.Controllers;
 public class GmailController : BaseApiController
 {
     private readonly IGmailAuthService _gmailAuthSvc;
-    private readonly string _frontendUrl;
+    private readonly string? _frontendUrl;
 
     public GmailController(ICurrentUserService currentUser, IGmailAuthService gmailAuthSvc, IConfiguration config)
         : base(currentUser)
     {
         _gmailAuthSvc = gmailAuthSvc;
-        _frontendUrl = config.GetValue<string>("Gmail:FrontendRedirectUrl") ?? "http://localhost:4200";
+        _frontendUrl = config.GetValue<string>("Gmail:FrontendRedirectUrl")?.TrimEnd('/');
+    }
+
+    private string ResolveRequestBaseUrl()
+    {
+        var proto = Request.Headers["X-Forwarded-Proto"].FirstOrDefault()?.Split(',')[0].Trim();
+        if (string.IsNullOrWhiteSpace(proto)) proto = Request.Scheme;
+
+        var host = Request.Headers["X-Forwarded-Host"].FirstOrDefault()?.Split(',')[0].Trim();
+        if (string.IsNullOrWhiteSpace(host)) host = Request.Host.Value;
+
+        return $"{proto}://{host}";
     }
 
     [HttpGet("connect")]
     public IActionResult Connect([FromQuery] string? returnUrl)
     {
         var userId = GetUserId();
-        var url = _gmailAuthSvc.GetOAuthUrl(userId, EncodeReturnUrl(returnUrl));
+        var url = _gmailAuthSvc.GetOAuthUrl(userId, EncodeReturnUrl(returnUrl), ResolveRequestBaseUrl());
         return Redirect(url);
     }
 
@@ -45,8 +56,9 @@ public class GmailController : BaseApiController
             return BadRequest("Invalid or expired OAuth state parameter.");
         }
 
-        await _gmailAuthSvc.HandleCallbackAsync(code, state);
-        return Redirect($"{_frontendUrl}{returnUrl}");
+        await _gmailAuthSvc.HandleCallbackAsync(code, state, ResolveRequestBaseUrl());
+        var target = string.IsNullOrWhiteSpace(_frontendUrl) ? returnUrl : $"{_frontendUrl}{returnUrl}";
+        return Redirect(target);
     }
 
 
